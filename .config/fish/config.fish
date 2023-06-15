@@ -25,3 +25,24 @@ end
 
 # add paths to my PATH
 set fish_user_paths ~/bin ~/.local/bin
+
+# aliases for convenience
+
+alias angband "angband -mgcu -- -n4"
+alias crawl "crawl -rc ~/.config/crawl/init.txt"
+alias day "date '+%Y%m%d'"
+alias e "hx"
+alias height "tput lines"
+alias idris "rlwrap idris2"
+alias la "ls -al"
+alias mtr "sudo (which mtr)"
+alias myip "curl --silent https://checkip.amazonaws.com"
+alias width "tput cols"
+
+function ls
+  if command --query lsd
+    lsd $argv
+  else
+    /bin/ls $argv
+  end
+end

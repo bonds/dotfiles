@@ -24,7 +24,8 @@
     "btop@latest",
     "lsd@latest",
     "wget@latest",
-    "qrencode@latest"
+    "qrencode@latest",
+    "rlwrap@latest"
   ],
   "shell": {
     "init_hook": [
