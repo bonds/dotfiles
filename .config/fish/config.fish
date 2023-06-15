@@ -19,8 +19,15 @@ set -x SSH_AUTH_SOCK /Users/scott/Library/Containers/com.maxgoedjen.Secretive.Se
 
 # install the fisher plugin manager (and plugins) if its not installed yet
 if not functions --query fisher
-    curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher
-    fisher update
+    # don't start an infinite recursion when we start a new fish instance to
+    # install fisher
+    if test "$installing_fisher" != "TRUE"
+        set -x installing_fisher TRUE
+        curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source
+        # restore my plugins list after its overwritten by the installer
+        git restore ~/.config/fish/fish_plugins
+        fisher update
+    end
 end
 
 # add paths to my PATH
