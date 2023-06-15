@@ -1,0 +1,38 @@
+#!/bin/sh
+
+read input                                            # get input string via pipe, e.g. /bin/ssh -4 fw1.ggr.com ls
+#command=$(echo $input | cut -d " " -f 1)              # extract the name of the command
+command=$(echo $input | cut -d " " -f4-)              # extract the name of the command
+mkdir -p ~/.local/ssh && echo "$(date) $command" >> ~/.local/ssh/log
+
+if echo "$command" | grep ssh >/dev/null; then
+   
+    output=$(echo $command)                           # send input through a bunch of commands
+    output=$(echo $output | cut -d " " -f 2-)         # trim the command off the front
+#    output=$(echo $output | sed 's/[\[\]]//g')        # ignore square brackets because they mess up xargs getopts
+    output=$(echo $output | xargs getopt 46AaCfGgKkMNnqsTtVvXxYyB:b:c:D:E:e:F:I:i:J:L:l:m:O:o:p:Q:R:S:W:w:) # parse ssh options
+    output=$(echo $output | perl -pe 's|.*?-- (.*)|\1|')   # remove options leaving just the parameters
+    output=$(echo $output | wc -w)                    # count the parameters
+    output=$(echo $output | xargs)                    # eliminate the whitespace at the front from wc
+
+# BUG: handles 'ssh fw1 -v' vs 'ssh -v fw1' correctly...tried gnugetopt but 
+# it handles remote command params wrong
+
+else
+
+    echo "error: tried to parse a non-ssh command line"
+    exit 2
+
+fi
+
+if [ $output -lt 2 ]; then
+
+    echo "interactive ssh session detected"
+    exit 0
+
+else
+
+    echo "non-interactive ssh session detected"
+    exit 1
+
+fi

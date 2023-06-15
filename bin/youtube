@@ -1,0 +1,47 @@
+#!/bin/sh
+
+args=`getopt ad $* 2>/dev/null`
+
+if [ $? -ne 0 ]; then
+    echo 'Usage: youtube [-d] <search terms>' 
+    exit 2
+fi
+
+set -- $args
+while [ $# -ne 0 ]; do
+case "$1"
+in
+    -a)
+        audio="yes"; shift;;
+    -d)
+        download="yes"; shift;;
+    --)
+        shift; break;;
+esac
+done
+
+if [ -z "$*" ]; then
+    echo 'Usage: youtube [-ad] <search terms>' 
+    exit 3
+fi
+
+if [ -z $download ]; then
+    if [ -z $audio ]; then
+        mpv --fs --really-quiet --cache=yes --demuxer-max-bytes=200M --demuxer-readahead-secs=60 --ytdl-raw-options="default-search=ytsearch,format=bestvideo[height<=?1080]+bestaudio/best" ytdl://"$*"
+        #mpv --fs --really-quiet --audio-delay=-0.300 --cache=yes --demuxer-max-bytes=200M --demuxer-readahead-secs=60 --ytdl-raw-options="default-search=ytsearch,format=bestvideo[height<=?1080]+bestaudio/best" ytdl://"$*"
+    else
+        mpv --fs --ytdl-raw-options=default-search=ytsearch,format=bestaudio ytdl://"$*"
+    fi
+else
+    PWD=$(pwd)
+#    cd ~/Downloads
+    if [ -z $audio ]; then
+        while ! youtube-dl --default-search ytsearch --external-downloader aria2c --external-downloader-args '-c -j 3 -x 3 -s 3 -k 1M' "$*"
+        do
+            sleep 60
+        done
+    else
+        youtube-dl --format bestaudio --default-search ytsearch "$*"
+    fi
+#    cd $PWD
+fi

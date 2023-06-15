@@ -1,0 +1,40 @@
+{
+  "packages": [
+    "ripgrep@latest",
+    "fish@latest",
+    "atuin@latest",
+    "helix@latest",
+    "fzf@latest",
+    "cloc@latest",
+    "fd@latest",
+    "ffmpeg@latest",
+    "hugo@latest",
+    "jq@latest",
+    "mpv@latest",
+    "pstree@latest",
+    "idris2@latest",
+    "vscode@latest",
+    "alacritty@latest",
+    "mtr@latest",
+    "dogdns@latest",
+    "libreoffice-bin@latest",
+    "python@3.10",
+    "python310Packages.numpy@latest",
+    "python310Packages.torch@latest",
+    "btop@latest",
+    "lsd@latest",
+    "wget@latest",
+    "qrencode@latest"
+  ],
+  "shell": {
+    "init_hook": [
+      "echo 'Welcome to devbox!' > /dev/null",
+      "exec nix-shell --packages python310 python310Packages.numpy python310Packages.torch --run fish"
+    ],
+    "scripts": {
+      "test": [
+        "echo \"Error: no test specified\" && exit 1"
+      ]
+    }
+  }
+}

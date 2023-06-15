@@ -1,0 +1,37 @@
+#!/bin/sh
+
+function movemp4 {
+
+created=$(mediainfo --Output=JSON $1 | jq '.media.track[] | select(."@type" == "General") | .Encoded_Date' | xargs)
+
+ year=$(date -jf "%Z %F %T" "$created" "+%Y")
+month=$(date -jf "%Z %F %T" "$created" "+%m")
+  day=$(date -jf "%Z %F %T" "$created" "+%d")
+
+dest=$PWD/$year/$month/$day/$(basename $1)
+echo move $1 to $dest
+mkdir -p $(dirname $dest) && mv $1 $dest
+
+}
+
+function movejpg {
+
+created=$(exiftran -d $1 | grep Date | grep Original | sed 's/.*(Original)\(.*\)/\1/' | xargs)
+
+ year=$(date -jf "%Y:%m:%d %T" "$created" "+%Y")
+month=$(date -jf "%Y:%m:%d %T" "$created" "+%m")
+  day=$(date -jf "%Y:%m:%d %T" "$created" "+%d")
+
+dest=$PWD/$year/$month/$day/$(basename $1)
+echo move $1 to $dest
+mkdir -p $(dirname $dest) && mv $1 $dest
+
+}
+
+for item in $(find $PWD -iname '*.mp4'); do
+   movemp4 $item
+done
+for item in $(find $PWD -iname '*.jpg'); do
+   movejpg $item
+done
+
