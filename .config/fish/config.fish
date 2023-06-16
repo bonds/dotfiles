@@ -26,6 +26,7 @@ if not functions --query fisher
         curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source
         # restore my plugins list after its overwritten by the installer
         git restore ~/.config/fish/fish_plugins
+        # and then install all my plugins
         fisher update
     end
 end

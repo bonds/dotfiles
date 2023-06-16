@@ -30,6 +30,7 @@
   "shell": {
     "init_hook": [
       "echo 'Welcome to devbox!' > /dev/null",
+      "/Users/scott/bin/create_devbox_app_aliases",
       "exec nix-shell --packages python310 python310Packages.numpy python310Packages.torch --run fish"
     ],
     "scripts": {
