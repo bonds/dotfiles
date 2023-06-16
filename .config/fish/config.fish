@@ -11,7 +11,8 @@ set -x NIXPKGS_ALLOW_UNFREE 1
 
 if status --is-interactive
     # devbox global shellenv --init-hook | source
-    atuin init fish | source
+    starship init fish | source # cool prompt
+    atuin init fish | source # shell history database
 end
 
 # use the hardware SSH key in my TPM
