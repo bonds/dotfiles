@@ -32,10 +32,9 @@ if not functions --query fisher
 end
 
 # add paths to my PATH
-set fish_user_paths ~/bin ~/.local/bin
+set fish_user_paths ~/bin/(string lower (uname)) ~/bin ~/.local/bin
 
 # aliases for convenience
-
 alias angband "angband -mgcu -- -n4"
 alias crawl "crawl -rc ~/.config/crawl/init.txt"
 alias day "date '+%Y%m%d'"

@@ -25,12 +25,13 @@
     "lsd@latest",
     "wget@latest",
     "qrencode@latest",
-    "rlwrap@latest"
+    "rlwrap@latest",
+    "starship@latest"
   ],
   "shell": {
     "init_hook": [
       "echo 'Welcome to devbox!' > /dev/null",
-      "/Users/scott/bin/create_devbox_app_aliases",
+      "/Users/scott/bin/darwin/create_devbox_app_aliases",
       "exec nix-shell --packages python310 python310Packages.numpy python310Packages.torch --run fish"
     ],
     "scripts": {
