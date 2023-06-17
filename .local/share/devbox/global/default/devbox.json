@@ -28,7 +28,9 @@
     "rlwrap@latest",
     "starship@latest",
     "angband@latest",
-    "crawl@latest"
+    "crawl@latest",
+    "pigz@latest",
+    "pv@latest"
   ],
   "shell": {
     "init_hook": [
