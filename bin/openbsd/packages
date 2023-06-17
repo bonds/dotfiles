@@ -1,0 +1,19 @@
+#!/usr/local/bin/fish
+
+for arg in $argv
+    set pk $pk "pkgname LIKE '%$arg%'"
+    set co $co "comment LIKE '%$arg%'"
+end
+set pk (string join " AND " $pk)
+set co (string join " AND " $co)
+set rg (string join "|" $argv)
+
+/usr/local/bin/sqlite3 /usr/local/share/sqlports \
+" \
+SELECT DISTINCT pkgname || ': ' || comment AS result \
+FROM ports \
+WHERE $pk OR $co \
+ORDER BY 1 \
+" \
+| rg -i "$rg"
+

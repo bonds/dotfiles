@@ -26,7 +26,9 @@
     "wget@latest",
     "qrencode@latest",
     "rlwrap@latest",
-    "starship@latest"
+    "starship@latest",
+    "angband@latest",
+    "crawl@latest"
   ],
   "shell": {
     "init_hook": [

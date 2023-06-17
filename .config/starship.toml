@@ -1,8 +1,19 @@
-[os]
+[directory]
+fish_style_pwd_dir_length = 1
+
+[nix_shell]
 disabled = true
+
+[os]
+disabled = false
+
+[os.symbols]
+Macos = " "
 
 [status]
 disabled = false
+symbol = "🆇 "
+success_symbol = ""
 
 [time]
 disabled = false
