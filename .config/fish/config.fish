@@ -46,6 +46,7 @@ alias la "ls -al"
 alias mtr "sudo (which mtr)"
 alias myip "curl --silent https://checkip.amazonaws.com"
 alias width "tput cols"
+alias ghci "~/.ghcup/bin/ghci -ghci-script ~/.config/ghc/ghci.conf"
 
 function ls
   if command --query lsd
