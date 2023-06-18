@@ -5,19 +5,26 @@ set install_dir "$HOME/Applications/installed via DevBox"
 # remove the old aliases so we don't get duplicates
 
 mkdir -p "$install_dir"
-rm "$install_dir/"*
+find "$install_dir" -maxdepth 1 -type f -exec rm '{}' \;
 
 # find all the installed Nix packages that have GUI apps and create
 # proper 'Finder aliases' for them so Spotlight will index them
 # because it won't index UNIX symbolic links
 
+set aliases ""
 set items (echo $PATH | tr " " "\n" | grep -E "^/nix/.*/bin")
+
 for i in $items
     set appdir (dirname $i)/Applications
     if test -d $appdir
         set app (ls $appdir)
         set fullapp $appdir/$app
-        echo creating alias for $app
-        osascript -e "tell application \"Finder\" to make new alias at (POSIX file \"$install_dir\") to (POSIX file \"$fullapp\")" > /dev/null
+        # some apps like mpv come with multiple variants installed, but I just
+        # want one alias for them, so I just pick the first instance to link to
+        if not contains $app $aliases
+            echo creating alias for $app
+            osascript -e "tell application \"Finder\" to make new alias at (POSIX file \"$install_dir\") to (POSIX file \"$fullapp\")" > /dev/null
+            set aliases $aliases $app
+        end
     end
 end
