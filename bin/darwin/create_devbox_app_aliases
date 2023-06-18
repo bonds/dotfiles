@@ -7,6 +7,10 @@ set install_dir "$HOME/Applications/installed via DevBox"
 mkdir -p "$install_dir"
 find "$install_dir" -maxdepth 1 -type f -exec rm '{}' \;
 
+# creating new aliases too quickly after deleting the old ones results
+# in MacOS appending a number i.e. 'My App 2' instead of 'My App'
+sleep 1
+
 # find all the installed Nix packages that have GUI apps and create
 # proper 'Finder aliases' for them so Spotlight will index them
 # because it won't index UNIX symbolic links
@@ -19,7 +23,7 @@ for i in $items
     if test -d $appdir
         set app (ls $appdir)
         set fullapp $appdir/$app
-        # some apps like mpv come with multiple variants installed, but I just
+        # some apps like 'mpv' come with multiple variants installed, but I just
         # want one alias for them, so I just pick the first instance to link to
         if not contains $app $aliases
             echo creating alias for $app
