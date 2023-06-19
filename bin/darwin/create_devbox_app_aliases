@@ -1,19 +1,7 @@
 #!/usr/bin/env fish
 
 set install_dir "$HOME/Applications/installed via DevBox"
-
-# remove the old aliases so we don't get duplicates
-# and use 'find' instead of 'rm' to avoid getting an error when the
-# directory is empty, and to make it a little safer in case I mess up
-# the $install_dir variable
-
 mkdir -p "$install_dir"
-#find "$install_dir" -maxdepth 1 -type f -exec rm '{}' \;
-
-# creating new aliases too quickly after deleting the old ones results
-# in MacOS appending a number i.e. 'My App 2' instead of 'My App'
-
-sleep 1
 
 # find all the installed Nix packages that have GUI apps and create
 # proper 'Finder aliases' for them so Spotlight will index them
@@ -41,7 +29,6 @@ for binpath in $binpaths
         end
     end
 end
-
 
 # delete all the old aliases that reference apps we don't have in our devbox
 # anymore
