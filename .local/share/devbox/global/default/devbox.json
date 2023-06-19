@@ -38,7 +38,8 @@
     "haxor-news@latest",
     "rustup@latest",
     "libiconv@latest",
-    "hyfetch@latest"
+    "hyfetch@latest",
+    "hyperfine@latest"
   ],
   "shell": {
     "init_hook": [
