@@ -10,22 +10,23 @@ mkdir -p "$install_dir"
 set apps ""
 set binpaths (echo $PATH | tr " " "\n" | grep -E "^/nix/.*/bin")
 
+# make aliases if they don't already exist
+
+# some apps like 'mpv' come with multiple variants installed, but we just
+# want one alias for them, so we pick the first instance to link to
+
+# we don't delete and remake the aliases every time even though that'd be
+# slightly easier to script, because that resets the Spotlight sort order,
+# which is a worse UX
+
 for binpath in $binpaths
     set appdir (dirname $binpath)/Applications
     if test -d $appdir
         set app (ls $appdir)
-        # some apps like 'mpv' come with multiple variants installed, but we just
-        # want one alias for them, so we pick the first instance to link to
-        if not contains $app $apps
-            set apps $apps $app
-        end
-        # make aliases if the don't already exist
-        # we don't delete and remake them every time even though that's slightly
-        # easier to script, because that resets the Spotlight priority, which is
-        # a worse UX
         if not test -e "$install_dir/$(basename $app .app)"
             echo creating alias for $app
             osascript -e "tell application \"Finder\" to make new alias at (POSIX file \"$install_dir\") to (POSIX file \"$appdir/$app\")" > /dev/null
+            set apps $apps $app
         end
     end
 end
