@@ -1,42 +1,34 @@
 #!/usr/bin/env fish
 
-set install_dir "$HOME/Applications/installed via DevBox"
-mkdir -p "$install_dir"
-
 # find all the installed Nix packages that have GUI apps and create
 # proper 'Finder aliases' for them so Spotlight will index them
 # because it won't index UNIX symbolic links to the Nix volume
 
-set apps ""
-set binpaths (echo $PATH | tr " " "\n" | grep -E "^/nix/.*/bin")
-
-# make aliases if they don't already exist
-
-# some apps like 'mpv' come with multiple variants installed, but we just
-# want one alias for them, so we pick the first instance to link to
-
-# we don't delete and remake the aliases every time even though that'd be
+# don't delete and remake the aliases every time even though that'd be
 # slightly easier to script, because that resets the Spotlight sort order,
 # which is a worse UX
 
-for binpath in $binpaths
-    set appdir (dirname $binpath)/Applications
-    if test -d $appdir
-        set app (ls $appdir)
-        set apps $apps $app
-        if not test -e "$install_dir/$(basename $app .app)"
-            echo creating alias for $app
-            osascript -e "tell application \"Finder\" to make new alias at (POSIX file \"$install_dir\") to (POSIX file \"$appdir/$app\")" > /dev/null
-        end
+set installdir "$HOME/Applications/installed via DevBox"
+set linksdir "$(devbox global path)/.devbox/nix/profile/default/Applications"
+
+set apps ""
+mkdir -p "$installdir"
+for link in (find $linksdir -type l)
+    set apppath (realpath "$link")
+    set appname (basename $apppath)
+    set apps $apps $appname
+    if not test -e "$installdir/$(basename $appname .app)"
+        echo creating alias for $appname
+        osascript -e "tell application \"Finder\" to make new alias at (POSIX file \"$installdir\") to (POSIX file \"$apppath\")" > /dev/null
     end
 end
 
 # delete all the old aliases that reference apps we don't have in our devbox
 # anymore
 
-for alias in (ls "$install_dir")
+for alias in (ls "$installdir")
     if not contains $alias.app $apps
-        echo removing "$install_dir/$alias"
-        rm "$install_dir/$alias"
+        echo removing "$installdir/$alias"
+        rm "$installdir/$alias"
     end
 end
