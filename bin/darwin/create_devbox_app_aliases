@@ -1,12 +1,22 @@
 #!/usr/bin/env fish
 
 # find all the installed Nix packages that have GUI apps and create
-# proper 'Finder aliases' for them so Spotlight will index them
+# a 'MacOS Alias file' aka a 'Finder alias' for each so Spotlight will index them
 # because it won't index UNIX symbolic links to the Nix volume
 
 # don't delete and remake the aliases every time even though that'd be
 # slightly easier to script, because that resets the Spotlight sort order,
 # which is a worse UX
+
+# see also: https://stackoverflow.com/questions/7072208/how-do-i-create-a-macintosh-finder-alias-from-the-command-line
+function makealias --argument-names aliasdir apppath
+    osascript -e "tell application \"Finder\" to make new alias at (POSIX file \"$aliasesdir\") to (POSIX file \"$apppath\")" > /dev/null
+end
+
+# see also: https://apple.stackexchange.com/questions/180762/how-to-go-to-alias-from-terminal
+function readalias --argument-names aliaspath
+    osascript -e "set toPath to \"\"" -e "tell application \"Finder\"" -e "set toPath to (POSIX file \"$aliaspath\") as alias" -e "set theKind to kind of toPath" -e "if theKind is \"Alias\" then" -e "set toPath to ((original item of toPath) as alias)" -e "end if" -e "end tell" -e "return posix path of (toPath)"
+end
 
 set linksdir "$(devbox global path)/.devbox/nix/profile/default/Applications"
 set aliasesdir "$HOME/Applications/installed via DevBox"
@@ -17,9 +27,15 @@ for link in (find $linksdir -type l)
     set apppath (realpath "$link")
     set appname (basename $apppath)
     set apps $apps $appname
-    if not test -e "$aliasesdir/$(basename $appname .app)"
+    set aliaspath "$aliasesdir/$(basename $appname .app)"
+    if not test -e "$aliaspath"
         echo creating alias for $appname
-        osascript -e "tell application \"Finder\" to make new alias at (POSIX file \"$aliasesdir\") to (POSIX file \"$apppath\")" > /dev/null
+        makealias "$aliasdir" "$apppath"
+    else if test $apppath != (realpath $(readalias $aliaspath))
+        echo updating alias for $appname
+        rm "$aliaspath"
+        sleep 1 # wait or we'll get an alias called '$appname alias'
+        makealias "$aliasdir" "$apppath"
     end
 end
 
