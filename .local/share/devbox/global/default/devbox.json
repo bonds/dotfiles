@@ -33,7 +33,6 @@
     "pv@latest",
     "python310Packages.numpy@latest",
     "python310Packages.torch@latest",
-    "python@3.10",
     "qrencode@latest",
     "ripgrep@latest",
     "rlwrap@latest",
@@ -42,13 +41,14 @@
     "tree@latest",
     "vscode@latest",
     "wget@latest",
-    "wiki-tui@latest"
+    "wiki-tui@latest",
+    "python@3.10"
   ],
   "shell": {
     "init_hook": [
       "echo 'Welcome to devbox!' > /dev/null",
       "/Users/scott/bin/darwin/create_devbox_app_aliases",
-      "exec nix-shell --packages python310 python310Packages.numpy python310Packages.torch --run fish"
+      "exec fish"
     ],
     "scripts": {
       "test": [

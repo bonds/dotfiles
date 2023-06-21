@@ -10,7 +10,7 @@ set -x C_INCLUDE_PATH (xcrun --show-sdk-path)/usr/include/ffi
 set -x NIXPKGS_ALLOW_UNFREE 1
 
 if status --is-interactive
-    # devbox global shellenv --init-hook | source
+#    devbox global shellenv --init-hook | source
     starship init fish | source # cool prompt
     atuin init fish | source # shell history database
 end
@@ -46,6 +46,7 @@ alias mtr "sudo mtr"
 alias myip "curl --silent https://checkip.amazonaws.com"
 alias width "tput cols"
 alias ghci "ghci -ghci-script ~/.config/ghc/ghci.conf"
+alias python "python3.10"
 
 function ls
   if command --query lsd
