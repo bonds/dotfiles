@@ -8,27 +8,27 @@
 # slightly easier to script, because that resets the Spotlight sort order,
 # which is a worse UX
 
-set installdir "$HOME/Applications/installed via DevBox"
 set linksdir "$(devbox global path)/.devbox/nix/profile/default/Applications"
+set aliasesdir "$HOME/Applications/installed via DevBox"
 
 set apps ""
-mkdir -p "$installdir"
+mkdir -p "$aliasesdir"
 for link in (find $linksdir -type l)
     set apppath (realpath "$link")
     set appname (basename $apppath)
     set apps $apps $appname
-    if not test -e "$installdir/$(basename $appname .app)"
+    if not test -e "$aliasesdir/$(basename $appname .app)"
         echo creating alias for $appname
-        osascript -e "tell application \"Finder\" to make new alias at (POSIX file \"$installdir\") to (POSIX file \"$apppath\")" > /dev/null
+        osascript -e "tell application \"Finder\" to make new alias at (POSIX file \"$aliasesdir\") to (POSIX file \"$apppath\")" > /dev/null
     end
 end
 
 # delete all the old aliases that reference apps we don't have in our devbox
 # anymore
 
-for alias in (ls "$installdir")
+for alias in (ls "$aliasesdir")
     if not contains $alias.app $apps
-        echo removing "$installdir/$alias"
-        rm "$installdir/$alias"
+        echo removing "$aliasesdir/$alias"
+        rm "$aliasesdir/$alias"
     end
 end
