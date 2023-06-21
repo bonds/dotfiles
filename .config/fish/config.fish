@@ -42,11 +42,10 @@ alias day "date '+%Y%m%d'"
 alias e "hx"
 alias height "tput lines"
 alias idris "rlwrap idris2"
-alias la "ls -al"
-alias mtr "sudo (which mtr)"
+alias mtr "sudo mtr"
 alias myip "curl --silent https://checkip.amazonaws.com"
 alias width "tput cols"
-alias ghci "~/.ghcup/bin/ghci -ghci-script ~/.config/ghc/ghci.conf"
+alias ghci "ghci -ghci-script ~/.config/ghc/ghci.conf"
 
 function ls
   if command --query lsd
