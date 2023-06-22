@@ -43,7 +43,8 @@
     "wiki-tui@latest",
     "python@3.10",
     "rustc@latest",
-    "cargo@latest"
+    "cargo@latest",
+    "bat@latest"
   ],
   "shell": {
     "init_hook": [

@@ -1,7 +1,17 @@
 # Commands to run in interactive sessions can go here
 
-# installed by ghcup
-set -q GHCUP_INSTALL_BASE_PREFIX[1]; or set GHCUP_INSTALL_BASE_PREFIX $HOME ; set -gx PATH $HOME/.cabal/bin $PATH /Users/scott/.ghcup/bin # ghcup-env
+# choose the best editor available
+if command --query hx
+    set -x EDITOR hx
+else if command --query kak
+    set -x EDITOR kak
+else if command --query nvim
+    set -x EDITOR nvim
+else if command --query vim
+    set -x EDITOR vim
+else
+    set -x EDITOR vi
+end
 
 # workaround for a bug in ghc 9.0.2: https://gitlab.haskell.org/ghc/ghc/-/issues/20592
 set -x C_INCLUDE_PATH (xcrun --show-sdk-path)/usr/include/ffi
@@ -32,26 +42,35 @@ if not functions --query fisher
     end
 end
 
-# add paths to my PATH
-set fish_user_paths ~/bin/(string lower (uname)) ~/bin ~/.local/bin
+# add paths
+set --append fish_user_paths ~/bin/(string lower (uname))
+set --append fish_user_paths ~/bin
+set --append fish_user_paths ~/.local/bin
 
 # aliases for convenience
 alias angband "angband -mgcu -- -n4"
 alias crawl "crawl -rc ~/.config/crawl/init.txt"
 alias day "date '+%Y%m%d'"
-alias e "hx"
+alias ghci "ghci -ghci-script ~/.config/ghc/ghci.conf"
 alias height "tput lines"
 alias idris "rlwrap idris2"
 alias mtr "sudo mtr"
 alias myip "curl --silent https://checkip.amazonaws.com"
-alias width "tput cols"
-alias ghci "ghci -ghci-script ~/.config/ghc/ghci.conf"
 alias python "python3.10"
+alias width "tput cols"
 
 function ls
-  if command --query lsd
-    lsd $argv
-  else
-    /bin/ls $argv
-  end
+    if command --query lsd
+        lsd $argv
+    else
+        /bin/ls $argv
+    end
+end
+
+function e --description "shortcut to the default editor"
+    if command --query fzf; and test -z "$argv"
+        $EDITOR (fzf)
+    else
+        $EDITOR $argv
+    end
 end
