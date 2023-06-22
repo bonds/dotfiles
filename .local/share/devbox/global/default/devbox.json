@@ -36,13 +36,14 @@
     "qrencode@latest",
     "ripgrep@latest",
     "rlwrap@latest",
-    "rustup@latest",
     "starship@latest",
     "tree@latest",
     "vscode@latest",
     "wget@latest",
     "wiki-tui@latest",
-    "python@3.10"
+    "python@3.10",
+    "rustc@latest",
+    "cargo@latest"
   ],
   "shell": {
     "init_hook": [
