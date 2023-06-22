@@ -1,0 +1,4 @@
+[editor.soft-wrap]
+enable = true
+wrap-indicator = ""
+wrap-at-text-width = true
