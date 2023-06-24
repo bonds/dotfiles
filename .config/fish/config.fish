@@ -68,8 +68,10 @@ alias width "tput cols"
 function ls
     if command --query lsd
         lsd $argv
+    else if command --query colorls
+        colorls -G $argv
     else
-        /bin/ls $argv
+        ls $argv
     end
 end
 
