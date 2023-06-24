@@ -1,7 +1,17 @@
 #!/usr/bin/env fish
 
+if not command --query hyperfine
+    echo "hyperfine is required but it is not installed"
+    exit 1
+end
+if not command --query sysbench
+    echo "sysbench is required but it is not installed"
+    exit 2
+end
+
 set cores (sysctl -n hw.ncpu)
+set common --num-threads=$cores --max-requests=100000000
 
-hyperfine --warmup 1 "sysbench --num-threads=$cores --test=cpu --max-requests=100000000 run"
-
-hyperfine --warmup 1 "sysbench --num-threads=$cores --test=memory --max-requests=100000000 run"
+hyperfine --warmup 1 \
+    "sysbench --test=cpu    $common run" \
+    "sysbench --test=memory $common run"
