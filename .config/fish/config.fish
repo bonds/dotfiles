@@ -52,6 +52,7 @@ end
 set --append fish_user_paths ~/bin/(string lower (uname))
 set --append fish_user_paths ~/bin
 set --append fish_user_paths ~/.local/bin
+set --append fish_user_paths ~/.cargo/bin
 
 # aliases for convenience
 alias angband "angband -mgcu -- -n4"
