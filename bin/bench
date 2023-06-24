@@ -1,0 +1,7 @@
+#!/usr/bin/env fish
+
+set cores (sysctl -n hw.ncpu)
+
+hyperfine --warmup 1 "sysbench --num-threads=$cores --test=cpu --max-requests=100000000 run"
+
+hyperfine --warmup 1 "sysbench --num-threads=$cores --test=memory --max-requests=100000000 run"
