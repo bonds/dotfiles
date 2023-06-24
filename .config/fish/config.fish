@@ -1,17 +1,10 @@
 # Commands to run in interactive sessions can go here
 
-# choose the best editor available
-if command --query hx
-    set -x EDITOR hx
-else if command --query kak
-    set -x EDITOR kak
-else if command --query nvim
-    set -x EDITOR nvim
-else if command --query vim
-    set -x EDITOR vim
-else
-    set -x EDITOR vi
-end
+# add all the paths I like
+set --append fish_user_paths ~/bin/(string lower (uname))
+set --append fish_user_paths ~/bin
+set --append fish_user_paths ~/.local/bin
+set --append fish_user_paths ~/.cargo/bin
 
 # workaround for a bug in ghc 9.0.2: https://gitlab.haskell.org/ghc/ghc/-/issues/20592
 if command --query xcrun
@@ -48,12 +41,6 @@ if not functions --query fisher
     end
 end
 
-# add paths
-set --append fish_user_paths ~/bin/(string lower (uname))
-set --append fish_user_paths ~/bin
-set --append fish_user_paths ~/.local/bin
-set --append fish_user_paths ~/.cargo/bin
-
 # aliases for convenience
 alias angband "angband -mgcu -- -n4"
 alias crawl "crawl -rc ~/.config/crawl/init.txt"
@@ -65,6 +52,19 @@ alias mtr "sudo mtr"
 alias myip "curl --silent https://checkip.amazonaws.com"
 alias python "python3.10"
 alias width "tput cols"
+
+# choose the best editor available
+if command --query hx
+    set -x EDITOR hx
+else if command --query kak
+    set -x EDITOR kak
+else if command --query nvim
+    set -x EDITOR nvim
+else if command --query vim
+    set -x EDITOR vim
+else
+    set -x EDITOR vi
+end
 
 function ls
     if command --query lsd
