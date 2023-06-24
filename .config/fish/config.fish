@@ -14,15 +14,21 @@ else
 end
 
 # workaround for a bug in ghc 9.0.2: https://gitlab.haskell.org/ghc/ghc/-/issues/20592
-set -x C_INCLUDE_PATH (xcrun --show-sdk-path)/usr/include/ffi
+if command --query xcrun
+    set -x C_INCLUDE_PATH (xcrun --show-sdk-path)/usr/include/ffi
+end
 
 # nix flakes needs this
 set -x NIXPKGS_ALLOW_UNFREE 1
 
 if status --is-interactive
 #    devbox global shellenv --init-hook | source
-    starship init fish | source # cool prompt
-    atuin init fish | source # shell history database
+    if command --query starship
+        starship init fish | source # cool prompt
+    end
+    if command --query atuin
+        atuin init fish | source # shell history database
+    end
 end
 
 # use the hardware SSH key in my TPM
