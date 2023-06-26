@@ -48,10 +48,12 @@ alias day "date '+%Y%m%d'"
 alias ghci "ghci -ghci-script ~/.config/ghc/ghci.conf"
 alias height "tput lines"
 alias idris "rlwrap idris2"
-alias mtr "sudo mtr"
 alias myip "curl --silent https://checkip.amazonaws.com"
 alias python "python3.10"
 alias width "tput cols"
+
+# OS specific aliases
+if test (uname) = Darwin; alias mtr "sudo mtr"; end
 
 # choose the best editor available
 if command --query hx
