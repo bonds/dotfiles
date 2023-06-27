@@ -21,7 +21,6 @@
     "hugo@latest",
     "hyfetch@latest",
     "hyperfine@latest",
-    "idris2@latest",
     "jq@latest",
     "libiconv@latest",
     "libreoffice-bin@latest",
@@ -44,7 +43,12 @@
     "python@3.10",
     "rustc@latest",
     "cargo@latest",
-    "bat@latest"
+    "bat@latest",
+    "sysbench@latest",
+    "idris2@latest",
+    "docker@latest",
+    "docker-compose@latest",
+    "colima@latest"
   ],
   "shell": {
     "init_hook": [
