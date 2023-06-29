@@ -48,7 +48,9 @@
     "idris2@latest",
     "docker@latest",
     "docker-compose@latest",
-    "colima@latest"
+    "colima@latest",
+    "tldr@latest",
+    "chatgpt-cli@latest"
   ],
   "shell": {
     "init_hook": [

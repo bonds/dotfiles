@@ -19,9 +19,9 @@ if status --is-interactive
     if command --query starship
         starship init fish | source # cool prompt
     end
-    if command --query atuin
-        atuin init fish | source # shell history database
-    end
+    # if command --query atuin
+    #     atuin init fish | source # shell history database
+    # end
 end
 
 # use the hardware SSH key in my TPM
