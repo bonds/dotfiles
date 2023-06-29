@@ -26,7 +26,7 @@ mkdir -p "$aliasesdir"
 for link in (find $linksdir -type l)
     set apppath (realpath "$link")
     set appname (basename $apppath)
-    set apps $apps $appname
+    set apps $apps (string lower $appname)
     set aliaspath "$aliasesdir/$(basename $appname .app)"
     if not test -e "$aliaspath"
         echo creating alias for $appname
@@ -43,7 +43,7 @@ end
 # anymore
 
 for alias in (ls "$aliasesdir")
-    if not contains $alias.app $apps
+    if not contains (string lower $alias.app) $apps
         echo removing "$aliasesdir/$alias"
         rm "$aliasesdir/$alias"
     end

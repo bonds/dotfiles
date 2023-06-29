@@ -50,7 +50,8 @@
     "docker-compose@latest",
     "colima@latest",
     "tldr@latest",
-    "chatgpt-cli@latest"
+    "chatgpt-cli@latest",
+    "minetest@latest"
   ],
   "shell": {
     "init_hook": [
