@@ -23,7 +23,7 @@ set aliasesdir "$HOME/Applications/installed via DevBox"
 
 set apps ""
 mkdir -p "$aliasesdir"
-for link in (find $linksdir -type l)
+for link in (find $linksdir -maxdepth 1 -name '*.app')
     set apppath (realpath "$link")
     set appname (basename $apppath)
     set apps $apps (string lower $appname)
