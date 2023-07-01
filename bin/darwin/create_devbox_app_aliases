@@ -10,12 +10,26 @@
 
 # see also: https://stackoverflow.com/questions/7072208/how-do-i-create-a-macintosh-finder-alias-from-the-command-line
 function makealias --argument-names aliasdir apppath
-    osascript -e "tell application \"Finder\" to make new alias at (POSIX file \"$aliasesdir\") to (POSIX file \"$apppath\")" > /dev/null
+    osascript -e " \
+        tell application \"Finder\" \
+        to make new alias \
+        at (POSIX file \"$aliasesdir\") \
+        to (POSIX file \"$apppath\") \
+    " > /dev/null
 end
 
 # see also: https://apple.stackexchange.com/questions/180762/how-to-go-to-alias-from-terminal
 function readalias --argument-names aliaspath
-    osascript -e "set toPath to \"\"" -e "tell application \"Finder\"" -e "set toPath to (POSIX file \"$aliaspath\") as alias" -e "set theKind to kind of toPath" -e "if theKind is \"Alias\" then" -e "set toPath to ((original item of toPath) as alias)" -e "end if" -e "end tell" -e "return posix path of (toPath)"
+    osascript \
+        -e "set toPath to \"\"" \
+        -e "tell application \"Finder\"" \
+        -e "set toPath to (POSIX file \"$aliaspath\") as alias" \
+        -e "set theKind to kind of toPath" \
+        -e "if theKind is \"Alias\" then" \
+        -e "set toPath to ((original item of toPath) as alias)" \
+        -e "end if" \
+        -e "end tell" \
+        -e "return posix path of (toPath)"
 end
 
 set linksdir "$(devbox global path)/.devbox/nix/profile/default/Applications"
