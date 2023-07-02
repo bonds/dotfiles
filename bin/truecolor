@@ -172,18 +172,59 @@ escapeCode ClearFormatting = "0"
 -- that's been smeared across 360 degrees, see also 
 -- https://www.instructables.com/How-to-Make-Proper-Rainbow-and-Random-Colors-With-/
 angleToColor :: Float -> (Int, Int, Int)
-angleToColor angle
+angleToColor input
     | angle < 60  = (255, round (angle * 4.25 - 0.01), 0)
     | angle < 120 = (round ((120 - angle) * 4.25 - 0.01), 255, 0)
     | angle < 180 = (0, 255, round ((angle - 120) * 4.25 - 0.01))
     | angle < 240 = (0, round ((240 - angle) * 4.25 - 0.01), 255)
     | angle < 300 = (round ((angle - 240) * 4.25 - 0.01), 0, 255)
     | otherwise   = (255, 0, round ((360 - angle) * 4.25 - 0.01))
+  where
+    angle = input/360*limit
+    limit = 275
+
+angleToColor' :: Float -> (Int, Int, Int)
+angleToColor' angle
+    | angle < 360*1/6 = interpolateColors ((angle-0*(360/6))/(360/6)) red orange
+    | angle < 360*2/6 = interpolateColors ((angle-1*(360/6))/(360/6)) orange yellow
+    | angle < 360*3/6 = interpolateColors ((angle-2*(360/6))/(360/6)) yellow green
+    | angle < 360*4/6 = interpolateColors ((angle-3*(360/6))/(360/6)) green blue
+    | angle < 360*5/6 = interpolateColors ((angle-4*(360/6))/(360/6)) blue indigo
+    | otherwise = interpolateColors ((angle-5*(360/6))/(360/6)) indigo violet
 
 -- |Generate an RGB rainbow using the specified number of points.
 colorsAcrossWidth :: Int -> [(Int, Int, Int)]
 colorsAcrossWidth wi =
-    case L.splitAt (round (fromIntegral wi * 0.95:: Float))
+    case L.splitAt (round (fromIntegral wi * splitPoint :: Float))
        $ il wi of (as, bs) -> bs ++ as
   where
-    il wid = L.map angleToColor [0, 360 / (fromIntegral wid-1 :: Float)..360]
+    il wid = L.map angleToColor' [0, 360 / (fromIntegral wid-1 :: Float)..360]
+    splitPoint = 1.0
+
+red :: (Int, Int, Int)
+red = (255, 0, 0)
+
+orange :: (Int, Int, Int)
+orange = (255, 165, 0)
+
+yellow :: (Int, Int, Int)
+yellow = (255, 255, 0)
+
+green :: (Int, Int, Int)
+green = (0, 255, 0)
+
+blue :: (Int, Int, Int)
+blue = (0, 0, 255)
+
+indigo :: (Int, Int, Int)
+indigo = (75, 0, 130)
+
+violet :: (Int, Int, Int)
+violet = (238, 130, 238)
+
+interpolateColors :: Float -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int)
+interpolateColors perc (ra, ga, ba) (rb, gb, bb) =
+    ((ic perc ra rb), (ic perc ga gb), (ic perc ba bb))
+  where
+    ic :: Float -> Int -> Int -> Int
+    ic pe ca cb = round ((fromIntegral ca :: Float) + ((fromIntegral cb :: Float) - (fromIntegral ca :: Float)) * pe :: Float)
