@@ -81,7 +81,7 @@ main = do
                  Just . decodeUtf8Lenient <$> B.getContents
              else 
                  return $ message args
-    B.putStr $ encodeUtf8 $ colorit wi mmsg' <> "\n"
+    B.putStr $ encodeUtf8 $ colorit wi mmsg'
   where
     colorit :: Int -> Maybe Text -> Text
     colorit wid mmess =
@@ -132,23 +132,23 @@ instance Rainbowize Int where
     -- |Generate a rainbow colored block N characters wide.
     rainbowize le =
         T.concat
-      $ L.map (colorize Background " ") (colorsAcrossWidth le)
+      $ L.map (colorize Background " ") (colorsAcrossWidth' le)
 
 instance Rainbowize Text where
     -- |Color an input string like a rainbow.
     rainbowize txt = 
         T.concat
-      $ L.zipWith (colorize Foreground) (chunksOf 1 txt) (colorsAcrossWidth le)
+      $ L.zipWith (colorize Foreground) (chunksOf 1 txt) (colorsAcrossWidth' le) ++ ["\n"]
       where
         le = T.length txt
 
 colorize :: Layer -> Text -> (Int, Int, Int) -> Text
-colorize lc chr (cr,cg,cb) =
+colorize lc message (cr,cg,cb) =
       escapeCode Start <> layerCode lc <> cformatCode RGB
    <> T.pack (show cr) <> ";" <> T.pack (show cg) <> ";" <> T.pack (show cb) 
    <> escapeCode End
-   <> chr 
-   <> escapeCode Start <> escapeCode ClearFormatting <> escapeCode End
+   <> message
+-- <> escapeCode Start <> escapeCode ClearFormatting <> escapeCode End
 
 data Layer = Foreground | Background 
 
@@ -183,14 +183,30 @@ angleToColor input
     angle = input/360*limit
     limit = 275
 
-angleToColor' :: Float -> (Int, Int, Int)
-angleToColor' angle
-    | angle < 360*1/6 = interpolateColors ((angle-0*(360/6))/(360/6)) red orange
-    | angle < 360*2/6 = interpolateColors ((angle-1*(360/6))/(360/6)) orange yellow
-    | angle < 360*3/6 = interpolateColors ((angle-2*(360/6))/(360/6)) yellow green
-    | angle < 360*4/6 = interpolateColors ((angle-3*(360/6))/(360/6)) green blue
-    | angle < 360*5/6 = interpolateColors ((angle-4*(360/6))/(360/6)) blue indigo
-    | otherwise = interpolateColors ((angle-5*(360/6))/(360/6)) indigo violet
+colorsAcrossWidth' :: Int -> [(Int, Int, Int)]
+colorsAcrossWidth' width = 
+    fmap (colorAtPoint width keyColors) [0..width-1]
+  where
+    keyColors = [red, orange, yellow, green, blue, indigo, violet]
+
+    colorAtPoint :: Int -> [(Int, Int, Int)] -> Int -> (Int, Int, Int)
+    colorAtPoint wi cs pt
+        | pt < wi `div` ((L.length keyColors)-1) = 
+            interpolateColors 
+                (100*pt `div` (wi `div` ((L.length keyColors)-1)))
+                (case L.headMaybe (L.take 2 cs) of
+                    Just color -> color
+                    Nothing -> (155,155,155))
+                (case L.lastMaybe (L.take 2 cs) of
+                    Just color -> color
+                    Nothing -> (255,255,255))
+        | otherwise = 
+            colorAtPoint
+                wi
+                (case (L.tailMaybe cs) of
+                    Just cs' -> cs'
+                    Nothing -> [])
+                (pt - wi `div` ((L.length keyColors)-1))
 
 -- |Generate an RGB rainbow using the specified number of points.
 colorsAcrossWidth :: Int -> [(Int, Int, Int)]
@@ -198,7 +214,7 @@ colorsAcrossWidth wi =
     case L.splitAt (round (fromIntegral wi * splitPoint :: Float))
        $ il wi of (as, bs) -> bs ++ as
   where
-    il wid = L.map angleToColor' [0, 360 / (fromIntegral wid-1 :: Float)..360]
+    il wid = L.map angleToColor [0, 360 / (fromIntegral wid-1 :: Float)..360]
     splitPoint = 1.0
 
 red :: (Int, Int, Int)
@@ -222,9 +238,9 @@ indigo = (75, 0, 130)
 violet :: (Int, Int, Int)
 violet = (238, 130, 238)
 
-interpolateColors :: Float -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int)
+interpolateColors :: Int -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int)
 interpolateColors perc (ra, ga, ba) (rb, gb, bb) =
     ((ic perc ra rb), (ic perc ga gb), (ic perc ba bb))
   where
-    ic :: Float -> Int -> Int -> Int
-    ic pe ca cb = round ((fromIntegral ca :: Float) + ((fromIntegral cb :: Float) - (fromIntegral ca :: Float)) * pe :: Float)
+    ic :: Int -> Int -> Int -> Int
+    ic pe ca cb = ca+(cb-ca)*pe `div` 100
