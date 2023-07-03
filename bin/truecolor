@@ -132,17 +132,17 @@ instance Rainbowize Int where
     -- |Generate a rainbow colored block N characters wide.
     rainbowize le =
         T.concat
-      $ L.map (colorize Background " ") (colorsAcrossWidth' le)
+      $ L.map (colorize Background " ") (colorsAcrossWidth le)
 
 instance Rainbowize Text where
     -- |Color an input string like a rainbow.
     rainbowize txt = 
         T.concat
-      $ L.zipWith (colorize Foreground) (chunksOf 1 txt) (colorsAcrossWidth' le) ++ ["\n"]
+      $ L.zipWith (colorize Foreground) (chunksOf 1 txt) (colorsAcrossWidth le) ++ ["\n"]
       where
         le = T.length txt
 
-colorize :: Layer -> Text -> (Int, Int, Int) -> Text
+colorize :: Layer -> Text -> Color -> Text
 colorize lc message (cr,cg,cb) =
       escapeCode Start <> layerCode lc <> cformatCode RGB
    <> T.pack (show cr) <> ";" <> T.pack (show cg) <> ";" <> T.pack (show cb) 
@@ -168,79 +168,52 @@ escapeCode Start = "\x1b["
 escapeCode End = "m"
 escapeCode ClearFormatting = "0"
 
--- |Given an input angle between 0 and 360, output a single RGB color from a rainbow 
--- that's been smeared across 360 degrees, see also 
--- https://www.instructables.com/How-to-Make-Proper-Rainbow-and-Random-Colors-With-/
-angleToColor :: Float -> (Int, Int, Int)
-angleToColor input
-    | angle < 60  = (255, round (angle * 4.25 - 0.01), 0)
-    | angle < 120 = (round ((120 - angle) * 4.25 - 0.01), 255, 0)
-    | angle < 180 = (0, 255, round ((angle - 120) * 4.25 - 0.01))
-    | angle < 240 = (0, round ((240 - angle) * 4.25 - 0.01), 255)
-    | angle < 300 = (round ((angle - 240) * 4.25 - 0.01), 0, 255)
-    | otherwise   = (255, 0, round ((360 - angle) * 4.25 - 0.01))
-  where
-    angle = input/360*limit
-    limit = 275
-
-colorsAcrossWidth' :: Int -> [(Int, Int, Int)]
-colorsAcrossWidth' width = 
-    fmap (colorAtPoint width keyColors) [0..width-1]
-  where
-    keyColors = [red, orange, yellow, green, blue, indigo, violet]
-
-    colorAtPoint :: Int -> [(Int, Int, Int)] -> Int -> (Int, Int, Int)
-    colorAtPoint wi cs pt
-        | pt < wi `div` ((L.length keyColors)-1) = 
-            interpolateColors 
-                (100*pt `div` (wi `div` ((L.length keyColors)-1)))
-                (case L.headMaybe (L.take 2 cs) of
-                    Just color -> color
-                    Nothing -> (155,155,155))
-                (case L.lastMaybe (L.take 2 cs) of
-                    Just color -> color
-                    Nothing -> (255,255,255))
-        | otherwise = 
-            colorAtPoint
-                wi
-                (case (L.tailMaybe cs) of
-                    Just cs' -> cs'
-                    Nothing -> [])
-                (pt - wi `div` ((L.length keyColors)-1))
-
 -- |Generate an RGB rainbow using the specified number of points.
-colorsAcrossWidth :: Int -> [(Int, Int, Int)]
-colorsAcrossWidth wi =
-    case L.splitAt (round (fromIntegral wi * splitPoint :: Float))
-       $ il wi of (as, bs) -> bs ++ as
-  where
-    il wid = L.map angleToColor [0, 360 / (fromIntegral wid-1 :: Float)..360]
-    splitPoint = 1.0
 
-red :: (Int, Int, Int)
+red :: Color
 red = (255, 0, 0)
 
-orange :: (Int, Int, Int)
+orange :: Color
 orange = (255, 165, 0)
 
-yellow :: (Int, Int, Int)
+yellow :: Color
 yellow = (255, 255, 0)
 
-green :: (Int, Int, Int)
+green :: Color
 green = (0, 255, 0)
 
-blue :: (Int, Int, Int)
+blue :: Color
 blue = (0, 0, 255)
 
-indigo :: (Int, Int, Int)
+indigo :: Color
 indigo = (75, 0, 130)
 
-violet :: (Int, Int, Int)
+violet :: Color
 violet = (238, 130, 238)
 
-interpolateColors :: Int -> (Int, Int, Int) -> (Int, Int, Int) -> (Int, Int, Int)
-interpolateColors perc (ra, ga, ba) (rb, gb, bb) =
-    ((ic perc ra rb), (ic perc ga gb), (ic perc ba bb))
+type Color = (Int, Int, Int)
+
+keyColors :: [Color]
+keyColors = [red, orange, yellow, green, blue, indigo, violet]
+
+colorsAcrossWidth :: Int -> [Color]
+colorsAcrossWidth width
+    | width <= L.length keyColors = L.take width keyColors
+    | otherwise = colorsAcrossWidth' width keyColors []
+
+colorsAcrossWidth' :: Int -> [Color] -> [Color] -> [Color]
+colorsAcrossWidth' _ [ ] sofar = sofar
+colorsAcrossWidth' _ [_] sofar = sofar
+colorsAcrossWidth' wi colors@(cx:cy:cs) sofar =
+    colorsAcrossWidth' (wi - chunk) (cy:cs) (sofar ++ smear chunk cx cy [cx])
   where
-    ic :: Int -> Int -> Int -> Int
-    ic pe ca cb = ca+(cb-ca)*pe `div` 100
+    chunk = wi `div` ((L.length colors)-1)
+
+smear :: Int -> Color -> Color -> [Color] -> [Color]
+smear wi (rx, gx, bx) cy@(ry, gy, by) sofar
+    | wi == 1 = sofar
+    | otherwise = smear (wi-1) newcolor cy (sofar ++ [newcolor])
+  where
+    newcolor = ((rx + (ry-rx) `div` wi)
+              , (gx + (gy-gx) `div` wi)
+              , (bx + (by-bx) `div` wi))
