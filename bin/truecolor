@@ -81,7 +81,7 @@ main = do
                  Just . decodeUtf8Lenient <$> B.getContents
              else 
                  return $ message args
-    B.putStr $ encodeUtf8 $ colorit wi mmsg'
+    B.putStr $ encodeUtf8 $ colorit wi mmsg' <> "\n"
   where
     colorit :: Int -> Maybe Text -> Text
     colorit wid mmess =
@@ -108,7 +108,7 @@ options = Options
 opts :: ParserInfo Options
 opts = info (options <**> helper)
   ( fullDesc
-  <> header (T.unpack $ "truecolor - print all the colors of the " <> rainbowize ("rainbow" :: Text) <> ".")
+  <> header (T.unpack $ "truecolor - print all the colors of the " <> rainbowize ("rainbow" :: Text) <> "")
   <> progDesc "" )
 -- BUG: this wraps the 'rainbow' word to the next line, my guess is that
 -- the color code are interpetted as characters and Options.Applicative is 
@@ -132,13 +132,13 @@ instance Rainbowize Int where
     -- |Generate a rainbow colored block N characters wide.
     rainbowize le =
         T.concat
-      $ L.map (colorize Background " ") (colorsAcrossWidth le)
+      $ L.map (colorize Background " ") (rainbow le)
 
 instance Rainbowize Text where
     -- |Color an input string like a rainbow.
     rainbowize txt = 
         T.concat
-      $ L.zipWith (colorize Foreground) (chunksOf 1 txt) (colorsAcrossWidth le) ++ ["\n"]
+      $ L.zipWith (colorize Foreground) (chunksOf 1 txt) (rainbow le)
       where
         le = T.length txt
 
@@ -148,7 +148,7 @@ colorize lc message (cr,cg,cb) =
    <> T.pack (show cr) <> ";" <> T.pack (show cg) <> ";" <> T.pack (show cb) 
    <> escapeCode End
    <> message
--- <> escapeCode Start <> escapeCode ClearFormatting <> escapeCode End
+   <> escapeCode Start <> escapeCode ClearFormatting <> escapeCode End
 
 data Layer = Foreground | Background 
 
@@ -167,8 +167,6 @@ escapeCode :: Escape -> Text
 escapeCode Start = "\x1b["
 escapeCode End = "m"
 escapeCode ClearFormatting = "0"
-
--- |Generate an RGB rainbow using the specified number of points.
 
 red :: Color
 red = (255, 0, 0)
@@ -196,23 +194,23 @@ type Color = (Int, Int, Int)
 keyColors :: [Color]
 keyColors = [red, orange, yellow, green, blue, indigo, violet]
 
-colorsAcrossWidth :: Int -> [Color]
-colorsAcrossWidth width
+rainbow :: Int -> [Color]
+rainbow width
     | width <= L.length keyColors = L.take width keyColors
-    | otherwise = colorsAcrossWidth' width keyColors []
+    | otherwise = rainbow' width keyColors []
 
-colorsAcrossWidth' :: Int -> [Color] -> [Color] -> [Color]
-colorsAcrossWidth' _ [ ] sofar = sofar
-colorsAcrossWidth' _ [_] sofar = sofar
-colorsAcrossWidth' wi colors@(cx:cy:cs) sofar =
-    colorsAcrossWidth' (wi - chunk) (cy:cs) (sofar ++ smear chunk cx cy [cx])
+rainbow' :: Int -> [Color] -> [Color] -> [Color]
+rainbow' _ [ ] sofar = sofar
+rainbow' _ [_] sofar = sofar
+rainbow' wi colors@(cx:cy:cs) sofar =
+    rainbow' (wi - chunk) (cy:cs) (sofar ++ rainbow'' chunk cx cy [cx])
   where
     chunk = wi `div` ((L.length colors)-1)
 
-smear :: Int -> Color -> Color -> [Color] -> [Color]
-smear wi (rx, gx, bx) cy@(ry, gy, by) sofar
+rainbow'' :: Int -> Color -> Color -> [Color] -> [Color]
+rainbow'' wi (rx, gx, bx) cy@(ry, gy, by) sofar
     | wi == 1 = sofar
-    | otherwise = smear (wi-1) newcolor cy (sofar ++ [newcolor])
+    | otherwise = rainbow'' (wi-1) newcolor cy (sofar ++ [newcolor])
   where
     newcolor = ((rx + (ry-rx) `div` wi)
               , (gx + (gy-gx) `div` wi)
