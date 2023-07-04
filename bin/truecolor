@@ -4,6 +4,7 @@ build-depends:
     base
   , rio
   , optparse-applicative
+  , prettyprinter
 -}
 
 -- Copyright (c) 2021 Scott Bonds <scott@ggr.com>
@@ -67,6 +68,7 @@ import RIO.Process as P
 import RIO.Text as T
 import Options.Applicative as O
 import System.Environment as E
+import Prettyprinter (pretty)
 
 main :: IO ()
 main = do
@@ -108,11 +110,9 @@ options = Options
 opts :: ParserInfo Options
 opts = info (options <**> helper)
   ( fullDesc
-  <> header (T.unpack $ "truecolor - print all the colors of the " <> rainbowize ("rainbow" :: Text) <> "")
+  <> headerDoc (Just $ pretty $ "truecolor - print all the colors of the "
+     <> rainbowize ("rainbow" :: Text))
   <> progDesc "" )
--- BUG: this wraps the 'rainbow' word to the next line, my guess is that
--- the color code are interpetted as characters and Options.Applicative is 
--- counting the width wrong
 
 -- |Get the width of the current terminal in columns 
 -- or failing that, assume its 80 columns wide.
