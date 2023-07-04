@@ -85,3 +85,14 @@ function e --description "shortcut to the default editor"
         $EDITOR $argv
     end
 end
+
+function tree --description "ls in tree format"
+    if command --query lsd
+        lsd --tree $argv
+    else
+        tree $argv
+    end
+end
+
+set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"
+set fzf_fd_opts --hidden --exclude=.git
