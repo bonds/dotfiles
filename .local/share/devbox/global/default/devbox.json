@@ -51,7 +51,8 @@
     "colima@latest",
     "tldr@latest",
     "chatgpt-cli@latest",
-    "minetest@latest"
+    "minetest@latest",
+    "mas@latest"
   ],
   "shell": {
     "init_hook": [
