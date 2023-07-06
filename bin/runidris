@@ -30,10 +30,13 @@ if [ ! -e $TEMP_NAME ]; then
         --build-dir    "$RUNIDRIS_DIR" \
         --output-dir   "$RUNIDRIS_DIR" \
         --output       "$exec"
+    if [ $? -gt 0 ]; then exit; fi
 fi
 
-# cut the first argument from the argument list to pass to the exec
-shift
+if [ -x "$RUNIDRIS_DIR/$exec" ]; then
+    # cut the first argument from the argument list to pass to the exec
+    shift
 
-# run the compiled exec
-"$RUNIDRIS_DIR/$exec" "$@"
+    # run the compiled exec
+    "$RUNIDRIS_DIR/$exec" "$@"
+fi
