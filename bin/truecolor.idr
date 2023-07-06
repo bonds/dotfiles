@@ -52,8 +52,9 @@ rainbow'' wi (rx, gx, bx) (ry, gy, by) sofar =
 
 rainbow' : Nat -> List Color -> List Color -> List Color
 rainbow' _ [ ] sofar = sofar
-rainbow' _ [c] [] = [c]
-rainbow' _ [c] (sf::sfs) = init (sf::sfs) ++ [c]
+rainbow' _ [_] sofar = sofar
+-- rainbow' _ [c] [] = [c]
+-- rainbow' _ [c] (sf::sfs) = init (sf::sfs) ++ [c]
 rainbow' wi (cx::cy::cs) sofar =
     rainbow' (wi `minus` chunk) (cy::cs) (sofar ++ rainbow'' chunk cx cy [cx])
   where
