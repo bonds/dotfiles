@@ -60,9 +60,7 @@ rainbow' wi (cx::cy::cs) sofar =
     chunk = wi `div` ((length (cx::cy::cs)) `minus` 1)
 
 rainbow : Nat -> List Color
-rainbow width with (width <= length keyColors)
-  rainbow width | True = take width keyColors
-  rainbow width | False = rainbow' width keyColors []
+rainbow width = rainbow' width keyColors []
 
 -- colorize
 
@@ -114,7 +112,7 @@ Rainbowize Integer where
 
 help : String
 help = "truecolor - print all the colors of the " 
-    ++  rainbowize "rainbow\n\n"
+    ++  rainbowize "rainbow" ++ "\n\n"
     ++ "Usage: truecolor [-w|--width WIDTH] [STRING]\n\n"
     ++ "Available options:\n"
     ++ "  -w,--width WIDTH         number of characters to print, defaults to the width\n"
