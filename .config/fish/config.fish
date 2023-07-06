@@ -11,6 +11,8 @@ if command --query xcrun
     set -x C_INCLUDE_PATH (xcrun --show-sdk-path)/usr/include/ffi
 end
 
+set -x IDRIS2_PREFIX ~/.local/lib
+
 # nix flakes needs this
 set -x NIXPKGS_ALLOW_UNFREE 1
 
