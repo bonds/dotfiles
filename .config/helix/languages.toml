@@ -1,0 +1,3 @@
+[[language]]
+name = "haskell"
+shebangs = ["cabal", "stack", "runghc", "runhaskell"]
