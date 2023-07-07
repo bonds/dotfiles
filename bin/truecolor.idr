@@ -5,6 +5,7 @@ module Main
 import Data.List
 import Data.Nat
 import System
+import System.Console.GetOpt
 import Data.String
 import Data.Maybe
 import Data.Fin
@@ -62,7 +63,9 @@ rainbow' wi (cx::cy::cs) sofar =
     chunk = wi `div` ((length (cx::cy::cs)) `minus` 1)
 
 rainbow : Nat -> List Color
-rainbow width = rainbow' width keyColors []
+rainbow width with (width <= length keyColors)
+    rainbow width | True  = take width keyColors
+    rainbow width | False = rainbow' width keyColors []
 
 -- colorize
 
@@ -122,17 +125,63 @@ help = "truecolor - print all the colors of the "
     ++ "  STRING                   string to rainbowize\n"
     ++ "  -h,--help                Show this help text\n"
 
--- |Get the width of the current terminal in columns or, failing that, assume
--- its 80 columns wide. BTW using 'stty size' instead of 'tput cols' because
--- 'tput' reports the wrong size under certain cirmustances
-width : IO Integer
-width = do
+record Options where
+    constructor MkOptions
+    optShowHelp  : Bool
+    optWidth     : Maybe Integer
+
+defaults : Options
+defaults = MkOptions False Nothing
+
+opts : List (OptDescr (Options -> Options))
+opts =
+    [ MkOpt ['h']     ["help"]
+        -- (NoArg (\os => { optShowHelp := True } os))
+        (NoArg (\os =>  MkOptions True os.optWidth))
+        "show this help text"
+    , MkOpt ['w']     ["width"]
+        (OptArg ((\w,os => 
+            MkOptions os.optShowHelp (parseInteger (fromMaybe "" w))))
+            "number")
+        "width of rainbow to print"
+    ]
+
+-- |Get the width of the current terminal in columns. BTW using 'stty size'
+-- instead of 'tput cols' because 'tput' reports the wrong size under certain
+-- cirmustances
+terminalWidth : IO (Maybe Integer)
+terminalWidth = do
     (output, _) <- run "stty size | awk '{print $2}'"
-    pure $ fromMaybe 80 $ parseInteger output
+    pure $ parseInteger output
+
+finalOpts : List String -> Options
+finalOpts args = 
+    foldl (flip id) defaults (results args).options
+  where
+    results : List String -> Result (Options -> Options)
+    results args = getOpt Permute opts args
+
+helpHeader : String
+helpHeader = "truecolor - print all the colors of the " 
+          ++ rainbowize "rainbow" ++ "\n\n"
+          ++ "Usage: truecolor [OPTIONS] [STRING]\n\n"
+          ++ "Available options:"
 
 main : IO ()
 main = do
-    w <- width
+    tw <- terminalWidth
     args <- getArgs
-    putStrLn help
-    putStrLn $ rainbowize w
+    let args' = getOpt Permute opts args
+    let o = finalOpts args
+    -- putStrLn $ show args'.nonOptions
+    -- putStrLn $ show o.optWidth
+    if o.optShowHelp then
+        putStrLn (usageInfo helpHeader opts)
+        else putStrLn $ case args'.nonOptions of
+            [] => case o.optWidth of
+                Just ow => rainbowize ow
+                Nothing => rainbowize (fromMaybe 80 tw)
+            [_] => case o.optWidth of
+                Just ow => rainbowize ow
+                Nothing => rainbowize (fromMaybe 80 tw)
+            (x::xs) => rainbowize (unwords xs)

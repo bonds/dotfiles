@@ -26,6 +26,7 @@ grep -v runidris "$1" > "$source"
 # if there's no cached exec, compile the source code
 if [ ! -e $TEMP_NAME ]; then
     "${IDRIS:-idris2}" "$source" \
+        --package contrib \
         --source-dir   "$RUNIDRIS_DIR" \
         --build-dir    "$RUNIDRIS_DIR" \
         --output-dir   "$RUNIDRIS_DIR" \
