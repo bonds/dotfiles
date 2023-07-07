@@ -173,15 +173,15 @@ main = do
     args <- getArgs
     let args' = getOpt Permute opts args
     let o = finalOpts args
-    -- putStrLn $ show args'.nonOptions
-    -- putStrLn $ show o.optWidth
+    -- putStr $ show args'.nonOptions
+    -- putStr $ show o.optWidth
     if o.optShowHelp then
         putStrLn (usageInfo helpHeader opts)
-        else putStrLn $ case args'.nonOptions of
+        else putStr $ case args'.nonOptions of
             [] => case o.optWidth of
                 Just ow => rainbowize ow
                 Nothing => rainbowize (fromMaybe 80 tw)
             [_] => case o.optWidth of
                 Just ow => rainbowize ow
                 Nothing => rainbowize (fromMaybe 80 tw)
-            (x::xs) => rainbowize (unwords xs)
+            (x::xs) => (rainbowize (unwords xs)) ++ "\n"
