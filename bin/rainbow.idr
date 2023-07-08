@@ -116,16 +116,6 @@ Rainbowize Integer where
         concat
       $ map (colorize Background " ") (rainbow $ cast le)
 
-help : String
-help = "truecolor - print all the colors of the " 
-    ++  rainbowize "rainbow" ++ "\n\n"
-    ++ "Usage: truecolor [-w|--width WIDTH] [STRING]\n\n"
-    ++ "Available options:\n"
-    ++ "  -w,--width WIDTH         number of characters to print, defaults to the width\n"
-    ++ "                           of the terminal\n"
-    ++ "  STRING                   string to rainbowize\n"
-    ++ "  -h,--help                Show this help text\n"
-
 record Options where
     constructor MkOptions
     optShowHelp  : Bool
