@@ -11,6 +11,7 @@ if command --query xcrun
     set -x C_INCLUDE_PATH (xcrun --show-sdk-path)/usr/include/ffi
 end
 
+# set where I want Idris2 looking for packages
 set -x IDRIS2_PREFIX ~/.local/lib
 
 # nix flakes needs this
@@ -49,7 +50,7 @@ alias crawl "crawl -rc ~/.config/crawl/init.txt"
 alias day "date '+%Y%m%d'"
 alias ghci "ghci -ghci-script ~/.config/ghc/ghci.conf"
 alias height "tput lines"
-alias idris "rlwrap --history-filename ~/.local/idris.history idris2"
+alias idris "rlwrap --history-filename ~/.local/idris.history idris2 --package contrib"
 alias myip "curl --silent https://checkip.amazonaws.com"
 alias python "python3.10"
 alias width "tput cols"
