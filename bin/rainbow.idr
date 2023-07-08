@@ -173,17 +173,29 @@ clearRainbow (Just ow) _ = rainbowize ow
 clearRainbow _ (Just tw) = rainbowize tw
 clearRainbow Nothing Nothing = rainbowize 80
 
+getPipedMessage : Bool -> IO String
+getPipedMessage True = do
+    size <- fileSize stdin
+    case size of
+        Left _ => pure ""
+        Right s => do
+            message <- fGetChars stdin s
+            case message of
+                Left _ => pure ""
+                Right m => pure m
+getPipedMessage False = pure ""
+
 main : IO ()
 main = do
     tw <- terminalWidth
     args <- getArgs
-    -- gotPipedMessage <- hWaitForInput stdin 100
-    -- gotPipedMessage <- fRead stdin
-    let args' = getOpt Permute opts args
+    -- gotPipedMessage <- fEOF stdin
+    -- putStrLn $ show gotPipedMessage
+    -- pipedMessage <- getPipedMessage gotPipedMessage
     let o = finalOpts args
     if o.optShowHelp then
         putStrLn (usageInfo helpHeader opts)
-        else putStr $ case args'.nonOptions of
+        else putStr $ case nonOptions $ getOpt Permute opts args of
             [ ] => clearRainbow o.optWidth tw
             [_] => clearRainbow o.optWidth tw
             (x::xs) => (rainbowize (unwords xs)) ++ "\n"
