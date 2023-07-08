@@ -9,6 +9,7 @@ import System.Console.GetOpt
 import Data.String
 import Data.Maybe
 import Data.Fin
+import System.File
 
 -- rainbow
 
@@ -167,21 +168,22 @@ helpHeader = "truecolor - print all the colors of the "
           ++ "Usage: truecolor [OPTIONS] [STRING]\n\n"
           ++ "Available options:"
 
+clearRainbow : Maybe Integer -> Maybe Integer -> String
+clearRainbow (Just ow) _ = rainbowize ow
+clearRainbow _ (Just tw) = rainbowize tw
+clearRainbow Nothing Nothing = rainbowize 80
+
 main : IO ()
 main = do
     tw <- terminalWidth
     args <- getArgs
+    -- gotPipedMessage <- hWaitForInput stdin 100
+    -- gotPipedMessage <- fRead stdin
     let args' = getOpt Permute opts args
     let o = finalOpts args
-    -- putStr $ show args'.nonOptions
-    -- putStr $ show o.optWidth
     if o.optShowHelp then
         putStrLn (usageInfo helpHeader opts)
         else putStr $ case args'.nonOptions of
-            [] => case o.optWidth of
-                Just ow => rainbowize ow
-                Nothing => rainbowize (fromMaybe 80 tw)
-            [_] => case o.optWidth of
-                Just ow => rainbowize ow
-                Nothing => rainbowize (fromMaybe 80 tw)
+            [ ] => clearRainbow o.optWidth tw
+            [_] => clearRainbow o.optWidth tw
             (x::xs) => (rainbowize (unwords xs)) ++ "\n"
