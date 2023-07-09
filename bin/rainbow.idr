@@ -184,8 +184,6 @@ main = do
         True => putStr $ usageInfo helpHeader opts
         False => case !(getPipedMessage) of
             Right m => putStr $ rainbowize m
-            Left _ => do
-                tw <- terminalWidth
-                putStr $ case o.optMessage of
-                    Nothing => clearRainbow o.optWidth tw
-                    Just m => (rainbowize m) ++ "\n"
+            Left _ => case o.optMessage of
+                Nothing => putStr $ clearRainbow o.optWidth !(terminalWidth)
+                Just m  => putStrLn $ rainbowize m
