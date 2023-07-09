@@ -153,9 +153,9 @@ finalOpts args =
     results args = getOpt Permute opts args
 
 helpHeader : String
-helpHeader = "truecolor - print all the colors of the " 
+helpHeader = "rainbow - print all the colors of the " 
           ++ rainbowize "rainbow" ++ "\n\n"
-          ++ "Usage: truecolor [OPTIONS] [STRING]\n\n"
+          ++ "Usage: rainbow [OPTIONS] [STRING]\n\n"
           ++ "Available options:"
 
 clearRainbow : Maybe Integer -> Maybe Integer -> String
