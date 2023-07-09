@@ -163,11 +163,10 @@ clearRainbow (Just ow) _ = rainbowize ow
 clearRainbow _ (Just tw) = rainbowize tw
 clearRainbow Nothing Nothing = rainbowize 80
 
-getPipedMessage : Bool -> IO (Either FileError String)
-getPipedMessage False = pure $ Left FileNotFound
-getPipedMessage True = do
-    myfile <- openFile "/dev/stdin" Read
-    case myfile of
+getPipedMessage : IO (Either FileError String)
+getPipedMessage = do
+    si <- openFile "/dev/stdin" Read
+    case si of
         Left e => pure $ Left e
         Right f => do
             size <- fileSize f
@@ -183,7 +182,7 @@ main : IO ()
 main = do
     tw <- terminalWidth
     args <- getArgs
-    pipedMessage <- getPipedMessage True
+    pipedMessage <- getPipedMessage
     let o = finalOpts args
     putStr $ case o.optShowHelp of
         True => usageInfo helpHeader opts
