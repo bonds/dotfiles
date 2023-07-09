@@ -180,15 +180,16 @@ getPipedMessage = do
 
 main : IO ()
 main = do
-    tw <- terminalWidth
     args <- getArgs
     pipedMessage <- getPipedMessage
     let o = finalOpts args
-    putStr $ case o.optShowHelp of
-        True => usageInfo helpHeader opts
+    case o.optShowHelp of
+        True => putStr $ usageInfo helpHeader opts
         False => case pipedMessage of
-            Right m => rainbowize m
-            Left _ => case nonOptions $ getOpt Permute opts args of
-                [ ] => clearRainbow o.optWidth tw
-                [_] => clearRainbow o.optWidth tw
-                (x::xs) => (rainbowize (unwords xs)) ++ "\n"
+            Right m => putStr $ rainbowize m
+            Left _ => do
+                tw <- terminalWidth
+                putStr $ case nonOptions $ getOpt Permute opts args of
+                    [ ] => clearRainbow o.optWidth tw
+                    [_] => clearRainbow o.optWidth tw
+                    (x::xs) => (rainbowize (unwords xs)) ++ "\n"
