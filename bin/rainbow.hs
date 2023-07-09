@@ -72,7 +72,7 @@ import Prettyprinter (pretty)
 
 main :: IO ()
 main = do
-    args <- withProgName "truecolor" $ execParser opts
+    args <- withProgName "rainbow" $ execParser opts
     wi <- width' (width args)
 
     -- need to wait for a little bit, or the piped stdin might not be ready
@@ -110,7 +110,7 @@ options = Options
 opts :: ParserInfo Options
 opts = info (options <**> helper)
   ( fullDesc
-  <> headerDoc (Just $ pretty $ "truecolor - print all the colors of the "
+  <> headerDoc (Just $ pretty $ "rainbow - print all the colors of the "
      <> rainbowize ("rainbow" :: Text))
   <> progDesc "" )
 
