@@ -181,9 +181,9 @@ main : IO ()
 main = do
     let o = finalOpts !getArgs
     case o.optShowHelp of
-        True => putStr $ usageInfo helpHeader opts
+        True  => putStr $ usageInfo helpHeader opts
         False => case !getPipedMessage of
             Right m => putStr $ rainbowize m
-            Left _ => case o.optMessage of
-                Nothing => putStr $ clearRainbow o.optWidth !terminalWidth
+            Left _  => case o.optMessage of
                 Just m  => putStrLn $ rainbowize m
+                Nothing => putStr $ clearRainbow o.optWidth !terminalWidth
