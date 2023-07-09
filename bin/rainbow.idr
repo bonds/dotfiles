@@ -3,12 +3,11 @@
 module Main
 
 import Data.List
+import Data.Maybe
 import Data.Nat
+import Data.String
 import System
 import System.Console.GetOpt
-import Data.String
-import Data.Maybe
-import Data.Fin
 import System.File
 
 -- rainbow
