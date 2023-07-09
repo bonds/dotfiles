@@ -165,18 +165,11 @@ clearRainbow Nothing Nothing = rainbowize 80
 
 getPipedMessage : IO (Either FileError String)
 getPipedMessage = do
-    si <- openFile "/dev/stdin" Read
-    case si of
-        Left e => pure $ Left e
-        Right f => do
-            size <- fileSize f
-            case size of
-                Left e => pure $ Left e
-                Right s => do
-                    message <- fGetChars f s
-                    case message of
-                        Left e => pure $ Left e
-                        Right m => pure $ Right m
+    Right f <- openFile "/dev/stdin" Read
+        | Left e => pure $ Left e
+    Right s <- fileSize f
+        | Left e => pure $ Left e
+    fGetChars f s
 
 main : IO ()
 main = do
