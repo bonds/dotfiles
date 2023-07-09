@@ -120,19 +120,20 @@ record Options where
     constructor MkOptions
     optShowHelp  : Bool
     optWidth     : Maybe Integer
+    optMessage   : Maybe String
 
 defaults : Options
-defaults = MkOptions False Nothing
+defaults = MkOptions False Nothing Nothing
 
 opts : List (OptDescr (Options -> Options))
 opts =
     [ MkOpt ['h']     ["help"]
         -- (NoArg (\os => { optShowHelp := True } os))
-        (NoArg (\os =>  MkOptions True os.optWidth))
+        (NoArg (\os =>  MkOptions True os.optWidth Nothing))
         "show this help text"
     , MkOpt ['w']     ["width"]
         (OptArg ((\w,os => 
-            MkOptions os.optShowHelp (parseInteger (fromMaybe "" w))))
+            MkOptions os.optShowHelp (parseInteger (fromMaybe "" w)) Nothing))
             "number")
         "width of rainbow to print"
     ]
@@ -147,10 +148,15 @@ terminalWidth = do
 
 finalOpts : List String -> Options
 finalOpts args = 
-    foldl (flip id) defaults (results args).options
+    {optMessage := non $ nonOptions (results args)}
+        (foldl (flip id) defaults (options $ results args))
   where
     results : List String -> Result (Options -> Options)
     results args = getOpt Permute opts args
+    non : List String -> Maybe String
+    non [ ] = Nothing
+    non [_] = Nothing
+    non (x::xs) = Just $ unwords xs 
 
 helpHeader : String
 helpHeader = "rainbow - print all the colors of the " 
@@ -173,16 +179,13 @@ getPipedMessage = do
 
 main : IO ()
 main = do
-    args <- getArgs
-    pipedMessage <- getPipedMessage
-    let o = finalOpts args
+    let o = finalOpts !(getArgs)
     case o.optShowHelp of
         True => putStr $ usageInfo helpHeader opts
-        False => case pipedMessage of
+        False => case !(getPipedMessage) of
             Right m => putStr $ rainbowize m
             Left _ => do
                 tw <- terminalWidth
-                putStr $ case nonOptions $ getOpt Permute opts args of
-                    [ ] => clearRainbow o.optWidth tw
-                    [_] => clearRainbow o.optWidth tw
-                    (x::xs) => (rainbowize (unwords xs)) ++ "\n"
+                putStr $ case o.optMessage of
+                    Nothing => clearRainbow o.optWidth tw
+                    Just m => (rainbowize m) ++ "\n"
