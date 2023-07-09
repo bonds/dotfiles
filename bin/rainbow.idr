@@ -163,29 +163,33 @@ clearRainbow (Just ow) _ = rainbowize ow
 clearRainbow _ (Just tw) = rainbowize tw
 clearRainbow Nothing Nothing = rainbowize 80
 
-getPipedMessage : Bool -> IO String
+getPipedMessage : Bool -> IO (Either FileError String)
+getPipedMessage False = pure $ Left FileNotFound
 getPipedMessage True = do
-    size <- fileSize stdin
-    case size of
-        Left _ => pure ""
-        Right s => do
-            message <- fGetChars stdin s
-            case message of
-                Left _ => pure ""
-                Right m => pure m
-getPipedMessage False = pure ""
+    myfile <- openFile "/dev/stdin" Read
+    case myfile of
+        Left e => pure $ Left e
+        Right f => do
+            size <- fileSize f
+            case size of
+                Left e => pure $ Left e
+                Right s => do
+                    message <- fGetChars f s
+                    case message of
+                        Left e => pure $ Left e
+                        Right m => pure $ Right m
 
 main : IO ()
 main = do
     tw <- terminalWidth
     args <- getArgs
-    -- gotPipedMessage <- fEOF stdin
-    -- putStrLn $ show gotPipedMessage
-    -- pipedMessage <- getPipedMessage gotPipedMessage
+    pipedMessage <- getPipedMessage True
     let o = finalOpts args
-    if o.optShowHelp then
-        putStrLn (usageInfo helpHeader opts)
-        else putStr $ case nonOptions $ getOpt Permute opts args of
-            [ ] => clearRainbow o.optWidth tw
-            [_] => clearRainbow o.optWidth tw
-            (x::xs) => (rainbowize (unwords xs)) ++ "\n"
+    putStr $ case o.optShowHelp of
+        True => usageInfo helpHeader opts
+        False => case pipedMessage of
+            Right m => rainbowize m
+            Left _ => case nonOptions $ getOpt Permute opts args of
+                [ ] => clearRainbow o.optWidth tw
+                [_] => clearRainbow o.optWidth tw
+                (x::xs) => (rainbowize (unwords xs)) ++ "\n"
