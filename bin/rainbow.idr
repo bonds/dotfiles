@@ -179,9 +179,9 @@ getPipedMessage = do
 main : IO ()
 main = do
     let o = finalOpts !getArgs
-    case o.optShowHelp of
-        True  => putStr $ usageInfo helpHeader opts
-        False => case !getPipedMessage of
+    if o.optShowHelp
+        then putStr $ usageInfo helpHeader opts
+        else case !getPipedMessage of
             Right m => putStr $ rainbowize m
             Left _  => case o.optMessage of
                 Just m  => putStrLn $ rainbowize m
