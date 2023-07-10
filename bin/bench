@@ -14,6 +14,6 @@ set common --num-threads=$cores --max-requests=100000000
 
 hyperfine \
     --warmup 1 \
-    --export-asciidoc ~/(date "+%Y%m%d%H%M")-(string replace ".local" "" (hostname)).bench \
+    --export-asciidoc ~/(date "+%Y%m%d%H%M")-(string replace ".local" "" (hostname)).txt \
     "sysbench --test=cpu    $common run" \
     "sysbench --test=memory $common run"
