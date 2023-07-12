@@ -22,9 +22,9 @@ if status --is-interactive
     if command --query starship
         starship init fish | source # cool prompt
     end
-    # if command --query atuin
-    #     atuin init fish | source # shell history database
-    # end
+    if command --query atuin
+        atuin init fish | source # shell history database
+    end
 end
 
 # use the hardware SSH key in my TPM
@@ -56,7 +56,10 @@ alias python "python3.10"
 alias width "tput cols"
 
 # OS specific aliases
-if test (uname) = Darwin; alias mtr "sudo mtr"; end
+if test (uname) = Darwin
+    alias mtr "sudo mtr"
+    alias battery "pmset -g batt"
+end
 
 # choose the best editor available
 if command --query hx
