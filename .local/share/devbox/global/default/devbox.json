@@ -45,13 +45,13 @@
     "cargo@latest",
     "bat@latest",
     "sysbench@latest",
-    "idris2@latest",
     "docker@latest",
     "docker-compose@latest",
     "colima@latest",
     "tldr@latest",
     "chatgpt-cli@latest",
-    "mas@latest"
+    "mas@latest",
+    "idris2@0.6.0"
   ],
   "shell": {
     "init_hook": [
