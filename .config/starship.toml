@@ -17,3 +17,6 @@ success_symbol = ""
 
 [time]
 disabled = false
+
+[python]
+disabled = true

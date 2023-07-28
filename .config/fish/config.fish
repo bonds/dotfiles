@@ -5,6 +5,10 @@ set --append fish_user_paths ~/bin/(string lower (uname))
 set --append fish_user_paths ~/bin
 set --append fish_user_paths ~/.local/bin
 set --append fish_user_paths ~/.cargo/bin
+# set --append fish_user_paths ~/Library/Python/3.10/bin
+
+# for python
+source $VENV_DIR/bin/activate.fish
 
 # workaround for a bug in ghc 9.0.2: https://gitlab.haskell.org/ghc/ghc/-/issues/20592
 if command --query xcrun
@@ -52,7 +56,7 @@ alias ghci "ghci -ghci-script ~/.config/ghc/ghci.conf"
 alias height "tput lines"
 alias idris "rlwrap --history-filename ~/.local/idris.history idris2 --package contrib"
 alias myip "curl --silent https://checkip.amazonaws.com"
-alias python "python3.10"
+# alias python "python3.10"
 alias width "tput cols"
 
 # OS specific aliases

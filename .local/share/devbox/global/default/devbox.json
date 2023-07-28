@@ -30,13 +30,10 @@
     "pigz@latest",
     "pstree@latest",
     "pv@latest",
-    "python@3.10",
-    "python310Packages.numpy@latest",
-    "python310Packages.torch@latest",
     "qrencode@latest",
     "ripgrep@latest",
     "rlwrap@latest",
-    "starship@latest",
+    "starship@1.15",
     "tree@latest",
     "vscode@latest",
     "wget@latest",
@@ -51,7 +48,13 @@
     "tldr@latest",
     "chatgpt-cli@latest",
     "mas@latest",
-    "idris2@0.6.0"
+    "idris2@0.6.0",
+    "bfs@latest",
+    "ansible@latest",
+    "python@3.11",
+    "python311Packages.pip@latest",
+    "netperf@latest",
+    "fping@latest"
   ],
   "shell": {
     "init_hook": [
