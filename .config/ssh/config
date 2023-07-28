@@ -1,5 +1,8 @@
+# moving stuff to XDG directory
+UserKnownHostsFile ~/.local/ssh/known_hosts
+
 # for connecting to locally running docker instances
-Include /Users/scott/.colima/ssh_config
+Include ~/.colima/ssh_config
 
 Host *
 
@@ -8,7 +11,7 @@ Host *
 
     # let me reconnect without asking me to TouchID again for a while
     ControlMaster auto
-    ControlPath ~/.local/%r@%h:%p.ssh
+    ControlPath ~/.local/ssh/%r@%h:%p.control
     ControlPersist 2h
     ServerAliveInterval 10s
 

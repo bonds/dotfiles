@@ -49,6 +49,7 @@ if not functions --query fisher
 end
 
 # aliases for convenience
+alias ssh "ssh -F ~/.config/ssh/config"
 alias angband "angband -mgcu -- -n4"
 alias crawl "crawl -rc ~/.config/crawl/init.txt"
 alias day "date '+%Y%m%d'"
