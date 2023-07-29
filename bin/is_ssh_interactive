@@ -25,7 +25,7 @@ else
 
 fi
 
-if [ $output -lt 2 ]; then
+if [ $output -lt 2 ] && [ $(echo $command | awk '{ print $1 }') = "ssh" ]; then
 
     echo "interactive ssh session detected"
     exit 0
