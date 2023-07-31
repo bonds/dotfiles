@@ -24,6 +24,11 @@ set -x NIXPKGS_ALLOW_UNFREE 1
 if status --is-interactive
 #    devbox global shellenv --init-hook | source
     if command --query starship
+        if test -z "$ALACRITTY_WINDOW_ID"; and test -z "$SSH_TTY"
+            set -x STARSHIP_CONFIG ~/.config/starship/plain.toml
+        else
+            set -x STARSHIP_CONFIG ~/.config/starship/unicode.toml
+        end
         starship init fish | source # cool prompt
     end
     if command --query atuin
