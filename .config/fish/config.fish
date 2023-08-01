@@ -37,7 +37,9 @@ if status --is-interactive
 end
 
 # use the hardware SSH key in my TPM
-set -x SSH_AUTH_SOCK /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh
+if test "$(uname)" = Darwin
+    set -x SSH_AUTH_SOCK /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh
+end
 
 # install the fisher plugin manager (and plugins) if its not installed yet
 if not functions --query fisher
