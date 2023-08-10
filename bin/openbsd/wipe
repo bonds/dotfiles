@@ -11,6 +11,8 @@ if test -c /dev/r$1c; then
     persector=$(disklabel $1 | grep "bytes/sector" | awk '{print $2}')
     bytes=$(bc -e $sectors*$persector -e quit)
 
+    echo "wiping $1 with $(bc -e scale=2 -e $bytes/1024/1024/1024/1024 -e quit) TB"
+
     # don't forget the bs=1m or it'll go super slow, like 1.3 MB/s slow versus 60 MB/s
     dd if=/dev/random | pv -s $bytes | dd of=/dev/r$1c bs=1m
 
