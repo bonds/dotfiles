@@ -13,8 +13,13 @@ if test -c /dev/r$1c; then
 
     echo "wiping $1 with $(bc -e scale=2 -e $bytes/1024/1024/1024/1024 -e quit) TB"
 
+    # not using this dd command anymore because when it's piped through pv with
+    # a 2+ TB drive we get an error from dd even though it seems pv's fault
     # don't forget the bs=1m or it'll go super slow, like 1.3 MB/s slow versus 60 MB/s
-    dd if=/dev/random | pv -s $bytes | dd of=/dev/r$1c bs=1m
+    # dd if=/dev/random | pv -s $bytes | dd of=/dev/r$1c bs=1m
+
+    # got this line from the 'man pv' examples
+    pv -s $bytes < /dev/random > /dev/rsd2c
 
 else
     echo could not find the drive '$1'
