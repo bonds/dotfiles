@@ -9,13 +9,14 @@
 # which is a worse UX
 
 # see also: https://stackoverflow.com/questions/7072208/how-do-i-create-a-macintosh-finder-alias-from-the-command-line
-function makealias --argument-names aliasdir apppath
+function makealias --argument-names aliasdir apppath appname
+    set app (basename $apppath .app)
     osascript -e " \
         tell application \"Finder\" \
         to make new alias \
         at (POSIX file \"$aliasesdir\") \
-        to (POSIX file \"$apppath\") \
-    " > /dev/null
+        to (POSIX file \"$apppath\")" \
+     -e "set name of result to \"$app\""
 end
 
 # see also: https://apple.stackexchange.com/questions/180762/how-to-go-to-alias-from-terminal
