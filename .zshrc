@@ -1,8 +1,6 @@
-INIT=$(devbox global shellenv --init-hook 2>&1 >/dev/null)
-
-if [[ $? -eq 0 ]]; then
+if INIT=$(devbox global shellenv --init-hook); then
   echo Starting DevBox...
-  eval $INIT
+  eval "$INIT"
 else
   exec fish
 fi
