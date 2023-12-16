@@ -24,7 +24,7 @@ set -x NIXPKGS_ALLOW_UNFREE 1
 if status --is-interactive
 #    devbox global shellenv --init-hook | source
     if command --query starship
-        if test -z "$ALACRITTY_WINDOW_ID"; and test -z "$SSH_TTY"
+        if false
             set -x STARSHIP_CONFIG ~/.config/starship/plain.toml
         else
             set -x STARSHIP_CONFIG ~/.config/starship/unicode.toml
@@ -92,7 +92,7 @@ function ls
     else if command --query colorls
         colorls -G $argv
     else
-        ls $argv
+        command ls $argv
     end
 end
 
@@ -108,7 +108,7 @@ function tree --description "ls in tree format"
     if command --query lsd
         lsd --tree $argv
     else
-        tree $argv
+        command tree $argv
     end
 end
 
