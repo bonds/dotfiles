@@ -21,6 +21,9 @@ set -x IDRIS2_PREFIX ~/.local/lib
 # nix flakes needs this
 set -x NIXPKGS_ALLOW_UNFREE 1
 
+# devbox on linux needs this
+set -x NIX_REMOTE daemon
+
 if status --is-interactive
 #    devbox global shellenv --init-hook | source
     if command --query starship
@@ -76,6 +79,8 @@ end
 # choose the best editor available
 if command --query hx
     set -x EDITOR hx
+else if command --query helix
+    set -x EDITOR helix
 else if command --query kak
     set -x EDITOR kak
 else if command --query nvim
