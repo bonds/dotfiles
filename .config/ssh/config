@@ -27,7 +27,7 @@ Match Host * exec "/bin/sh -c 'pstree -p $PPID | grep ssh | ~/bin/is_ssh_interac
 # always use the long name for home servers so ssh realizes the short and long
 # names are the same host
 
-Match Host * !exec "echo %h | grep \.com"
+Match Host * !exec "echo %h | grep \."
     Hostname %h.ggr.com
 
 # use a bastian host to get to home servers when away from home
@@ -37,5 +37,5 @@ Match Host *.ggr.com,!home.ggr.com !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
 
 # forward SSH agent to hosts where I'm supposedly the only root user
 
-Match Host *.ggr.com
+Match Host *.ggr.com,*.local
     ForwardAgent yes

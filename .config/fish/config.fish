@@ -69,6 +69,7 @@ alias idris "rlwrap --history-filename ~/.local/idris.history idris2 --package c
 alias myip "curl --silent https://checkip.amazonaws.com"
 # alias python "python3.10"
 alias width "tput cols"
+alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGNAME -s \"openai api key\"); and command chatgpt"
 
 # OS specific aliases
 if test (uname) = Darwin
