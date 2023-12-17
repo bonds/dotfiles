@@ -72,7 +72,7 @@
   "shell": {
     "init_hook": [
       "echo 'Welcome to devbox!' > /dev/null",
-      "if uname | grep -i darwin; then; $HOME/bin/darwin/create_devbox_app_aliases; fi",
+      "if uname | grep -i darwin > /dev/null; then; $HOME/bin/darwin/create_devbox_app_aliases; fi",
       "exec fish"
     ],
     "scripts": {

@@ -27,10 +27,10 @@ set -x NIX_REMOTE daemon
 if status --is-interactive
 #    devbox global shellenv --init-hook | source
     if command --query starship
-        if false
-            set -x STARSHIP_CONFIG ~/.config/starship/plain.toml
-        else
+        if test (locale charmap) = "UTF-8"
             set -x STARSHIP_CONFIG ~/.config/starship/unicode.toml
+        else
+            set -x STARSHIP_CONFIG ~/.config/starship/plain.toml
         end
         starship init fish | source # cool prompt
     end
@@ -40,7 +40,7 @@ if status --is-interactive
 end
 
 # use the hardware SSH key in my TPM
-if test "$(uname)" = Darwin
+if test (uname) = Darwin
     set -x SSH_AUTH_SOCK /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh
 end
 
