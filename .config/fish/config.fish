@@ -27,7 +27,7 @@ set -x NIX_REMOTE daemon
 if status --is-interactive
 #    devbox global shellenv --init-hook | source
     if command --query starship
-        if test (locale charmap) = "UTF-8"
+        if locale 2>&1 | grep -q UTF-8
             set -x STARSHIP_CONFIG ~/.config/starship/unicode.toml
         else
             set -x STARSHIP_CONFIG ~/.config/starship/plain.toml
