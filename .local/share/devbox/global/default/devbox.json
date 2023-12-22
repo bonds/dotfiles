@@ -18,7 +18,7 @@
     "haskell-language-server": "latest",
     "haxor-news":              "latest",
     "helix":                   "latest",
-    "hugo":                    "0.116.1",
+    "hugo":                    "latest",
     "hyfetch":                 "latest",
     "hyperfine":               "latest",
     "jq":                      "latest",
@@ -27,12 +27,12 @@
     "mpv":                     "latest",
     "mtr":                     "latest",
     "pigz":                    "latest",
-    "pstree":                  "2.39",
+    "pstree":                  "latest",
     "pv":                      "latest",
     "qrencode":                "latest",
     "ripgrep":                 "latest",
     "rlwrap":                  "latest",
-    "starship":                "1.15",
+    "starship":                "latest",
     "tree":                    "latest",
     "vscode":                  "latest",
     "wget":                    "latest",
@@ -46,7 +46,7 @@
     "colima":                  "latest",
     "tldr":                    "latest",
     "chatgpt-cli":             "latest",
-    "idris2":                  "0.6.0",
+    "idris2":                  "latest",
     "bfs":                     "latest",
     "ansible":                 "latest",
     "python":                  "3.11",
@@ -60,12 +60,19 @@
     "mas": {
       "version":            "latest",
       "excluded_platforms": ["x86_64-linux"]
-    }
+    },
+    "speedtest-go": "latest",
+    "cmake": "latest",
+    "httpie": "latest",
+    "weather": "latest",
+    "yt-dlp": "latest",
+    "gron": "latest",
+    "ollama": "latest"
   },
   "shell": {
     "init_hook": [
       "echo 'Welcome to devbox!' > /dev/null",
-      "if uname | grep -i darwin; then; $HOME/bin/darwin/create_devbox_app_aliases; fi",
+      "if uname | grep -i darwin > /dev/null; then; $HOME/bin/darwin/create_devbox_app_aliases; fi",
       "exec fish"
     ],
     "scripts": {

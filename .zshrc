@@ -4,4 +4,3 @@ if INIT=$(devbox global shellenv --init-hook); then
 else
   exec fish
 fi
-
