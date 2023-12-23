@@ -51,7 +51,10 @@
     "ansible":                 "latest",
     "python":                  "3.11",
     "python311Packages.pip":   "latest",
-    "netperf":                 "latest",
+    "netperf": {
+      "version":            "latest",
+      "excluded_platforms": ["aarch64-darwin"]
+    },
     "fping":                   "latest",
     "libreoffice-bin": {
       "version":            "latest",
