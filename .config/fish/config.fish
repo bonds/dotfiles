@@ -60,7 +60,6 @@ end
 
 # aliases for convenience
 alias ssh "ssh -F ~/.config/ssh/config"
-alias angband "angband -mgcu -- -n4"
 alias crawl "crawl -rc ~/.config/crawl/init.txt"
 alias day "date '+%Y%m%d'"
 alias ghci "ghci -ghci-script ~/.config/ghc/ghci.conf"
@@ -116,6 +115,16 @@ function tree --description "ls in tree format"
     else
         command tree $argv
     end
+end
+
+function angband --description "ASCII dungeon crawl game"
+    command angband -mgcu \
+       -duser=~/.config/angband \
+       -dscores=~/Documents/Angband/scores \
+       -dsave=~/Documents/Angband/save \
+       -dpanic=~/Documents/Angband/panic \
+       -darchive=~/Documents/Angband/archive \
+       $argv -- -n4
 end
 
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"
