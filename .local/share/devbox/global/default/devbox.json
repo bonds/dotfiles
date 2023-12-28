@@ -46,7 +46,6 @@
     "colima":                  "latest",
     "tldr":                    "latest",
     "chatgpt-cli":             "latest",
-    "idris2":                  "latest",
     "bfs":                     "latest",
     "ansible":                 "latest",
     "python":                  "3.11",
@@ -55,7 +54,7 @@
       "version":            "latest",
       "excluded_platforms": ["aarch64-darwin"]
     },
-    "fping":                   "latest",
+    "fping": "latest",
     "libreoffice-bin": {
       "version":            "latest",
       "excluded_platforms": ["x86_64-linux"]
@@ -65,12 +64,13 @@
       "excluded_platforms": ["x86_64-linux"]
     },
     "speedtest-go": "latest",
-    "cmake": "latest",
-    "httpie": "latest",
-    "weather": "latest",
-    "yt-dlp": "latest",
-    "gron": "latest",
-    "ollama": "latest"
+    "cmake":        "latest",
+    "httpie":       "latest",
+    "weather":      "latest",
+    "yt-dlp":       "latest",
+    "gron":         "latest",
+    "ollama":       "latest",
+    "idris2":       "latest"
   },
   "shell": {
     "init_hook": [

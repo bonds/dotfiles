@@ -124,7 +124,7 @@ function angband --description "ASCII dungeon crawl game"
        -dsave=~/Documents/Angband/save \
        -dpanic=~/Documents/Angband/panic \
        -darchive=~/Documents/Angband/archive \
-       $argv -- -n4
+       $argv -- -n1
 end
 
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"

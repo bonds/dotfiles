@@ -1,0 +1,22 @@
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=# begin Dump keymaps
+# *Warning!*  The lines below are an automatic dump.
+# Don't edit them; changes will be deleted and replaced automatically.
+
+keymap-act:R[Enter][Escape][Escape]
+keymap-input:0: 
+
+keymap-act:;8
+keymap-input:0:\xf6
+
+keymap-act:;6
+keymap-input:0:\xb5
+
+keymap-act:;4
+keymap-input:0:\xbe
+
+keymap-act:;2
+keymap-input:0:\xf7
+
+# *Warning!*  The lines above are an automatic dump.
+# Don't edit them; changes will be deleted and replaced automatically.
+#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=# end Dump keymaps
