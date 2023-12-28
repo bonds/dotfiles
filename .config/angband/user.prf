@@ -2,7 +2,7 @@
 # *Warning!*  The lines below are an automatic dump.
 # Don't edit them; changes will be deleted and replaced automatically.
 
-keymap-act:R[Enter][Escape][Escape]
+keymap-act:R[Enter]
 keymap-input:0: 
 
 keymap-act:;8
