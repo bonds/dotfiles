@@ -176,13 +176,19 @@ getPipedMessage = do
         | Left e => pure $ Left e
     fGetChars f s
 
+messageOrBar : Options -> IO ()
+messageOrBar o = do
+    case o.optMessage of 
+        Just m  => putStrLn $ rainbowize m
+        Nothing => putStr $ clearRainbow o.optWidth !terminalWidth
+
 main : IO ()
 main = do
     let o = finalOpts !getArgs
     if o.optShowHelp
         then putStr $ usageInfo helpHeader opts
         else case !getPipedMessage of
-            Right m => putStr $ rainbowize m
-            Left _  => case o.optMessage of
-                Just m  => putStrLn $ rainbowize m
-                Nothing => putStr $ clearRainbow o.optWidth !terminalWidth
+            Right m => case m of
+                ""        => messageOrBar o
+                otherwise => putStr $ rainbowize m
+            Left _ => messageOrBar o
