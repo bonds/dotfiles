@@ -70,7 +70,9 @@
     "yt-dlp":       "latest",
     "gron":         "latest",
     "ollama":       "latest",
-    "idris2":       "latest"
+    "idris2":       "latest",
+    "moreutils":    "latest",
+    "qemu":         "latest"
   },
   "shell": {
     "init_hook": [
