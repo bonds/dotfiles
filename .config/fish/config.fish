@@ -62,7 +62,7 @@ end
 alias ssh "ssh -F ~/.config/ssh/config"
 alias crawl "crawl -rc ~/.config/crawl/init.txt"
 alias day "date '+%Y%m%d'"
-alias ghci "ghci -ghci-script ~/.config/ghc/ghci.conf"
+alias ghci "ghci -ghci-script ~/.config/ghc/ghci.rio.conf -ghci-script ~/.config/ghc/ghci.conf"
 alias height "tput lines"
 alias idris "rlwrap --history-filename ~/.local/idris.history idris2 --package contrib"
 alias myip "curl --silent https://checkip.amazonaws.com"
