@@ -14,5 +14,5 @@ WINID=$(wmctrl -lp | grep $PID | awk '{print $1}')
 xprop -id $WINID -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x0, 0x0, 0x0"
 
 DIMS=$(xprop -root | grep -e "^_NET_WORKAREA" | sed "s/.*= \(.*\)/\1/g")
-#wmctrl -r :ACTIVE: -b remove,maximized_vert,maximized_horz
+wmctrl -r :ACTIVE: -b remove,maximized_vert,maximized_horz
 wmctrl -r :ACTIVE: -e "0, $DIMS"
