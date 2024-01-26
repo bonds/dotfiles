@@ -72,7 +72,8 @@
     "ollama":       "latest",
     "idris2":       "latest",
     "moreutils":    "latest",
-    "qemu":         "latest"
+    "qemu":         "latest",
+    "neofetch":     "latest"
   },
   "shell": {
     "init_hook": [
