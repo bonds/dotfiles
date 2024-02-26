@@ -73,7 +73,8 @@
     "idris2":       "latest",
     "moreutils":    "latest",
     "qemu":         "latest",
-    "obsidian":     "latest"
+    "obsidian":     "latest",
+    "neofetch":     "latest"
   },
   "shell": {
     "init_hook": [
