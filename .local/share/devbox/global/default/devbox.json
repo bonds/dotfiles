@@ -72,7 +72,8 @@
     "ollama":       "latest",
     "idris2":       "latest",
     "moreutils":    "latest",
-    "qemu":         "latest"
+    "qemu":         "latest",
+    "obsidian":     "latest"
   },
   "shell": {
     "init_hook": [
