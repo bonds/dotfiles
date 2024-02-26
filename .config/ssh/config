@@ -5,7 +5,7 @@ UserKnownHostsFile ~/.local/ssh/known_hosts
 Include ~/.colima/ssh_config
 
 # use TouchID SSH keys via Secretive when I'm on my laptop
-Match Host * exec "test -z '$SSH_CONNECTION'"
+Match exec "test -z '$SSH_CONNECTION'"
 
     IdentityAgent /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh
 
@@ -22,25 +22,25 @@ Host *
 # see https://unix.stackexchange.com/questions/451253/how-to-configure-ssh-with-a-remotecommand-only-for-interactive-sessions-i-e-wi
 # keep in mind this is run locally, using the user's shell, in my case /usr/local/bin/fish
 
-Match Host !172.16.* exec "/bin/sh -c 'pstree -p $PPID | grep ssh | ~/bin/is_ssh_interactive'"
+Host !172.16.* * Match exec "/bin/sh -c 'pstree -p $PPID | grep ssh | ~/bin/is_ssh_interactive'"
     RequestTTY yes
-    RemoteCommand tmux; then tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0
+    RemoteCommand tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0
 
 # always use the long name for home servers so ssh realizes the short and long
 # names are the same host
 
-Match Host * !exec "echo %h | grep \."
+Match !exec "echo %h | grep \."
     Hostname %h.ggr.com
 
 # use a bastian host to get to home servers when away from home
 
-Match Host *.ggr.com,!home.ggr.com !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
+Host !home.ggr.com *.ggr.com Match !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
     ProxyJump home.ggr.com
 
 # forward SSH agent to hosts where I'm supposedly the only root user
 
-Match Host *.ggr.com,*.local
+Host *.ggr.com *.local
     ForwardAgent yes
 
-Match Host 172.16.0.*
+Host 172.16.0.*
     User root

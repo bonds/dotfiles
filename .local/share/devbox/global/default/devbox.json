@@ -73,6 +73,10 @@
     "moreutils":    "latest",
     "qemu":         "latest",
     "neofetch":     "latest",
+    "flent": {
+      "version":            "latest",
+      "excluded_platforms": ["aarch64-darwin"]
+    },
     "flent":        "latest",
     "netcat":       "latest",
     "mpv":          "latest",
