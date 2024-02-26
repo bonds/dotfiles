@@ -8,6 +8,18 @@ keymap-input:0:h
 keymap-act:h
 keymap-input:0:H
 
+keymap-act:m2f'[Escape]
+keymap-input:0:!
+
+keymap-act:m1e'[Escape]
+keymap-input:0:@
+
+keymap-act:m1g'[Escape]
+keymap-input:0:#
+
+keymap-act:m2d'[Escape]
+keymap-input:0:$
+
 # *Warning!*  The lines above are an automatic dump.
 # Don't edit them; changes will be deleted and replaced automatically.
 #=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=# end Dump keymaps
@@ -17,6 +29,3 @@ keymap-input:0:H
 
 inscribe:magic book:[First Spells]:@1
 
-# *Warning!*  The lines above are an automatic dump.
-# Don't edit them; changes will be deleted and replaced automatically.
-#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=# end Dump autoinscriptions

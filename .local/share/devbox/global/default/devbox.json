@@ -75,7 +75,8 @@
     "neofetch":     "latest",
     "flent":        "latest",
     "netcat":       "latest",
-    "mpv":          "latest"
+    "mpv":          "latest",
+    "obsidian":     "latest"
   },
   "shell": {
     "init_hook": [
