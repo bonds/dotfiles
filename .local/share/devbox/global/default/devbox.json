@@ -24,7 +24,6 @@
     "jq":                      "latest",
     "libiconv":                "latest",
     "lsd":                     "latest",
-    "mpv":                     "latest",
     "mtr":                     "latest",
     "pigz":                    "latest",
     "pstree":                  "latest",
@@ -73,7 +72,10 @@
     "idris2":       "latest",
     "moreutils":    "latest",
     "qemu":         "latest",
-    "neofetch":     "latest"
+    "neofetch":     "latest",
+    "flent":        "latest",
+    "netcat":       "latest",
+    "mpv":          "latest"
   },
   "shell": {
     "init_hook": [
