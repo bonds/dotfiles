@@ -24,6 +24,9 @@ set -x NIXPKGS_ALLOW_UNFREE 1
 # devbox on linux needs this
 set -x NIX_REMOTE daemon
 
+# docker cli on util.local needs this
+set -x DOCKER_HOST ssh://root@172.16.0.100
+
 if status --is-interactive
 #    devbox global shellenv --init-hook | source
     if command --query starship
