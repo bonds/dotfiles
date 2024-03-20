@@ -130,5 +130,13 @@ function angband --description "ASCII dungeon crawl game"
        $argv -- -n1
 end
 
+function ping
+    if command --query ts
+        command ping $argv | ts
+    else
+       ping $argv
+    end 
+end
+
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"
 set fzf_fd_opts --hidden --exclude=.git
