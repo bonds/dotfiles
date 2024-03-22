@@ -132,7 +132,7 @@ end
 
 function ping
     if command --query ts
-        command ping $argv | ts
+        command ping $argv | ts '%Y-%m-%d %H:%M'
     else
        ping $argv
     end 
