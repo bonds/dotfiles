@@ -9,7 +9,11 @@ if not command --query sysbench
     exit 2
 end
 
-set cores (sysctl -n hw.ncpu)
+if command --query nproc
+    set cores (nproc --all)
+else
+    set cores (sysctl -n hw.ncpu)
+end
 set common --num-threads=$cores --max-requests=100000000
 
 hyperfine \
