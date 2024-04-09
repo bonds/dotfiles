@@ -16,7 +16,7 @@ function makealias --argument-names aliasdir apppath appname
         to make new alias \
         at (POSIX file \"$aliasesdir\") \
         to (POSIX file \"$apppath\")" \
-     -e "set name of result to \"$app\""
+        -e "set name of result to \"$app\""
 end
 
 # see also: https://apple.stackexchange.com/questions/180762/how-to-go-to-alias-from-terminal
@@ -42,7 +42,9 @@ for link in (find $linksdir -maxdepth 1 -name '*.app')
     set apppath (realpath "$link")
     set appname (basename $apppath)
     set apps $apps (string lower $appname)
+    # echo apps: $apps
     set aliaspath "$aliasesdir/$(basename $appname .app)"
+    # echo $aliaspath
     if not test -e "$aliaspath"
         echo creating alias for $appname
         makealias "$aliasdir" "$apppath"
@@ -57,7 +59,8 @@ end
 # delete all the old aliases that reference apps we don't have in our devbox
 # anymore
 
-for alias in (ls "$aliasesdir")
+for alias in (/bin/ls "$aliasesdir")
+    # echo $alias
     if not contains (string lower $alias.app) $apps
         echo removing "$aliasesdir/$alias"
         rm "$aliasesdir/$alias"
