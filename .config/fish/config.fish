@@ -1,7 +1,13 @@
 # Commands to run in interactive sessions can go here
 
+if command --query /run/current-system/sw/bin/uname
+    set uname (/run/current-system/sw/bin/uname)
+else
+    set uname (uname)
+end
+
 # add all the paths I like
-set --append fish_user_paths ~/bin/(string lower (uname))
+set --append fish_user_paths ~/bin/(string lower "$uname")
 set --append fish_user_paths ~/bin
 set --append fish_user_paths ~/.local/bin
 set --append fish_user_paths ~/.cargo/bin
@@ -28,7 +34,7 @@ set -x NIX_REMOTE daemon
 set -x DOCKER_HOST ssh://root@172.16.0.100
 
 if status --is-interactive
-#    devbox global shellenv --init-hook | source
+    #    devbox global shellenv --init-hook | source
     if command --query starship
         if locale 2>&1 | grep -q UTF-8
             set -x STARSHIP_CONFIG ~/.config/starship/unicode.toml
@@ -43,7 +49,7 @@ if status --is-interactive
 end
 
 # use the hardware SSH key in my TPM
-if test (uname) = Darwin
+if test "$uname" = Darwin
     set -x SSH_AUTH_SOCK /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh
 end
 
@@ -51,7 +57,7 @@ end
 if not functions --query fisher
     # don't start an infinite recursion when we start a new fish instance to
     # install fisher
-    if test "$installing_fisher" != "TRUE"
+    if test "$installing_fisher" != TRUE
         set -x installing_fisher TRUE
         curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source
         # restore my plugins list after its overwritten by the installer
@@ -74,7 +80,7 @@ alias width "tput cols"
 alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGNAME -s \"openai api key\"); and command chatgpt"
 
 # OS specific aliases
-if test (uname) = Darwin
+if test "$uname" = Darwin
     alias mtr "sudo mtr"
     alias battery "pmset -g batt"
 end
@@ -122,20 +128,20 @@ end
 
 function angband --description "ASCII dungeon crawl game"
     command angband -mgcu \
-       -duser=~/.config/angband \
-       -dscores=~/Documents/Angband/scores \
-       -dsave=~/Documents/Angband/save \
-       -dpanic=~/Documents/Angband/panic \
-       -darchive=~/Documents/Angband/archive \
-       $argv -- -n1
+        -duser=~/.config/angband \
+        -dscores=~/Documents/Angband/scores \
+        -dsave=~/Documents/Angband/save \
+        -dpanic=~/Documents/Angband/panic \
+        -darchive=~/Documents/Angband/archive \
+        $argv -- -n1
 end
 
 function ping
     if command --query ts
         command ping $argv | ts '%Y-%m-%d %H:%M'
     else
-       ping $argv
-    end 
+        ping $argv
+    end
 end
 
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"

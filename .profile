@@ -6,4 +6,4 @@ PATH=$HOME/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin:/usr/local/bin:/usr/
 export PATH HOME TERM
 
 # use fish as my interactive shell, falls back to ksh otherwise
-exec /usr/local/bin/fish
+exec /run/current-system/sw/bin/fish
