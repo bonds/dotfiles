@@ -24,7 +24,7 @@ Host *
 
 Host !172.16.* * Match exec "/bin/sh -c 'pstree -p $PPID | grep ssh | ~/bin/is_ssh_interactive'"
     RequestTTY yes
-    RemoteCommand tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0
+    RemoteCommand sh -c 'if which tmux 2>/dev/null; then tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0; else $SHELL; fi'
 
 # always use the long name for home servers so ssh realizes the short and long
 # names are the same host
