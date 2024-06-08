@@ -61,6 +61,17 @@ in
       Exec=ulauncher
       Terminal=false
     '';
+
+    ".local/share/applications/dwarf.desktop".text = ''
+      [Desktop Entry]
+      Type=Application
+      Name=Dwarf Fortress
+      Comment=a really great game
+      Path=/run/current-system/sw/bin
+      Exec=dwarf-fortress
+      Terminal=false
+    '';
+    
   };
 
   # Home Manager can also manage your environment variables through
