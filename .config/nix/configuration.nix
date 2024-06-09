@@ -2,12 +2,16 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{ config, pkgs, inputs, ... }:
+{ pkgs, lib, inputs, ... }:
 
 {
   imports =
     [ # Include the results of the hardware scan.
-      ./hardware-configuration.nix
+      ./hardware.nix
+      ./monitors.nix
+      ./apps.nix
+      ./firefox.nix
+      inputs.home-manager.nixosModules.default
     ];
 
   # Enable the Flakes feature and the accompanying new nix command-line tool
@@ -96,6 +100,7 @@
   home-manager = {
     extraSpecialArgs = { inherit inputs; };
     useGlobalPkgs = true;
+    useUserPackages = true;
     users = {
       "scott" = import ./home.nix;
     };
@@ -105,167 +110,6 @@
   nixpkgs.config.allowUnfree = true;
   # nixpkgs.config.allowUnfreePredicate = (pkg: true);
   
-  # Install firefox.
-  programs.firefox = {
-    enable = true;
-      /* ---- POLICIES ---- */
-      # Check about:policies#documentation for options.
-    policies = {
-      DisableTelemetry = true;
-      DisableFirefoxStudies = true;
-      EnableTrackingProtection = {
-        Value= true;
-        Locked = true;
-        Cryptomining = true;
-        Fingerprinting = true;
-      };
-      DisablePocket = true;
-      DisableFirefoxAccounts = true;
-      DisableAccounts = true;
-      DisableFirefoxScreenshots = true;
-      OverrideFirstRunPage = "";
-      OverridePostUpdatePage = "";
-      DontCheckDefaultBrowser = true;
-      DisplayBookmarksToolbar = "never"; # alternatives: "always" or "newtab"
-      DisplayMenuBar = "default-off"; # alternatives: "always", "never" or "default-on"
-      SearchBar = "unified"; # alternative: "separate"
-
-      /* ---- EXTENSIONS ---- */
-      # Check about:support for extension/add-on ID strings.
-      # Valid strings for installation_mode are "allowed", "blocked",
-      # "force_installed" and "normal_installed".
-      ExtensionSettings = {
-        # uBlock Origin:
-        "uBlock0@raymondhill.net" = {
-          install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
-          installation_mode = "force_installed";
-        };
-        # Privacy Badger:
-        "jid1-MnnxcxisBPnSXQ@jetpack" = {
-          install_url = "https://addons.mozilla.org/firefox/downloads/latest/privacy-badger17/latest.xpi";
-          installation_mode = "force_installed";
-        };
-        # Bitwarden:
-        "{446900e4-71c2-419f-a6a7-df9c091e268b}" = {
-          install_url = "https://addons.mozilla.org/firefox/downloads/latest/bitwarden_password_manager/latest.xpi";
-          installation_mode = "force_installed";
-        };
-        # Dark Reader:
-        "addon@darkreader.org" = {
-          install_url = "https://addons.mozilla.org/firefox/downloads/latest/darkreader/latest.xpi";
-          installation_mode = "force_installed";
-        };
-      };
-    };
-  };
-
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
-  environment.systemPackages = with pkgs; [
-    helix
-    spotify
-    discord
-    slack
-    signal-desktop
-    ulauncher
-    neofetch
-    ollama
-    gnome.gnome-tweaks
-    wmctrl
-    protonmail-desktop
-    obsidian
-    dwarf-fortress
-    git
-    starship
-    lsd
-    ripgrep
-    fd
-    nerdfonts
-    hyperfine
-    sysbench
-    zoom
-    
-  #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-  #  wget
-  ];
-
-  systemd.tmpfiles.rules = [
-    "L+ /run/gdm/.config/monitors.xml - - - - ${pkgs.writeText "gdm-monitors.xml" ''
-      <!-- this should all be copied from your ~/.config/monitors.xml -->
-      <monitors version="2">
-      <configuration>
-        <logicalmonitor>
-          <x>0</x>
-          <y>0</y>
-          <scale>2</scale>
-          <transform>
-            <rotation>left</rotation>
-            <flipped>no</flipped>
-          </transform>
-          <monitor>
-            <monitorspec>
-              <connector>DP-3</connector>
-              <vendor>DEL</vendor>
-              <product>DELL U2718Q</product>
-              <serial>4K8X796K0MLL</serial>
-            </monitorspec>
-            <mode>
-              <width>3840</width>
-              <height>2160</height>
-              <rate>60.000</rate>
-            </mode>
-          </monitor>
-        </logicalmonitor>
-        <logicalmonitor>
-          <x>4320</x>
-          <y>0</y>
-          <scale>2</scale>
-          <transform>
-            <rotation>left</rotation>
-            <flipped>no</flipped>
-          </transform>
-          <monitor>
-            <monitorspec>
-              <connector>DP-2</connector>
-              <vendor>DEL</vendor>
-              <product>DELL U2718Q</product>
-              <serial>4K8X799T0L2L</serial>
-            </monitorspec>
-            <mode>
-              <width>3840</width>
-              <height>2160</height>
-              <rate>60.000</rate>
-            </mode>
-          </monitor>
-        </logicalmonitor>
-        <logicalmonitor>
-          <x>2160</x>
-          <y>0</y>
-          <scale>2</scale>
-          <primary>yes</primary>
-          <transform>
-            <rotation>left</rotation>
-            <flipped>no</flipped>
-          </transform>
-          <monitor>
-            <monitorspec>
-              <connector>DP-1</connector>
-              <vendor>DEL</vendor>
-              <product>DELL U2718Q</product>
-              <serial>4K8X78AB1J6L</serial>
-            </monitorspec>
-            <mode>
-              <width>3840</width>
-              <height>2160</height>
-              <rate>60.000</rate>
-            </mode>
-          </monitor>
-        </logicalmonitor>
-      </configuration>
-    </monitors>
-    ''}"
-  ];
-
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
   programs.mtr.enable = true;
