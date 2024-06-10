@@ -33,5 +33,6 @@
     hyperfine
     sysbench
     zoom
+    desktop-file-utils
   ];
 }
