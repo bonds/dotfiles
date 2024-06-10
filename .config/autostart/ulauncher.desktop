@@ -1,0 +1,8 @@
+[Desktop Entry]
+
+Type=Application
+Name=ulauncher
+Comment=An app launcher
+Path=/run/current-system/sw/bin
+Exec=ulauncher
+Terminal=false
