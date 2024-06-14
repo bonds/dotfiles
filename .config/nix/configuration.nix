@@ -75,6 +75,12 @@
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
+    extraConfig.pipewire.adjust-sample-rate = {
+      "context.properties" = {
+        "default.clock.rate" = 384000;
+        "default.allowed-rates" = [ 384000 192000 48000 44100 ];
+      };
+    };
     # If you want to use JACK applications, uncomment this
     #jack.enable = true;
 
@@ -137,6 +143,10 @@
         configDir = "/home/scott/.config/syncthing";   # Folder for Syncthing's settings and keys
     };
   };
+
+  services.udev.extraRules = ''
+    KERNEL=="ttyUSB0", MODE="0666"
+  '';
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];

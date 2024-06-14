@@ -34,5 +34,8 @@
     sysbench
     zoom
     desktop-file-utils
+    btop
+    rustc
+
   ];
 }
