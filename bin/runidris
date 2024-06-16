@@ -24,6 +24,7 @@ exec="$TEMP_NAME.runme"
 grep -v runidris "$1" > "$source"
 
 # if there's no cached exec, compile the source code
+        # --codegen refc \
 if [ ! -e $TEMP_NAME ]; then
     "${IDRIS:-idris2}" "$source" \
         --package contrib \

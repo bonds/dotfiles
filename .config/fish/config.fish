@@ -5,9 +5,10 @@ if command --query /run/current-system/sw/bin/uname
 else
     set uname (uname)
 end
+set uname (string lower "$uname")
 
 # add all the paths I like
-set --append fish_user_paths ~/bin/(string lower "$uname")
+set --append fish_user_paths ~/bin/"$uname"
 set --append fish_user_paths ~/bin
 set --append fish_user_paths ~/.local/bin
 set --append fish_user_paths ~/.cargo/bin
@@ -49,7 +50,7 @@ if status --is-interactive
 end
 
 # use the hardware SSH key in my TPM
-if test "$uname" = Darwin
+if test "$uname" = darwin
     set -x SSH_AUTH_SOCK /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh
 end
 
@@ -80,7 +81,7 @@ alias width "tput cols"
 alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGNAME -s \"openai api key\"); and command chatgpt"
 
 # OS specific aliases
-if test "$uname" = Darwin
+if test "$uname" = darwin
     alias mtr "sudo mtr"
     alias battery "pmset -g batt"
 end

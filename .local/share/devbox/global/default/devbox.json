@@ -36,7 +36,6 @@
     "vscode":                  "latest",
     "wget":                    "latest",
     "wiki-tui":                "latest",
-    "rustc":                   "latest",
     "cargo":                   "latest",
     "bat":                     "latest",
     "sysbench":                "latest",
@@ -72,13 +71,14 @@
     "idris2":       "latest",
     "moreutils":    "latest",
     "qemu":         "latest",
-    "neofetch":     "latest",
     "flent": {
       "version":            "latest",
       "excluded_platforms": ["aarch64-darwin"]
     },
-    "netcat":       "latest",
-    "mpv":          "latest",
+    "netcat": "latest",
+    "getent": "latest",
+    "rustc":  "latest",
+    "gmp":    "latest"
   },
   "shell": {
     "init_hook": [
