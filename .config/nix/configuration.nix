@@ -146,7 +146,7 @@
   };
 
   services.udev.extraRules = ''
-    KERNEL=="ttyUSB0", MODE="0666"
+    KERNEL=="ttyUSB[0-9]", MODE="0666"
   '';
 
   # Open ports in the firewall.
