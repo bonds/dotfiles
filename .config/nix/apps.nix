@@ -8,16 +8,32 @@
 }:
 
 {
+
+  nixpkgs = {
+    overlays = [
+      outputs.overlays.unstable-packages
+    ];
+  };
+
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    fastfetch # system info on cli
+    gsound # for pano
+    libgda6 # for pano
+    gnomeExtensions.pano # this is pano
+    unstable.gnomeExtensions.another-window-session-manager
+    gnomeExtensions.dash-to-panel
+    jq
+    libsecret
+    jless
+    unzip
     helix
     spotify
     discord
     slack
     signal-desktop
     ulauncher
-    neofetch
     ollama
     gnome.gnome-tweaks
     wmctrl
@@ -32,10 +48,11 @@
     nerdfonts
     hyperfine
     sysbench
-    zoom
+    zoom-us
     desktop-file-utils
     btop
     rustc
-
+    wget
+    usbutils
   ];
 }

@@ -9,6 +9,7 @@
     [ # Include the results of the hardware scan.
       ./hardware.nix
       ./monitors.nix
+      ./wake.nix
       ./apps.nix
       ./firefox.nix
       inputs.home-manager.nixosModules.default
