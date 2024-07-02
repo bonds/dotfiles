@@ -1,15 +1,20 @@
 #!/bin/sh
 
 # https://stackoverflow.com/questions/48797323/retrieving-active-window-from-mutter-on-gnome-wayland-session
-PID=$(gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/WindowsExt --method org.gnome.Shell.Extensions.WindowsExt.FocusPID | sed -E "s/\\('(.*)',\\)/\\1/g")
+# PID=$(gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/WindowsExt --method org.gnome.Shell.Extensions.WindowsExt.FocusPID | sed -E "s/\\('(.*)',\\)/\\1/g")
+
+# https://extensions.gnome.org/extension/4724/window-calls/
+# https://github.com/ickyicky/window-calls
+PID=$(gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/Windows --method org.gnome.Shell.Extensions.Windows.List | cut -c 3- | rev | cut -c4- | rev | jq '.[] | select(.focus==true) | .pid')
 
 # https://github.com/sunwxg/gnome-shell-extension-undecorate/blob/master/undecorate%40sun.wxg%40gmail.com/extension.js
 WINID=$(wmctrl -lp | grep $PID | awk '{print $1}')
 # zenity --info --text "PID: $PID"
 # zenity --info --text "WINID: $WINID"
 
+# echo $WINID
 # NAME=$(date)
-# wmctl -r :ACTIVE: -N "$NAME"
+# wmctrl -r :ACTIVE: -N "$NAME"
 # zenity --info --text "NAME: $NAME"
 xprop -id $WINID -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x0, 0x0, 0x0"
 
