@@ -145,9 +145,9 @@
     };
   };
 
-    # KERNEL=="ttyUSB[0-9]", MODE="0666"
+    # KERNEL=="ttyUSB[0-9]", ATTR{idVendor}=="0403", ATTR{idProduct}=="6015", MODE="0666"
   services.udev.extraRules = ''
-    KERNEL=="ttyUSB[0-9]", ATTR{idVendor}=="0403", ATTR{idProduct}=="6015", MODE="0666"
+    KERNEL=="ttyUSB[0-9]", MODE="0666"
   '';
 
   # Open ports in the firewall.

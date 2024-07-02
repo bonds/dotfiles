@@ -69,6 +69,16 @@
       Terminal=false
     '';
     
+    ".local/share/applications/usbviewer.desktop".text = ''
+      [Desktop Entry]
+      Type=Application
+      Name=USB Viewer
+      Comment=browse a tree of your USB devices
+      Path=/run/current-system/sw/bin
+      Exec=usbview
+      Terminal=false
+    '';
+    
   };
 
   # Home Manager can also manage your environment variables through

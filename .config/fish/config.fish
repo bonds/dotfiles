@@ -142,7 +142,9 @@ function ping
     if command --query ts
         command ping $argv | ts '%Y-%m-%d %H:%M'
     else
-        ping $argv
+        command ping $argv | while read pong
+            echo $(date "+%Y-%m-%d %H:%M"): $pong
+        end
     end
 end
 

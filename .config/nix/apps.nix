@@ -18,6 +18,8 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    obs-studio
+    usbview
     fastfetch # system info on cli
     gsound # for pano
     libgda6 # for pano
