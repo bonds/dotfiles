@@ -53,16 +53,18 @@ let lib = pkgs.lib; in
 
     ".config/autostart/ulauncher.desktop".text = ''
       [Desktop Entry]
+
       Type=Application
       Name=ulauncher
       Comment=An app launcher
       Path=/run/current-system/sw/bin
-      Exec=ulauncher
+      Exec=env GDK_BACKEND=x11 ulauncher
       Terminal=false
     '';
 
     ".local/share/applications/dwarf.desktop".text = ''
       [Desktop Entry]
+
       Type=Application
       Name=Dwarf Fortress
       Comment=a really great game
