@@ -19,10 +19,8 @@
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   # Bootloader.
-
-  boot.loader.grub.enable = true;
-  boot.loader.grub.device = "/dev/nvme0n1";
-  boot.loader.grub.useOSProber = true;
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
 
   networking.hostName = "metanoia"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
@@ -138,14 +136,17 @@
 
   services = {
     syncthing = {
-        enable = true;
-        user = "scott";
-        dataDir = "/home/scott/Documents";    # Default folder for new synced folders
-        configDir = "/home/scott/.config/syncthing";   # Folder for Syncthing's settings and keys
+      enable = true;
+      user = "scott";
+      dataDir = "/home/scott/Documents"; # default folder for new synced folders
+      configDir = "/home/scott/.config/syncthing";
     };
   };
 
-    # KERNEL=="ttyUSB[0-9]", ATTR{idVendor}=="0403", ATTR{idProduct}=="6015", MODE="0666"
+  # https://wrycode.com/reproducible-syncthing-deployments/
+  systemd.services.syncthing.environment.STNODEFAULTFOLDER = "true"; # Don't create default ~/Sync folder
+
+  # KERNEL=="ttyUSB[0-9]", ATTR{idVendor}=="0403", ATTR{idProduct}=="6015", MODE="0666"
   services.udev.extraRules = ''
     KERNEL=="ttyUSB[0-9]", MODE="0666"
   '';

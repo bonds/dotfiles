@@ -33,6 +33,7 @@
     # (pkgs.writeShellScriptBin "my-hello" ''
     #   echo "Hello, ${config.home.username}!"
     # '')
+    pkgs.httpie
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -99,6 +100,12 @@
   #
   home.sessionVariables = {
     # EDITOR = "emacs";
+  };
+
+  dconf.settings = {
+    "org/gnome/settings-daemon/plugins/power" = {
+       "sleep-inactive-ac-timeout" = "uint32 3000";
+    };
   };
 
   # Let Home Manager install and manage itself.
