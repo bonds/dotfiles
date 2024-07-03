@@ -1,5 +1,6 @@
 { config, pkgs, ... }:
 
+let lib = pkgs.lib; in
 {
   # Home Manager needs a bit of information about you and the paths it should
   # manage.
@@ -33,7 +34,7 @@
     # (pkgs.writeShellScriptBin "my-hello" ''
     #   echo "Hello, ${config.home.username}!"
     # '')
-    pkgs.httpie
+    # pkgs.httpie
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -69,16 +70,7 @@
       Exec=dwarf-fortress
       Terminal=false
     '';
-    
-    ".local/share/applications/usbviewer.desktop".text = ''
-      [Desktop Entry]
-      Type=Application
-      Name=USB Viewer
-      Comment=browse a tree of your USB devices
-      Path=/run/current-system/sw/bin
-      Exec=usbview
-      Terminal=false
-    '';
+   
     
   };
 
@@ -102,10 +94,121 @@
     # EDITOR = "emacs";
   };
 
-  dconf.settings = {
+  dconf.settings = let inherit (lib.gvariant) mkTuple mkUint32 mkVariant; in {
     "org/gnome/settings-daemon/plugins/power" = {
-       "sleep-inactive-ac-timeout" = "uint32 3000";
+      sleep-inactive-ac-timeout = 3600;
     };
+    "org/gnome/desktop/interface" = {
+      color-scheme = "prefer-dark";
+    };
+
+    "org/gnome/settings-daemon/plugins/color" = {
+      night-light-enabled = true;
+    };
+
+    "org/gnome/shell" = {
+      enabled-extensions = [
+        "dash-to-panel@jderose9.github.com"
+        "another-window-session-manager@gmail.com"
+        "pano@elhan.io"
+      ];
+    };
+
+    "org/gnome/shell/extensions/dash-to-panel" = {
+      dot-position = "BOTTOM";
+    };
+
+    "org/gnome/shell/extensions/dash-to-panel" = {
+      show-favorites = false;
+      isolate-monitors = true;
+      panel-positions = ''
+        {"0":"TOP","1":"TOP","2":"TOP"}
+      '';
+      panel-sizes = ''
+        {"0":36,"1":36,"2":36}
+      '';
+      panel-element-positions = ''
+        {"0":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":false,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"1":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":false,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"2":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":false,"position":"stackedBR"},{"element":"systemMenu","visible":false,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}
+      '';
+    };
+
+    "org/gnome/desktop/input-sources" = {
+      xkb-options = [
+        "terminate:ctrl_alt_bksp"
+        "ctrl:swap_lwin_lctl"
+        "ctrl:swap_rwin_rctl"
+      ];
+    };
+
+    "org/gnome/desktop/wm/preferences" = {
+      num-workspaces = 1;
+    };
+
+    "org/gnome/shell/weather" = {
+      automatic-location = true;
+      locations = [ 
+        (mkVariant (mkTuple [
+            (mkUint32 2) 
+            (mkVariant (mkTuple [
+              "Palo Alto" 
+              "KPAO" 
+              true 
+              [(mkTuple [0.6539166988983063 (-2.1313379107115065)])]
+              [(mkTuple [0.653484136496492  (-2.1317978398759916)])]
+            ])) 
+        ]))
+      ];
+    };
+
+    "org/gnome/shell/world-clocks" = {
+      locations = [ 
+        (mkVariant (mkTuple [ 
+          (mkUint32 2) 
+          (mkVariant (mkTuple [ 
+            "Tel Aviv"
+            "LLBG"
+            true 
+            [(mkTuple [0.5585053606381855 0.609119908946021 ])]
+            [(mkTuple [0.5596689192906126 0.6067928090944594])]
+            ]))
+        ]))
+      ];
+    };
+
+    "org/gnome/desktop/background" = {
+      picture-uri = "file:///home/scott/.config/background";
+    };
+
+    "org/gnome/desktop/background" = {
+      picture-option = "spanned";
+    };
+    
+    "org/gnome/desktop/background" = {
+      picture-uri-dark = "file:///home/scott/.config/background";
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys" = {
+      custom-keybindings = [
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+      ];
+    };
+
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
+      name = "Ulauncher";
+      binding = "<Control>space";
+      command = "/run/current-system/sw/bin/ulauncher-toggle";
+    };
+    
+    "org/gnome/Console" = {
+      font-scale = 1.2000000000000002;
+    };
+
+    "org/gnome/shell/keybindings" = {
+      show-screen-recording-ui = [
+        "<Shift><Control>p"
+      ];
+    };
+
   };
 
   # Let Home Manager install and manage itself.

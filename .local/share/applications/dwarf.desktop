@@ -1,8 +1,1 @@
-[Desktop Entry]
-
-Type=Application
-Name=Dwarf Fortress
-Comment=a really great game
-Path=/run/current-system/sw/bin
-Exec=dwarf-fortress
-Terminal=false
+/nix/store/xnxvypf5rzb2apbjzw869fb0m413l69m-home-manager-files/.local/share/applications/dwarf.desktop

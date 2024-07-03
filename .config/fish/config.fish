@@ -79,7 +79,6 @@ alias myip "curl --silent https://checkip.amazonaws.com"
 # alias python "python3.10"
 alias width "tput cols"
 alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGNAME -s \"openai api key\"); and command chatgpt"
-alias nr "sudo nixos-rebuild switch --flake ~/.config/nix"
 
 # OS specific aliases
 if test "$uname" = darwin
@@ -146,6 +145,10 @@ function ping
             echo $(date "+%Y-%m-%d %H:%M"): $pong
         end
     end
+end
+
+function nr
+    sudo nixos-rebuild $argv switch --flake ~/.config/nix
 end
 
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"

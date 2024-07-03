@@ -96,8 +96,9 @@
     isNormalUser = true;
     description = "Scott Bonds";
     extraGroups = [ "networkmanager" "wheel" ];
-    shell = pkgs.fish;
+    # shell = pkgs.fish;
     packages = with pkgs; [
+       home-manager
     #  thunderbird
     ];
   };
@@ -106,6 +107,7 @@
     extraSpecialArgs = { inherit inputs; };
     useGlobalPkgs = true;
     useUserPackages = true;
+    backupFileExtension = "backup";
     users = {
       "scott" = import ./home.nix;
     };
