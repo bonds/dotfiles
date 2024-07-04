@@ -57,6 +57,11 @@
           install_url = "https://addons.mozilla.org/firefox/downloads/latest/darkreader/latest.xpi";
           installation_mode = "force_installed";
         };
+        # Kagi Search:
+        "search@kagi.com" = {
+          install_url = "https://addons.mozilla.org/en-US/firefox/addon/kagi-search-for-firefox/latest.xpi";
+          installation_mode = "force_installed";
+        };
       };
     };
   };
