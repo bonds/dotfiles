@@ -72,8 +72,22 @@ let lib = pkgs.lib; in
       Exec=dwarf-fortress
       Terminal=false
     '';
-   
-    
+
+    # https://discourse.nixos.org/t/generate-and-install-ublock-config-file-with-home-manager/19209
+    # https://www.reddit.com/r/uBlockOrigin/comments/16bzb11/configuring_ublock_origin_for_nix_users_just_in/
+    ".mozilla/managed-storage/uBlock0@raymondhill.net.json".text =
+      builtins.toJSON {
+        name = "uBlock0@raymondhill.net";
+        description = "_";
+        type = "storage";
+        data = {
+          adminSettings = {
+            userFilters = ''
+              cnn.com##.header__wrapper-outer:style(height: 30px !important)
+            '';
+          };
+        };
+      }; 
   };
 
   # Home Manager can also manage your environment variables through
@@ -202,13 +216,21 @@ let lib = pkgs.lib; in
     };
     
     "org/gnome/Console" = {
-      font-scale = 1.2000000000000002;
+      font-scale = 1.3;
     };
 
     "org/gnome/shell/keybindings" = {
       show-screen-recording-ui = [
         "<Shift><Control>p"
       ];
+    };
+
+    "org/gnome/Console" = {
+      use-system-font = false;
+    };
+
+    "org/gnome/Console" = {
+      custom-font = "Liga SFMono Nerd Font 10";
     };
 
   };

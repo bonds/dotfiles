@@ -7,13 +7,18 @@
       url = "github:nix-community/home-manager/release-24.05"; 
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # SFMono w/ patches
+    sf-mono-liga-src = {
+      url = "github:shaunsingh/SFMono-Nerd-Font-Ligaturized";
+      flake = false;
+    };
   };
 
   outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, ... } @inputs: let
       inherit (self) outputs; system = "x86_64-linux"; pkgs = 
       nixpkgs.legacyPackages.${system};
     in {
-      overlays = import ./overlays {inherit inputs;}; 
+      overlays = import ./overlays {inherit pkgs; inherit inputs;}; 
       nixosConfigurations.metanoia = nixpkgs.lib.nixosSystem {
         specialArgs = {inherit inputs outputs;}; modules = [
           ./configuration.nix

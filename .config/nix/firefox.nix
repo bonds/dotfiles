@@ -7,6 +7,19 @@
   ...
 }:
 
+let
+
+  lock-false = {
+    Value = false;
+    Status = "locked";
+  };
+  lock-true = {
+    Value = true;
+    Status = "locked";
+  };
+
+in
+
 {
   programs.firefox = {
     enable = true;
@@ -31,6 +44,12 @@
       DisplayBookmarksToolbar = "never"; # alternatives: "always" or "newtab"
       DisplayMenuBar = "default-off"; # alternatives: "always", "never" or "default-on"
       SearchBar = "unified"; # alternative: "separate"
+
+      # check about:config for options
+      Preferences = {
+        "browser.emi.ui.enable" = lock-false;
+        "media.eme.enabled" = lock-false;
+      };
 
       /* ---- EXTENSIONS ---- */
       # Check about:support for extension/add-on ID strings.

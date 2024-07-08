@@ -6,7 +6,8 @@
 
 {
   imports =
-    [ # Include the results of the hardware scan.
+    [ 
+      # Include the results of the hardware scan.
       ./hardware.nix
       ./monitors.nix
       ./wake.nix
@@ -14,6 +15,39 @@
       ./firefox.nix
       inputs.home-manager.nixosModules.default
     ];
+
+  nixpkgs.overlays = [
+
+    # https://github.com/shaunsingh/SFMono-Nerd-Font-Ligaturized
+    (final: prev: {
+      sf-mono-liga-bin = prev.stdenvNoCC.mkDerivation rec {
+        pname = "sf-mono-liga-bin";
+        version = "dev";
+        src = inputs.sf-mono-liga-src;
+        dontConfigure = true;
+        installPhase = ''
+          mkdir -p $out/share/fonts/opentype
+          cp -R $src/*.otf $out/share/fonts/opentype/
+        '';
+      };
+    }) 
+
+    # https://wiki.nixos.org/wiki/GNOME
+    # (final: prev: {
+    #   gnome = prev.gnome.overrideScope (gnomeFinal: gnomePrev: {
+    #     mutter = gnomePrev.mutter.overrideAttrs (old: {
+    #       src = pkgs.fetchFromGitLab  {
+    #         domain = "gitlab.gnome.org";
+    #         owner = "vanvugt";
+    #         repo = "mutter";
+    #         rev = "triple-buffering-v4-46";
+    #         hash = "sha256-fkPjB/5DPBX06t7yj0Rb3UEuu5b9mu3aS+jhH18+lpI=";
+    #       };
+    #     });
+    #   });
+    # })
+
+  ];
 
   # Enable the Flakes feature and the accompanying new nix command-line tool
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
@@ -152,6 +186,10 @@
   services.udev.extraRules = ''
     KERNEL=="ttyUSB[0-9]", MODE="0666"
   '';
+
+  fonts.packages = with pkgs; [
+    sf-mono-liga-bin
+  ];
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
