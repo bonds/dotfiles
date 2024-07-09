@@ -1,3 +1,6 @@
+# the \b remove an extra space that shows up with the nix unicode logo
+format = "$all\b"
+
 [directory]
 fish_style_pwd_dir_length = 1
 
@@ -9,6 +12,7 @@ disabled = false
 
 [os.symbols]
 Macos = " "
+NixOS = "❄️ "
 
 [status]
 disabled = false
