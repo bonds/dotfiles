@@ -33,24 +33,28 @@
     }) 
 
     # https://wiki.nixos.org/wiki/GNOME
-    # (final: prev: {
-    #   gnome = prev.gnome.overrideScope (gnomeFinal: gnomePrev: {
-    #     mutter = gnomePrev.mutter.overrideAttrs (old: {
-    #       src = pkgs.fetchFromGitLab  {
-    #         domain = "gitlab.gnome.org";
-    #         owner = "vanvugt";
-    #         repo = "mutter";
-    #         rev = "triple-buffering-v4-46";
-    #         hash = "sha256-fkPjB/5DPBX06t7yj0Rb3UEuu5b9mu3aS+jhH18+lpI=";
-    #       };
-    #     });
-    #   });
-    # })
+    (final: prev: {
+      gnome = prev.gnome.overrideScope (gnomeFinal: gnomePrev: {
+        mutter = gnomePrev.mutter.overrideAttrs (old: {
+          src = pkgs.fetchFromGitLab  {
+            domain = "gitlab.gnome.org";
+            owner = "vanvugt";
+            repo = "mutter";
+            rev = "triple-buffering-v4-46";
+            hash = "sha256-nz1Enw1NjxLEF3JUG0qknJgf4328W/VvdMjJmoOEMYs=";
+            # hash = "sha256-fkPjB/5DPBX06t7yj0Rb3UEuu5b9mu3aS+jhH18+lpI=";
+          };
+        });
+      });
+    })
 
   ];
 
   # Enable the Flakes feature and the accompanying new nix command-line tool
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+  # https://git.2li.ch/Nebucatnetzer/nixos/commit/36d3953121d968191cd5d83cab201af70e6c864b  
+  nix.settings.warn-dirty = false;
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -160,6 +164,17 @@
   # };
   programs.fish.enable = true;
   programs.tmux.enable = true;
+
+  # https://nixos.wiki/wiki/Fish
+  programs.bash = {
+    interactiveShellInit = ''
+      if [[ $(${pkgs.procps}/bin/ps --no-header --pid=$PPID --format=comm) != "fish" && -z ''${BASH_EXECUTION_STRING} ]]
+      then
+        shopt -q login_shell && LOGIN_OPTION='--login' || LOGIN_OPTION=""
+        exec ${pkgs.fish}/bin/fish $LOGIN_OPTION
+      fi
+    '';
+  };
 
   # List services that you want to enable:
 
