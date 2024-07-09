@@ -151,5 +151,9 @@ function nr
     sudo nixos-rebuild $argv switch --flake ~/.config/nix
 end
 
+function hr
+    home-manager $argv switch --flake ~/.config/nix
+end
+
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"
 set fzf_fd_opts --hidden --exclude=.git

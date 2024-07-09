@@ -1,32 +1,10 @@
-{
-  inputs,
-  outputs,
-  lib,
-  config,
-  pkgs,
-  ...
-}:
+#!/bin/sh
 
-{
-  systemd.services.wakeusb = {
-    serviceConfig = {
-      Description = "Reset USB devices on wake from sleep";
-      # Type = "";
-      # User = "root";
-      ExecStartPre = "/run/current-system/sw/bin/sleep 5";
-      ExecStart = "/run/current-system/sw/bin/sh -c '/run/current-system/sw/bin/rmmod xhci_pci; /run/current-system/sw/bin/modprobe xhci_pci'";
-    };
-    after = [
-      "suspend.target"
-      "hibernate.target"
-      "hybrid-sleep.target"
-      "suspend-then-hibernate.target"
-    ];
-    wantedBy = [
-      "suspend.target"
-      "hibernate.target"
-      "hybrid-sleep.target"
-      "suspend-then-hibernate.target"
-    ];
-  };
-}
+# ref: https://askubuntu.com/a/30157/8698
+if ! [ $(id -u) = 0 ]; then
+   echo "The script need to be run as root." >&2
+   exit 1
+fi
+
+rmmod ehci_pci && modprobe ehci_pci
+rmmod xhci_pci && modprobe xhci_pci
