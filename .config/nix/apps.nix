@@ -15,6 +15,7 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    zed-editor
     gnome.dconf-editor
     dconf2nix
     obs-studio
