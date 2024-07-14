@@ -1,0 +1,25 @@
+# the \b remove an extra space that shows up with the nix unicode logo
+format = "$all"
+
+[os.symbols]
+Macos = " "
+
+[directory]
+fish_style_pwd_dir_length = 1
+
+[nix_shell]
+disabled = true
+
+[os]
+disabled = false
+
+[status]
+disabled = false
+symbol = "🆇 "
+success_symbol = ""
+
+[time]
+disabled = false
+
+[python]
+disabled = true

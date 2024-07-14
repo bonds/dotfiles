@@ -37,8 +37,9 @@ set -x DOCKER_HOST ssh://root@172.16.0.100
 if status --is-interactive
     #    devbox global shellenv --init-hook | source
     if command --query starship
-        if locale 2>&1 | grep -q UTF-8
-            set -x STARSHIP_CONFIG ~/.config/starship/unicode.toml
+        set ssc "$HOME/.config/starship/$uname.toml"
+        if locale 2>&1 | grep -q UTF-8; and test -e "$ssc"
+            set -x STARSHIP_CONFIG $ssc
         else
             set -x STARSHIP_CONFIG ~/.config/starship/plain.toml
         end
