@@ -75,10 +75,13 @@
       "version":            "latest",
       "excluded_platforms": ["aarch64-darwin"]
     },
-    "netcat": "latest",
-    "getent": "latest",
-    "rustc":  "latest",
-    "gmp":    "latest"
+    "netcat":    "latest",
+    "getent":    "latest",
+    "rustc":     "latest",
+    "gmp":       "latest",
+    "fastfetch": "latest",
+    "pdftk":     "latest",
+    "qpdf":      "latest"
   },
   "shell": {
     "init_hook": [

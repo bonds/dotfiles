@@ -13,6 +13,7 @@
       ./wake.nix
       ./apps.nix
       ./firefox.nix
+      # ./vu1.nix
       inputs.home-manager.nixosModules.default
     ];
 
@@ -181,7 +182,10 @@
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
 
+  # Enable the fingerprint scanner
   services.fprintd.enable = true;
+
+  # Enable host.local name resolution
   services.avahi.enable = true;
   services.avahi.nssmdns4 = true;
 
@@ -197,6 +201,7 @@
   # https://wrycode.com/reproducible-syncthing-deployments/
   systemd.services.syncthing.environment.STNODEFAULTFOLDER = "true"; # Don't create default ~/Sync folder
 
+  # for the VU1s and the supporting server
   # KERNEL=="ttyUSB[0-9]", ATTR{idVendor}=="0403", ATTR{idProduct}=="6015", MODE="0666"
   services.udev.extraRules = ''
     KERNEL=="ttyUSB[0-9]", MODE="0666"
@@ -221,4 +226,3 @@
   system.stateVersion = "24.05"; # Did you read the comment?
 
 }
-
