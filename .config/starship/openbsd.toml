@@ -1,9 +1,3 @@
-# the \b remove an extra space that shows up with the nix unicode logo
-format = "$all\b"
-
-[os.symbols]
-NixOS = "❄️ "
-
 [directory]
 fish_style_pwd_dir_length = 1
 
@@ -12,6 +6,7 @@ disabled = true
 
 [os]
 disabled = false
+
 [status]
 disabled = false
 symbol = "🆇 "
