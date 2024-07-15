@@ -81,7 +81,10 @@
     "gmp":       "latest",
     "fastfetch": "latest",
     "pdftk":     "latest",
-    "qpdf":      "latest"
+    "qpdf":      "latest",
+    "xh":        "latest",
+    "htmltidy":  "latest",
+    "socat":     "latest"
   },
   "shell": {
     "init_hook": [
