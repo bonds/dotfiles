@@ -70,7 +70,6 @@ if not functions --query fisher
 end
 
 # aliases for convenience
-alias ssh "ssh -F ~/.config/ssh/config"
 alias crawl "crawl -rc ~/.config/crawl/init.txt"
 alias day "date '+%Y%m%d'"
 alias ghci "ghci -ghci-script ~/.config/ghc/ghci.rio.conf -ghci-script ~/.config/ghc/ghci.conf"
@@ -101,6 +100,17 @@ else if command --query vim
     set -x EDITOR vim
 else
     set -x EDITOR vi
+end
+
+function ssh
+    if test $argv[1] = metanoia;
+        and not nc -zv -w 1 metanoia ssh >/dev/null 2>&1
+        echo metanoia is not responding
+        echo trying to wake it before sshing in...ETA 30 seconds
+        wol "a8:a1:59:36:7d:d4"
+        sleep 30
+    end
+    command ssh -F ~/.config/ssh/config $argv
 end
 
 function ls
