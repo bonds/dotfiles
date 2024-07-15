@@ -137,7 +137,7 @@
     extraGroups = [ "networkmanager" "wheel" ];
     # shell = pkgs.fish;
     packages = with pkgs; [
-       home-manager
+      home-manager
     #  thunderbird
     ];
   };
@@ -165,6 +165,7 @@
   # };
   programs.fish.enable = true;
   programs.tmux.enable = true;
+  programs.geary.enable = true;
 
   # https://nixos.wiki/wiki/Fish
   programs.bash = {

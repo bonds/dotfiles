@@ -35,6 +35,7 @@ let lib = pkgs.lib; in
     #   echo "Hello, ${config.home.username}!"
     # '')
     # pkgs.httpie
+    pkgs.gnome.gnome-themes-extra
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
@@ -127,6 +128,8 @@ let lib = pkgs.lib; in
         "dash-to-panel@jderose9.github.com"
         "another-window-session-manager@gmail.com"
         "pano@elhan.io"
+        "blur-my-shell@aunetx"
+        "espresso@coadmunkee.github.com"
       ];
     };
 
@@ -136,6 +139,7 @@ let lib = pkgs.lib; in
 
     "org/gnome/shell/extensions/dash-to-panel" = {
       show-favorites = false;
+      hide-overview-on-startup = false;
       isolate-monitors = true;
       panel-positions = ''
         {"0":"TOP","1":"TOP","2":"TOP"}
@@ -143,6 +147,7 @@ let lib = pkgs.lib; in
       panel-sizes = ''
         {"0":36,"1":36,"2":36}
       '';
+      status-icon-padding = 2;
       panel-element-positions = ''
         {"0":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":false,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"1":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":false,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"2":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":false,"position":"stackedBR"},{"element":"systemMenu","visible":false,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}
       '';
@@ -231,6 +236,10 @@ let lib = pkgs.lib; in
 
     "org/gnome/Console" = {
       custom-font = "Liga SFMono Nerd Font 10";
+    };
+
+    "org/gnome/desktop/interface" = {
+      gtk-theme = "Adwaita-dark";
     };
 
   };
