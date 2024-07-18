@@ -105,10 +105,12 @@ end
 function ssh
     if test $argv[1] = metanoia;
         and not nc -zv -w 1 metanoia ssh >/dev/null 2>&1
-        echo metanoia is not responding
-        echo trying to wake it before sshing in...ETA 30 seconds
+        echo -n trying to wake metanoia before SSHing in
         wol "a8:a1:59:36:7d:d4"
-        sleep 30
+        while not nc -zv -w 1 metanoia ssh >/dev/null 2>&1
+            echo -n .
+            sleep 1
+        end
     end
     command ssh -F ~/.config/ssh/config $argv
 end
