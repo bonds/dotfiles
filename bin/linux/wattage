@@ -13,7 +13,7 @@ done
 
 HOST=$(arp -a | grep -i "24:2F:D0:26:02:C9" | sed 's/\? (\(.*\)).*/\1/g')
 if test -z "$verbose"; then
-  kasa --host $HOST emeter | grep Power | awk '{print $2}'
+  kasa --host $HOST emeter | grep Power | awk '{printf "%.f\n", $2}'
 else
   kasa --host $HOST emeter
 fi
