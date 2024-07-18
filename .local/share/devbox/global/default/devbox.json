@@ -84,7 +84,8 @@
     "qpdf":      "latest",
     "xh":        "latest",
     "htmltidy":  "latest",
-    "socat":     "latest"
+    "socat":     "latest",
+    "nms":       "latest"
   },
   "shell": {
     "init_hook": [
