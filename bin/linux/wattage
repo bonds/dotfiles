@@ -11,7 +11,12 @@ while true; do
   esac
 done
 
-HOST=$(arp -a | grep -i "24:2F:D0:26:02:C9" | sed 's/\? (\(.*\)).*/\1/g')
+# HOST=$(arp -a | grep -i "24:2F:D0:26:02:C9" | sed 's/\? (\(.*\)).*/\1/g')
+# the outlet doesn't always respond to ARP so I'm just going to give it an
+# IP reservation so it gets the same IP from DHCP every time
+
+HOST="10.0.0.75"
+
 if test -z "$verbose"; then
   kasa --host $HOST emeter | grep Power | awk '{printf "%.f\n", $2}'
 else

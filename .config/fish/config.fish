@@ -1,5 +1,14 @@
 # Commands to run in interactive sessions can go here
 
+# if test -n "$SSH_CONNECTION"
+#     set from (echo $SSH_CONNECTION | awk '{print $1}')
+#     set to (echo $SSH_CONNECTION | awk '{print $3}')
+#     gnome-session-inhibit \
+#         --app-id scott@ggr.com \
+#         --reason "is SSHed into $hostname ($to) from $from" \
+#         --inhibit-only &
+# end
+
 if command --query /run/current-system/sw/bin/uname
     set uname (/run/current-system/sw/bin/uname)
 else
