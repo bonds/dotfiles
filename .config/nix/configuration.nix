@@ -13,6 +13,7 @@
       ./wake.nix
       ./apps.nix
       ./firefox.nix
+      ./python.nix
       # ./vu1.nix
       inputs.home-manager.nixosModules.default
     ];
