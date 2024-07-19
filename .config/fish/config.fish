@@ -178,5 +178,9 @@ function hr
     home-manager $argv switch --flake ~/.config/nix
 end
 
+function ssht
+    ssh $argv -o RequestTTY=yes "sh -c 'if which tmux >/dev/null; then tmux -u -T RGB new -A -s remote \";\" set -g default-terminal \"tmux-256color\" \";\" set -sg escape-time 0; else \$SHELL; fi'"
+end
+
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"
 set fzf_fd_opts --hidden --exclude=.git

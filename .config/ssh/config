@@ -5,45 +5,33 @@ UserKnownHostsFile ~/.local/ssh/known_hosts
 Include ~/.colima/ssh_config
 
 # use TouchID SSH keys via Secretive when I'm on my laptop
-Match exec "test -z '$SSH_CONNECTION'"
+Match exec "test -e /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh"
 
     IdentityAgent /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh
 
+# let me reconnect without asking me to reauthenticate again for a while
 Host * 
-
-    # let me reconnect without asking me to TouchID again for a while
     ControlMaster auto
     ControlPath ~/.local/ssh/%r@%h:%p.control
     ControlPersist 2h
     ServerAliveInterval 10s
 
-# create or attach and use a tmux session on interactive connections
-# assume that a ssh line with more than the command and host is not interactive
-# see https://unix.stackexchange.com/questions/451253/how-to-configure-ssh-with-a-remotecommand-only-for-interactive-sessions-i-e-wi
-# keep in mind this is run locally, using the user's shell, in my case /usr/local/bin/fish
-
-Host !172.16.* * Match exec "/bin/sh -c 'pstree -p $PPID | grep ssh | ~/bin/is_ssh_interactive'"
-    RequestTTY yes
-    RemoteCommand sh -c 'if which tmux 2>/dev/null; then tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0; else $SHELL; fi'
-
 # always use the long name for home servers so ssh realizes the short and long
 # names are the same host
-
 Match !exec "echo %h | grep \."
     Hostname %h.ggr.com
 
 # use a bastian host to get to home servers when away from home
-
 Host !home.ggr.com *.ggr.com Match !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
     ProxyJump home.ggr.com
 
 # forward SSH agent to hosts where I'm supposedly the only root user
-
 Host *.ggr.com *.local
     ForwardAgent yes
 
 Host 172.16.0.*
     User root
 
-Host util.local util
+# forward syncthing web ui ports so I can manage them locally
+Host util.local util metanoia
     LocalForward 8385 127.0.0.1:8384
