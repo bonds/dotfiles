@@ -3,7 +3,7 @@ add_newline = true
 
 # Use custom format
 format = """
-[╭─](white)$username$hostname in $directory$package$java$python$git_branch$battery$cmd_duration$fill$time
+[╭─](white)$username$hostname in $directory$package$git_branch$battery$cmd_duration$fill$time
 [╰─](white)$character """
 
 # Wait 10 milliseconds for starship to check files under the current directory.
@@ -25,7 +25,7 @@ disabled = false
 [hostname]
 ssh_only = false
 format =  "on [$hostname](bold red)"
-trim_at = ".companyname.com"
+trim_at = ".local"
 disabled = false
 
 # Directory indicator
@@ -40,19 +40,6 @@ disabled = false
 # Package Version Config
 [package]
 format = "via [🎁 $version](208 bold) "
-
-# Java settings
-[java]
-symbol = "☕ "
-style = "red dimmed"
-format = "via [${symbol}${version}]($style) "
-
-# Python settings
-[python]
-symbol = "🐍 "
-style = "yellow bold"
-python_binary = "python3"
-pyenv_version_name = true
 
 # git settings
 [git_branch]
@@ -89,3 +76,6 @@ disabled = false
 format = "[at $time]($style)"
 style = "bold fg:#333333"
 time_format = "%F %T"
+
+[os.symbols]
+Macos = " "

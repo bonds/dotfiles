@@ -1,8 +1,8 @@
 #!/bin/sh
-
 read input                                            # get input string via pipe, e.g. /bin/ssh -4 fw1.ggr.com ls
-#command=$(echo $input | cut -d " " -f 1)              # extract the name of the command
-command=$(echo $input | cut -d " " -f4-)              # extract the name of the command
+# command=$(echo $input | cut -d " " -f 1)              # extract the name of the command
+command=$input
+# command=$(echo $input | cut -d " " -f4-)              # extract the name of the command
 mkdir -p ~/.local/ssh && echo "$(date) $command" >> ~/.local/ssh/ssh.log
 
 if echo "$command" | grep ssh >/dev/null; then
