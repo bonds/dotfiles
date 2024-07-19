@@ -89,6 +89,8 @@ alias myip "curl --silent https://checkip.amazonaws.com"
 alias width "tput cols"
 alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGNAME -s \"openai api key\"); and command chatgpt"
 alias nix-shell "command nix-shell --command fish"
+alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
+alias ssht "ssh -o RemoteCommand=none"
 
 # OS specific aliases
 if test "$uname" = darwin
@@ -176,10 +178,6 @@ end
 
 function hr
     home-manager $argv switch --flake ~/.config/nix
-end
-
-function ssht
-    ssh $argv -o RequestTTY=yes "sh -c 'if which tmux >/dev/null; then tmux -u -T RGB new -A -s remote \";\" set -g default-terminal \"tmux-256color\" \";\" set -sg escape-time 0; else \$SHELL; fi'"
 end
 
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"

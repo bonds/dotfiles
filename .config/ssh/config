@@ -35,3 +35,12 @@ Host 172.16.0.*
 # forward syncthing web ui ports so I can manage them locally
 Host util.local util metanoia
     LocalForward 8385 127.0.0.1:8384
+
+# create or attach and use a tmux session on interactive connections
+# assume that a ssh line with more than the command and host is not interactive
+# see https://unix.stackexchange.com/questions/451253/how-to-configure-ssh-with-a-remotecommand-only-for-interactive-sessions-i-e-wi
+# keep in mind this is run locally, using the user's shell, in my case /usr/local/bin/fish
+
+Host metanoia
+    RequestTTY yes
+    RemoteCommand sh -c 'if which tmux 2>/dev/null; then tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0; else $SHELL; fi'
