@@ -43,6 +43,9 @@ set -x NIX_REMOTE daemon
 # docker cli on util.local needs this
 set -x DOCKER_HOST ssh://root@172.16.0.100
 
+# my favorite date format
+set -x DATEFMT "+%F %T"
+
 if status --is-interactive
     #    devbox global shellenv --init-hook | source
     if command --query starship

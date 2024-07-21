@@ -131,6 +131,8 @@
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
 
+  services.ollama.enable = true;
+
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.scott = {
     isNormalUser = true;
@@ -187,7 +189,8 @@
           to=$(echo $SSH_CONNECTION | awk '{print $3}')
           exec gnome-session-inhibit \
               --app-id $USER@ggr.com \
-              --reason "SSHed into $(hostname) from $from at $(date)" \
+              --inhibit suspend \
+              --reason "SSHed into $(hostname) from $from at $(date '+%F %T')" \
               ${pkgs.fish}/bin/fish 
         fi
 
@@ -198,7 +201,13 @@
   # List services that you want to enable:
 
   # Enable the OpenSSH daemon.
-  services.openssh.enable = true;
+  services.openssh = {
+    enable = true;
+    # settings = {
+    #   ClientAliveInterval = 60;
+    #   ClientAliveCountMax = 3;
+    # };
+  };
 
   # Enable the fingerprint scanner
   services.fprintd.enable = true;

@@ -242,6 +242,12 @@ let lib = pkgs.lib; in
       gtk-theme = "Adwaita-dark";
     };
 
+    "org/gnome/shell/extensions/another-window-session-manager" = {
+      enable-autorestore-sessions = true;
+      restore-at-startup-without-asking = true;
+      autorestore-sessions = "defaultSession";
+    };
+
   };
 
   # Let Home Manager install and manage itself.
