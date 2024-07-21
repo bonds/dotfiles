@@ -1,8 +1,163 @@
 {
     "session_name": "defaultSession",
-    "session_create_time": "7/20/2024, 7:27:16 PM",
+    "session_create_time": "7/20/2024, 7:35:39 PM",
     "active_workspace_index": 0,
     "x_session_config_objects": [
+        {
+            "window_id": 542668813,
+            "desktop_number": 0,
+            "pid": 15281,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 2160,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "nlpsuge/gnome-shell-extension-another-window-session-manager: A Gnome shell extension to close open windows gracefully and save them as a session. The previous session can be restored at startup. Most importantly, it supports both X11 and Wayland! — Mozilla Firefox",
+            "app_name": "Firefox",
+            "wm_class": "firefox",
+            "wm_class_instance": "firefox",
+            "cmd": [
+                "/nix/store/i89v122qbybnvni160fxs2y5wda2yb29-firefox-126.0.1/bin/.firefox-wrapped",
+                "--name",
+                "firefox"
+            ],
+            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 3,
+            "cpu_percent": "1.7",
+            "memory_percent": "2.0",
+            "desktop_file_id": "firefox.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
+            "monitor_number": 2,
+            "is_on_primary_monitor": true,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 542668809,
+            "desktop_number": 0,
+            "pid": 15281,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 4320,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "Monday, August 19th, 2024 - Proton Calendar — Mozilla Firefox",
+            "app_name": "Firefox",
+            "wm_class": "firefox",
+            "wm_class_instance": "firefox",
+            "cmd": [
+                "/nix/store/i89v122qbybnvni160fxs2y5wda2yb29-firefox-126.0.1/bin/.firefox-wrapped",
+                "--name",
+                "firefox"
+            ],
+            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 3,
+            "cpu_percent": "1.7",
+            "memory_percent": "2.0",
+            "desktop_file_id": "firefox.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
+            "monitor_number": 0,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 542668814,
+            "desktop_number": 0,
+            "pid": 15281,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 0,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "gnome reload apps cache - Kagi Search — Mozilla Firefox",
+            "app_name": "Firefox",
+            "wm_class": "firefox",
+            "wm_class_instance": "firefox",
+            "cmd": [
+                "/nix/store/i89v122qbybnvni160fxs2y5wda2yb29-firefox-126.0.1/bin/.firefox-wrapped",
+                "--name",
+                "firefox"
+            ],
+            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 3,
+            "cpu_percent": "1.7",
+            "memory_percent": "2.0",
+            "desktop_file_id": "firefox.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
+            "monitor_number": 1,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 542668808,
+            "desktop_number": 0,
+            "pid": 15275,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 0,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "Inbox — scott.bonds@galacticsyn.com",
+            "app_name": "Geary",
+            "wm_class": "geary",
+            "wm_class_instance": "geary",
+            "cmd": [
+                "/nix/store/cpar2qrjn7hzimdsry2svladhhjg0iyb-geary-46.0/bin/geary",
+                "--gapplication-service"
+            ],
+            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 1,
+            "cpu_percent": "0.0",
+            "memory_percent": "0.8",
+            "desktop_file_id": "org.gnome.Geary.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Geary.desktop",
+            "monitor_number": 1,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
         {
             "window_id": 542668824,
             "desktop_number": 0,
@@ -54,7 +209,7 @@
                 "height": 1170
             },
             "client_machine_name": "metanoia",
-            "window_title": "e ~/.config/nix/home ~",
+            "window_title": "~",
             "app_name": "Console",
             "wm_class": "org.gnome.Console",
             "wm_class_instance": "org.gnome.Console",
@@ -118,162 +273,6 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 542668829,
-            "desktop_number": 0,
-            "pid": 24781,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 2240,
-                "y_offset": 1156,
-                "width": 2000,
-                "height": 1600
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "Another Window Session Manager",
-            "app_name": "Extensions",
-            "wm_class": "org.gnome.Shell.Extensions",
-            "wm_class_instance": "org.gnome.Shell.Extensions",
-            "cmd": [
-                "/nix/store/dnf21h8am635r2hkpr7c987hda3z6nqr-gjs-1.80.2/bin/gjs",
-                "-m",
-                "/nix/store/spmsmq7zqjsr2xarf46xvscbp16ciy9x-gnome-shell-46.2/share/gnome-shell/.org.gnome.Shell.Extensions-wrapped"
-            ],
-            "process_create_time": "Sat Jul 20 19:19:07 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 0
-            },
-            "windows_count": 1,
-            "cpu_percent": "0.2",
-            "memory_percent": "0.5",
-            "desktop_file_id": "org.gnome.Shell.Extensions.desktop",
-            "desktop_file_id_full_path": "/nix/store/spmsmq7zqjsr2xarf46xvscbp16ciy9x-gnome-shell-46.2/share/applications/org.gnome.Shell.Extensions.desktop",
-            "monitor_number": 2,
-            "is_on_primary_monitor": true,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 542668813,
-            "desktop_number": 0,
-            "pid": 15281,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 2160,
-                "y_offset": 72,
-                "width": 2160,
-                "height": 3768
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "nlpsuge/gnome-shell-extension-another-window-session-manager: A Gnome shell extension to close open windows gracefully and save them as a session. The previous session can be restored at startup. Most importantly, it supports both X11 and Wayland! — Mozilla Firefox",
-            "app_name": "Firefox",
-            "wm_class": "firefox",
-            "wm_class_instance": "firefox",
-            "cmd": [
-                "/nix/store/i89v122qbybnvni160fxs2y5wda2yb29-firefox-126.0.1/bin/.firefox-wrapped",
-                "--name",
-                "firefox"
-            ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 3
-            },
-            "windows_count": 3,
-            "cpu_percent": "1.7",
-            "memory_percent": "2.0",
-            "desktop_file_id": "firefox.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
-            "monitor_number": 2,
-            "is_on_primary_monitor": true,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 542668809,
-            "desktop_number": 0,
-            "pid": 15281,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 2160,
-                "y_offset": 72,
-                "width": 2160,
-                "height": 3768
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "Monday, August 19th, 2024 - Proton Calendar — Mozilla Firefox",
-            "app_name": "Firefox",
-            "wm_class": "firefox",
-            "wm_class_instance": "firefox",
-            "cmd": [
-                "/nix/store/i89v122qbybnvni160fxs2y5wda2yb29-firefox-126.0.1/bin/.firefox-wrapped",
-                "--name",
-                "firefox"
-            ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 3
-            },
-            "windows_count": 3,
-            "cpu_percent": "1.7",
-            "memory_percent": "2.0",
-            "desktop_file_id": "firefox.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
-            "monitor_number": 2,
-            "is_on_primary_monitor": true,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 542668814,
-            "desktop_number": 0,
-            "pid": 15281,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 0,
-                "y_offset": 72,
-                "width": 2160,
-                "height": 3768
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "gnome reload apps cache - Kagi Search — Mozilla Firefox",
-            "app_name": "Firefox",
-            "wm_class": "firefox",
-            "wm_class_instance": "firefox",
-            "cmd": [
-                "/nix/store/i89v122qbybnvni160fxs2y5wda2yb29-firefox-126.0.1/bin/.firefox-wrapped",
-                "--name",
-                "firefox"
-            ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 3
-            },
-            "windows_count": 3,
-            "cpu_percent": "1.7",
-            "memory_percent": "2.0",
-            "desktop_file_id": "firefox.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
-            "monitor_number": 1,
-            "is_on_primary_monitor": false,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
             "window_id": 542668807,
             "desktop_number": 0,
             "pid": 15290,
@@ -312,25 +311,25 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 542668808,
+            "window_id": 542668811,
             "desktop_number": 0,
-            "pid": 15275,
+            "pid": 15277,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
-                "x_offset": 2160,
+                "x_offset": 0,
                 "y_offset": 72,
                 "width": 2160,
                 "height": 3768
             },
             "client_machine_name": "metanoia",
-            "window_title": "Inbox — scott.bonds@galacticsyn.com",
-            "app_name": "Geary",
-            "wm_class": "geary",
-            "wm_class_instance": "geary",
+            "window_title": "Signal",
+            "app_name": "Signal",
+            "wm_class": "Signal",
+            "wm_class_instance": "signal",
             "cmd": [
-                "/nix/store/cpar2qrjn7hzimdsry2svladhhjg0iyb-geary-46.0/bin/geary",
-                "--gapplication-service"
+                "/nix/store/0i96axymwkx6gk2qxp55g45j1ffi22h6-signal-desktop-7.11.1/lib/Signal/signal-desktop",
+                "--no-sandbox"
             ],
             "process_create_time": "Sat Jul 20 14:31:08 2024",
             "window_state": {
@@ -340,11 +339,11 @@
             },
             "windows_count": 1,
             "cpu_percent": "0.0",
-            "memory_percent": "0.8",
-            "desktop_file_id": "org.gnome.Geary.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Geary.desktop",
-            "monitor_number": 2,
-            "is_on_primary_monitor": true,
+            "memory_percent": "0.7",
+            "desktop_file_id": "signal-desktop.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/signal-desktop.desktop",
+            "monitor_number": 1,
+            "is_on_primary_monitor": false,
             "fullscreen": false,
             "minimized": false,
             "compositor_type": "Wayland"
@@ -381,44 +380,6 @@
             "memory_percent": "0.6",
             "desktop_file_id": "slack.desktop",
             "desktop_file_id_full_path": "/run/current-system/sw/share/applications/slack.desktop",
-            "monitor_number": 1,
-            "is_on_primary_monitor": false,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 542668811,
-            "desktop_number": 0,
-            "pid": 15277,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 0,
-                "y_offset": 72,
-                "width": 2160,
-                "height": 3768
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "Signal",
-            "app_name": "Signal",
-            "wm_class": "Signal",
-            "wm_class_instance": "signal",
-            "cmd": [
-                "/nix/store/0i96axymwkx6gk2qxp55g45j1ffi22h6-signal-desktop-7.11.1/lib/Signal/signal-desktop",
-                "--no-sandbox"
-            ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 3
-            },
-            "windows_count": 1,
-            "cpu_percent": "0.0",
-            "memory_percent": "0.7",
-            "desktop_file_id": "signal-desktop.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/signal-desktop.desktop",
             "monitor_number": 1,
             "is_on_primary_monitor": false,
             "fullscreen": false,
