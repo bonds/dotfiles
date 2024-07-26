@@ -5,18 +5,22 @@
 { pkgs, lib, inputs, ... }:
 
 {
-  imports =
-    [ 
-      # Include the results of the hardware scan.
-      ./hardware.nix
-      ./monitors.nix
-      ./wake.nix
-      ./apps.nix
-      ./firefox.nix
-      ./python.nix
-      # ./vu1.nix
-      inputs.home-manager.nixosModules.default
-    ];
+
+  # disabledModules = [
+  #   "services/misc/ollama.nix"
+  # ];
+
+  imports = [ 
+    ./hardware.nix # Include the results of the hardware scan.
+    ./monitors.nix
+    ./wake.nix
+    ./apps.nix
+    ./firefox.nix
+    ./python.nix
+    # ./vu1.nix
+    inputs.home-manager.nixosModules.default
+    # "${inputs.nixpkgs-unstable}/nixos/modules/services/misc/ollama.nix"
+  ];
 
   nixpkgs.overlays = [
 
@@ -198,6 +202,12 @@
     '';
   };
 
+  # https://discourse.nixos.org/t/how-can-i-resolve-this-libwayland-client-glfw-wayland-error/33824
+  # https://nixos.wiki/wiki/Environment_variables
+  environment.sessionVariables = rec {
+    LD_LIBRARY_PATH = "${pkgs.wayland}/lib:$LD_LIBRARY_PATH";
+  };
+
   # List services that you want to enable:
 
   # Enable the OpenSSH daemon.
@@ -212,9 +222,16 @@
   # Enable the fingerprint scanner
   services.fprintd.enable = true;
 
-  # Enable host.local name resolution
-  services.avahi.enable = true;
-  services.avahi.nssmdns4 = true;
+  # Enable <host>.local name resolution
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    publish = {
+      enable = true;
+      addresses = true;
+      workstation = true;
+    };
+  };
 
   services = {
     syncthing = {

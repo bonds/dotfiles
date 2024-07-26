@@ -13,7 +13,7 @@
       Description = "Reset USB devices on wake from sleep";
       # Type = "";
       # User = "root";
-      ExecStartPre = "/run/current-system/sw/bin/sleep 10";
+      ExecStartPre = "/run/current-system/sw/bin/sleep 2";
       ExecStart = "/run/current-system/sw/bin/sh -c '/run/current-system/sw/bin/rmmod xhci_pci; /run/current-system/sw/bin/modprobe xhci_pci'";
     };
     after = [

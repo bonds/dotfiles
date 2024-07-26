@@ -15,6 +15,7 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    cpu-x
     bsd-finger
     weather
     foliate # ebook reader
