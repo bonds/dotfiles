@@ -56,6 +56,8 @@
 
   ];
 
+  age.secrets.vu1.file = ../secrets/vu1.age;
+
   # Enable the Flakes feature and the accompanying new nix command-line tool
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
@@ -256,20 +258,64 @@
     sf-mono-liga-bin
   ];
 
-  # systemd.services.vu1 = {
+  powerManagement.powerDownCommands = ''
+    systemctl stop vu1monitor.service
+    systemctl stop vu1server.service
+  '';
+
+  powerManagement.powerUpCommands = ''
+    sleep 10
+    systemctl restart vu1server.service
+    systemctl restart vu1monitor.service
+  '';
+
+  systemd.services.vu1server = {
+    enable = true;
+    description = "VU1 server. Provides API, admin web page, and pushes updates to USB dials.";
+    script = ''
+      cd /home/scott/Documents/repos/VU-Server
+      /run/current-system/sw/bin/nix-shell -I "nixpkgs=https://github.com/NixOS/nixpkgs/archive/refs/tags/24.05.zip" --run "python3 server.py"
+    '';
+    serviceConfig = {
+      TimeoutStopSec = "1s";
+    };
+  }; 
+
+  systemd.services.vu1monitor = {
+    enable = true;
+    description = "Monitor computer and push info to VU1 server.";
+    wantedBy = [ "default.target" ];
+    wants = [ "vu1server.service" ];
+    after = [ "vu1server.service" ];
+    script = "/home/scott/bin/linux/vu1";
+    serviceConfig = {
+      TimeoutStopSec = "1s";
+    };
+  }; 
+
+  # systemd.services.vu1sleep = {
   #   enable = true;
+  #   description = "Stop VU1 service when computer sleeps.";
+  #   script = "systemctl stop vu1monitor.service vu1server.service";
   #   serviceConfig = {
-  #     ExecStart = "/home/scott/bin/linux/vu1";
+  #     Type = "oneshot";
+  #     TimeoutStopSec = "1s";
+  #   };
+  #   unitConfig = {
+  #     Before = "sleep.target";
   #   };
   # };
 
-  # powerManagement.powerDownCommands = ''
-  #   systemctl stop vu1.service
-  # '';
-
-  # powerManagement.powerUpCommands = ''
-  #   systemctl start vu1.service
-  # '';
+  # systemd.services.vu1resume = {
+  #   enable = true;
+  #   description = "Start VU1 service when computer wakes up.";
+  #   script = "systemctl restart vu1server.service vu1monitor.service";
+  #   wants = [ "wakeusb.service" ];
+  #   after = [ "wakeusb.service" ];
+  #   serviceConfig = {
+  #     Type = "oneshot";
+  #   };
+  # };
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];

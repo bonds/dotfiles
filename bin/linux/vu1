@@ -1,6 +1,8 @@
 #!/run/current-system/sw/bin/fish
 
-set KEY (secret-tool lookup name 'key for vu1')
+# set KEY (secret-tool lookup name 'key for vu1')
+# set KEY (cat /home/scott/.local/share/vu1)
+set KEY (cat /run/agenix/vu1)
 
 # https://stackoverflow.com/questions/12771909/bash-using-trap-ctrlc
 stty -echoctl # hide ^C

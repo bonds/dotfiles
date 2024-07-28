@@ -250,37 +250,44 @@ let lib = pkgs.lib; in
 
   };
 
-  systemd.user.services.vu1server = {
+  # systemd.user.services.vu1server = {
+  #   Unit = {
+  #     Description = "VU1 server. Provides API, admin web page, and pushes updates to USB dials.";
+  #   };
+  #   Install = {
+  #     WantedBy = [ "default.target" ];
+  #   };
+  #   Service = {
+  #     ExecStart = "/home/scott/bin/linux/vu1server";
+  #     TimeoutStopSec = "1s";
+  #   };
+  # }; 
 
-    Unit = {
-      Description = "VU1 server. Provides API, admin web page, and pushes updates to USB dials.";
-    };
+  # systemd.user.services.vu1monitor = {
+  #   Unit = {
+  #     Description = "Monitor computer and push info to VU1 server.";
+  #   };
+  #   Install = {
+  #     WantedBy = [ "vu1server.service" ];
+  #   };
+  #   Service = {
+  #     ExecStart = "/home/scott/bin/linux/vu1";
+  #     TimeoutStopSec = "1s";
+  #   };
+  # }; 
 
-    Install = {
-      WantedBy = [ "vu1monitor.service" ];
-    };
-
-    Service = {
-      ExecStart = "/home/scott/bin/linux/vu1server";
-    };
-
-  }; 
-
-  systemd.user.services.vu1monitor = {
-
-    Unit = {
-      Description = "Monitor computer and push info to VU1 server.";
-    };
-
-    Install = {
-      WantedBy = [ "default.target" ];
-    };
-
-    Service = {
-      ExecStart = "/home/scott/bin/linux/vu1";
-    };
-
-  }; 
+  # systemd.user.services.vu1wake = {
+  #   Unit = {
+  #     Description = "Restart VU1 service when computer wakes up.";
+  #   };
+  #   Install = {
+  #     WantedBy = [ "suspend.target" ];
+  #   };
+  #   Service = {
+  #     ExecStart = "systemctl --user stop vu1monitor.service vu1server.service";
+  #     Type = "oneshot";
+  #   };
+  # };
 
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;

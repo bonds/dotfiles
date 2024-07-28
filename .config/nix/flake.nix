@@ -4,6 +4,7 @@
 
     nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05"; 
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable"; 
+    agenix.url = "github:ryantm/agenix";
 
     home-manager = {
       url = "github:nix-community/home-manager/release-24.05"; 
@@ -30,6 +31,7 @@
     nixpkgs-unstable, 
     home-manager, 
     lix-module,
+    agenix,
     ... 
   } @inputs: 
     let
@@ -43,6 +45,10 @@
           ./configuration.nix
           inputs.home-manager.nixosModules.default
           lix-module.nixosModules.default
+          agenix.nixosModules.default
+          {
+            environment.systemPackages = [ agenix.packages.x86_64-linux.default ];
+          }
         ];
       };
       homeConfigurations = {
