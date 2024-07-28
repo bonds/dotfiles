@@ -250,6 +250,38 @@ let lib = pkgs.lib; in
 
   };
 
+  systemd.user.services.vu1server = {
+
+    Unit = {
+      Description = "VU1 server. Provides API, admin web page, and pushes updates to USB dials.";
+    };
+
+    Install = {
+      WantedBy = [ "vu1monitor.service" ];
+    };
+
+    Service = {
+      ExecStart = "cd /home/scott/Documents/repos/VU-Server; nix-shell -p python3 server.py";
+    };
+
+  }; 
+
+  systemd.user.services.vu1monitor = {
+
+    Unit = {
+      Description = "Monitor computer and push info to VU1 server.";
+    };
+
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
+
+    Service = {
+      ExecStart = "/home/scott/bin/linux/vu1";
+    };
+
+  }; 
+
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
 

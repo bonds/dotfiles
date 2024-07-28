@@ -256,6 +256,21 @@
     sf-mono-liga-bin
   ];
 
+  # systemd.services.vu1 = {
+  #   enable = true;
+  #   serviceConfig = {
+  #     ExecStart = "/home/scott/bin/linux/vu1";
+  #   };
+  # };
+
+  # powerManagement.powerDownCommands = ''
+  #   systemctl stop vu1.service
+  # '';
+
+  # powerManagement.powerUpCommands = ''
+  #   systemctl start vu1.service
+  # '';
+
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
   # networking.firewall.allowedUDPPorts = [ ... ];

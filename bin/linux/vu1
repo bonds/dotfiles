@@ -1,10 +1,10 @@
 #!/run/current-system/sw/bin/fish
 
-set KEY cTpAWYuRpA2zx75Yh961Cg
+set KEY (secret-tool lookup name 'key for vu1')
 
 # https://stackoverflow.com/questions/12771909/bash-using-trap-ctrlc
 stty -echoctl # hide ^C
-trap "cleanup; exit" INT
+trap "cleanup; exit" INT TERM
 
 function cleanup
     send cpu set "value=0"
