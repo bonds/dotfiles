@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd /home/scott/Documents/repos/VU-Server
+/run/current-system/sw/bin/nix-shell --run "python3 server.py"

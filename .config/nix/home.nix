@@ -261,7 +261,7 @@ let lib = pkgs.lib; in
     };
 
     Service = {
-      ExecStart = "cd /home/scott/Documents/repos/VU-Server; nix-shell -p python3 server.py";
+      ExecStart = "/home/scott/bin/linux/vu1server";
     };
 
   }; 
