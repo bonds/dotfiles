@@ -15,6 +15,11 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    gimp
+    krita
+    glmark2
+    radeontop
+    nix-search-cli
     cpu-x
     bsd-finger
     weather

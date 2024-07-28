@@ -136,6 +136,7 @@
   # services.xserver.libinput.enable = true;
 
   services.ollama.enable = true;
+  systemd.services.ollama.serviceConfig.Restart = lib.mkForce "always";
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.scott = {
