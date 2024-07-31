@@ -264,7 +264,7 @@
   '';
 
   powerManagement.powerUpCommands = ''
-    sleep 10
+    sleep 5
     systemctl restart vu1server.service
     systemctl restart vu1monitor.service
   '';
