@@ -323,6 +323,11 @@
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;
 
+  # https://discourse.nixos.org/t/option-to-configure-kernel-for-tallscreen-monitor/15986/2
+  boot.kernelParams = [
+    "fbcon=rotate:3"
+  ];
+   
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
   # on your system were taken. It‘s perfectly fine and recommended to leave

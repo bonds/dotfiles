@@ -93,14 +93,14 @@ let lib = pkgs.lib; in
 
   xdg.desktopEntries = {
 
-    ulauncher = {
-      name = "ulauncher";
-      comment = "An app launcher";
-      exec = "env GDK_BACKEND=x11 ulauncher";
-      settings = {
-        Path = "/run/current-system/sw/bin";
-      };
-    };
+    # ulauncher = {
+    #   name = "ulauncher";
+    #   comment = "An app launcher";
+    #   exec = "env GDK_BACKEND=x11 ulauncher";
+    #   settings = {
+    #     Path = "/run/current-system/sw/bin";
+    #   };
+    # };
 
     dwarf = {
       name = "Dwarf Fortress";
@@ -110,6 +110,14 @@ let lib = pkgs.lib; in
         Path = "/run/current-system/sw/bin";
       };
     };
+
+    # obs = {
+    #   name = "OBS Studio";
+    #   exec = "sh -c \"sudo usb-reset 0fd9:008a && obs\"";
+    #   settings = {
+    #     Path = "/run/current-system/sw/bin";
+    #   };
+    # };
     
   };
 
@@ -275,12 +283,13 @@ let lib = pkgs.lib; in
   systemd.user.services.ulauncher = {
     Unit = {
       Description = "An app launcher.";
+      After = "gnome-session.target";
     };
     Install = {
-      WantedBy = [ "default.target" ];
+      WantedBy = [ "gnome-session.target" ];
     };
     Service = {
-      ExecStart = "/run/current-system/sw/bin/ulauncher";
+      ExecStart = "/run/current-system/sw/bin/ulauncher --hide-window";
       Environment = "GDK_BACKEND=x11";
       Restart = "always";
     };
