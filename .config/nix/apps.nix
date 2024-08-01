@@ -15,6 +15,7 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    usb-reset
     rlwrap
     idris2
     gimp

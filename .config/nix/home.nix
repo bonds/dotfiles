@@ -52,27 +52,27 @@ let lib = pkgs.lib; in
     #   org.gradle.daemon.idletimeout=3600000
     # '';
 
-    ".config/autostart/ulauncher.desktop".text = ''
-      [Desktop Entry]
+    # ".config/autostart/ulauncher.desktop".text = ''
+    #   [Desktop Entry]
 
-      Type=Application
-      Name=ulauncher
-      Comment=An app launcher
-      Path=/run/current-system/sw/bin
-      Exec=env GDK_BACKEND=x11 ulauncher
-      Terminal=false
-    '';
+    #   Type=Application
+    #   Name=ulauncher
+    #   Comment=An app launcher
+    #   Path=/run/current-system/sw/bin
+    #   Exec=env GDK_BACKEND=x11 ulauncher
+    #   Terminal=false
+    # '';
 
-    ".local/share/applications/dwarf.desktop".text = ''
-      [Desktop Entry]
+    # ".local/share/applications/dwarf.desktop".text = ''
+    #   [Desktop Entry]
 
-      Type=Application
-      Name=Dwarf Fortress
-      Comment=a really great game
-      Path=/run/current-system/sw/bin
-      Exec=dwarf-fortress
-      Terminal=false
-    '';
+    #   Type=Application
+    #   Name=Dwarf Fortress
+    #   Comment=a really great game
+    #   Path=/run/current-system/sw/bin
+    #   Exec=dwarf-fortress
+    #   Terminal=false
+    # '';
 
     # https://discourse.nixos.org/t/generate-and-install-ublock-config-file-with-home-manager/19209
     # https://www.reddit.com/r/uBlockOrigin/comments/16bzb11/configuring_ublock_origin_for_nix_users_just_in/
@@ -89,6 +89,28 @@ let lib = pkgs.lib; in
           };
         };
       }; 
+  };
+
+  xdg.desktopEntries = {
+
+    ulauncher = {
+      name = "ulauncher";
+      comment = "An app launcher";
+      exec = "env GDK_BACKEND=x11 ulauncher";
+      settings = {
+        Path = "/run/current-system/sw/bin";
+      };
+    };
+
+    dwarf = {
+      name = "Dwarf Fortress";
+      comment = "a really great game";
+      exec = "dwarf-fortress";
+      settings = {
+        Path = "/run/current-system/sw/bin";
+      };
+    };
+    
   };
 
   # Home Manager can also manage your environment variables through
@@ -249,6 +271,20 @@ let lib = pkgs.lib; in
     };
 
   };
+
+  systemd.user.services.ulauncher = {
+    Unit = {
+      Description = "An app launcher.";
+    };
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
+    Service = {
+      ExecStart = "/run/current-system/sw/bin/ulauncher";
+      Environment = "GDK_BACKEND=x11";
+      Restart = "always";
+    };
+  }; 
 
   # systemd.user.services.vu1server = {
   #   Unit = {
