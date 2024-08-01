@@ -258,16 +258,16 @@
     sf-mono-liga-bin
   ];
 
-  powerManagement.powerDownCommands = ''
-    systemctl stop vu1monitor.service
-    systemctl stop vu1server.service
-  '';
+  # powerManagement.powerDownCommands = ''
+  #   systemctl stop vu1monitor.service
+  #   systemctl stop vu1server.service
+  # '';
 
-  powerManagement.powerUpCommands = ''
-    sleep 5
-    systemctl restart vu1server.service
-    systemctl restart vu1monitor.service
-  '';
+  # powerManagement.powerUpCommands = ''
+  #   sleep 5
+  #   systemctl restart vu1server.service
+  #   systemctl restart vu1monitor.service
+  # '';
 
   systemd.services.vu1server = {
     enable = true;
@@ -306,16 +306,16 @@
   #   };
   # };
 
-  # systemd.services.vu1resume = {
-  #   enable = true;
-  #   description = "Start VU1 service when computer wakes up.";
-  #   script = "systemctl restart vu1server.service vu1monitor.service";
-  #   wants = [ "wakeusb.service" ];
-  #   after = [ "wakeusb.service" ];
-  #   serviceConfig = {
-  #     Type = "oneshot";
-  #   };
-  # };
+  systemd.services.vu1resume = {
+    enable = true;
+    description = "Start VU1 service when computer wakes up.";
+    script = "systemctl stop vu1monitor.service; systemctl stop vu1server.service; systemctl start vu1server.service; systemctl start vu1monitor.service";
+    after = [ "wakeusb.service" ];
+    wantedBy = [ "wakeusb.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+    };
+  };
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];

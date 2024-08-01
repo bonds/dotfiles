@@ -289,6 +289,7 @@ let lib = pkgs.lib; in
       WantedBy = [ "gnome-session.target" ];
     };
     Service = {
+      # https://github.com/Ulauncher/Ulauncher/issues/451
       ExecStart = "/run/current-system/sw/bin/ulauncher --hide-window";
       Environment = "GDK_BACKEND=x11";
       Restart = "always";

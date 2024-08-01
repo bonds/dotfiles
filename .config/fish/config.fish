@@ -94,7 +94,8 @@ alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGN
 alias nix-shell "command nix-shell --command fish"
 alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
 alias ssht "ssh -o RemoteCommand=none"
-alias rcam "sudo usb-reset 0fd9:008a"
+alias reset_camera "sudo usb-reset 0fd9:008a"
+alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
 
 # OS specific aliases
 if test "$uname" = darwin
