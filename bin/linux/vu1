@@ -41,6 +41,7 @@ function send
     end
 
     set output (wget -qO- "http://localhost:5340/api/v0/dial/$dialuid/$action?$params&key=$KEY" | jq ". |= . + {\"date\": \"$(date)\", \"dial\": \"$dial\", \"request\": \"$request\"}")
+    sleep 0.1
 
 end
 

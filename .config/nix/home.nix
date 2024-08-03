@@ -143,7 +143,7 @@ let lib = pkgs.lib; in
 
   dconf.settings = let inherit (lib.gvariant) mkTuple mkUint32 mkVariant; in {
     "org/gnome/settings-daemon/plugins/power" = {
-      sleep-inactive-ac-timeout = 3600;
+      sleep-inactive-ac-timeout = 900;
     };
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
