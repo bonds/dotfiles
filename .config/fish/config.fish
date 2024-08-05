@@ -88,7 +88,6 @@ alias ghci "ghci -ghci-script ~/.config/ghc/ghci.rio.conf -ghci-script ~/.config
 alias height "tput lines"
 alias idris "rlwrap --history-filename ~/.local/idris.history idris2 --package contrib"
 alias myip "curl --silent https://checkip.amazonaws.com"
-# alias python "python3.10"
 alias width "tput cols"
 alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGNAME -s \"openai api key\"); and command chatgpt"
 alias nix-shell "command nix-shell --command fish"
@@ -96,6 +95,7 @@ alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
 alias ssht "ssh -o RemoteCommand=none"
 alias reset_camera "sudo usb-reset 0fd9:008a"
 alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
+alias xclip "command xclip -selection c"
 
 # OS specific aliases
 if test "$uname" = darwin
@@ -178,11 +178,11 @@ function ping
 end
 
 function nr
-    sudo nixos-rebuild $argv switch --flake ~/.config/nix
+    sudo nice nixos-rebuild $argv switch --flake ~/.config/nix
 end
 
 function hr
-    home-manager $argv switch --flake ~/.config/nix
+    nice home-manager $argv switch --flake ~/.config/nix
 end
 
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"

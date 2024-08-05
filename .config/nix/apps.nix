@@ -15,6 +15,10 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    cargo
+    rust-script
+    xclip
+    rocmPackages.rocminfo
     usb-reset
     rlwrap
     idris2

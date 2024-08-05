@@ -137,7 +137,17 @@
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
 
-  services.ollama.enable = true;
+  # https://wiki.nixos.org/wiki/Ollama
+  services.ollama = {
+    enable = true;
+    # acceleration = "rocm";
+    # rocmOverrideGfx = "9.0.a";
+    # environmentVariables = {
+    #   HIP_VISIBLE_DEVICES = "1";
+    #   HCC_AMDGPU_TARGET = "9.0.a";
+    # };
+  };
+  
   systemd.services.ollama.serviceConfig.Restart = lib.mkForce "always";
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
