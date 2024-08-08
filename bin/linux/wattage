@@ -1,24 +1,21 @@
-#!/bin/sh
+#!/usr/bin/env fish
 
-args=`getopt 'v' $*` || exit
-set -- $args
-
-while true; do
-  case $1 in
-  (-v) ((verbose++)); shift;;
-  (--) shift; break;;
-  (*)  exit 1;;
-  esac
-done
+argparse v/verbose -- $argv
 
 # HOST=$(arp -a | grep -i "24:2F:D0:26:02:C9" | sed 's/\? (\(.*\)).*/\1/g')
 # the outlet doesn't always respond to ARP so I'm just going to give it an
 # IP reservation so it gets the same IP from DHCP every time
 
-HOST="10.0.0.75"
+set WORKSTATION "10.0.0.75"
+set SERVERRACK "10.0.0.189"
 
-if test -z "$verbose"; then
-  kasa --host $HOST emeter | grep Power | awk '{printf "%.f\n", $2}'
-else
-  kasa --host $HOST emeter
-fi
+set hosts $WORKSTATION $SERVERRACK
+
+for host in $hosts
+    printf %12s "$host: "
+    if not set -q _flag_verbose
+        kasa --host $host emeter $argv | grep Power | awk '{printf "%.f\n", $2}'
+    else
+        kasa --host $host emeter $argv
+    end
+end
