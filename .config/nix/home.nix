@@ -178,6 +178,7 @@ let lib = pkgs.lib; in
         "pano@elhan.io"
         "blur-my-shell@aunetx"
         "espresso@coadmunkee.github.com"
+        "window-calls@domandoman.xyz"
       ];
     };
 
@@ -259,6 +260,7 @@ let lib = pkgs.lib; in
     "org/gnome/settings-daemon/plugins/media-keys" = {
       custom-keybindings = [
         "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
       ];
     };
 
@@ -266,6 +268,12 @@ let lib = pkgs.lib; in
       name = "Ulauncher";
       binding = "<Control>space";
       command = "/run/current-system/sw/bin/ulauncher-toggle";
+    };
+    
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
+      name = "maximize window across all monitors";
+      binding = "<Control><Shift>m";
+      command = "/home/scott/bin/linux/maximize_across_multiple_monitors";
     };
     
     "org/gnome/Console" = {
