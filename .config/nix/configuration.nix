@@ -2,7 +2,7 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{ pkgs, lib, inputs, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 {
 
@@ -68,6 +68,9 @@
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.extraModulePackages = with config.boot.kernelPackages; [
+    v4l2loopback
+  ];
 
   networking.hostName = "metanoia"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
@@ -187,6 +190,7 @@
   programs.fish.enable = true;
   programs.tmux.enable = true;
   programs.geary.enable = true;
+  programs.steam.enable = true;
 
   # https://nixos.wiki/wiki/Fish
   programs.bash = {
@@ -270,6 +274,8 @@
     sf-mono-liga-bin
   ];
 
+  hardware.xone.enable = true;
+
   # powerManagement.powerDownCommands = ''
   #   systemctl stop vu1monitor.service
   #   systemctl stop vu1server.service
@@ -339,7 +345,12 @@
   boot.kernelParams = [
     "fbcon=rotate:3"
   ];
-   
+
+  # this doesn't do anything unfortunately
+  # systemd.user.services.ulauncher.restartTriggers = with config; [
+  #   config.environment.systemPackages
+  # ];
+
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
   # on your system were taken. It‘s perfectly fine and recommended to leave

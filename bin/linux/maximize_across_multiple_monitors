@@ -16,8 +16,18 @@ WINID=$(wmctrl -lp | grep $PID | awk '{print $1}')
 # NAME=$(date)
 # wmctrl -r :ACTIVE: -N "$NAME"
 # zenity --info --text "NAME: $NAME"
-xprop -id $WINID -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x0, 0x0, 0x0"
+UNDECORATE=$(xprop -id $WINID _MOTIF_WM_HINTS | tr -d ',' | awk '{print $3}')
+if test $UNDECORATE -eq 0; then
+  xprop -id $WINID -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x0, 0x0, 0x0"
+else
+  xprop -id $WINID -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x0, 0x0, 0x0, 0x0, 0x0"
+fi
 
 DIMS=$(xprop -root | grep -e "^_NET_WORKAREA" | sed "s/.*= \(.*\)/\1/g")
-wmctrl -r :ACTIVE: -b remove,maximized_vert,maximized_horz
-wmctrl -r :ACTIVE: -e "0, $DIMS"
+
+if ! {xprop $WINID "_NET_WM_STATE" | grep _NET_WM_STATE_MAXIMIZED_HORZ}; then 
+  wmctrl -r :ACTIVE: -b remove,maximized_horz,maximized_vert
+  wmctrl -r :ACTIVE: -e "0, $DIMS"
+else
+  wmctrl -r :ACTIVE: -b add,maximized_horz,maximized_vert
+fi  

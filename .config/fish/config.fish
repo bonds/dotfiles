@@ -177,8 +177,15 @@ function ping
     end
 end
 
+# https://nixos-and-flakes.thiscute.world/nixos-with-flakes/update-the-system
 function nr
-    sudo nice nixos-rebuild $argv switch --flake ~/.config/nix
+    set starting_dir (pwd)
+    set config_dir ~/.config/nix
+    cd $config_dir
+    nice nix flake update
+    sudo nice nixos-rebuild $argv switch --flake .
+    cd $starting_dir
+    # sudo nixos-rebuild switch --recreate-lock-file --flake ~/.config/nix
 end
 
 function hr

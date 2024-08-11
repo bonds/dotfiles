@@ -15,6 +15,11 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    localsend
+    coppwr
+    pwvucontrol
+    easyeffects
+    noise-repellent
     cargo
     rust-script
     xclip
@@ -48,6 +53,7 @@
     fastfetch # system info on cli
     gsound # for pano
     libgda6 # for pano
+    gnomeExtensions.easyeffects-preset-selector
     gnomeExtensions.pano # this is pano
     unstable.gnomeExtensions.another-window-session-manager
     gnomeExtensions.dash-to-panel

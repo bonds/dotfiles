@@ -52,6 +52,24 @@ let lib = pkgs.lib; in
     #   org.gradle.daemon.idletimeout=3600000
     # '';
 
+    # https://gist.github.com/gtirloni/4384f4de6f4d3fda8446b04057ca5f9d
+    ".config/wireplumber/wireplumber.conf.d/51-disable-devices.conf".text = ''
+    monitor.alsa.rules = [
+      {
+        matches = [
+          {
+            device.name = "~alsa_card.pci-*"
+          }
+        ]
+        actions = {
+          update-props = {
+          	device.disabled = true
+          }
+        }
+      }
+    ]
+    '';
+
     # ".config/autostart/ulauncher.desktop".text = ''
     #   [Desktop Entry]
 
@@ -284,6 +302,7 @@ let lib = pkgs.lib; in
     Unit = {
       Description = "An app launcher.";
       After = "gnome-session.target";
+      # X-Restart-Triggers = [ "${config.environment.systemPackages}" ];
     };
     Install = {
       WantedBy = [ "gnome-session.target" ];
@@ -293,6 +312,9 @@ let lib = pkgs.lib; in
       ExecStart = "/run/current-system/sw/bin/ulauncher --hide-window";
       Environment = "GDK_BACKEND=x11";
       Restart = "always";
+      # RestartTriggers = [
+      #   config.environment.systemPackages
+      # ];
     };
   }; 
 
@@ -334,6 +356,8 @@ let lib = pkgs.lib; in
   #     Type = "oneshot";
   #   };
   # };
+
+  systemd.user.startServices = "sd-switch";
 
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
