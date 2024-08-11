@@ -1,12 +1,12 @@
 {
     "session_name": "defaultSession",
-    "session_create_time": "7/20/2024, 7:35:39 PM",
+    "session_create_time": "8/11/2024, 9:45:07 AM",
     "active_workspace_index": 0,
     "x_session_config_objects": [
         {
-            "window_id": 542668813,
+            "window_id": 3180348307,
             "desktop_number": 0,
-            "pid": 15281,
+            "pid": 19437,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
@@ -16,24 +16,24 @@
                 "height": 3768
             },
             "client_machine_name": "metanoia",
-            "window_title": "nlpsuge/gnome-shell-extension-another-window-session-manager: A Gnome shell extension to close open windows gracefully and save them as a session. The previous session can be restored at startup. Most importantly, it supports both X11 and Wayland! — Mozilla Firefox",
+            "window_title": "xbox controller with xone : r/NixOS — Mozilla Firefox",
             "app_name": "Firefox",
             "wm_class": "firefox",
             "wm_class_instance": "firefox",
             "cmd": [
-                "/nix/store/i89v122qbybnvni160fxs2y5wda2yb29-firefox-126.0.1/bin/.firefox-wrapped",
+                "/nix/store/kj24q8kn6pvps1ncidks9558mhk7mjrs-firefox-129.0/bin/.firefox-wrapped",
                 "--name",
                 "firefox"
             ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
                 "meta_maximized": 3
             },
             "windows_count": 3,
-            "cpu_percent": "1.7",
-            "memory_percent": "2.0",
+            "cpu_percent": "3.6",
+            "memory_percent": "2.4",
             "desktop_file_id": "firefox.desktop",
             "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
             "monitor_number": 2,
@@ -43,9 +43,9 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 542668809,
+            "window_id": 3180348306,
             "desktop_number": 0,
-            "pid": 15281,
+            "pid": 19437,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
@@ -55,24 +55,24 @@
                 "height": 3768
             },
             "client_machine_name": "metanoia",
-            "window_title": "Monday, August 19th, 2024 - Proton Calendar — Mozilla Firefox",
+            "window_title": "gnome - How to close, minimize, and maximize a specified window from Terminal? - Ask Ubuntu — Mozilla Firefox",
             "app_name": "Firefox",
             "wm_class": "firefox",
             "wm_class_instance": "firefox",
             "cmd": [
-                "/nix/store/i89v122qbybnvni160fxs2y5wda2yb29-firefox-126.0.1/bin/.firefox-wrapped",
+                "/nix/store/kj24q8kn6pvps1ncidks9558mhk7mjrs-firefox-129.0/bin/.firefox-wrapped",
                 "--name",
                 "firefox"
             ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
                 "meta_maximized": 3
             },
             "windows_count": 3,
-            "cpu_percent": "1.7",
-            "memory_percent": "2.0",
+            "cpu_percent": "3.6",
+            "memory_percent": "2.4",
             "desktop_file_id": "firefox.desktop",
             "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
             "monitor_number": 0,
@@ -82,9 +82,9 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 542668814,
+            "window_id": 3180348308,
             "desktop_number": 0,
-            "pid": 15281,
+            "pid": 19437,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
@@ -94,24 +94,24 @@
                 "height": 3768
             },
             "client_machine_name": "metanoia",
-            "window_title": "gnome reload apps cache - Kagi Search — Mozilla Firefox",
+            "window_title": "ickyicky/window-calls: Gnome Extension for getting windows list in wayland — Mozilla Firefox",
             "app_name": "Firefox",
             "wm_class": "firefox",
             "wm_class_instance": "firefox",
             "cmd": [
-                "/nix/store/i89v122qbybnvni160fxs2y5wda2yb29-firefox-126.0.1/bin/.firefox-wrapped",
+                "/nix/store/kj24q8kn6pvps1ncidks9558mhk7mjrs-firefox-129.0/bin/.firefox-wrapped",
                 "--name",
                 "firefox"
             ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
                 "meta_maximized": 3
             },
             "windows_count": 3,
-            "cpu_percent": "1.7",
-            "memory_percent": "2.0",
+            "cpu_percent": "3.6",
+            "memory_percent": "2.4",
             "desktop_file_id": "firefox.desktop",
             "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
             "monitor_number": 1,
@@ -121,52 +121,132 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 542668808,
+            "window_id": 3180348357,
             "desktop_number": 0,
-            "pid": 15275,
+            "pid": 147279,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
-                "x_offset": 0,
+                "x_offset": 3849,
+                "y_offset": 192,
+                "width": 381,
+                "height": 1146
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "Friends List",
+            "app_name": "Steam",
+            "wm_class": "steam",
+            "wm_class_instance": "steamwebhelper",
+            "cmd": [
+                "./steamwebhelper",
+                "-lang=en_US",
+                "-cachedir=/home/scott/.local/share/Steam/config/htmlcache",
+                "-steampid=146939",
+                "-buildid=1721173382",
+                "-steamid=0",
+                "-logdir=/home/scott/.local/share/Steam/logs",
+                "-uimode=7",
+                "-startcount=0",
+                "-userdatadir=/home/scott/.local/share/Steam/config/cefdata",
+                "-steamuniverse=Public",
+                "-realm=Global",
+                "-clientui=/home/scott/.local/share/Steam/clientui",
+                "-steampath=/home/scott/.local/share/Steam/ubuntu12_32/steam",
+                "-launcher=0",
+                "-no-restart-on-ui-mode-change",
+                "--valve-initial-threadpool-size=4",
+                "--valve-enable-site-isolation",
+                "--enable-smooth-scrolling",
+                "--password-store=basic",
+                "--log-file=/home/scott/.local/share/Steam/logs/cef_log.txt",
+                "--disable-quick-menu",
+                "--disable-features=SpareRendererForSitePerProcess,DcheckIsFatal"
+            ],
+            "process_create_time": "Sun Aug 11 09:38:32 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 0
+            },
+            "windows_count": 2,
+            "cpu_percent": "1.9",
+            "memory_percent": "1.3",
+            "desktop_file_id": "steam.desktop",
+            "desktop_file_id_full_path": "/nix/var/nix/profiles/system/sw/share/applications/steam.desktop",
+            "monitor_number": 2,
+            "is_on_primary_monitor": true,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 3180348356,
+            "desktop_number": 0,
+            "pid": 147279,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 4320,
                 "y_offset": 72,
                 "width": 2160,
                 "height": 3768
             },
             "client_machine_name": "metanoia",
-            "window_title": "Inbox — scott.bonds@galacticsyn.com",
-            "app_name": "Geary",
-            "wm_class": "geary",
-            "wm_class_instance": "geary",
+            "window_title": "Steam",
+            "app_name": "Steam",
+            "wm_class": "steam",
+            "wm_class_instance": "steamwebhelper",
             "cmd": [
-                "/nix/store/cpar2qrjn7hzimdsry2svladhhjg0iyb-geary-46.0/bin/geary",
-                "--gapplication-service"
+                "./steamwebhelper",
+                "-lang=en_US",
+                "-cachedir=/home/scott/.local/share/Steam/config/htmlcache",
+                "-steampid=146939",
+                "-buildid=1721173382",
+                "-steamid=0",
+                "-logdir=/home/scott/.local/share/Steam/logs",
+                "-uimode=7",
+                "-startcount=0",
+                "-userdatadir=/home/scott/.local/share/Steam/config/cefdata",
+                "-steamuniverse=Public",
+                "-realm=Global",
+                "-clientui=/home/scott/.local/share/Steam/clientui",
+                "-steampath=/home/scott/.local/share/Steam/ubuntu12_32/steam",
+                "-launcher=0",
+                "-no-restart-on-ui-mode-change",
+                "--valve-initial-threadpool-size=4",
+                "--valve-enable-site-isolation",
+                "--enable-smooth-scrolling",
+                "--password-store=basic",
+                "--log-file=/home/scott/.local/share/Steam/logs/cef_log.txt",
+                "--disable-quick-menu",
+                "--disable-features=SpareRendererForSitePerProcess,DcheckIsFatal"
             ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "process_create_time": "Sun Aug 11 09:38:32 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
                 "meta_maximized": 3
             },
-            "windows_count": 1,
-            "cpu_percent": "0.0",
-            "memory_percent": "0.8",
-            "desktop_file_id": "org.gnome.Geary.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Geary.desktop",
-            "monitor_number": 1,
+            "windows_count": 2,
+            "cpu_percent": "1.9",
+            "memory_percent": "1.3",
+            "desktop_file_id": "steam.desktop",
+            "desktop_file_id_full_path": "/nix/var/nix/profiles/system/sw/share/applications/steam.desktop",
+            "monitor_number": 0,
             "is_on_primary_monitor": false,
             "fullscreen": false,
             "minimized": false,
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 542668824,
+            "window_id": 3180348317,
             "desktop_number": 0,
-            "pid": 15285,
+            "pid": 19446,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
-                "x_offset": 2520,
-                "y_offset": 1405,
+                "x_offset": 360,
+                "y_offset": 1367,
                 "width": 1800,
                 "height": 1170
             },
@@ -176,172 +256,20 @@
             "wm_class": "org.gnome.Console",
             "wm_class_instance": "org.gnome.Console",
             "cmd": [
-                "/nix/store/qg9mv17dzflc4z8m2j4a76b85biky87y-gnome-console-46.0/bin/kgx",
+                "/nix/store/y1dgy4dpqmq7i3li0cr63l22il55s6az-gnome-console-46.0/bin/kgx",
                 "--gapplication-service"
             ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
                 "meta_maximized": 0
             },
             "windows_count": 3,
-            "cpu_percent": "0.8",
-            "memory_percent": "0.5",
-            "desktop_file_id": "org.gnome.Console.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
-            "monitor_number": 2,
-            "is_on_primary_monitor": true,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 542668805,
-            "desktop_number": 0,
-            "pid": 15285,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 2160,
-                "y_offset": 72,
-                "width": 1800,
-                "height": 1170
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "~",
-            "app_name": "Console",
-            "wm_class": "org.gnome.Console",
-            "wm_class_instance": "org.gnome.Console",
-            "cmd": [
-                "/nix/store/qg9mv17dzflc4z8m2j4a76b85biky87y-gnome-console-46.0/bin/kgx",
-                "--gapplication-service"
-            ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 0
-            },
-            "windows_count": 3,
-            "cpu_percent": "0.8",
-            "memory_percent": "0.5",
-            "desktop_file_id": "org.gnome.Console.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
-            "monitor_number": 2,
-            "is_on_primary_monitor": true,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 542668825,
-            "desktop_number": 0,
-            "pid": 15285,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 2160,
-                "y_offset": 2670,
-                "width": 1800,
-                "height": 1170
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "dconf watch / ~",
-            "app_name": "Console",
-            "wm_class": "org.gnome.Console",
-            "wm_class_instance": "org.gnome.Console",
-            "cmd": [
-                "/nix/store/qg9mv17dzflc4z8m2j4a76b85biky87y-gnome-console-46.0/bin/kgx",
-                "--gapplication-service"
-            ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 0
-            },
-            "windows_count": 3,
-            "cpu_percent": "0.8",
-            "memory_percent": "0.5",
-            "desktop_file_id": "org.gnome.Console.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
-            "monitor_number": 2,
-            "is_on_primary_monitor": true,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 542668807,
-            "desktop_number": 0,
-            "pid": 15290,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 0,
-                "y_offset": 72,
-                "width": 2160,
-                "height": 3768
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "Proton Mail",
-            "app_name": "Proton Mail",
-            "wm_class": "Proton Mail",
-            "wm_class_instance": "proton mail",
-            "cmd": [
-                "/nix/store/ld49sfwgw9gz9zk49dd5mfn39z9mbs5d-electron-unwrapped-29.4.0/libexec/electron/electron",
-                "/nix/store/lziva9v46fymraplnhvv4apd339cg20h-protonmail-desktop-1.0.3/share/app.asar"
-            ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 3
-            },
-            "windows_count": 1,
-            "cpu_percent": "0.0",
-            "memory_percent": "0.6",
-            "desktop_file_id": "proton-mail.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/proton-mail.desktop",
-            "monitor_number": 1,
-            "is_on_primary_monitor": false,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 542668811,
-            "desktop_number": 0,
-            "pid": 15277,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 0,
-                "y_offset": 72,
-                "width": 2160,
-                "height": 3768
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "Signal",
-            "app_name": "Signal",
-            "wm_class": "Signal",
-            "wm_class_instance": "signal",
-            "cmd": [
-                "/nix/store/0i96axymwkx6gk2qxp55g45j1ffi22h6-signal-desktop-7.11.1/lib/Signal/signal-desktop",
-                "--no-sandbox"
-            ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 3
-            },
-            "windows_count": 1,
-            "cpu_percent": "0.0",
+            "cpu_percent": "2.3",
             "memory_percent": "0.7",
-            "desktop_file_id": "signal-desktop.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/signal-desktop.desktop",
+            "desktop_file_id": "org.gnome.Console.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
             "monitor_number": 1,
             "is_on_primary_monitor": false,
             "fullscreen": false,
@@ -349,37 +277,37 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 542668812,
+            "window_id": 3180348300,
             "desktop_number": 0,
-            "pid": 15279,
+            "pid": 19446,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
                 "x_offset": 0,
                 "y_offset": 72,
-                "width": 2160,
-                "height": 3768
+                "width": 1800,
+                "height": 1170
             },
             "client_machine_name": "metanoia",
-            "window_title": "friday-night-gaming (Channel) - GalacticArena - Slack",
-            "app_name": "Slack",
-            "wm_class": "Slack",
-            "wm_class_instance": "slack",
+            "window_title": "~",
+            "app_name": "Console",
+            "wm_class": "org.gnome.Console",
+            "wm_class_instance": "org.gnome.Console",
             "cmd": [
-                "/nix/store/qm35v38rcmslyyy6jskdshbkh6anm4af-slack-4.38.125/lib/slack/slack",
-                "-s"
+                "/nix/store/y1dgy4dpqmq7i3li0cr63l22il55s6az-gnome-console-46.0/bin/kgx",
+                "--gapplication-service"
             ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
-                "meta_maximized": 3
+                "meta_maximized": 0
             },
-            "windows_count": 1,
-            "cpu_percent": "0.0",
-            "memory_percent": "0.6",
-            "desktop_file_id": "slack.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/slack.desktop",
+            "windows_count": 3,
+            "cpu_percent": "2.3",
+            "memory_percent": "0.7",
+            "desktop_file_id": "org.gnome.Console.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
             "monitor_number": 1,
             "is_on_primary_monitor": false,
             "fullscreen": false,
@@ -387,9 +315,47 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 542668810,
+            "window_id": 3180348318,
             "desktop_number": 0,
-            "pid": 15270,
+            "pid": 19446,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 0,
+                "y_offset": 2667,
+                "width": 1800,
+                "height": 1170
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "~",
+            "app_name": "Console",
+            "wm_class": "org.gnome.Console",
+            "wm_class_instance": "org.gnome.Console",
+            "cmd": [
+                "/nix/store/y1dgy4dpqmq7i3li0cr63l22il55s6az-gnome-console-46.0/bin/kgx",
+                "--gapplication-service"
+            ],
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 0
+            },
+            "windows_count": 3,
+            "cpu_percent": "2.3",
+            "memory_percent": "0.7",
+            "desktop_file_id": "org.gnome.Console.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
+            "monitor_number": 1,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 3180348301,
+            "desktop_number": 0,
+            "pid": 19471,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
@@ -399,15 +365,52 @@
                 "height": 3768
             },
             "client_machine_name": "metanoia",
-            "window_title": "2024-07-20 food plan - notes - Obsidian v1.6.7",
+            "window_title": "Spotify Premium",
+            "app_name": "Spotify",
+            "wm_class": "Spotify",
+            "wm_class_instance": "spotify",
+            "cmd": [
+                "/nix/store/qd9dqdl7jj1j7mskzf7nc0lsdky7mz43-spotify-1.2.42.290.g242057a2/share/spotify/.spotify-wrapped"
+            ],
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 1,
+            "cpu_percent": "0.2",
+            "memory_percent": "0.9",
+            "desktop_file_id": "spotify.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/spotify.desktop",
+            "monitor_number": 2,
+            "is_on_primary_monitor": true,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 3180348304,
+            "desktop_number": 0,
+            "pid": 19460,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 2160,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "2024-08-09 call with Kaleem Clarkson - notes - Obsidian v1.6.7",
             "app_name": "Obsidian",
             "wm_class": "obsidian",
             "wm_class_instance": "obsidian",
             "cmd": [
-                "/nix/store/ng57dr9mv18vhsmrfvn2aqbrqn27ckhw-electron-unwrapped-28.3.1/libexec/electron/electron",
-                "/nix/store/avwdg1n55pj04avyfi25lqcg3hg12hzg-obsidian-1.5.12/share/obsidian/app.asar"
+                "/nix/store/sqk18x70vrvpz6qr05mz903zvyiv553a-electron-unwrapped-28.3.1/libexec/electron/electron",
+                "/nix/store/2xb6a506kasinf4c66qd9nv29snw5b4s-obsidian-1.5.12/share/obsidian/app.asar"
             ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
@@ -425,37 +428,114 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 542668806,
+            "window_id": 3180348305,
             "desktop_number": 0,
-            "pid": 15295,
+            "pid": 19452,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
-                "x_offset": 4320,
+                "x_offset": 0,
                 "y_offset": 72,
                 "width": 2160,
                 "height": 3768
             },
             "client_machine_name": "metanoia",
-            "window_title": "Spotify Premium",
-            "app_name": "Spotify",
-            "wm_class": "Spotify",
-            "wm_class_instance": "spotify",
+            "window_title": "Signal (2)",
+            "app_name": "Signal",
+            "wm_class": "Signal",
+            "wm_class_instance": "signal",
             "cmd": [
-                "/nix/store/b56s7fa6wjjh2wm0qrn7rjivxi6517yr-spotify-1.2.31.1205.g4d59ad7c/share/spotify/.spotify-wrapped"
+                "/nix/store/cl4mphw9i5cprfh7rby68yydmjkq9q45-signal-desktop-7.18.0/lib/Signal/signal-desktop",
+                "--no-sandbox"
             ],
-            "process_create_time": "Sat Jul 20 14:31:08 2024",
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
                 "meta_maximized": 3
             },
             "windows_count": 1,
-            "cpu_percent": "0.0",
-            "memory_percent": "0.8",
-            "desktop_file_id": "spotify.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/spotify.desktop",
-            "monitor_number": 0,
+            "cpu_percent": "0.1",
+            "memory_percent": "0.7",
+            "desktop_file_id": "signal-desktop.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/signal-desktop.desktop",
+            "monitor_number": 1,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 3180348303,
+            "desktop_number": 0,
+            "pid": 19454,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 0,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "project-kokomo (Channel) - GalacticArena - Slack",
+            "app_name": "Slack",
+            "wm_class": "Slack",
+            "wm_class_instance": "slack",
+            "cmd": [
+                "/nix/store/smg4i2pra7ixxi1hy5inwllr0crsj5gg-slack-4.39.90/lib/slack/slack",
+                "-s"
+            ],
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 1,
+            "cpu_percent": "0.2",
+            "memory_percent": "0.6",
+            "desktop_file_id": "slack.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/slack.desktop",
+            "monitor_number": 1,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 3180348302,
+            "desktop_number": 0,
+            "pid": 19449,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 0,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "Proton Mail",
+            "app_name": "Proton Mail",
+            "wm_class": "Proton Mail",
+            "wm_class_instance": "proton mail",
+            "cmd": [
+                "/nix/store/gnf2xkv3k702rbmkzkkywbxk008114ij-electron-unwrapped-29.4.5/libexec/electron/electron",
+                "/nix/store/65k7m61dcbhr2yiaf5sk9bf3c8rvv3mc-protonmail-desktop-1.0.4/share/app.asar"
+            ],
+            "process_create_time": "Sun Aug 11 08:40:20 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 1,
+            "cpu_percent": "0.1",
+            "memory_percent": "0.6",
+            "desktop_file_id": "proton-mail.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/proton-mail.desktop",
+            "monitor_number": 1,
             "is_on_primary_monitor": false,
             "fullscreen": false,
             "minimized": false,
