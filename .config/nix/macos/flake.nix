@@ -5,16 +5,39 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    darwin-custom-icons.url = "github:ryanccn/nix-darwin-custom-icons";
+    # https://github.com/ryanccn/nix-darwin-custom-icons
   };
 
-  outputs = inputs@{ self, nix-darwin, nixpkgs }:
+  outputs = inputs@{ self, nix-darwin, nixpkgs, darwin-custom-icons }:
   let
     configuration = { pkgs, ... }: {
       # List packages installed in system profile. To search by name, run:
       # $ nix-env -qaP | grep wget
-      environment.systemPackages =
-        [ pkgs.vim
+      environment.systemPackages = with pkgs; [ 
+        socat
+        btop
+        lsd
+        fd
+        ripgrep
+        sysbench
+        hyperfine
+        starship
+        idris2
+        alacritty
+        helix
+        vim
+      ];
+
+      environment.customIcons = {
+        enable = true;
+        icons = [
+          {
+            path = "/Applications/Notion.app";
+            icon = "/Users/scott/Documents/terminal.icns";
+          }
         ];
+      };
 
       # Auto upgrade nix package and the daemon service.
       services.nix-daemon.enable = true;
@@ -25,7 +48,7 @@
 
       # Create /etc/zshrc that loads the nix-darwin environment.
       programs.zsh.enable = true;  # default shell on catalina
-      # programs.fish.enable = true;
+      programs.fish.enable = true;
 
       # Set Git commit hash for darwin-version.
       system.configurationRevision = self.rev or self.dirtyRev or null;
@@ -42,7 +65,10 @@
     # Build darwin flake using:
     # $ darwin-rebuild build --flake .#Scotts-MacBook-Air
     darwinConfigurations."Scotts-MacBook-Air" = nix-darwin.lib.darwinSystem {
-      modules = [ configuration ];
+      modules = [ 
+        configuration
+        darwin-custom-icons.darwinModules.default
+      ];
     };
 
     # Expose the package set, including overlays, for convenience.
