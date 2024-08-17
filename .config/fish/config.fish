@@ -94,6 +94,7 @@ alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGN
 alias nix-shell "command nix-shell --command fish"
 alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
 alias ssht "ssh -o RemoteCommand=none"
+alias nix "command nix --extra-experimental-features nix-command --extra-experimental-features flakes"
 
 # OS specific aliases
 if test "$uname" = darwin
@@ -118,10 +119,10 @@ end
 
 function ssh
     if test $argv[1] = metanoia;
-        and not nc -zv -w 1 metanoia ssh >/dev/null 2>&1
+        and not nc -zv -w 1 metanoia 22 >/dev/null 2>&1
         echo -n trying to wake metanoia before SSHing in
         wol "a8:a1:59:36:7d:d4"
-        while not nc -zv -w 1 metanoia ssh >/dev/null 2>&1
+        while not nc -zv -w 1 metanoia 22 >/dev/null 2>&1
             echo -n .
             sleep 1
         end
@@ -176,7 +177,12 @@ function ping
 end
 
 function nr
-    sudo nixos-rebuild $argv switch --flake ~/.config/nix
+    switch $uname
+        case darwin
+            darwin-rebuild $argv switch --flake ~/.config/nix/macos
+        case "*"
+            nixos-rebuild $argv switch --flake ~/.config/nix
+    end
 end
 
 function hr
