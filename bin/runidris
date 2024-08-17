@@ -14,6 +14,7 @@ fi
 OS=`uname -s`
 case $OS in
     OpenBSD ) TEMP_NAME="runidris-`sha1 -q $1`" ;;
+     Darwin ) TEMP_NAME="runidris-`shasum $1 | awk '{print \$1}'`" ;;
           * ) TEMP_NAME="runidris-`sha1sum $1 | cut -c1-40`" ;;
 esac
 
@@ -22,10 +23,9 @@ exec="$TEMP_NAME.runme"
 
 # remove the shebang line so there's only Idris code
 grep -v runidris "$1" > "$source"
-
 # if there's no cached exec, compile the source code
         # --codegen refc \
-if [ ! -e $TEMP_NAME ]; then
+if [ ! -e "$RUNIDRIS_DIR/$exec" ]; then
     "${IDRIS:-idris2}" "$source" \
         --package contrib \
         --source-dir   "$RUNIDRIS_DIR" \

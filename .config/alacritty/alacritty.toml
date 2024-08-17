@@ -22,6 +22,7 @@ save_to_clipboard = true
 
 [window]
 option_as_alt = "Both"
+decorations_theme_variant = "Dark"
 
 [window.dimensions]
 columns = 121

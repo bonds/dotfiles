@@ -60,6 +60,9 @@ let lib = pkgs.lib; in
           {
             device.name = "~alsa_card.pci-*"
           }
+          {
+            device.name = "~alsa_card.usb-Elgato_*"
+          }
         ]
         actions = {
           update-props = {
@@ -124,6 +127,16 @@ let lib = pkgs.lib; in
       name = "Dwarf Fortress";
       comment = "a really great game";
       exec = "dwarf-fortress";
+      settings = {
+        Path = "/run/current-system/sw/bin";
+      };
+    };
+
+    steam = {
+      name = "Steam";
+      icon = "steam";
+      comment = "launcher for Steam games";
+      exec = "env GDK_SCALE=2 steam %U";
       settings = {
         Path = "/run/current-system/sw/bin";
       };

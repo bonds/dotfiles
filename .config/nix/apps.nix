@@ -15,20 +15,24 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    libnotify
-    linuxKernel.packages.linux_zen.xone
-    localsend
-    coppwr
-    pwvucontrol
-    easyeffects
+    distrobox # virtualize other linux distros on top of this one
+    monophony # youtube music player
+    kdePackages.audiotube
+    gnome.zenity # display a dialog box in gnome
+    libnotify # display a gnome notification
+    linuxKernel.packages.linux_zen.xone # xbox controller driver
+    localsend # send files to others on the LAN like AirPlay
+    # coppwr
+    # pwvucontrol
+    easyeffects # audio effects mixer and router
     noise-repellent
-    cargo
-    rust-script
-    xclip
+    cargo # library installer for rust
+    rust-script # create scripts using rust
+    xclip # copy stuff to xclipboard via cli
     rocmPackages.rocminfo
-    usb-reset
-    rlwrap
-    idris2
+    usb-reset # reset specific USB devices
+    rlwrap # wrapper for cli apps that adds history, used for idris2
+    idris2 # compiler for the ML family language
     gimp
     krita
     glmark2

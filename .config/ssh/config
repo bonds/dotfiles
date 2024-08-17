@@ -41,6 +41,6 @@ Host util.local util metanoia
 # see https://unix.stackexchange.com/questions/451253/how-to-configure-ssh-with-a-remotecommand-only-for-interactive-sessions-i-e-wi
 # keep in mind this is run locally, using the user's shell, in my case /usr/local/bin/fish
 
-Host metanoia
+Host metanoia util util.local
     RequestTTY yes
-    RemoteCommand sh -c 'if which tmux 2>/dev/null; then tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0; else $SHELL; fi'
+    RemoteCommand sh -c 'if which tmux >/dev/null; then tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0; else $SHELL; fi'

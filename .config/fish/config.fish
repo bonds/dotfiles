@@ -93,9 +93,13 @@ alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGN
 alias nix-shell "command nix-shell --command fish"
 alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
 alias ssht "ssh -o RemoteCommand=none"
+<<<<<<< HEAD
 alias reset_camera "sudo usb-reset 0fd9:008a"
 alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
 alias xclip "command xclip -selection c"
+=======
+alias nix "command nix --extra-experimental-features nix-command --extra-experimental-features flakes"
+>>>>>>> 277d83834b43266d84ca4775f079b7ad52cfd3a2
 
 # OS specific aliases
 if test "$uname" = darwin
@@ -120,10 +124,10 @@ end
 
 function ssh
     if test $argv[1] = metanoia;
-        and not nc -zv -w 1 metanoia ssh >/dev/null 2>&1
+        and not nc -zv -w 1 metanoia 22 >/dev/null 2>&1
         echo -n trying to wake metanoia before SSHing in
         wol "a8:a1:59:36:7d:d4"
-        while not nc -zv -w 1 metanoia ssh >/dev/null 2>&1
+        while not nc -zv -w 1 metanoia 22 >/dev/null 2>&1
             echo -n .
             sleep 1
         end
@@ -180,12 +184,18 @@ end
 # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/update-the-system
 function nr
     set starting_dir (pwd)
-    set config_dir ~/.config/nix
+    switch $uname
+        case darwin
+            set config_dir ~/.config/nix/macos
+            set update_command "darwin-rebuild $argv switch --flake ~/.config/nix/macos"
+        case "*"
+            set config_dir ~/.config/nix
+            set update_command "nixos-rebuild $argv switch --flake ~/.config/nix"
+    end
     cd $config_dir
     nice nix flake update
-    sudo nice nixos-rebuild $argv switch --flake .
+    eval $update_command
     cd $starting_dir
-    # sudo nixos-rebuild switch --recreate-lock-file --flake ~/.config/nix
 end
 
 function hr

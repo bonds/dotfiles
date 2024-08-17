@@ -55,6 +55,16 @@
       });
     })
 
+    # # https://www.reddit.com/r/NixOS/comments/scf0ui/how_would_i_update_desktop_file/
+    # (final: prev: {
+    #   program.steam = prev.program.steam.overrideAttrs (oldAttrs: {
+    #     postInstall = (oldAttrs.postInstall or "") + ''
+    #       substituteInPlace $out/share/applications/steam.desktop \
+    #         --replace "steam %U" "env GDK_SCALE=2 steam %U"
+    #     '';
+    #   });
+    # })
+
   ];
 
   age.secrets.vu1.file = ../secrets/vu1.age;
@@ -190,7 +200,12 @@
   programs.fish.enable = true;
   programs.tmux.enable = true;
   programs.geary.enable = true;
-  programs.steam.enable = true;
+  programs.steam = {
+    enable = true;
+    remotePlay.openFirewall = true;
+    dedicatedServer.openFirewall = true;
+    localNetworkGameTransfers.openFirewall = true;
+  };
 
   # https://nixos.wiki/wiki/Fish
   programs.bash = {
