@@ -5,6 +5,10 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05"; 
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable"; 
     agenix.url = "github:ryantm/agenix";
+    nix-darwin.url = "github:LnL7/nix-darwin";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    darwin-custom-icons.url = "github:ryanccn/nix-darwin-custom-icons";
+    # https://github.com/ryanccn/nix-darwin-custom-icons
 
     home-manager = {
       url = "github:nix-community/home-manager/release-24.05"; 
@@ -32,6 +36,8 @@
     home-manager, 
     lix-module,
     agenix,
+    nix-darwin,
+    darwin-custom-icons,
     ... 
   } @inputs: 
     let
@@ -58,5 +64,22 @@
           modules = [./home.nix];
         };
       };
+
+      # Build darwin flake using:
+      # $ darwin-rebuild build --flake .#Scotts-MacBook-Air
+      darwinConfigurations = {
+        "Scotts-MacBook-Air" = nix-darwin.lib.darwinSystem {
+          modules = [ 
+            ./laptop
+            darwin-custom-icons.darwinModules.default
+          ];
+          # Set Git commit hash for darwin-version.
+          system.configurationRevision = self.rev or self.dirtyRev or null;
+        };
+      };
+
+      # Expose the package set, including overlays, for convenience.
+      darwinPackages = self.darwinConfigurations."Scotts-MacBook-Air".pkgs;
+      
     };
 }

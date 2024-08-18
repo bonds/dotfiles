@@ -43,6 +43,21 @@
         "type": "github"
       }
     },
+    "darwin-custom-icons": {
+      "locked": {
+        "lastModified": 1719071371,
+        "narHash": "sha256-SPazmoL3Pls4QTiZ2CRtavecNJgzpL4GeiwafTmtdJ8=",
+        "owner": "ryanccn",
+        "repo": "nix-darwin-custom-icons",
+        "rev": "ad3e8cf49ef0b276ccf67410f544ff33d965d821",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ryanccn",
+        "repo": "nix-darwin-custom-icons",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems_2"
@@ -153,6 +168,26 @@
         "url": "https://git.lix.systems/lix-project/nixos-module/archive/2.91.0.tar.gz"
       }
     },
+    "nix-darwin": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1723859949,
+        "narHash": "sha256-kiaGz4deGYKMjJPOji/JVvSP/eTefrIA3rAjOnOpXl4=",
+        "owner": "LnL7",
+        "repo": "nix-darwin",
+        "rev": "076b9a905af8a52b866c8db068d6da475839d97b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "LnL7",
+        "repo": "nix-darwin",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1703013332,
@@ -204,8 +239,10 @@
     "root": {
       "inputs": {
         "agenix": "agenix",
+        "darwin-custom-icons": "darwin-custom-icons",
         "home-manager": "home-manager_2",
         "lix-module": "lix-module",
+        "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs_2",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "sf-mono-liga-src": "sf-mono-liga-src"
