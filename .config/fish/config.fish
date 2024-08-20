@@ -46,6 +46,9 @@ set -x DOCKER_HOST ssh://root@172.16.0.100
 # my favorite date format
 set -x DATEFMT "+%F %T"
 
+set -x PASSAGE_DIR $HOME/.config/passage/store
+set -x PASSAGE_IDENTITIES_FILE $HOME/.config/passage/identities
+
 if status --is-interactive
     #    devbox global shellenv --init-hook | source
     if command --query starship
@@ -199,7 +202,8 @@ function hr
 end
 
 function nix
-    set -x NIX_CONFIG (secret-tool lookup name 'NIX_CONFIG')
+    # set -x NIX_CONFIG (secret-tool lookup name 'NIX_CONFIG')
+    set -x NIX_CONFIG (passage NIX_CONFIG)
     command nix --extra-experimental-features nix-command --extra-experimental-features flakes $argv
 end
 

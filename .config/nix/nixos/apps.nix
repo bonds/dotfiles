@@ -8,7 +8,11 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    age # cli encryption
+    yubioath-flutter
+    yubikey-manager-qt # gui for configuring yubikey settings
+    age-plugin-yubikey # yubikey support for age
+    passage # cli password store using age
+    rage # cli encryption, rust version
     inputs.agenix.packages.${system}.default
     distrobox # virtualize other linux distros on top of this one
     monophony # youtube music player

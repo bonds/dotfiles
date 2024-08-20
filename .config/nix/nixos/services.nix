@@ -158,4 +158,6 @@
     };
   };
 
+  services.pcscd.enable = true;
+
 }
