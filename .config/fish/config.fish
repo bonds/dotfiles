@@ -93,13 +93,9 @@ alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGN
 alias nix-shell "command nix-shell --command fish"
 alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
 alias ssht "ssh -o RemoteCommand=none"
-<<<<<<< HEAD
 alias reset_camera "sudo usb-reset 0fd9:008a"
 alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
 alias xclip "command xclip -selection c"
-=======
-alias nix "command nix --extra-experimental-features nix-command --extra-experimental-features flakes"
->>>>>>> 277d83834b43266d84ca4775f079b7ad52cfd3a2
 
 # OS specific aliases
 if test "$uname" = darwin
@@ -194,12 +190,17 @@ function nr
     end
     cd $config_dir
     nice nix flake update
-    eval $update_command
+    eval sudo $update_command
     cd $starting_dir
 end
 
 function hr
     nice home-manager $argv switch --flake ~/.config/nix
+end
+
+function nix
+    set -x NIX_CONFIG (secret-tool lookup name 'NIX_CONFIG')
+    command nix --extra-experimental-features nix-command --extra-experimental-features flakes $argv
 end
 
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"

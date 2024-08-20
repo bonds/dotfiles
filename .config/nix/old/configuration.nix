@@ -67,7 +67,7 @@
 
   ];
 
-  age.secrets.vu1.file = ../secrets/vu1.age;
+  # age.secrets.vu1.file = ../secrets/vu1.age;
 
   # Enable the Flakes feature and the accompanying new nix command-line tool
   nix.settings.experimental-features = [ "nix-command" "flakes" ];

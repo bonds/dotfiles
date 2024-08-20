@@ -15,6 +15,7 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    agenix.packages.x86_64-linux.default
     distrobox # virtualize other linux distros on top of this one
     monophony # youtube music player
     kdePackages.audiotube
