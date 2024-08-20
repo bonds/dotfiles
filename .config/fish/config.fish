@@ -184,17 +184,17 @@ end
 # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/update-the-system
 function nr
     set starting_dir (pwd)
+    set config_dir $HOME/.config/nix
+    set -x NIX_CONFIG (passage NIX_CONFIG)
     switch $uname
         case darwin
-            set config_dir ~/.config/nix/macos
-            set update_command "darwin-rebuild $argv switch --flake ~/.config/nix/macos"
+            set update_command darwin-rebuild
         case "*"
-            set config_dir ~/.config/nix
-            set update_command "nixos-rebuild $argv switch --flake ~/.config/nix"
+            set update_command nixos-rebuild
     end
     cd $config_dir
     nice nix flake update
-    eval sudo $update_command
+    eval sudo $update_command $argv switch --flake .
     cd $starting_dir
 end
 

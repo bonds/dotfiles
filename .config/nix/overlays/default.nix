@@ -32,20 +32,17 @@
           repo = "mutter";
           rev = "triple-buffering-v4-46";
           hash = "sha256-nz1Enw1NjxLEF3JUG0qknJgf4328W/VvdMjJmoOEMYs=";
-          # hash = "sha256-fkPjB/5DPBX06t7yj0Rb3UEuu5b9mu3aS+jhH18+lpI=";
         };
       });
     });
 
-    # # https://www.reddit.com/r/NixOS/comments/scf0ui/how_would_i_update_desktop_file/
-    # (final: prev: {
-    #   program.steam = prev.program.steam.overrideAttrs (oldAttrs: {
-    #     postInstall = (oldAttrs.postInstall or "") + ''
-    #       substituteInPlace $out/share/applications/steam.desktop \
-    #         --replace "steam %U" "env GDK_SCALE=2 steam %U"
-    #     '';
-    #   });
-    # })
+    # https://www.reddit.com/r/NixOS/comments/scf0ui/how_would_i_update_desktop_file/
+    program.steam = prev.program.steam.overrideAttrs (oldAttrs: {
+      postInstall = (oldAttrs.postInstall or "") + ''
+        substituteInPlace $out/share/applications/steam.desktop \
+          --replace-fail "steam %U" "env GDK_SCALE=2 steam %U"
+      '';
+    });
 
   };
 
