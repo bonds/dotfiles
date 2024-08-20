@@ -99,6 +99,7 @@ alias ssht "ssh -o RemoteCommand=none"
 alias reset_camera "sudo usb-reset 0fd9:008a"
 alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
 alias xclip "command xclip -selection c"
+alias nix "command nix --extra-experimental-features nix-command --extra-experimental-features flakes"
 
 # OS specific aliases
 if test "$uname" = darwin

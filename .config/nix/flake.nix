@@ -19,6 +19,12 @@
     # sops-nix.url = "github:Mic92/sops-nix";
     # sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
+    # packages for macos
+    nix-darwin.url = "github:LnL7/nix-darwin";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    # https://github.com/ryanccn/nix-darwin-custom-icons
+    darwin-custom-icons.url = "github:ryanccn/nix-darwin-custom-icons";
+
     # my favorite terminal font, thanks Apple!
     sf-mono-liga-src = {
       url = "github:shaunsingh/SFMono-Nerd-Font-Ligaturized";
@@ -97,6 +103,23 @@
           agenix.nixosModules.default
         ];
       };
+
+      # Build darwin flake using:
+      # $ darwin-rebuild build --flake .#Scotts-MacBook-Air
+      darwinConfigurations = {
+        "Scotts-MacBook-Air" = nix-darwin.lib.darwinSystem {
+          modules = [ 
+            ./laptop
+            darwin-custom-icons.darwinModules.default
+          ];
+          # Set Git commit hash for darwin-version.
+          system.configurationRevision = self.rev or self.dirtyRev or null;
+        };
+      };
+
+      # Expose the package set, including overlays, for convenience.
+      darwinPackages = self.darwinConfigurations."Scotts-MacBook-Air".pkgs;
+      
     };
   };
 }
