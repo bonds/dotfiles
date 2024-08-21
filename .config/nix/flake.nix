@@ -38,6 +38,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # gui for viewing my nixos config
+    nixos-conf-editor.url = "github:snowfallorg/nixos-conf-editor";
+
   };
 
   outputs = {

@@ -8,6 +8,8 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    mailspring # nice looking gui mail client
+    inputs.nixos-conf-editor.packages.${system}.nixos-conf-editor
     element-desktop # irc chat client
     yubikey-manager-qt # gui for configuring yubikey settings
     age-plugin-yubikey # yubikey support for age
