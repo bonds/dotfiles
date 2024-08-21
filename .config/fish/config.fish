@@ -190,11 +190,11 @@ function nr
         case darwin
             set update_command darwin-rebuild
         case "*"
-            set update_command nixos-rebuild
+            set update_command sudo nixos-rebuild
     end
     cd $config_dir
     nice nix flake update
-    eval sudo $update_command $argv switch --flake .
+    eval $update_command $argv switch --flake .
     cd $starting_dir
 
 end
