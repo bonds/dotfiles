@@ -1,9 +1,17 @@
-{ pkgs, ... }:
+{ 
+  inputs,
+  config,
+  pkgs, 
+  lib,
+  ...
+}:
 
 {
   # List packages installed in system profile. To search by name, run:
   # $ nix-env -qaP | grep wget
   environment.systemPackages = with pkgs; [ 
+    age-plugin-yubikey
+    passage
     atuin
     fzf
     socat
@@ -35,7 +43,7 @@
   # nix.package = pkgs.nix;
 
   # Necessary for using flakes on this system.
-  nix.settings.experimental-features = "nix-command flakes";
+  # nix.settings.experimental-features = "nix-command flakes";
 
   # Create /etc/zshrc that loads the nix-darwin environment.
   programs.zsh.enable = true;  # default shell on catalina
@@ -47,5 +55,29 @@
 
   # The platform the configuration will be used on.
   nixpkgs.hostPlatform = "x86_64-darwin";
+
+  nix = {
+
+    settings = {
+      # Enable flakes and new 'nix' command
+      experimental-features = "nix-command flakes";
+
+      # Opinionated: disable global registry
+      flake-registry = "";
+
+      # Workaround for https://github.com/NixOS/nix/issues/9574
+      nix-path = config.nix.nixPath;
+
+      # don't keep telling me when my nix config hasn't been committed
+      # to the git repro yet, I don't care!
+      # https://git.2li.ch/Nebucatnetzer/nixos/commit/36d3953121d968191cd5d83cab201af70e6c864
+      warn-dirty = false;
+
+    };
+
+    # Opinionated: disable channels
+    channel.enable = false;
+
+  };
 
 }
