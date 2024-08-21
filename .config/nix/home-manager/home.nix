@@ -168,15 +168,6 @@
 
   xdg.desktopEntries = {
 
-    # ulauncher = {
-    #   name = "ulauncher";
-    #   comment = "An app launcher";
-    #   exec = "env GDK_BACKEND=x11 ulauncher";
-    #   settings = {
-    #     Path = "/run/current-system/sw/bin";
-    #   };
-    # };
-
     dwarf = {
       name = "Dwarf Fortress";
       comment = "a really great game";
@@ -185,24 +176,6 @@
         Path = "/run/current-system/sw/bin";
       };
     };
-
-    steam = {
-      name = "Steam";
-      icon = "steam";
-      comment = "launcher for Steam games";
-      exec = "env GDK_SCALE=2 steam %U";
-      settings = {
-        Path = "/run/current-system/sw/bin";
-      };
-    };
-
-    # obs = {
-    #   name = "OBS Studio";
-    #   exec = "sh -c \"sudo usb-reset 0fd9:008a && obs\"";
-    #   settings = {
-    #     Path = "/run/current-system/sw/bin";
-    #   };
-    # };
     
   };
 

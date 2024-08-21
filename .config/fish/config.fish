@@ -194,7 +194,7 @@ function nr
     end
     cd $config_dir
     nice nix flake update
-    eval $update_command $argv switch --flake .
+    eval nice $update_command $argv switch --flake .
     cd $starting_dir
 
 end

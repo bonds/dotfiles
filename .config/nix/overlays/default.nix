@@ -35,15 +35,6 @@
         };
       });
     });
-
-    # https://www.reddit.com/r/NixOS/comments/scf0ui/how_would_i_update_desktop_file/
-    program.steam = prev.program.steam.overrideAttrs (oldAttrs: {
-      postInstall = (oldAttrs.postInstall or "") + ''
-        substituteInPlace $out/share/applications/steam.desktop \
-          --replace-fail "steam %U" "env GDK_SCALE=2 steam %U"
-      '';
-    });
-
   };
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will

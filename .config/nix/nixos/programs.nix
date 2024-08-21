@@ -18,6 +18,11 @@
     remotePlay.openFirewall = true;
     dedicatedServer.openFirewall = true;
     localNetworkGameTransfers.openFirewall = true;
+    package = pkgs.steam.override {
+      extraEnv = {
+        GDK_SCALE=2;
+      };
+    };
   };
 
   # keep bash as the non-interactive shell, but use fish for interactive

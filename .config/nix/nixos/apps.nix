@@ -8,7 +8,7 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    yubioath-flutter
+    element-desktop # irc chat client
     yubikey-manager-qt # gui for configuring yubikey settings
     age-plugin-yubikey # yubikey support for age
     passage # cli password store using age
