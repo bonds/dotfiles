@@ -196,6 +196,7 @@ function nr
     nice nix flake update
     eval sudo $update_command $argv switch --flake .
     cd $starting_dir
+
 end
 
 function hr

@@ -88,7 +88,6 @@
           ./nixos/configuration.nix
           lix-module.nixosModules.default
           agenix.nixosModules.default
-          # sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
         ];
       };
@@ -104,25 +103,28 @@
           # > Our main home-manager configuration file <
           ./home-manager/home.nix
           agenix.nixosModules.default
+          lix-module.nixosModules.default
         ];
       };
-
-      # Build darwin flake using:
-      # $ darwin-rebuild build --flake .#Scotts-MacBook-Air
-      darwinConfigurations = {
-        "Scotts-MacBook-Air" = nix-darwin.lib.darwinSystem {
-          modules = [ 
-            ./laptop
-            darwin-custom-icons.darwinModules.default
-          ];
-          # Set Git commit hash for darwin-version.
-          system.configurationRevision = self.rev or self.dirtyRev or null;
-        };
-      };
-
-      # Expose the package set, including overlays, for convenience.
-      darwinPackages = self.darwinConfigurations."Scotts-MacBook-Air".pkgs;
-      
     };
+
+    # Build darwin flake using:
+    # $ darwin-rebuild build --flake .#Scotts-MacBook-Air
+    darwinConfigurations = {
+      system = "aarch64-darwin";
+      "Scotts-MacBook-Air" = nix-darwin.lib.darwinSystem {
+        modules = [ 
+          ./laptop
+          darwin-custom-icons.darwinModules.default
+          lix-module.nixosModules.default
+        ];
+        # Set Git commit hash for darwin-version.
+        system.configurationRevision = self.rev or self.dirtyRev or null;
+      };
+    };
+
+    # Expose the package set, including overlays, for convenience.
+    darwinPackages = self.darwinConfigurations."Scotts-MacBook-Air".pkgs;
+      
   };
 }

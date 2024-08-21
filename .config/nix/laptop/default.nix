@@ -4,6 +4,8 @@
   # List packages installed in system profile. To search by name, run:
   # $ nix-env -qaP | grep wget
   environment.systemPackages = with pkgs; [ 
+    atuin
+    fzf
     socat
     btop
     lsd
@@ -22,7 +24,7 @@
     enable = true;
     icons = [
       {
-        path = "/Applications/Notion.app";
+        path = "/Applications/Nix Apps/Alacritty.app";
         icon = "/Users/scott/Documents/terminal.icns";
       }
     ];
