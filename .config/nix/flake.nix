@@ -115,7 +115,6 @@
     # Build darwin flake using:
     # $ darwin-rebuild build --flake .#Scotts-MacBook-Air
     darwinConfigurations = {
-      system = "aarch64-darwin";
       "Scotts-MacBook-Air" = nix-darwin.lib.darwinSystem {
         modules = [ 
           ./laptop
