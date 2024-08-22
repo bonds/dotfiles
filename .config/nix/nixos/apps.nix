@@ -18,7 +18,7 @@
     inputs.agenix.packages.${system}.default
     distrobox # virtualize other linux distros on top of this one
     monophony # youtube music player
-    kdePackages.audiotube
+    kdePackages.audiotube # youtube music player
     gnome.zenity # display a dialog box in gnome
     libnotify # display a gnome notification
     linuxKernel.packages.linux_zen.xone # xbox controller driver
@@ -34,16 +34,16 @@
     usb-reset # reset specific USB devices
     rlwrap # wrapper for cli apps that adds history, used for idris2
     idris2 # compiler for the ML family language
-    gimp
-    krita
-    glmark2
-    radeontop
-    nix-search-cli
-    cpu-x
-    bsd-finger
-    weather
+    gimp # graphics editor
+    krita # pixel art editor
+    glmark2 # 3D benchmark for gpus
+    radeontop # top for radeon gpus
+    nix-search-cli # fast cli search for nix packages
+    cpu-x # cli cpu, gpu, and motherboard hardware info
+    bsd-finger # old school finger utility to get info on fellow users
+    weather # cli weather app
     foliate # ebook reader
-    fzf
+    fzf # fuzzy match text
     pstree # process list formatted as a tree
     idris2 # idris2 compiler
     ghc # haskell compiler
@@ -52,11 +52,11 @@
     bc # calculator for scripts
     atuin # tool for managing terminal command history
     socat # needed for bin/wol script
-    zed-editor
+    zed-editor # another cli text editor
     gnome.dconf-editor
-    dconf2nix
-    obs-studio
-    usbview
+    dconf2nix # convert dconf dumps to nix format
+    obs-studio # video capture and streaming
+    usbview # gui directory of usb devices
     fastfetch # system info on cli
     gsound # for pano
     libgda6 # for pano
@@ -65,34 +65,34 @@
     unstable.gnomeExtensions.another-window-session-manager
     gnomeExtensions.dash-to-panel
     jq # cli json parser and pretty printer
-    libsecret
+    libsecret # cli for gnome passwords
     jless
-    unzip
+    unzip # cli to decompress archives
     helix # cli text editor
     spotify # music subscription service gui
     discord # chat for games
     slack # chat for work
     signal-desktop # chat with good security
     ulauncher # app launcher
-    ollama
-    gnome.gnome-tweaks
-    wmctrl
-    protonmail-desktop
-    obsidian
-    dwarf-fortress
-    git
-    starship
-    lsd
-    ripgrep
-    fd
-    nerdfonts
-    hyperfine
-    sysbench
-    zoom-us
+    ollama # cli to run LLMs locally
+    gnome.gnome-tweaks # gui for changing less common gnome settings
+    wmctrl # cli for controlling windows in wayland
+    protonmail-desktop # email client for proton service
+    obsidian # markdown based note taking
+    dwarf-fortress # rogue-like resource management game
+    git # version control system that everyone uses
+    starship # terminal prompt made pretty
+    lsd # ls with colors and folder icons
+    ripgrep # fast grep written in rust
+    fd # fast find written in rust
+    nerdfonts # fonts with all the symbols added
+    hyperfine # benchmarking tool
+    sysbench # unix system benchmark
+    zoom-us # proprietary video conferencing
     desktop-file-utils
-    btop
-    rustc
-    wget
-    usbutils
+    btop # better looking top
+    rustc # rust compiler
+    wget # cli http request tool
+    usbutils # cli usb tools like usbreset
   ];
 }

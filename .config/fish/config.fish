@@ -85,21 +85,23 @@ if not functions --query fisher
 end
 
 # aliases for convenience
+alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGNAME -s \"openai api key\"); and command chatgpt"
 alias crawl "crawl -rc ~/.config/crawl/init.txt"
 alias day "date '+%Y%m%d'"
 alias ghci "ghci -ghci-script ~/.config/ghc/ghci.rio.conf -ghci-script ~/.config/ghc/ghci.conf"
 alias height "tput lines"
 alias idris "rlwrap --history-filename ~/.local/idris.history idris2 --package contrib"
-alias myip "curl --silent https://checkip.amazonaws.com"
-alias width "tput cols"
-alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGNAME -s \"openai api key\"); and command chatgpt"
+# alias myip "curl --silent https://checkip.amazonaws.com"
+alias myip "mylocation | jq \".ip\" | sed 's/\\\"//g'"
+alias myweather "weather (mylocation | jq \".loc\" | sed 's/\\\"//g')"
+alias nix "command nix --extra-experimental-features nix-command --extra-experimental-features flakes"
 alias nix-shell "command nix-shell --command fish"
-alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
-alias ssht "ssh -o RemoteCommand=none"
 alias reset_camera "sudo usb-reset 0fd9:008a"
 alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
+alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
+alias ssht "ssh -o RemoteCommand=none"
+alias width "tput cols"
 alias xclip "command xclip -selection c"
-alias nix "command nix --extra-experimental-features nix-command --extra-experimental-features flakes"
 
 # OS specific aliases
 if test "$uname" = darwin
