@@ -190,13 +190,13 @@ function nr
     set -x NIX_CONFIG (passage NIX_CONFIG)
     switch $uname
         case darwin
-            set update_command darwin-rebuild
+            set update_command darwin-rebuild switch flake .
         case "*"
-            set update_command sudo nixos-rebuild
+            set update_command nh os switch .
     end
     cd $config_dir
     nice nix flake update
-    eval nice $update_command $argv switch --flake .
+    eval nice $update_command $argv
     cd $starting_dir
 
 end

@@ -12,7 +12,7 @@
   programs.mtr.enable = true;
   programs.fish.enable = true;
   programs.tmux.enable = true;
-  programs.geary.enable = true;
+  # programs.geary.enable = true;
   programs.steam = {
     enable = true;
     remotePlay.openFirewall = true;
@@ -52,6 +52,14 @@
         fi
       fi
     '';
+  };
+
+  # https://github.com/viperML/nh
+  programs.nh = {
+    enable = true;
+    clean.enable = true;
+    clean.extraArgs = "--keep-since 4d --keep 3";
+    flake = "/home/scott/.config/nix";
   };
 
 }

@@ -8,6 +8,7 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    aseprite # animated sprite editor and pixel art tool
     mailspring # nice looking gui mail client
     inputs.nixos-conf-editor.packages.${system}.nixos-conf-editor
     element-desktop # irc chat client
@@ -77,7 +78,7 @@
     ollama # cli to run LLMs locally
     gnome.gnome-tweaks # gui for changing less common gnome settings
     wmctrl # cli for controlling windows in wayland
-    protonmail-desktop # email client for proton service
+    # protonmail-desktop # email client for proton service
     obsidian # markdown based note taking
     dwarf-fortress # rogue-like resource management game
     git # version control system that everyone uses

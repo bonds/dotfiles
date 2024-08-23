@@ -35,6 +35,14 @@
         };
       });
     });
+
+    # aseprite  = prev.aseprite.overrideAttrs (oldAttrs: {
+    #   postInstall = (oldAttrs.postInstall or "") + ''
+    #     substituteInPlace $out/share/applications/aseprite.desktop \
+    #       --replace "aseprite %U" "env GDK_SCALE=2 aseprite %U"
+    #   '';
+    # });
+
   };
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will

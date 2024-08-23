@@ -114,6 +114,10 @@
   # Enable networking
   networking.networkmanager.enable = true;
 
+  # use nftables instead of iptables
+  # https://kokada.capivaras.dev/blog/an-unordered-list-of-hidden-gems-inside-nixos/
+  networking.nftables.enable = true;
+
   # Set your time zone.
   time.timeZone = "America/Los_Angeles";
 
@@ -161,13 +165,19 @@
   environment.sessionVariables = rec {
     LD_LIBRARY_PATH = "${pkgs.wayland}/lib:$LD_LIBRARY_PATH";
   };
+
+  # https://kokada.capivaras.dev/blog/an-unordered-list-of-hidden-gems-inside-nixos/
+  system.switch = {
+    enable = false;
+    enableNg = true;
+  };
   
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
   system.stateVersion = "24.05";
 
   # Prevent /boot from filling up
   # https://lobste.rs/s/ymmale/unordered_list_hidden_gems_inside_nixos
-  boot.loader.grub.configurationLimit = 5;
+  boot.loader.grub.configurationLimit = 10;
   nix.gc = {
     automatic = true;
     randomizedDelaySec = "14m";
