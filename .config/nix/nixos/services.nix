@@ -160,4 +160,11 @@
 
   services.pcscd.enable = true;
 
+  # faster dbus implementation
+  services.dbus.implementation = "broker";
+
+  # IRQ balancing algorithm to distribute work to more cores for better 
+  # performance
+  services.irqbalance.enable = true;
+
 }

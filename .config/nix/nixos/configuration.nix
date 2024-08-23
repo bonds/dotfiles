@@ -164,5 +164,47 @@
   
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
   system.stateVersion = "24.05";
+
+  # Prevent /boot from filling up
+  # https://lobste.rs/s/ymmale/unordered_list_hidden_gems_inside_nixos
+  boot.loader.grub.configurationLimit = 5;
+  nix.gc = {
+    automatic = true;
+    randomizedDelaySec = "14m";
+    options = "--delete-older-than 30d";
+  };
+
+  # automatic upgrades
+  # https://nixos.org/manual/nixos/stable/index.html#sec-upgrading-automatic
+  # system.autoUpgrade.enable = true;
+  # system.autoUpgrade.allowReboot = true;
+
+  # Disable root password
+  users.users.root.hashedPassword = "*";
+
+  # use the new and improved build script
+  # https://kokada.dev/blog/an-unordered-list-of-hidden-gems-inside-nixos/
+  system.switch = {
+    enable = false;
+    enableNg = true;
+  };
+
+  # use systemd for init at boot...because it's better?
+  # https://kokada.dev/blog/an-unordered-list-of-hidden-gems-inside-nixos/
+  boot.initrd.systemd.enable = true;
+
+  # use RAM instead of SSD to store tmp files
+  # https://kokada.dev/blog/an-unordered-list-of-hidden-gems-inside-nixos/
+  boot.tmp.useTmpfs = true;
+  systemd.services.nix-daemon = {
+    environment.TMPDIR = "/var/tmp";
+  };
+
+  # trim SSDs to keep their performance good
+  services.fstrim.enable = true;
+
+  # be able to run binaries from other architectures
+  # boot.binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
+
 }
 
