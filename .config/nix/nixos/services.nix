@@ -167,4 +167,7 @@
   # performance
   services.irqbalance.enable = true;
 
+  # trim SSDs to keep their performance good
+  services.fstrim.enable = true;
+
 }

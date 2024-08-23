@@ -60,17 +60,23 @@
     flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
   in {
     settings = {
+
       # Enable flakes and new 'nix' command
       experimental-features = "nix-command flakes";
+
       # Opinionated: disable global registry
       flake-registry = "";
+
       # Workaround for https://github.com/NixOS/nix/issues/9574
       nix-path = config.nix.nixPath;
+
       # don't keep telling me when my nix config hasn't been committed
       # to the git repro yet, I don't care!
       # https://git.2li.ch/Nebucatnetzer/nixos/commit/36d3953121d968191cd5d83cab201af70e6c864b  
       warn-dirty = false;
+
     };
+
     # Opinionated: disable channels
     channel.enable = false;
 
@@ -78,6 +84,13 @@
     registry = lib.mapAttrs (_: flake: {inherit flake;}) flakeInputs;
     nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
 
+    # clean up old boot entries
+    # https://lobste.rs/s/ymmale/unordered_list_hidden_gems_inside_nixos
+    gc = {
+      automatic = true;
+      randomizedDelaySec = "14m";
+      options = "--delete-older-than 30d";
+    };
 
   };
 
@@ -166,23 +179,8 @@
     LD_LIBRARY_PATH = "${pkgs.wayland}/lib:$LD_LIBRARY_PATH";
   };
 
-  # https://kokada.capivaras.dev/blog/an-unordered-list-of-hidden-gems-inside-nixos/
-  system.switch = {
-    enable = false;
-    enableNg = true;
-  };
-  
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
   system.stateVersion = "24.05";
-
-  # Prevent /boot from filling up
-  # https://lobste.rs/s/ymmale/unordered_list_hidden_gems_inside_nixos
-  boot.loader.grub.configurationLimit = 10;
-  nix.gc = {
-    automatic = true;
-    randomizedDelaySec = "14m";
-    options = "--delete-older-than 30d";
-  };
 
   # automatic upgrades
   # https://nixos.org/manual/nixos/stable/index.html#sec-upgrading-automatic
@@ -210,11 +208,11 @@
     environment.TMPDIR = "/var/tmp";
   };
 
-  # trim SSDs to keep their performance good
-  services.fstrim.enable = true;
+  # prevent /boot from filling up
+  # https://lobste.rs/s/ymmale/unordered_list_hidden_gems_inside_nixos
+  boot.loader.grub.configurationLimit = 10;
 
   # be able to run binaries from other architectures
   # boot.binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
 
 }
-

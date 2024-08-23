@@ -78,14 +78,18 @@ while true
         set gpucolor green
     end
 
-    set memused (math -s0 (vmstat -s | awk  ' $0 ~ /total memory/ {total=$1 } $0 ~/free memory/ {free=$1} $0 ~/buffer memory/ {buffer=$1} $0 ~/cache/ {cache=$1} END{print (total-free-buffer-cache)/total*100}'))
+    # set memused (math -s0 (vmstat -s | awk  ' $0 ~ /total memory/ {total=$1 } $0 ~/free memory/ {free=$1} $0 ~/buffer memory/ {buffer=$1} $0 ~/cache/ {cache=$1} END{print (total-free-buffer-cache)/total*100}'))
+
+    set memused (math -s0 (cat /proc/pressure/memory | grep some | sed 's/.*avg10=\([0-9]*\.[0-9]*\).*/\1/g') ^ 2)
 
     send mem set "value=$memused"
 
-    if test "$memused" -gt 85
+    # if test "$memused" -gt 85
+    if test "$memused" -gt 60
         send mem backlight "red=100&green=0&blue=0"
         set memcolor red
-    else if test "$memused" -gt 60
+        # else if test "$memused" -gt 60
+    else if test "$memused" -gt 30
         send mem backlight "red=0&green=0&blue=100"
         set memcolor blue
     else
