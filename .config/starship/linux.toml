@@ -3,7 +3,7 @@ add_newline = true
 
 # Use custom format
 format = """
-[╭─](white)$username$hostname in $directory$package$git_branch$battery$cmd_duration$fill$time
+[╭─](white)$username$hostname in $directory$package$git_branch$git_status$battery$cmd_duration$fill$time
 [╰─](white)$character """
 
 # Wait 10 milliseconds for starship to check files under the current directory.
@@ -79,3 +79,6 @@ time_format = "%F %T"
 
 [os.symbols]
 Macos = " "
+
+[git_status]
+format = '([$all_status$ahead_behind]($style) )'
