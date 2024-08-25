@@ -125,11 +125,16 @@ else
 end
 
 function ssh
+    if test $uname = darwin
+        set timeoutflag G
+    else
+        set timeoutflag w
+    end
     if test $argv[1] = metanoia;
-        and not nc -zv -w 1 metanoia 22 >/dev/null 2>&1
+        and not nc -z -$timeoutflag 1 metanoia 22 >/dev/null 2>&1
         echo -n trying to wake metanoia before SSHing in
         wol "a8:a1:59:36:7d:d4"
-        while not nc -zv -w 1 metanoia 22 >/dev/null 2>&1
+        while not nc -z -$timeoutflag 1 metanoia 22 >/dev/null 2>&1
             echo -n .
             sleep 1
         end
