@@ -115,7 +115,7 @@
     # Build darwin flake using:
     # $ darwin-rebuild build --flake .#Scotts-MacBook-Air
     darwinConfigurations = {
-      "Scotts-MacBook-Air" = nix-darwin.lib.darwinSystem {
+      "accismus" = nix-darwin.lib.darwinSystem {
         modules = [ 
           ./laptop
           darwin-custom-icons.darwinModules.default
@@ -127,7 +127,7 @@
     };
 
     # Expose the package set, including overlays, for convenience.
-    darwinPackages = self.darwinConfigurations."Scotts-MacBook-Air".pkgs;
+    darwinPackages = self.darwinConfigurations."accismus".pkgs;
       
   };
 }
