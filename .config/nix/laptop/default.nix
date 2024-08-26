@@ -45,10 +45,7 @@
 
   # Auto upgrade nix package and the daemon service.
   services.nix-daemon.enable = true;
-  # nix.package = pkgs.nix;
-
-  # Necessary for using flakes on this system.
-  # nix.settings.experimental-features = "nix-command flakes";
+  nix.package = pkgs.nix;
 
   # Create /etc/zshrc that loads the nix-darwin environment.
   programs.zsh.enable = true;  # default shell on catalina
@@ -68,7 +65,7 @@
       experimental-features = "nix-command flakes";
 
       # Opinionated: disable global registry
-      flake-registry = "";
+      # flake-registry = "";
 
       # Workaround for https://github.com/NixOS/nix/issues/9574
       nix-path = config.nix.nixPath;
