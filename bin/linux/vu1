@@ -41,21 +41,24 @@ function send
     end
 
     set output (wget -qO- "http://localhost:5340/api/v0/dial/$dialuid/$action?$params&key=$KEY" | jq ". |= . + {\"date\": \"$(date)\", \"dial\": \"$dial\", \"request\": \"$request\"}")
-    sleep 0.1
+    sleep 0.2
 
 end
 
 while true
 
-    set cpuidle (vmstat 1 2|tail -1|awk '{print $15}')
-    set cpuused (math "100 - $cpuidle")
+    # set cpuidle (vmstat 1 2|tail -1|awk '{print $15}')
+    # set cpuused (math "100 - $cpuidle")
+    set cpuused (math -s0 (cat /proc/pressure/cpu | grep some | sed 's/.*avg10=\([0-9]*\.[0-9]*\).*/\1/g'))
 
     send cpu set "value=$cpuused"
 
-    if test "$cpuused" -gt 75
+    # if test "$cpuused" -gt 100
+    if test "$cpuused" -gt 80
         send cpu backlight "red=100&green=0&blue=0"
         set cpucolor red
-    else if test "$cpuused" -gt 30
+        # else if test "$cpuused" -gt 50
+    else if test "$cpuused" -gt 50
         send cpu backlight "red=0&green=0&blue=100"
         set cpucolor blue
     else
@@ -80,16 +83,16 @@ while true
 
     # set memused (math -s0 (vmstat -s | awk  ' $0 ~ /total memory/ {total=$1 } $0 ~/free memory/ {free=$1} $0 ~/buffer memory/ {buffer=$1} $0 ~/cache/ {cache=$1} END{print (total-free-buffer-cache)/total*100}'))
 
-    set memused (math -s0 (cat /proc/pressure/memory | grep some | sed 's/.*avg10=\([0-9]*\.[0-9]*\).*/\1/g') ^ 2)
+    set memused (math -s0 "$(cat /proc/pressure/memory | grep some | sed 's/.*avg10=\([0-9]*\.[0-9]*\).*/\1/g') * 5")
 
     send mem set "value=$memused"
 
     # if test "$memused" -gt 85
-    if test "$memused" -gt 60
+    if test "$memused" -gt 50
         send mem backlight "red=100&green=0&blue=0"
         set memcolor red
         # else if test "$memused" -gt 60
-    else if test "$memused" -gt 30
+    else if test "$memused" -gt 25
         send mem backlight "red=0&green=0&blue=100"
         set memcolor blue
     else
@@ -101,7 +104,7 @@ while true
 
     send disk set "value=$diskused"
 
-    if test "$diskused" -gt 51
+    if test "$diskused" -gt 50
         send disk backlight "red=100&green=0&blue=0"
         set diskcolor red
     else if test "$diskused" -gt 25

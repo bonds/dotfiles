@@ -130,7 +130,7 @@
     after = [ "vu1server.service" ];
     script = "/home/scott/bin/linux/vu1";
     serviceConfig = {
-      TimeoutStopSec = "1s";
+      TimeoutStopSec = "5s";
     };
   }; 
 
@@ -150,7 +150,8 @@
   systemd.services.vu1resume = {
     enable = true;
     description = "Start VU1 service when computer wakes up.";
-    script = "systemctl stop vu1monitor.service; systemctl stop vu1server.service; systemctl start vu1server.service; systemctl start vu1monitor.service";
+    script = "systemctl start vu1server.service vu1monitor.service";
+    # script = "systemctl stop vu1monitor.service; systemctl stop vu1server.service; systemctl start vu1server.service; systemctl start vu1monitor.service";
     after = [ "wakeusb.service" ];
     wantedBy = [ "wakeusb.service" ];
     serviceConfig = {

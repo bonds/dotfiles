@@ -24,7 +24,22 @@
       options = [ "fmask=0022" "dmask=0022" ];
     };
 
-  swapDevices = [ ];
+  # remove all existing swap devices
+  # swapDevices = lib.mkForce [ ];
+
+  # # add a swap file
+  # # https://discourse.nixos.org/t/how-to-add-a-swap-after-nixos-installation/41742
+  # # https://chrisdown.name/2018/01/02/in-defence-of-swap.html
+  # swapDevices = [{
+  #   device = "/swapfile";
+  #   size = 64 * 1024; # 64GB
+  # }];
+
+  # use all of my 120GB PNY SSD for swap
+  swapDevices = [ {
+    device = "/dev/sdb1";
+    randomEncryption.enable = true; 
+  } ];
 
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
   # (the default) this is the recommended approach. When using systemd-networkd it's

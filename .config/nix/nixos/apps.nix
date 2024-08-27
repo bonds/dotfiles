@@ -8,6 +8,9 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    onlyoffice-bin # office suite
+    glxinfo # gpu information
+    newsflash # rss reader
     aseprite # animated sprite editor and pixel art tool
     mailspring # nice looking gui mail client
     inputs.nixos-conf-editor.packages.${system}.nixos-conf-editor
@@ -47,6 +50,7 @@
     fzf # fuzzy match text
     pstree # process list formatted as a tree
     idris2 # idris2 compiler
+    cabal-install # build tool and dependency manager for haskell
     ghc # haskell compiler
     ffmpeg # video converter
     nms

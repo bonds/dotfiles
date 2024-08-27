@@ -215,4 +215,9 @@
   # be able to run binaries from other architectures
   # boot.binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
 
+  powerManagement.powerDownCommands = ''
+    systemctl stop vu1monitor.service
+    systemctl stop vu1server.service
+  '';
+
 }
