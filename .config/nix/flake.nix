@@ -116,6 +116,7 @@
     # $ darwin-rebuild build --flake .#Scotts-MacBook-Air
     darwinConfigurations = {
       "accismus" = nix-darwin.lib.darwinSystem {
+        specialArgs = {inherit inputs outputs;};
         modules = [ 
           ./laptop
           darwin-custom-icons.darwinModules.default
