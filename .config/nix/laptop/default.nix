@@ -12,6 +12,7 @@
   # List packages installed in system profile. To search by name, run:
   # $ nix-env -qaP | grep wget
   environment.systemPackages = with pkgs; [ 
+    rage
     element-desktop
     unstable.ollama # not a service yet: https://github.com/LnL7/nix-darwin/pull/972
     docker
