@@ -8,6 +8,7 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    gcc # c compiler
     onlyoffice-bin # office suite
     glxinfo # gpu information
     newsflash # rss reader
@@ -57,7 +58,7 @@
     bc # calculator for scripts
     atuin # tool for managing terminal command history
     socat # needed for bin/wol script
-    zed-editor # another cli text editor
+    # zed-editor # another cli text editor
     gnome.dconf-editor
     dconf2nix # convert dconf dumps to nix format
     obs-studio # video capture and streaming

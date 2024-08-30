@@ -220,4 +220,10 @@
     systemctl stop vu1server.service
   '';
 
+  # https://wiki.nixos.org/w/index.php?title=Appimage&mobileaction=toggle_view_mobile
+  programs.appimage = {
+    enable = true;
+    binfmt = true;
+  };
+
 }

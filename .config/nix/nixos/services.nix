@@ -66,11 +66,11 @@
   services.ollama = {
     enable = true;
     # acceleration = "rocm";
-    # rocmOverrideGfx = "9.0.a";
-    # environmentVariables = {
-    #   HIP_VISIBLE_DEVICES = "1";
-    #   HCC_AMDGPU_TARGET = "9.0.a";
-    # };
+    # rocmOverrideGfx = "11.0.2";
+    environmentVariables = {
+      # HIP_VISIBLE_DEVICES = "1";
+      # HSA_OVERRIDE_GFX_VERSION = "11.0.2";
+    };
   };
   
   systemd.services.ollama.serviceConfig.Restart = lib.mkForce "always";

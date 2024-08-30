@@ -37,7 +37,8 @@
 
   # use all of my 120GB PNY SSD for swap
   swapDevices = [ {
-    device = "/dev/sdb1";
+    # use partuuid because disk uuid changes each boot with swap drives
+    device = "/dev/disk/by-partuuid/262987aa-01";
     randomEncryption.enable = true; 
   } ];
 
