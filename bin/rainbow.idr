@@ -27,6 +27,9 @@ yellow = (255, 255, 0)
 green : Color
 green = (0, 255, 0)
 
+cyan : Color
+cyan = (0, 255, 255)
+
 blue : Color
 blue = (0, 0, 255)
 
@@ -37,7 +40,7 @@ violet : Color
 violet = (238, 130, 238)
 
 keyColors : List Color
-keyColors = [red, orange, yellow, green, blue, indigo, violet]
+keyColors = [red, orange, yellow, green, cyan, blue, indigo, violet]
 
 rainbow'' : Nat -> Color -> Color -> List Color -> List Color
 rainbow'' 1 _ _ sofar = sofar
