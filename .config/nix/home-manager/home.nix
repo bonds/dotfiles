@@ -48,7 +48,6 @@
     };
   };
 
-  # TODO: Set your username
   home = {
     username = "scott";
     homeDirectory = "/home/scott";
@@ -360,9 +359,6 @@
       ExecStart = "/run/current-system/sw/bin/ulauncher --hide-window";
       Environment = "GDK_BACKEND=x11";
       Restart = "always";
-      # RestartTriggers = [
-      #   config.environment.systemPackages
-      # ];
     };
   }; 
 
