@@ -213,7 +213,7 @@ function nr
             set update_command nh os switch .
     end
     cd $config_dir
-    # nice nix flake update
+    nice nix flake update
     eval nice $update_command $argv
     cd $starting_dir
 
