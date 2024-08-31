@@ -10,12 +10,17 @@ set WORKSTATION "10.0.0.75"
 set SERVERRACK "10.0.0.189"
 
 set hosts $WORKSTATION $SERVERRACK
+set names workstation servers
 
-for host in $hosts
-    printf %12s "$host: "
+for i in (seq (count $hosts))
     if not set -q _flag_verbose
-        kasa --host $host emeter $argv | grep Power | awk '{printf "%.f\n", $2}'
+        set longest (string length $names | sort -n | tail -1)
+        set width (bc -e "$longest + 5")
+        set watts (kasa --host $hosts[$i] emeter $argv | grep Power | awk '{printf "%.f", $2}')
+        string pad --width $width "$names[$i]: $(string pad --width 3 $watts)"
     else
-        kasa --host $host emeter $argv
+        echo $names[$i]
+        kasa --host $hosts[$i] emeter $argv
+        echo
     end
 end
