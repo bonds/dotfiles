@@ -12,6 +12,8 @@
   # List packages installed in system profile. To search by name, run:
   # $ nix-env -qaP | grep wget
   environment.systemPackages = with pkgs; [ 
+    # nh_darwin.packages.${pkgs.stdenv.hostPlatform.system}.default
+    python311Packages.python-kasa
     rage
     element-desktop
     unstable.ollama # not a service yet: https://github.com/LnL7/nix-darwin/pull/972
@@ -62,6 +64,17 @@
 
   # The platform the configuration will be used on.
   nixpkgs.hostPlatform = "aarch64-darwin";
+
+  # https://github.com/ToyVo/nh_darwin
+  # programs.nh.package = inputs.nh_darwin.packages.${pkgs.stdenv.hostPlatform.system}.default;
+
+  programs.nh = {
+    enable = true;
+    clean.enable = true;
+    flake = "/home/scott/.config/nix";
+    # Installation option once https://github.com/LnL7/nix-darwin/pull/942 is merged:
+    # package = inputs.nh_darwin.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  };
 
   nix = {
 

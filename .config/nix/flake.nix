@@ -24,6 +24,7 @@
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     # https://github.com/ryanccn/nix-darwin-custom-icons
     darwin-custom-icons.url = "github:ryanccn/nix-darwin-custom-icons";
+    nh_darwin.url = "github:ToyVo/nh_darwin";
 
     # my favorite terminal font, thanks Apple!
     sf-mono-liga-src = {
@@ -52,6 +53,7 @@
     agenix,
     nix-darwin,
     darwin-custom-icons,
+    nh_darwin,
     # sops-nix,
     ...
   } @ inputs: let
@@ -115,12 +117,14 @@
     # Build darwin flake using:
     # $ darwin-rebuild build --flake .#Scotts-MacBook-Air
     darwinConfigurations = {
-      "accismus" = nix-darwin.lib.darwinSystem {
+      accismus.local = nix-darwin.lib.darwinSystem {
         specialArgs = {inherit inputs outputs;};
         modules = [ 
           ./laptop
           darwin-custom-icons.darwinModules.default
           lix-module.nixosModules.default
+          # nh_darwin.nixDarwinModules.default
+          nh_darwin.nixDarwinModules.prebuiltin
         ];
         # Set Git commit hash for darwin-version.
         system.configurationRevision = self.rev or self.dirtyRev or null;
@@ -128,7 +132,7 @@
     };
 
     # Expose the package set, including overlays, for convenience.
-    darwinPackages = self.darwinConfigurations."accismus".pkgs;
+    darwinPackages = self.darwinConfigurations.accismus.local.pkgs;
       
   };
 }

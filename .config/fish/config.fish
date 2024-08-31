@@ -50,7 +50,7 @@ set -x PASSAGE_DIR $HOME/.config/passage/store
 set -x PASSAGE_IDENTITIES_FILE $HOME/.config/passage/identities
 
 if not set --query NIX_CONFIG
-    set -x NIX_CONFIG (rage -d -i ~/.config/passage/age-yubikey-identity-2219061d.txt ~/.config/passage/store/NIX_CONFIG.age)
+    set -x NIX_CONFIG (rage -d -i ~/.config/passage/(hostname).identity ~/.config/passage/store/NIX_CONFIG.age)
 end
 
 if status --is-interactive
@@ -192,6 +192,14 @@ function ping
     end
 end
 
+function nh
+    if commmand --query nh_darwin
+        command nh_darwin $argv
+    else
+        command nh $argv
+    end
+end
+
 # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/update-the-system
 function nr
     set starting_dir (pwd)
@@ -199,7 +207,8 @@ function nr
     # set -x NIX_CONFIG (passage NIX_CONFIG)
     switch $uname
         case darwin
-            set update_command darwin-rebuild switch --flake .
+            # set update_command darwin-rebuild switch --flake .
+            set update_command nh_darwin os switch .
         case "*"
             set update_command nh os switch .
     end
