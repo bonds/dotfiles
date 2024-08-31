@@ -49,6 +49,10 @@ set -x DATEFMT "+%F %T"
 set -x PASSAGE_DIR $HOME/.config/passage/store
 set -x PASSAGE_IDENTITIES_FILE $HOME/.config/passage/identities
 
+if not set --query NIX_CONFIG
+    set -x NIX_CONFIG (rage -d -i ~/.config/passage/(hostname).identity ~/.config/passage/store/NIX_CONFIG.age)
+end
+
 if status --is-interactive
     #    devbox global shellenv --init-hook | source
     if command --query starship
@@ -188,19 +192,28 @@ function ping
     end
 end
 
+function nh
+    if commmand --query nh_darwin
+        command nh_darwin $argv
+    else
+        command nh $argv
+    end
+end
+
 # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/update-the-system
 function nr
     set starting_dir (pwd)
     set config_dir $HOME/.config/nix
-    set -x NIX_CONFIG (passage NIX_CONFIG)
+    # set -x NIX_CONFIG (passage NIX_CONFIG)
     switch $uname
         case darwin
-            set update_command darwin-rebuild switch --flake .
+            # set update_command darwin-rebuild switch --flake .
+            set update_command nh_darwin os switch .
         case "*"
             set update_command nh os switch .
     end
     cd $config_dir
-    nice nix flake update
+    # nice nix flake update
     eval nice $update_command $argv
     cd $starting_dir
 
@@ -212,7 +225,7 @@ end
 
 function nix
     # set -x NIX_CONFIG (secret-tool lookup name 'NIX_CONFIG')
-    set -x NIX_CONFIG (passage NIX_CONFIG)
+    # set -x NIX_CONFIG (passage NIX_CONFIG)
     command nix --extra-experimental-features nix-command --extra-experimental-features flakes $argv
 end
 
