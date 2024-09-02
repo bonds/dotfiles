@@ -171,4 +171,8 @@
   # trim SSDs to keep their performance good
   services.fstrim.enable = true;
 
+  # firmware updater, run fwupdmgr refresh and fwupdmgr get-updates
+  # https://nixos.wiki/wiki/Fwupd
+  services.fwupd.enable = true;
+
 }

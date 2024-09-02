@@ -214,7 +214,7 @@ function nr
     end
     cd $config_dir
     nice nix flake update
-    eval nice $update_command $argv
+    nice $update_command $argv
     # update app list just in case something was added or removed
     systemctl --user restart ulauncher
     cd $starting_dir
