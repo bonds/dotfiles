@@ -345,22 +345,22 @@
 
   };
 
-  systemd.user.services.ulauncher = {
-    Unit = {
-      Description = "An app launcher.";
-      After = "gnome-session.target";
-      # X-Restart-Triggers = [ "${config.environment.systemPackages}" ];
-    };
-    Install = {
-      WantedBy = [ "gnome-session.target" ];
-    };
-    Service = {
-      # https://github.com/Ulauncher/Ulauncher/issues/451
-      ExecStart = "/run/current-system/sw/bin/ulauncher --hide-window";
-      Environment = "GDK_BACKEND=x11";
-      Restart = "always";
-    };
-  }; 
+  # systemd.user.services.ulauncher = {
+  #   Unit = {
+  #     Description = "An app launcher.";
+  #     After = "gnome-session.target";
+  #     # X-Restart-Triggers = [ "${config.environment.systemPackages}" ];
+  #   };
+  #   Install = {
+  #     WantedBy = [ "gnome-session.target" ];
+  #   };
+  #   Service = {
+  #     # https://github.com/Ulauncher/Ulauncher/issues/451
+  #     ExecStart = "/run/current-system/sw/bin/ulauncher --hide-window";
+  #     Environment = "GDK_BACKEND=x11";
+  #     Restart = "always";
+  #   };
+  # }; 
 
   # systemd.user.services.vu1server = {
   #   Unit = {

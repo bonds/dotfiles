@@ -213,8 +213,8 @@ function nr
             set update_command nh os switch .
     end
     cd $config_dir
-    nice nix flake update
-    nice $update_command $argv
+    nice ionice -c idle -- nix flake update
+    nice ionice -c idle -- $update_command $argv
     # update app list just in case something was added or removed
     systemctl --user restart ulauncher
     cd $starting_dir

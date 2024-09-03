@@ -79,7 +79,7 @@
     discord # chat for games
     slack # chat for work
     signal-desktop # chat with good security
-    ulauncher # app launcher
+    # ulauncher # app launcher
     ollama # cli to run LLMs locally
     gnome.gnome-tweaks # gui for changing less common gnome settings
     wmctrl # cli for controlling windows in wayland
