@@ -148,7 +148,7 @@ end
 
 function ls
     if command --query lsd
-        lsd $argv
+        lsd --hyperlink=auto $argv
     else if command --query colorls
         colorls -G $argv
     else

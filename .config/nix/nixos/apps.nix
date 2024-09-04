@@ -8,6 +8,8 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    # alacritty # a terminal
+    # kitty # a terminal
     gcc # c compiler
     onlyoffice-bin # office suite
     glxinfo # gpu information
