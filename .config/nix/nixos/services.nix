@@ -117,6 +117,8 @@
       cd /home/scott/Documents/repos/VU-Server
       /run/current-system/sw/bin/nix-shell -I "nixpkgs=https://github.com/NixOS/nixpkgs/archive/refs/tags/24.05.zip" --run "python3 server.py"
     '';
+    after = [ "dev-ttyUSB0.device" ];
+    # postStart = "sleep 10"; # give the server time to finish starting
     serviceConfig = {
       TimeoutStopSec = "1s";
     };
@@ -128,6 +130,7 @@
     wantedBy = [ "default.target" ];
     wants = [ "vu1server.service" ];
     after = [ "vu1server.service" ];
+    # preStart = "sleep 10"; # give the server time to finish starting
     script = "/home/scott/bin/linux/vu1";
     serviceConfig = {
       TimeoutStopSec = "5s";
@@ -147,17 +150,19 @@
   #   };
   # };
 
-  systemd.services.vu1resume = {
-    enable = true;
-    description = "Start VU1 service when computer wakes up.";
-    script = "systemctl start vu1server.service vu1monitor.service";
-    # script = "systemctl stop vu1monitor.service; systemctl stop vu1server.service; systemctl start vu1server.service; systemctl start vu1monitor.service";
-    after = [ "wakeusb.service" ];
-    wantedBy = [ "wakeusb.service" ];
-    serviceConfig = {
-      Type = "oneshot";
-    };
-  };
+  # systemd.services.vu1resume = {
+  #   enable = true;
+  #   description = "Start VU1 service when computer wakes up.";
+  #   script = "systemctl start vu1server.service vu1monitor.service";
+  #   # script = "systemctl stop vu1monitor.service; systemctl stop vu1server.service; systemctl start vu1server.service; systemctl start vu1monitor.service";
+  #   # after = [ "wakeusb.service" ];
+  #   # wantedBy = [ "wakeusb.service" ];
+  #   after = [ "sleep.target" ];
+  #   wantedBy = [ "sleep.target" ];
+  #   serviceConfig = {
+  #     Type = "oneshot";
+  #   };
+  # };
 
   services.pcscd.enable = true;
 

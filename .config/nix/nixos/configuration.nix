@@ -26,7 +26,7 @@
     ./services.nix
     ./programs.nix
     ./monitors.nix
-    ./wake.nix
+    # ./wake.nix
     ./apps.nix
     ./firefox.nix
     ./python.nix
@@ -217,8 +217,11 @@
   # boot.binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
 
   powerManagement.powerDownCommands = ''
-    systemctl stop vu1monitor.service
-    systemctl stop vu1server.service
+    systemctl stop vu1monitor.service vu1server.service
+  '';
+
+  powerManagement.powerUpCommands = ''
+    systemctl start vu1server.service vu1monitor.service
   '';
 
   # https://wiki.nixos.org/w/index.php?title=Appimage&mobileaction=toggle_view_mobile
