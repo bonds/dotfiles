@@ -16,7 +16,7 @@
     python311Packages.python-kasa
     rage
     element-desktop
-    unstable.ollama # not a service yet: https://github.com/LnL7/nix-darwin/pull/972
+    ollama # not a service yet: https://github.com/LnL7/nix-darwin/pull/972
     docker
     colima
     jq
@@ -49,6 +49,17 @@
       }
     ];
   };
+
+  # launchd.user.agents.ollama = {
+  #   enabled = true;
+  #   serviceConfig = {
+  #     ProgramArguments = [
+  #       "${cfg.package}/bin/${cfg.exec}" "server"
+  #     ];
+  #     KeepAlive = true;
+  #     RunAtLoad = true;  
+  #   };
+  # };
 
   # Auto upgrade nix package and the daemon service.
   services.nix-daemon.enable = true;
