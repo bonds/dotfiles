@@ -1,0 +1,24 @@
+#!/usr/bin/env fish
+
+set pwd (pwd)
+set output "$pwd/../thing.txt"
+echo "" >$output
+
+echo "\$ cd $pwd" >>$output
+echo >>$output
+
+echo "\$ git remote -v" >>$output
+git remote -v >>$output
+echo >>$output
+
+echo "\$ ls -R" >>$output
+echo >>$output
+ls -R >>$output
+echo >>$output
+
+for file in (find . -type f -iname "*.md" -o -iname "*.py" -o -iname "*.txt")
+    echo "\$ cat $file" >>$output
+    echo >>$output
+    cat "$file" >>$output
+    echo >>$output
+end
