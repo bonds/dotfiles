@@ -1,6 +1,17 @@
 #!/usr/bin/env fish
 
+if not set gitroot (git rev-parse --show-toplevel)
+    echo "not a git repo"
+    exit 1
+end
+
 set pwd (pwd)
+
+if not test "$gitroot" = "$pwd"
+    echo "not at git root"
+    exit 2
+end
+
 set output "$pwd/../thing.txt"
 echo "" >$output
 
