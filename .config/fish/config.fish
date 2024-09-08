@@ -9,12 +9,11 @@
 #         --inhibit-only &
 # end
 
-if command --query /run/current-system/sw/bin/uname
-    set uname (/run/current-system/sw/bin/uname)
-else
-    set uname (uname)
+set uname (string lower (uname))
+
+if command --query ionice
+    alias nice "command nice ionice -c idle"
 end
-set uname (string lower "$uname")
 
 # add all the paths I like
 set --append fish_user_paths ~/bin/"$uname"
@@ -192,33 +191,23 @@ function ping
     end
 end
 
-function nh
-    if commmand --query nh_darwin
-        command nh_darwin $argv
-    else
-        command nh $argv
-    end
+if command --query nh_darwin
+    alias nh "nice nh_darwin"
+else
+    alias nh "nice command nh"
 end
 
 # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/update-the-system
 function nr
     set starting_dir (pwd)
     set config_dir $HOME/.config/nix
-    # set -x NIX_CONFIG (passage NIX_CONFIG)
-    switch $uname
-        case darwin
-            # set update_command darwin-rebuild switch --flake .
-            set update_command nh_darwin os switch .
-        case "*"
-            set update_command nh os switch .
-    end
     cd $config_dir
-    nice ionice -c idle -- nix flake update
-    nice ionice -c idle -- $update_command $argv
-    # update app list just in case something was added or removed
-    systemctl --user restart ulauncher
+    nice -- nix flake update
+    nh os switch . $argv
+    if command --query ulauncher
+        systemctl --user restart ulauncher
+    end
     cd $starting_dir
-
 end
 
 function hr

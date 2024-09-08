@@ -117,7 +117,8 @@
     # Build darwin flake using:
     # $ darwin-rebuild build --flake .#Scotts-MacBook-Air
     darwinConfigurations = {
-      accismus.local = nix-darwin.lib.darwinSystem {
+      # accismus.local = nix-darwin.lib.darwinSystem {
+      "accismus" = nix-darwin.lib.darwinSystem {
         specialArgs = {inherit inputs outputs;};
         modules = [ 
           ./laptop
@@ -132,7 +133,8 @@
     };
 
     # Expose the package set, including overlays, for convenience.
-    darwinPackages = self.darwinConfigurations.accismus.local.pkgs;
+    # darwinPackages = self.darwinConfigurations.accismus.local.pkgs;
+    darwinPackages = self.darwinConfigurations."accismus".pkgs;
       
   };
 }
