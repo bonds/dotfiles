@@ -1,15 +1,15 @@
 # moving stuff to XDG directory
 UserKnownHostsFile ~/.local/ssh/known_hosts
 
-# for connecting to locally running docker instances
-#Include ~/.colima/ssh_config
-#Match host="172.16.0.*"
-#    User root
-
 # use TouchID SSH keys via Secretive when I'm on my laptop
 Match exec "test -e /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh"
 
     IdentityAgent /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh
+
+# for connecting to locally running docker instances
+#Include ~/.colima/ssh_config
+#Match host="172.16.0.*"
+#    User root
 
 # always use the long name for home servers so ssh realizes the short and long
 # names are the same host
@@ -17,7 +17,7 @@ Match !exec "echo %h | grep '\.'"
     Hostname %h.ggr.com
 
 # let me reconnect without asking me to reauthenticate again for a while
-Match host="*"
+Match host="*.ggr.com"
     ControlMaster auto
     ControlPath ~/.local/ssh/%r@%h:%p.control
     ControlPersist 2h
@@ -31,16 +31,17 @@ Match host="!home.ggr.com,*.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
 Match host="*.ggr.com,*.local"
     ForwardAgent yes
 
-# forward syncthing web ui ports so I can manage them locally
-Match host="util.local,util,metanoia"
-    LocalForward 8385 127.0.0.1:8384
 
-# create or attach and use a tmux session on interactive connections
-# assume that a ssh line with more than the command and host is not interactive
-# see https://unix.stackexchange.com/questions/451253/how-to-configure-ssh-with-a-remotecommand-only-for-interactive-sessions-i-e-wi
-# keep in mind this is run locally, using the user's shell,
-# in my case /usr/local/bin/fish
+Match host="metanoia.ggr.com,util.ggr.com,util.local"
 
-Match host="metanoia,util,util.local"
+    # create or attach and use a tmux session on interactive connections
+    # assume that a ssh line with more than the command and host is not
+    # interactive see https://unix.stackexchange.com/questions/451253/
+    # how-to-configure-ssh-with-a-remotecommand-only-for-interactive-sessions-i-
+    # e-wi keep in mind this is run locally, using the user's shell, in my
+    # case /usr/local/bin/fish
     RequestTTY yes
     RemoteCommand sh -c 'if which tmux >/dev/null; then tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0; else $SHELL; fi'
+
+    # forward syncthing web ui ports so I can manage them locally
+    LocalForward 8385 127.0.0.1:8384
