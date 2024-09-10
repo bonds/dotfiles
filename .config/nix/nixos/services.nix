@@ -138,33 +138,6 @@
     };
   }; 
 
-  # systemd.services.vu1sleep = {
-  #   enable = true;
-  #   description = "Stop VU1 service when computer sleeps.";
-  #   script = "systemctl stop vu1monitor.service vu1server.service";
-  #   serviceConfig = {
-  #     Type = "oneshot";
-  #     TimeoutStopSec = "1s";
-  #   };
-  #   unitConfig = {
-  #     Before = "sleep.target";
-  #   };
-  # };
-
-  # systemd.services.vu1resume = {
-  #   enable = true;
-  #   description = "Start VU1 service when computer wakes up.";
-  #   script = "systemctl start vu1server.service vu1monitor.service";
-  #   # script = "systemctl stop vu1monitor.service; systemctl stop vu1server.service; systemctl start vu1server.service; systemctl start vu1monitor.service";
-  #   # after = [ "wakeusb.service" ];
-  #   # wantedBy = [ "wakeusb.service" ];
-  #   after = [ "sleep.target" ];
-  #   wantedBy = [ "sleep.target" ];
-  #   serviceConfig = {
-  #     Type = "oneshot";
-  #   };
-  # };
-
   services.pcscd.enable = true;
 
   # faster dbus implementation
@@ -180,5 +153,11 @@
   # firmware updater, run fwupdmgr refresh and fwupdmgr get-updates
   # https://nixos.wiki/wiki/Fwupd
   services.fwupd.enable = true;
+
+  services.vuserver = {
+    enable = true;
+    port = 5340;  # Default port, change if needed
+    key = "h3cpug8yfdv2qarw";  # Or any other key you want to use
+  };  
 
 }

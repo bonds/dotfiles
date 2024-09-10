@@ -231,10 +231,4 @@
     binfmt = true;
   };
 
-  services.vuserver = {
-    enable = true;
-    port = 5340;  # Default port, change if needed
-    key = "h3cpug8yfdv2qarw";  # Or any other key you want to use
-  };  
-
 }
