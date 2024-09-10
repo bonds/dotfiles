@@ -103,27 +103,7 @@
   # https://wrycode.com/reproducible-syncthing-deployments/
   systemd.services.syncthing.environment.STNODEFAULTFOLDER = "true";
 
-  # for the VU1s and the supporting server
-  # KERNEL=="ttyUSB[0-9]", ATTR{idVendor}=="0403", ATTR{idProduct}=="6015", MODE="0666"
-  services.udev.extraRules = ''
-    KERNEL=="ttyUSB[0-9]", MODE="0666"
-  '';
-
   hardware.xone.enable = true;
-
-  # systemd.services.vu1server = {
-  #   enable = true;
-  #   description = "VU1 server. Provides API, admin web page, and pushes updates to USB dials.";
-  #   script = ''
-  #     cd /home/scott/Documents/repos/VU-Server
-  #     /run/current-system/sw/bin/nix-shell -I "nixpkgs=https://github.com/NixOS/nixpkgs/archive/refs/tags/24.05.zip" --run "python3 server.py"
-  #   '';
-  #   after = [ "dev-ttyUSB0.device" ];
-  #   # postStart = "sleep 10"; # give the server time to finish starting
-  #   serviceConfig = {
-  #     TimeoutStopSec = "1s";
-  #   };
-  # }; 
 
   systemd.services.vu1monitor = {
     enable = true;

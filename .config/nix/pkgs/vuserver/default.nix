@@ -63,11 +63,6 @@ python3Packages.buildPythonApplication rec {
       --chdir "$out/lib" \
       --add-flags "$out/lib/server.py" \
       --set PYTHONPATH "$PYTHONPATH:$out/lib" \
-      # --set CONFIG "{'hostname': 'localhost', 'port': $PORT, 'communication_timeout': 10, 'master_key': '$KEY'}"
-      # --set RUNTIMEDIR "$RUNTIMEDIR" \
-      # --set STATEDIR "$STATEDIR" \
-      # --set LOGSDIR "$LOGSDIR" \
-      # --set KEY "$KEY" \
   '';
 
   doCheck = false;
