@@ -4,15 +4,15 @@ if not set gitroot (git rev-parse --show-toplevel)
     echo "not a git repo"
     exit 1
 end
+set shortname (string lower (basename $gitroot))
 
 set pwd (pwd)
-
 if not test "$gitroot" = "$pwd"
     echo "not at git root"
     exit 2
 end
 
-set output "$pwd/../thing.txt"
+set output "$pwd/../$shortname.txt"
 echo "" >$output
 
 echo "\$ cd $pwd" >>$output
@@ -27,7 +27,7 @@ echo >>$output
 ls -R >>$output
 echo >>$output
 
-for file in (find . -type f -iname "*.md" -o -iname "*.py" -o -iname "*.txt")
+for file in (find . -type f -iname "*.md" -o -iname "*.py" -o -iname "*.txt" -o -iname "*.html")
     echo "\$ cat $file" >>$output
     echo >>$output
     cat "$file" >>$output

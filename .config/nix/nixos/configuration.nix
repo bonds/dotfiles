@@ -24,6 +24,7 @@
     # Import your generated (nixos-generate-config) hardware configuration
     ./hardware-configuration.nix
     ./services.nix
+    ./vuserver.nix
     ./programs.nix
     ./monitors.nix
     # ./wake.nix
@@ -217,11 +218,11 @@
   # boot.binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
 
   powerManagement.powerDownCommands = ''
-    systemctl stop vu1monitor.service vu1server.service
+    systemctl stop vu1monitor.service vuserver.service
   '';
 
   powerManagement.powerUpCommands = ''
-    systemctl start vu1server.service vu1monitor.service
+    systemctl start vuserver.service vu1monitor.service
   '';
 
   # https://wiki.nixos.org/w/index.php?title=Appimage&mobileaction=toggle_view_mobile
@@ -229,5 +230,11 @@
     enable = true;
     binfmt = true;
   };
+
+  services.vuserver = {
+    enable = true;
+    port = 5340;  # Default port, change if needed
+    key = "h3cpug8yfdv2qarw";  # Or any other key you want to use
+  };  
 
 }

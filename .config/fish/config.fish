@@ -194,7 +194,7 @@ end
 if command --query nh_darwin
     alias nh "nice nh_darwin"
 else
-    alias nh "nice command nh"
+    alias nh "nice (which nh)"
 end
 
 # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/update-the-system
@@ -202,7 +202,7 @@ function nr
     set starting_dir (pwd)
     set config_dir $HOME/.config/nix
     cd $config_dir
-    nice -- nix flake update
+    nice nix flake update
     nh os switch . $argv
     if command --query ulauncher
         systemctl --user restart ulauncher

@@ -8,6 +8,7 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    nodejs
     # alacritty # a terminal
     # kitty # a terminal
     gcc # c compiler

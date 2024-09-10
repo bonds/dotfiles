@@ -42,6 +42,10 @@
     # gui for viewing my nixos config
     nixos-conf-editor.url = "github:snowfallorg/nixos-conf-editor";
 
+    # https://github.com/nix-community/nix-index-database
+    nix-index-database.url = "github:nix-community/nix-index-database";
+    nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
+
   };
 
   outputs = {
@@ -54,6 +58,7 @@
     nix-darwin,
     darwin-custom-icons,
     nh_darwin,
+    nix-index-database,
     # sops-nix,
     ...
   } @ inputs: let
@@ -95,6 +100,7 @@
           lix-module.nixosModules.default
           agenix.nixosModules.default
           home-manager.nixosModules.home-manager
+          nix-index-database.nixosModules.nix-index
         ];
       };
     };
@@ -110,6 +116,7 @@
           ./home-manager/home.nix
           agenix.nixosModules.default
           lix-module.nixosModules.default
+          nix-index-database.hmModules.nix-index
         ];
       };
     };
@@ -126,6 +133,7 @@
           lix-module.nixosModules.default
           # nh_darwin.nixDarwinModules.default
           nh_darwin.nixDarwinModules.prebuiltin
+          nix-index-database.darwinModules.nix-index
         ];
         # Set Git commit hash for darwin-version.
         system.configurationRevision = self.rev or self.dirtyRev or null;

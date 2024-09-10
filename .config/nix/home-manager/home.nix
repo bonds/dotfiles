@@ -401,6 +401,8 @@
   #   };
   # };
 
+  # https://discourse.nixos.org/t/command-not-found-unable-to-open-database/3807/8
+
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
   home.stateVersion = "24.05";
 }

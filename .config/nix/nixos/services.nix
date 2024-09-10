@@ -18,6 +18,7 @@
       # Opinionated: use keys only.
       # Remove if you want to SSH using passwords
       PasswordAuthentication = false;
+      AllowAgentForwarding = true;
     };
   };
 
@@ -110,26 +111,26 @@
 
   hardware.xone.enable = true;
 
-  systemd.services.vu1server = {
-    enable = true;
-    description = "VU1 server. Provides API, admin web page, and pushes updates to USB dials.";
-    script = ''
-      cd /home/scott/Documents/repos/VU-Server
-      /run/current-system/sw/bin/nix-shell -I "nixpkgs=https://github.com/NixOS/nixpkgs/archive/refs/tags/24.05.zip" --run "python3 server.py"
-    '';
-    after = [ "dev-ttyUSB0.device" ];
-    # postStart = "sleep 10"; # give the server time to finish starting
-    serviceConfig = {
-      TimeoutStopSec = "1s";
-    };
-  }; 
+  # systemd.services.vu1server = {
+  #   enable = true;
+  #   description = "VU1 server. Provides API, admin web page, and pushes updates to USB dials.";
+  #   script = ''
+  #     cd /home/scott/Documents/repos/VU-Server
+  #     /run/current-system/sw/bin/nix-shell -I "nixpkgs=https://github.com/NixOS/nixpkgs/archive/refs/tags/24.05.zip" --run "python3 server.py"
+  #   '';
+  #   after = [ "dev-ttyUSB0.device" ];
+  #   # postStart = "sleep 10"; # give the server time to finish starting
+  #   serviceConfig = {
+  #     TimeoutStopSec = "1s";
+  #   };
+  # }; 
 
   systemd.services.vu1monitor = {
     enable = true;
     description = "Monitor computer and push info to VU1 server.";
     wantedBy = [ "default.target" ];
-    wants = [ "vu1server.service" ];
-    after = [ "vu1server.service" ];
+    wants = [ "vuserver.service" ];
+    after = [ "vuserver.service" ];
     # preStart = "sleep 10"; # give the server time to finish starting
     script = "/home/scott/bin/linux/vu1";
     serviceConfig = {

@@ -29,6 +29,7 @@
   # sessions...for more info see https://nixos.wiki/wiki/Fish
   programs.bash = {
     interactiveShellInit = ''
+      source ${pkgs.nix-index}/etc/profile.d/command-not-found.sh
       if [[ $(${pkgs.procps}/bin/ps --no-header --pid=$PPID --format=comm) != "fish" && -z ''${BASH_EXECUTION_STRING} ]]
       then
 
@@ -61,5 +62,7 @@
     clean.extraArgs = "--keep-since 4d --keep 3";
     flake = "/home/scott/.config/nix";
   };
+
+  programs.command-not-found.enable = false;
 
 }
