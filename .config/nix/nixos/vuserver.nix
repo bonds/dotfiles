@@ -42,10 +42,15 @@ in {
 
     users.groups.${cfg.group} = {};
 
-    systemd.services.vuserver = {
-      description = "VU Server. Provides API, admin web page, and pushed updates to USB dials";
-      after = [ "dev-ttyUSB0.device" ];
-      # wantedBy = [ "multi-user.target" ];
+    # start service when the VU1 is plugged in and stop when it is unplugged
+    # and pass the device path to the service
+    services.udev.extraRules = ''
+      ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", TAG+="systemd", SYMLINK+="myspecialdevice", ENV{SYSTEMD_WANTS}="myservice@myspecialdevice.service"
+      ACTION=="remove", SUBSYSTEM=="usb", ENV{PRODUCT}=="0403/6015/*", RUN+="${pkgs.systemd}/bin/systemctl stop myservice@myspecialdevice.service"
+    '';
+
+    systemd.services."vuserver@" = {
+      description = "VU Server for %I. Provides API, admin web page, and pushed updates to USB dials";
 
       serviceConfig = {
         ExecStart = "${pkgs.vuserver}/bin/vuserver";
@@ -55,13 +60,14 @@ in {
         WorkingDirectory = "${pkgs.vuserver}/lib";
         RuntimeDirectory = "vuserver";
         LogsDirectory = "vuserver";
+        StateDirectory = "vuserver";
         TimeoutStopSec = "1s";
-        # StateDirectory = "vuserver";
 
         Environment = [
           "STATEDIR=%S/vuserver"
           "LOGSDIR=%L/vuserver"
           "RUNTIMEDIR=%t/vuserver"
+          "DEVICE=/dev/%I"
           "CONFIG=\"{'hostname': 'localhost', 'port': ${toString cfg.port},'communication_timeout': 10, 'master_key': ${cfg.key}}\""
         ];
       };
