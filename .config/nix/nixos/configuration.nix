@@ -217,14 +217,7 @@
   # be able to run binaries from other architectures
   # boot.binfmt.emulatedSystems = [ "aarch64-linux" "riscv64-linux" ];
 
-  powerManagement.powerDownCommands = ''
-    systemctl stop vu1monitor.service vuserver.service
-  '';
-
-  powerManagement.powerUpCommands = ''
-    systemctl start vuserver.service vu1monitor.service
-  '';
-
+  # add support for appimage linux binary packages
   # https://wiki.nixos.org/w/index.php?title=Appimage&mobileaction=toggle_view_mobile
   programs.appimage = {
     enable = true;

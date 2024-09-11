@@ -105,18 +105,18 @@
 
   hardware.xone.enable = true;
 
-  systemd.services.vu1monitor = {
-    enable = true;
-    description = "Monitor computer and push info to VU1 server.";
-    wantedBy = [ "default.target" ];
-    wants = [ "vuserver.service" ];
-    after = [ "vuserver.service" ];
-    # preStart = "sleep 10"; # give the server time to finish starting
-    script = "/home/scott/bin/linux/vu1";
-    serviceConfig = {
-      TimeoutStopSec = "5s";
-    };
-  }; 
+  # systemd.services.vuclient = {
+  #   enable = true;
+  #   description = "Monitor computer and push info to VU1 server.";
+  #   wantedBy = [ "default.target" ];
+  #   wants = [ "vuserver.service" ];
+  #   after = [ "vuserver.service" ];
+  #   # preStart = "sleep 10"; # give the server time to finish starting
+  #   script = "/home/scott/bin/linux/vu1";
+  #   serviceConfig = {
+  #     TimeoutStopSec = "5s";
+  #   };
+  # }; 
 
   services.pcscd.enable = true;
 

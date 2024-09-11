@@ -49,6 +49,7 @@ in {
 
     systemd.services."vuserver@" = {
       description = "VU Server for %I. Provides API, admin web page, and pushed updates to USB dials";
+      partOf = [ "vuserver.target" ];
 
       serviceConfig = {
         # ExecStart = "${pkgs.vuserver}/bin/vuserver /dev/vuserver-%I";
@@ -61,6 +62,9 @@ in {
         LogsDirectory = "vuserver";
         StateDirectory = "vuserver";
         TimeoutStopSec = "1s";
+        # partOf = [ "sleep.target" "suspend.target" ];
+        # before = [ "sleep.target" "suspend.target" ];
+        # after = [ "post-resume.target" ];
 
         Environment = [
           "STATEDIR=%S/vuserver"
@@ -71,6 +75,42 @@ in {
         ];
       };
     };
+
+    systemd.targets.vuserver = {};
+
+    systemd.services.vuclient = {
+      enable = true;
+      description = "Monitor computer and push info to VU server.";
+      wantedBy = [ "multi-user.target" ];
+      wants = [ "vuserver.target" ];
+      after = [ "vuserver.target" ];
+      # partOf = [ "sleep.target" "suspend.target" ];
+      # before = [ "sleep.target" ];
+      # before = [ "sleep.target" "suspend.target" "vuserver.target" ];
+      # after = [ "post-resume.target" "vuserver.target" ];
+      # preStart = "sleep 10"; # give the server time to finish starting
+      script = "/home/scott/bin/linux/vu1";
+      serviceConfig = {
+        TimeoutStopSec = "5s";
+        Restart = "on-failure";
+      };
+    }; 
+
+    # powerManagement.powerDownCommands = ''
+    #   systemctl stop vuclient.service vuserver.service
+    # '';
+
+    # powerManagement.powerUpCommands = ''
+    #   systemctl start vuserver.service vuclient.service
+    # '';
+
+    powerManagement.powerDownCommands = ''
+      systemctl stop vuclient.service
+    '';
+
+    powerManagement.powerUpCommands = ''
+      systemctl start vuclient.service
+    '';
 
     environment.systemPackages = [ pkgs.vuserver ];
   };
