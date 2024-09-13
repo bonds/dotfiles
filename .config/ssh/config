@@ -31,7 +31,7 @@ Match host="!home.ggr.com,*.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
 Match host="*.ggr.com,*.local"
     ForwardAgent yes
 
-Match host="metanoia.ggr.com,util.ggr.com,util.local"
+Match host="*.ggr.com"
 
     # create or attach and use a tmux session on interactive connections
     # assume that a ssh line with more than the command and host is not
