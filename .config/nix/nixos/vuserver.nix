@@ -26,11 +26,11 @@ in {
       description = "Port on which VU Server listens.";
     };
 
-    key = mkOption {
-      type = types.str;
-      default = "cTpAWYuRpA2zx75Yh961Cg";
-      description = "API key for VU Server authentication.";
-    };
+    # key = mkOption {
+    #   type = types.str;
+    #   default = "cTpAWYuRpA2zx75Yh961Cg";
+    #   description = "API key for VU Server authentication.";
+    # };
   };
 
   config = mkIf cfg.enable {
@@ -54,6 +54,8 @@ in {
       serviceConfig = {
         # ExecStart = "${pkgs.vuserver}/bin/vuserver /dev/vuserver-%I";
         ExecStart = "${pkgs.vuserver}/bin/vuserver";
+        ExecStartPre = "${pkgs.bashInteractive}/bin/sh -c 'echo KEY=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64) > /tmp/vuserver.key'";
+        EnvironmentFile = "/tmp/vuserver.key";
         User = cfg.user;
         Group = cfg.group;
         Restart = "on-failure";
@@ -71,7 +73,7 @@ in {
           "LOGSDIR=%L/vuserver"
           "RUNTIMEDIR=%t/vuserver"
           "DEVICE=/dev/vuserver-%I"
-          "CONFIG=\"{'hostname': 'localhost', 'port': ${toString cfg.port},'communication_timeout': 10, 'master_key': ${cfg.key}}\""
+          "PORT=${toString cfg.port}"
         ];
       };
     };
@@ -84,15 +86,22 @@ in {
       wantedBy = [ "multi-user.target" ];
       wants = [ "vuserver.target" ];
       after = [ "vuserver.target" ];
+      # after = [ "post-resume.target" "vuserver.target" ];
       # partOf = [ "sleep.target" "suspend.target" ];
       # before = [ "sleep.target" ];
       # before = [ "sleep.target" "suspend.target" "vuserver.target" ];
-      # after = [ "post-resume.target" "vuserver.target" ];
-      # preStart = "sleep 10"; # give the server time to finish starting
+      # before = [ "sleep.target" "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
+      # conflicts = [ "sleep.target" "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
+      # preStart = "sleep 5"; # give the server time to finish starting
       script = "/home/scott/bin/linux/vu1";
       serviceConfig = {
+        # ExecStart = "/home/scott/bin/linux/vu1";
+        # ExecStop = "pkill -f /home/scott/bin/linux/vu1";
+        # Type = "simple";
         TimeoutStopSec = "5s";
         Restart = "on-failure";
+        # RemainAfterExit = false;
+        # StopWhenUnneeded = true;
       };
     }; 
 
@@ -104,11 +113,12 @@ in {
     #   systemctl start vuserver.service vuclient.service
     # '';
 
-    powerManagement.powerDownCommands = ''
+    powerManagement.powerDownCommands = lib.mkAfter ''
       systemctl stop vuclient.service
+      sleep 1
     '';
 
-    powerManagement.powerUpCommands = ''
+    powerManagement.powerUpCommands = lib.mkAfter ''
       systemctl start vuclient.service
     '';
 
