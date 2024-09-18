@@ -86,32 +86,12 @@ in {
       wantedBy = [ "multi-user.target" ];
       wants = [ "vuserver.target" ];
       after = [ "vuserver.target" ];
-      # after = [ "post-resume.target" "vuserver.target" ];
-      # partOf = [ "sleep.target" "suspend.target" ];
-      # before = [ "sleep.target" ];
-      # before = [ "sleep.target" "suspend.target" "vuserver.target" ];
-      # before = [ "sleep.target" "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
-      # conflicts = [ "sleep.target" "suspend.target" "hibernate.target" "hybrid-sleep.target" ];
-      # preStart = "sleep 5"; # give the server time to finish starting
-      script = "/home/scott/bin/linux/vu1";
       serviceConfig = {
-        # ExecStart = "/home/scott/bin/linux/vu1";
-        # ExecStop = "pkill -f /home/scott/bin/linux/vu1";
-        # Type = "simple";
+        ExecStart = "${pkgs.vuclient}/bin/vuclient";
         TimeoutStopSec = "5s";
         Restart = "on-failure";
-        # RemainAfterExit = false;
-        # StopWhenUnneeded = true;
       };
     }; 
-
-    # powerManagement.powerDownCommands = ''
-    #   systemctl stop vuclient.service vuserver.service
-    # '';
-
-    # powerManagement.powerUpCommands = ''
-    #   systemctl start vuserver.service vuclient.service
-    # '';
 
     powerManagement.powerDownCommands = lib.mkAfter ''
       systemctl stop vuclient.service

@@ -3,4 +3,5 @@
 pkgs: {
   # example = pkgs.callPackage ./example { };
   vuserver = pkgs.callPackage ./vuserver { };
+  vuclient = pkgs.callPackage ./vuclient { };
 }

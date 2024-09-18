@@ -116,7 +116,6 @@
 
   # decrypt and install my secrets
   age.identityPaths = [ /home/scott/.ssh/id_ed25519 ];
-  age.secrets.vu1.file = /home/scott/.config/secrets/vu1.age;
   age.secrets.github.file = /home/scott/.config/secrets/github.age;
 
   # Bootloader.
