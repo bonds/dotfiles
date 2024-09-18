@@ -2,17 +2,40 @@
 
 argparse v/verbose -- $argv
 
+# set IPREGEX '^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$'
+
 # HOST=$(arp -a | grep -i "24:2F:D0:26:02:C9" | sed 's/\? (\(.*\)).*/\1/g')
 # the outlet doesn't always respond to ARP so I'm just going to give it an
 # IP reservation so it gets the same IP from DHCP every time
 
-set WORKSTATION "10.0.0.75"
-set SERVERRACK "10.0.0.189"
+function mac2ip
+    set mac $argv[1]
+    for line in $arptable
+        if string match -i -e "$mac" "$line" >/dev/null
+            echo $line | awk '{print $2}' | tr -d '()'
+        end
+    end
+end
 
-set hosts $WORKSTATION $SERVERRACK
+# set WORKSTATION "192.168.4.62"
+# set SERVERRACK "10.0.0.189"
+# set WORKMAC "24:2f:d0:26:2:c9"
+# set SERVERMAC "24:2F:D0:25:FF:AE"
+
 set names workstation servers
+set macs $WORKMAC $SERVERMAC
+set ips "192.168.4.62" "192.168.4.61"
 
-for i in (seq (count $hosts))
+# set bpip (ifconfig | grep "broadcast" | sed -e 's/.*broadcast \(.*\)/\1/g')
+# ping -c 2 $bpip >/dev/null # this refreshes the arp table
+# set arptable (arp -a)
+
+# for mac in $macs
+#     set hosts $hosts (mac2ip $mac)
+# end
+set hosts $ips
+
+for i in (seq (count $names))
     if not set -q _flag_verbose
         set longest (string length $names | sort -n | tail -1)
         set width (bc -e "$longest + 5")
