@@ -2,13 +2,13 @@
 
 pkgs.stdenv.mkDerivation {
   pname = "vuclient";
-  version = "0.0.6"; 
+  version = "0.0.7"; 
 
   src = pkgs.fetchFromGitHub {
     owner = "bonds";
     repo = "vuclient";
     rev = "main";
-    hash = "sha256-0+4YbbdiLBy7+Jo6BrVlJHjRM/nb7uTwIgS29xkKNZs=";
+    hash = "sha256-+loCWpobOuuOMpTF5/ppz6/wCAK1VS3oteoTjVfney0=";
   };
 
   installPhase = ''

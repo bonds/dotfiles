@@ -26,6 +26,30 @@ in {
       description = "Port on which VU Dials listens.";
     };
 
+    cpudial = mkOption {
+      type = types.str;
+      default = "";
+      description = "UID of the dial that will display CPU load";
+    };
+
+    gpudial = mkOption {
+      type = types.str;
+      default = "";
+      description = "UID of the dial that will display GPU load";
+    };
+
+    memdial = mkOption {
+      type = types.str;
+      default = "";
+      description = "UID of the dial that will display memory load";
+    };
+
+    dskdial = mkOption {
+      type = types.str;
+      default = "";
+      description = "UID of the dial that will display % of the  disk space used on root partition";
+    };
+    
   };
 
   config = mkIf cfg.enable {
@@ -79,6 +103,12 @@ in {
         ExecStart = "${pkgs.vuclient}/bin/vuclient";
         TimeoutStopSec = "5s";
         Restart = "on-failure";
+        Environment = [
+          "CPUDIAL=${cfg.cpudial}"
+          "GPUDIAL=${cfg.gpudial}"
+          "MEMDIAL=${cfg.memdial}"
+          "DSKDIAL=${cfg.dskdial}"
+        ];
       };
     }; 
 

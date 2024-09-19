@@ -135,8 +135,11 @@
   services.fwupd.enable = true;
 
   services.vudials = {
-    enable = true;
-    port = 5340;  # Default port, change if needed
+     enable = true;
+    cpudial = "6A002D000650564139323920";
+    gpudial = "860043000650564139323920";
+    memdial = "60003D000650564139323920";
+    dskdial = "6B002A000650564139323920";
   };  
 
 }
