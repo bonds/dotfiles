@@ -134,7 +134,7 @@
   # https://nixos.wiki/wiki/Fwupd
   services.fwupd.enable = true;
 
-  services.vuserver = {
+  services.vudials = {
     enable = true;
     port = 5340;  # Default port, change if needed
   };  

@@ -24,7 +24,7 @@
     # Import your generated (nixos-generate-config) hardware configuration
     ./hardware-configuration.nix
     ./services.nix
-    ./vuserver.nix
+    ./vudials.nix
     ./programs.nix
     ./monitors.nix
     # ./wake.nix

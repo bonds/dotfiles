@@ -3,34 +3,29 @@
 with lib;
 
 let
-  cfg = config.services.vuserver;
+  cfg = config.services.vudials;
 in {
-  options.services.vuserver = {
-    enable = mkEnableOption "VU Server";
+  options.services.vudials = {
+    enable = mkEnableOption "VU Dials";
 
     user = mkOption {
       type = types.str;
-      default = "vuserver";
-      description = "User account under which VU Server runs.";
+      default = "vudials";
+      description = "User account under which VU Dials runs.";
     };
 
     group = mkOption {
       type = types.str;
-      default = "vuserver";
-      description = "Group under which VU Server runs.";
+      default = "vudials";
+      description = "Group under which VU Dials runs.";
     };
 
     port = mkOption {
       type = types.port;
       default = 5340;
-      description = "Port on which VU Server listens.";
+      description = "Port on which VU Dials listens.";
     };
 
-    # key = mkOption {
-    #   type = types.str;
-    #   default = "cTpAWYuRpA2zx75Yh961Cg";
-    #   description = "API key for VU Server authentication.";
-    # };
   };
 
   config = mkIf cfg.enable {
@@ -52,10 +47,7 @@ in {
       partOf = [ "vuserver.target" ];
 
       serviceConfig = {
-        # ExecStart = "${pkgs.vuserver}/bin/vuserver /dev/vuserver-%I";
         ExecStart = "${pkgs.vuserver}/bin/vuserver";
-        ExecStartPre = "${pkgs.bashInteractive}/bin/sh -c 'echo KEY=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64) > /tmp/vuserver.key'";
-        EnvironmentFile = "/tmp/vuserver.key";
         User = cfg.user;
         Group = cfg.group;
         Restart = "on-failure";
@@ -64,9 +56,6 @@ in {
         LogsDirectory = "vuserver";
         StateDirectory = "vuserver";
         TimeoutStopSec = "1s";
-        # partOf = [ "sleep.target" "suspend.target" ];
-        # before = [ "sleep.target" "suspend.target" ];
-        # after = [ "post-resume.target" ];
 
         Environment = [
           "STATEDIR=%S/vuserver"

@@ -2,16 +2,14 @@
 
 pkgs.stdenv.mkDerivation {
   pname = "vuclient";
-  version = "0.0.3"; 
+  version = "0.0.6"; 
 
   src = pkgs.fetchFromGitHub {
     owner = "bonds";
     repo = "vuclient";
     rev = "main";
-    sha256 = "sha256-kd/L3QQL/tCxU655NJtwMOojUEaisdSHk8ytCpCxoNA";
+    hash = "sha256-0+4YbbdiLBy7+Jo6BrVlJHjRM/nb7uTwIgS29xkKNZs=";
   };
-
-  buildInputs = [ pkgs.fish pkgs.wget ];
 
   installPhase = ''
     mkdir -p $out/bin

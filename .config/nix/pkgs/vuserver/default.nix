@@ -37,7 +37,7 @@ python3Packages.buildPythonApplication rec {
                 "logFile = os.path.join(os.environ.get('LOGSDIR'), 'vuserver.log')"
     substituteInPlace server.py \
       --replace "pid_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), file_name)" \
-                "pid_file = os.path.join(os.environ.get('RUNTIMEDIR'), 'vuserver.pid')"
+                "pid_file = os.path.join(os.environ.get('RUNTIMEDIR'), 'pid')"
     substituteInPlace server.py \
       --replace "WEB_ROOT = os.path.join(BASEDIR_PATH, 'www')" \
                 "WEB_ROOT = os.path.join(os.environ.get('RUNTIMEDIR'), 'www')"
@@ -57,13 +57,18 @@ python3Packages.buildPythonApplication rec {
     cp -r * "$out/lib"
     rm "$out/lib/config.yaml"
 
+      # --run "echo KEY=\$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64) > /tmp/vuserver.key" \
+      # --run "export KEY=\$(cat /tmp/vuserver.key | sed \"s/KEY=\(.*\)/\1/g\")" \
+      # --run "cat /tmp/vuserver.key | sed \"s/KEY=\(.*\)/const API_MASTER_KEY = '\1';/g\" > /run/vuserver/www/assets/js/vu1_gui_root.js.new" \
     makeWrapper \
       ${python3Packages.python.interpreter} \
       $out/bin/vuserver \
       --run "cp -r $out/lib/www /run/vuserver/www" \
-      --run "chown -R vuserver:vuserver /run/vuserver/www" \
+      --run "chown -R vudials:vudials /run/vuserver/www" \
       --run "chmod 775 /run/vuserver/www/assets/js/" \
-      --run "cat /tmp/vuserver.key | sed \"s/KEY=\(.*\)/const API_MASTER_KEY = '\1';/g\" > /run/vuserver/www/assets/js/vu1_gui_root.js.new" \
+      --run "export KEY=\$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)" \
+      --run "echo \$KEY > /run/vuserver/key" \
+      --run "echo \"const API_MASTER_KEY = '\$KEY';\" > /run/vuserver/www/assets/js/vu1_gui_root.js.new" \
       --run "sed 1d /run/vuserver/www/assets/js/vu1_gui_root.js >> /run/vuserver/www/assets/js/vu1_gui_root.js.new" \
       --run "mv /run/vuserver/www/assets/js/vu1_gui_root.js.new /run/vuserver/www/assets/js/vu1_gui_root.js" \
       --chdir "$out/lib" \
