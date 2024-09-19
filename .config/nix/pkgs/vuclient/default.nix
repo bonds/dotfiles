@@ -8,7 +8,7 @@ pkgs.stdenv.mkDerivation {
     owner = "bonds";
     repo = "vuclient";
     rev = "main";
-    hash = "sha256-+loCWpobOuuOMpTF5/ppz6/wCAK1VS3oteoTjVfney0=";
+    hash = "sha256-iaNMX3WQ19izB7Sfkn3w8VNeJ9xY7Q9BS9zvs8nViG0=";
   };
 
   installPhase = ''
