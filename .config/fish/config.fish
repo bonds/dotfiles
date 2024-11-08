@@ -49,7 +49,10 @@ set -x PASSAGE_DIR $HOME/.config/passage/store
 set -x PASSAGE_IDENTITIES_FILE $HOME/.config/passage/identities
 
 if not set --query NIX_CONFIG
-    set -x NIX_CONFIG (rage -d -i ~/.config/passage/(hostname).identity ~/.config/passage/store/NIX_CONFIG.age)
+    set id $HOME/.config/passage/(hostname).identity
+    if test -e $id
+        set -x NIX_CONFIG (age -d -i ~/.config/passage/(hostname).identity ~/.config/passage/store/NIX_CONFIG.age)
+    end
 end
 
 if status --is-interactive
@@ -97,7 +100,7 @@ alias idris "rlwrap --history-filename ~/.local/idris.history idris2 --package c
 # alias myip "curl --silent https://checkip.amazonaws.com"
 alias myip "mylocation | jq \".ip\" | sed 's/\\\"//g'"
 alias myweather "weather (mylocation | jq \".loc\" | sed 's/\\\"//g')"
-alias nix "command nix --extra-experimental-features nix-command --extra-experimental-features flakes"
+# alias nix "command nix --extra-experimental-features nix-command --extra-experimental-features flakes"
 alias nix-shell "command nix-shell --command fish"
 alias reset_camera "sudo usb-reset 0fd9:008a"
 alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
@@ -215,10 +218,18 @@ function hr
     nice home-manager $argv switch --flake ~/.config/nix
 end
 
-function nix
-    # set -x NIX_CONFIG (secret-tool lookup name 'NIX_CONFIG')
-    # set -x NIX_CONFIG (passage NIX_CONFIG)
-    command nix --extra-experimental-features nix-command --extra-experimental-features flakes $argv
+# function nix
+#     # set -x NIX_CONFIG (secret-tool lookup name 'NIX_CONFIG')
+#     # set -x NIX_CONFIG (passage NIX_CONFIG)
+#     command nix --extra-experimental-features nix-command --extra-experimental-features flakes $argv
+# end
+
+function age
+    if command --query rage
+        rage $argv
+    else
+        age $argv
+    end
 end
 
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"

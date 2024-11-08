@@ -1,1 +1,71 @@
-darwin.toml
+# Don't print a new line at the start of the prompt
+add_newline = true
+
+# Use custom format
+format = """
+[╭─](white)$username$hostname in $directory$package$git_branch$git_status$cmd_duration$fill$time
+[╰─](white)$character """
+
+# Wait 10 milliseconds for starship to check files under the current directory.
+scan_timeout = 10
+
+[fill]
+symbol = ' '
+style = "fg:#555555"
+
+# Username settings
+[username]
+show_always = true
+style_root = "bold red"
+style_user = "bold yellow"
+format = "[$user]($style) "
+disabled = false
+
+# Hostname settings
+[hostname]
+ssh_only = false
+format =  "on [$hostname](bold red)"
+trim_at = ".local"
+disabled = false
+
+# Directory indicator
+[directory]
+fish_style_pwd_dir_length = 1
+read_only = "🔒"
+style = "bold cyan"
+read_only_style = "red"
+format = "[$read_only]($read_only_style)[$path]($style) "
+disabled = false
+
+# Package Version Config
+[package]
+format = "via [🎁 $version](208 bold) "
+
+# git settings
+[git_branch]
+symbol = "🌱 "
+truncation_length = 4
+truncation_symbol = ""
+
+# cmd_duration config
+[cmd_duration]
+show_milliseconds = true
+style = "bold yellow"
+format = "took [$duration]($style) "
+
+# Charakter config
+[character]
+format = "$symbol"
+success_symbol = "[❯](bold green)"
+error_symbol = "[✗](bold red) "
+vicmd_symbol = "[❮](bold green)"
+disabled = false
+
+[time]
+disabled = false
+format = "[at $time]($style)"
+style = "bold fg:#333333"
+time_format = "%F %T"
+
+[git_status]
+format = '([$all_status$ahead_behind]($style) )'
