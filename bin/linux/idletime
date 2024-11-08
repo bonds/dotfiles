@@ -2,16 +2,26 @@
 # https://askubuntu.com/questions/984695/xprintidle-on-ubuntu-wayland
 # https://askubuntu.com/questions/170307/how-does-ubuntu-determine-inactivity-before-suspending
 
-milliseconds=$(
-     dbus-send \
-         --print-reply \
-         --dest=org.gnome.Mutter.IdleMonitor \
-              /org/gnome/Mutter/IdleMonitor/Core \
-              org.gnome.Mutter.IdleMonitor.GetIdletime \
-         | grep uint64 \
-         | awk {'print $2'}
-)
-seconds=$(echo "$milliseconds / 1000" | bc)
+trap "tput cnorm" EXIT # unhide cursor
+tput civis # hide cursor
+stty -echoctl # hide ^C
 
-echo $((seconds/86400))" days"\
-     $(date -d "1970-01-01 + $seconds seconds" "+%H hours %M minutes %S seconds")
+while true; do
+
+     milliseconds=$(
+          dbus-send \
+              --print-reply \
+              --dest=org.gnome.Mutter.IdleMonitor \
+                   /org/gnome/Mutter/IdleMonitor/Core \
+                   org.gnome.Mutter.IdleMonitor.GetIdletime \
+              | grep uint64 \
+              | awk {'print $2'}
+     )
+     seconds=$(echo "$milliseconds / 1000" | bc)
+     echo -ne "\r"
+     echo -n $((seconds/86400))" days"\
+          $(date -d "1970-01-01 + $seconds seconds" "+%H hours %M minutes %S seconds")
+
+     sleep 1
+
+done
