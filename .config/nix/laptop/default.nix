@@ -12,11 +12,21 @@
   # List packages installed in system profile. To search by name, run:
   # $ nix-env -qaP | grep wget
   environment.systemPackages = with pkgs; [ 
+    the-powder-toy # physics simulation game
+    mpv # to watch videos in weird formats
+    ffmpeg # convert videos
+    rclone # for backups
+    rsync # get latest version
+    speedtest-cli
     #nh_darwin.packages.${pkgs.stdenv.hostPlatform.system}.default
+    delta # diff pager for git
+    coreutils # for timeout for athome script
+    hugo # blog engine
+    libreoffice-bin # office suite
     python311Packages.python-kasa
     rage
     element-desktop
-    ollama # not a service yet: https://github.com/LnL7/nix-darwin/pull/972
+    unstable.ollama # not a service yet: https://github.com/LnL7/nix-darwin/pull/972
     docker
     colima
     jq
@@ -35,7 +45,7 @@
     hyperfine
     starship
     idris2
-    alacritty
+    alacritty 
     helix
     vim
   ];

@@ -8,6 +8,7 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    coreutils # for timeout for athome script
     apostrophe # gui markdown editor
     dig # dns lookups
     nodejs

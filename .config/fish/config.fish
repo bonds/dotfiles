@@ -127,23 +127,24 @@ else
     set -x EDITOR vi
 end
 
-function ssh
-    if test $uname = darwin
-        set timeoutflag G
-    else
-        set timeoutflag w
-    end
-    if test $argv[1] = metanoia;
-        and not nc -z -$timeoutflag 1 metanoia 22 >/dev/null 2>&1
-        echo -n trying to wake metanoia before SSHing in
-        wol "a8:a1:59:36:7d:d4"
-        while not nc -z -$timeoutflag 1 metanoia 22 >/dev/null 2>&1
-            echo -n .
-            sleep 1
-        end
-    end
-    command ssh -F ~/.config/ssh/config $argv
-end
+# function ssh
+#     if test $uname = darwin
+#         set timeoutflag G
+#     else
+#         set timeoutflag w
+#     end
+#     if test $argv[1] = metanoia;
+#         and not nc -z -$timeoutflag 1 metanoia 22 >/dev/null 2>&1
+#         echo -n trying to wake metanoia before SSHing in
+#         wol "a8:a1:59:36:7d:d4"
+#         while not nc -z -$timeoutflag 1 metanoia 22 >/dev/null 2>&1
+#             echo -n .
+#             sleep 1
+#         end
+#     end
+#     command ssh -F ~/.config/ssh/config $argv
+# end
+alias ssh "command ssh -F ~/.config/ssh/config $argv"
 
 function ls
     if command --query lsd
