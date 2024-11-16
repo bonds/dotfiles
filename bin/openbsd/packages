@@ -5,17 +5,21 @@ set cache ~/.cache/packages
 if not test -f $cache
 
     /usr/local/bin/sqlite3 /usr/local/share/sqlports \
-    " \
+        " \
     SELECT DISTINCT pkgname || ': ' || comment AS result \
     FROM ports ORDER BY 1
-    " > $cache
+    " >$cache
 
 end
 
-if test -z "$argv"
-    set search ".*: "
-else
-    set search (string join "|" $argv) 
+# if test -z "$argv"
+#     set search ".*: "
+# else
+#     set search (string join "|" $argv)
+# end
+
+for term in $argv
+    set filter "$filter | rg $term --color=always --ignore-case"
 end
 
-rg --ignore-case --no-line-number --color=always $search $cache | less -R
+eval "cat $cache $filter"
