@@ -8,6 +8,9 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    helvetica-neue-lt-std # open source version of helvetica font
+    jujutsu # git competitor
+    git-delta # git delta syntax highlighter
     coreutils # for timeout for athome script
     apostrophe # gui markdown editor
     dig # dns lookups
