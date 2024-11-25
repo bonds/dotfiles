@@ -48,13 +48,6 @@ set -x DATEFMT "+%F %T"
 set -x PASSAGE_DIR $HOME/.config/passage/store
 set -x PASSAGE_IDENTITIES_FILE $HOME/.config/passage/identities
 
-if not set --query NIX_CONFIG
-    set id $HOME/.config/passage/(hostname).identity
-    if test -e $id
-        set -x NIX_CONFIG (age -d -i ~/.config/passage/(hostname).identity ~/.config/passage/store/NIX_CONFIG.age)
-    end
-end
-
 if status --is-interactive
     #    devbox global shellenv --init-hook | source
     if command --query starship
@@ -235,3 +228,10 @@ end
 
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"
 set fzf_fd_opts --hidden --exclude=.git
+
+if not set --query NIX_CONFIG
+    set id $HOME/.config/passage/(hostname).identity
+    if test -e $id
+        set -x NIX_CONFIG (age -d -i ~/.config/passage/(hostname).identity ~/.config/passage/store/NIX_CONFIG.age)
+    end
+end
