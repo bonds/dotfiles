@@ -25,6 +25,11 @@ set --append fish_user_paths ~/.cargo/bin
 # for python
 source $VENV_DIR/bin/activate.fish
 
+# for building idris2 on openbsd
+# remember to run pkg_add racket-minimal
+# remember to run raco pkg install compiler-lib
+set CFLAGS "-I/usr/local/include -L/usr/local/lib"
+
 # workaround for a bug in ghc 9.0.2: https://gitlab.haskell.org/ghc/ghc/-/issues/20592
 if command --query xcrun
     set -x C_INCLUDE_PATH (xcrun --show-sdk-path)/usr/include/ffi
