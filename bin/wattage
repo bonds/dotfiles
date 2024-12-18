@@ -40,7 +40,8 @@ for i in (seq (count $names))
         set longest (string length $names | sort -n | tail -1)
         set width (math --scale=0 $longest + 5)
         # set watts (kasa --host $hosts[$i] emeter $argv | grep Power | awk '{printf "%.f", $2}')
-        set watts (math --scale=0 $(kasa --host $hosts[$i] --json | jq .get_energy_usage.current_power) / 1000)
+        # set watts (math --scale=0 $(kasa --host $hosts[$i] --json | jq .get_energy_usage.current_power) / 1000)
+        set watts (math --scale=0 $(kasa --host $hosts[$i] --json | jq .energy.current_power) / 1000)
         string pad --width $width "$names[$i]: $(string pad --width 3 $watts)"
     else
         echo $names[$i]
