@@ -5,17 +5,19 @@
 
   inputs = {
     # all the packages, stable versions
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    # nixpkgs.url = "/home/scott/Documents/undated/repos/nixpkgs";
 
     # all the packages, unstable versions
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
 
     # home manager
-    home-manager.url = "github:nix-community/home-manager/release-24.05";
+    home-manager.url = "github:nix-community/home-manager/release-24.11";
+    # home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     # secrets that nix can use
-    agenix.url = "github:ryantm/agenix";
+    # agenix.url = "github:ryantm/agenix";
     # sops-nix.url = "github:Mic92/sops-nix";
     # sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -38,7 +40,7 @@
     # A new and improved, Rust based, nix command replacement
     # https://lix.systems/add-to-config/
     lix-module = {
-      url = "https://git.lix.systems/lix-project/nixos-module/archive/2.91.0.tar.gz";
+      url = "https://git.lix.systems/lix-project/nixos-module/archive/2.91.1-1.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -52,6 +54,10 @@
     # https://ghostty.org/docs/install/binary#macos
     ghostty.url = "github:ghostty-org/ghostty";
 
+    # realtime os baby
+    # https://github.com/musnix/musnix
+    # musnix.url = "github:musnix/musnix";
+
   };
 
   outputs = {
@@ -60,7 +66,6 @@
     nixpkgs-unstable,
     home-manager,
     lix-module,
-    agenix,
     nix-darwin,
     darwin-custom-icons,
     # nh_darwin,
@@ -69,6 +74,9 @@
     mac-app-util,
     # sops-nix,
     ghostty,
+    # agenix,
+    # sops-nix,
+    # musnix,
     ...
   } @ inputs: let
     inherit (self) outputs;
@@ -107,11 +115,12 @@
           # > Our main nixos configuration file <
           ./nixos/configuration.nix
           lix-module.nixosModules.default
-          agenix.nixosModules.default
+          # agenix.nixosModules.default
           home-manager.nixosModules.home-manager
           nix-index-database.nixosModules.nix-index
           mac-app-util.darwinModules.default
           ghostty.packages.x86_64-linux.default
+          # musnix.nixosModules.musnix
         ];
       };
       # "accismus.local" = nix-darwin.lib.darwinSystem {
@@ -136,7 +145,7 @@
         modules = [
           # > Our main home-manager configuration file <
           ./home-manager/home.nix
-          agenix.nixosModules.default
+          # agenix.nixosModules.default
           lix-module.nixosModules.default
           nix-index-database.hmModules.nix-index
           mac-app-util.homeManagerModules.default

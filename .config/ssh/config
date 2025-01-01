@@ -17,22 +17,22 @@ Match !exec "echo %h | grep '\.'"
     Hostname %h.ggr.com
 
 # let me reconnect without asking me to reauthenticate again for a while
-Match host="*.ggr.com"
+Match host "*.ggr.com"
     ControlMaster auto
     ControlPath ~/.local/ssh/%r@%h:%p.control
     ControlPersist 2h
     ServerAliveInterval 10s
 
 # use a bastian host to get to home servers when away from home
-Match host="metanoia.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
+Match host "metanoia.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
 #Match host="!home.ggr.com,*.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
     ProxyCommand /usr/bin/ssh home.ggr.com -W 192.168.4.98:22
 
 # forward SSH agent to hosts where I'm supposedly the only root user
-Match host="home.ggr.com"
+Match host "home.ggr.com"
     ForwardAgent yes
 
-Match host="*.ggr.com,*.local"
+Match host "*.ggr.com,*.local"
 
     # create or attach and use a tmux session on interactive connections
     # assume that a ssh line with more than the command and host is not

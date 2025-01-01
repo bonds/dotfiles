@@ -48,8 +48,15 @@
     pulse.enable = true;
     extraConfig.pipewire.adjust-sample-rate = {
       "context.properties" = {
-        "default.clock.rate" = 384000;
-        "default.allowed-rates" = [ 384000 192000 48000 44100 ];
+        "default.clock.rate" = 384000; # default = 48000
+        # "default.clock.rate" = 192000; # default = 48000
+        # "default.allowed-rates" = [ 192000 96000 48000 44100 ];
+        # "default.clock.rate" = 44100; # default = 48000
+        "default.allowed-rates" = [ 384000 192000 96000 48000 44100 ];
+        # https://www.reddit.com/r/VFIO/comments/u23zn4/crackling_with_audio_passthrough_pipewire_jack/
+        # "default.clock.quantum" = 2048; # default = 1024
+        # "default.clock.min-quantum" = 1024; # default = 32
+        # "default.clock.max-quantum" = 8192; # default 8192
       };
     };
     # If you want to use JACK applications, uncomment this
@@ -65,10 +72,13 @@
 
   # https://wiki.nixos.org/wiki/Ollama
   services.ollama = {
+    package = pkgs.unstable.ollama; # Uncomment if you want to use the unstable channel, see https://fictionbecomesfact.com/nixos-unstable-channel
     enable = true;
     # acceleration = "rocm";
     # rocmOverrideGfx = "11.0.2";
     environmentVariables = {
+      # https://github.com/tcsenpai/spacellama
+      OLLAMA_ORIGINS = "*";
       # HIP_VISIBLE_DEVICES = "1";
       # HSA_OVERRIDE_GFX_VERSION = "11.0.2";
     };
@@ -141,5 +151,24 @@
     memdial = "60003D000650564139323920";
     dskdial = "6B002A000650564139323920";
   };  
+
+  # https://nixos.wiki/wiki/Samba
+  # fileSystems."/home/scott/Music" = {
+  #   device = "//util.local/media/music";
+  #   fsType = "cifs";
+  #   options = let
+  #     # this line prevents hanging on network split
+  #     automount_opts = "x-systemd.automount,noauto,x-systemd.idle-timeout=60,x-systemd.device-timeout=5s,x-systemd.mount-timeout=5s";
+  #   # in ["${automount_opts},credentials=/etc/nixos/smb-secrets"];
+  #   in ["${automount_opts}"];
+  # };
+
+  # https://github.com/NixOS/nixpkgs/issues/195936
+  environment.sessionVariables.GST_PLUGIN_SYSTEM_PATH_1_0 = lib.makeSearchPathOutput "lib" "lib/gstreamer-1.0" (with pkgs.gst_all_1; [
+    gst-plugins-good
+    gst-plugins-bad
+    gst-plugins-ugly
+    gst-libav
+  ]);
 
 }

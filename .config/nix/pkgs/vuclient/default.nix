@@ -1,14 +1,14 @@
 { pkgs ? import <nixpkgs> {} }:
 
-pkgs.stdenv.mkDerivation {
+pkgs.stdenv.mkDerivation rec {
   pname = "vuclient";
-  version = "0.0.7"; 
+  version = "1.0.1"; 
 
   src = pkgs.fetchFromGitHub {
     owner = "bonds";
     repo = "vuclient";
-    rev = "main";
-    hash = "sha256-iaNMX3WQ19izB7Sfkn3w8VNeJ9xY7Q9BS9zvs8nViG0=";
+    rev = "v${version}";
+    hash = "sha256-L8TMHIA2WaYyF9Uv295ygZ5LJRaf9zRhRRHrD5WpVBE=";
   };
 
   installPhase = ''

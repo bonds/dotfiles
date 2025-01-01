@@ -27,7 +27,7 @@
     ./vudials.nix
     ./programs.nix
     ./monitors.nix
-    # ./wake.nix
+    ./wake.nix
     ./apps.nix
     ./firefox.nix
     ./python.nix
@@ -88,11 +88,11 @@
 
     # clean up old boot entries
     # https://lobste.rs/s/ymmale/unordered_list_hidden_gems_inside_nixos
-    gc = {
-      automatic = true;
-      randomizedDelaySec = "14m";
-      options = "--delete-older-than 30d";
-    };
+    # gc = {
+    #   automatic = true;
+    #   randomizedDelaySec = "14m";
+    #   options = "--delete-older-than 30d";
+    # };
 
   };
 
@@ -113,10 +113,6 @@
       extraGroups = [ "networkmanager" "wheel" ];
     };
   };
-
-  # decrypt and install my secrets
-  age.identityPaths = [ /home/scott/.ssh/id_ed25519 ];
-  age.secrets.github.file = /home/scott/.config/secrets/github.age;
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -153,6 +149,7 @@
   # enable my favorite terminal font
   fonts.packages = with pkgs; [
     sf-mono-liga-bin
+    helvetica-neue-lt-std
   ];
 
   # rotate the console during boot to match my portrait monitors
@@ -222,5 +219,18 @@
     enable = true;
     binfmt = true;
   };
+
+  # musnix.enable = true;
+  # musnix.kernel.realtime = true;
+
+  # https://github.com/NixOS/nixpkgs/issues/99101
+  # https://nixos.wiki/wiki/Doas
+  security.doas.enable = true;
+  security.sudo.enable = false;
+  security.doas.extraRules = [{
+    users = [":wheel"];
+    # keepEnv = true;
+    persist = true;
+  }];
 
 }

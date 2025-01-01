@@ -84,7 +84,7 @@
     #   echo "Hello, ${config.home.username}!"
     # '')
     # pkgs.httpie
-    pkgs.gnome.gnome-themes-extra
+    pkgs.gnome-themes-extra
   ];
 
   # Home Manager is pretty good at managing dotfiles. The primary way to manage

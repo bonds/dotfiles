@@ -1,204 +1,12 @@
 {
     "session_name": "defaultSession",
-    "session_create_time": "10/17/2024, 3:06:18 PM",
+    "session_create_time": "12/3/2024, 4:06:39 PM",
     "active_workspace_index": 0,
     "x_session_config_objects": [
         {
-            "window_id": 812316972,
+            "window_id": 2798155778,
             "desktop_number": 0,
-            "pid": 3929,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 0,
-                "y_offset": 72,
-                "width": 1800,
-                "height": 1170
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "~",
-            "app_name": "Console",
-            "wm_class": "org.gnome.Console",
-            "wm_class_instance": "org.gnome.Console",
-            "cmd": [
-                "/nix/store/iip6s1119lh2y3pdv9g4fiij99gza8mv-gnome-console-46.0/bin/kgx",
-                "--gapplication-service"
-            ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 0
-            },
-            "windows_count": 3,
-            "cpu_percent": "0.3",
-            "memory_percent": "0.3",
-            "desktop_file_id": "org.gnome.Console.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
-            "monitor_number": 1,
-            "is_on_primary_monitor": false,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 812316952,
-            "desktop_number": 0,
-            "pid": 3929,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 0,
-                "y_offset": 2667,
-                "width": 1800,
-                "height": 1170
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "dmesg --follow | gre ~/.c/nix",
-            "app_name": "Console",
-            "wm_class": "org.gnome.Console",
-            "wm_class_instance": "org.gnome.Console",
-            "cmd": [
-                "/nix/store/iip6s1119lh2y3pdv9g4fiij99gza8mv-gnome-console-46.0/bin/kgx",
-                "--gapplication-service"
-            ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 0
-            },
-            "windows_count": 3,
-            "cpu_percent": "0.3",
-            "memory_percent": "0.3",
-            "desktop_file_id": "org.gnome.Console.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
-            "monitor_number": 1,
-            "is_on_primary_monitor": false,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 812316982,
-            "desktop_number": 0,
-            "pid": 3929,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 360,
-                "y_offset": 1344,
-                "width": 1800,
-                "height": 1170
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "~/D/u/r/nixpkgs",
-            "app_name": "Console",
-            "wm_class": "org.gnome.Console",
-            "wm_class_instance": "org.gnome.Console",
-            "cmd": [
-                "/nix/store/iip6s1119lh2y3pdv9g4fiij99gza8mv-gnome-console-46.0/bin/kgx",
-                "--gapplication-service"
-            ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 0
-            },
-            "windows_count": 3,
-            "cpu_percent": "0.3",
-            "memory_percent": "0.3",
-            "desktop_file_id": "org.gnome.Console.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
-            "monitor_number": 1,
-            "is_on_primary_monitor": false,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 812316963,
-            "desktop_number": 0,
-            "pid": 3907,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 0,
-                "y_offset": 72,
-                "width": 2160,
-                "height": 3768
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "nixpkgs/pkgs at master · NixOS/nixpkgs — Mozilla Firefox",
-            "app_name": "Firefox",
-            "wm_class": "firefox",
-            "wm_class_instance": "firefox",
-            "cmd": [
-                "/nix/store/dmdb9l44lv7gzgnb50zgmsfaqyrdfs76-firefox-131.0.2/bin/.firefox-wrapped",
-                "--name",
-                "firefox"
-            ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 3
-            },
-            "windows_count": 3,
-            "cpu_percent": "0.8",
-            "memory_percent": "2.9",
-            "desktop_file_id": "firefox.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
-            "monitor_number": 1,
-            "is_on_primary_monitor": false,
-            "fullscreen": false,
-            "minimized": true,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 812316962,
-            "desktop_number": 0,
-            "pid": 3907,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 4320,
-                "y_offset": 72,
-                "width": 2160,
-                "height": 3768
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "NixOS Search - Packages - flux — Mozilla Firefox",
-            "app_name": "Firefox",
-            "wm_class": "firefox",
-            "wm_class_instance": "firefox",
-            "cmd": [
-                "/nix/store/dmdb9l44lv7gzgnb50zgmsfaqyrdfs76-firefox-131.0.2/bin/.firefox-wrapped",
-                "--name",
-                "firefox"
-            ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 3
-            },
-            "windows_count": 3,
-            "cpu_percent": "0.8",
-            "memory_percent": "2.9",
-            "desktop_file_id": "firefox.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
-            "monitor_number": 0,
-            "is_on_primary_monitor": false,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 812316955,
-            "desktop_number": 0,
-            "pid": 3907,
+            "pid": 777661,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
@@ -208,16 +16,16 @@
                 "height": 3768
             },
             "client_machine_name": "metanoia",
-            "window_title": "LinkedIn Profile SEO Optimization - Google Docs — Mozilla Firefox",
+            "window_title": "Misterio77/nix-starter-configs: Simple and documented config templates to help you get started with NixOS + home-manager + flakes. All the boilerplate you need! — Mozilla Firefox",
             "app_name": "Firefox",
             "wm_class": "firefox",
             "wm_class_instance": "firefox",
             "cmd": [
-                "/nix/store/dmdb9l44lv7gzgnb50zgmsfaqyrdfs76-firefox-131.0.2/bin/.firefox-wrapped",
+                "/nix/store/575dnp8ac6cm9d61rvk4813w3angf701-firefox-131.0.2/bin/.firefox-wrapped",
                 "--name",
                 "firefox"
             ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
@@ -225,7 +33,7 @@
             },
             "windows_count": 3,
             "cpu_percent": "0.8",
-            "memory_percent": "2.9",
+            "memory_percent": "2.5",
             "desktop_file_id": "firefox.desktop",
             "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
             "monitor_number": 2,
@@ -235,9 +43,9 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 812316953,
+            "window_id": 2798155777,
             "desktop_number": 0,
-            "pid": 3921,
+            "pid": 777661,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
@@ -247,24 +55,26 @@
                 "height": 3768
             },
             "client_machine_name": "metanoia",
-            "window_title": "Spotify Premium",
-            "app_name": "Spotify",
-            "wm_class": "Spotify",
-            "wm_class_instance": "spotify",
+            "window_title": "6 lessons I learned working at an art gallery — Mozilla Firefox",
+            "app_name": "Firefox",
+            "wm_class": "firefox",
+            "wm_class_instance": "firefox",
             "cmd": [
-                "/nix/store/vx1bja83207jrryprlclb9lb79x8r98y-spotify-1.2.45.454.gc16ec9f6/share/spotify/.spotify-wrapped"
+                "/nix/store/575dnp8ac6cm9d61rvk4813w3angf701-firefox-131.0.2/bin/.firefox-wrapped",
+                "--name",
+                "firefox"
             ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
                 "meta_maximized": 3
             },
-            "windows_count": 1,
-            "cpu_percent": "0.0",
-            "memory_percent": "0.9",
-            "desktop_file_id": "spotify.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/spotify.desktop",
+            "windows_count": 3,
+            "cpu_percent": "0.8",
+            "memory_percent": "2.5",
+            "desktop_file_id": "firefox.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
             "monitor_number": 0,
             "is_on_primary_monitor": false,
             "fullscreen": false,
@@ -272,9 +82,9 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 812316954,
+            "window_id": 2798155772,
             "desktop_number": 0,
-            "pid": 3930,
+            "pid": 777661,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
@@ -284,25 +94,26 @@
                 "height": 3768
             },
             "client_machine_name": "metanoia",
-            "window_title": "Signal",
-            "app_name": "Signal",
-            "wm_class": "Signal",
-            "wm_class_instance": "signal",
+            "window_title": "Movie Reviews, TV Reviews, Game Reviews, and Music Reviews - Metacritic — Mozilla Firefox",
+            "app_name": "Firefox",
+            "wm_class": "firefox",
+            "wm_class_instance": "firefox",
             "cmd": [
-                "/nix/store/vfi1bavpphapfibbqcd466n60ibfi305-signal-desktop-7.27.0/lib/Signal/signal-desktop",
-                "--no-sandbox"
+                "/nix/store/575dnp8ac6cm9d61rvk4813w3angf701-firefox-131.0.2/bin/.firefox-wrapped",
+                "--name",
+                "firefox"
             ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
                 "meta_maximized": 3
             },
-            "windows_count": 1,
-            "cpu_percent": "0.0",
-            "memory_percent": "0.9",
-            "desktop_file_id": "signal-desktop.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/signal-desktop.desktop",
+            "windows_count": 3,
+            "cpu_percent": "0.8",
+            "memory_percent": "2.5",
+            "desktop_file_id": "firefox.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/firefox.desktop",
             "monitor_number": 1,
             "is_on_primary_monitor": false,
             "fullscreen": false,
@@ -310,73 +121,35 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 812316956,
+            "window_id": 2798156704,
             "desktop_number": 0,
-            "pid": 3946,
+            "pid": 777685,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
-                "x_offset": 2160,
-                "y_offset": 72,
-                "width": 2160,
-                "height": 3768
-            },
-            "client_machine_name": "metanoia",
-            "window_title": "2024-10-15 what kind of unicorn am I - notes - Obsidian v1.6.7",
-            "app_name": "Obsidian",
-            "wm_class": "obsidian",
-            "wm_class_instance": "obsidian",
-            "cmd": [
-                "/nix/store/cqpyfxfwmsbni33x1vw28rva7545kqgf-electron-unwrapped-31.4.0/libexec/electron/electron",
-                "/nix/store/yg1za1zypx7nrsibmd6aga3d0mq2gzc9-obsidian-1.6.7/share/obsidian/app.asar"
-            ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
-            "window_state": {
-                "is_sticky": false,
-                "is_above": false,
-                "meta_maximized": 3
-            },
-            "windows_count": 1,
-            "cpu_percent": "0.0",
-            "memory_percent": "0.5",
-            "desktop_file_id": "obsidian.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/obsidian.desktop",
-            "monitor_number": 2,
-            "is_on_primary_monitor": true,
-            "fullscreen": false,
-            "minimized": false,
-            "compositor_type": "Wayland"
-        },
-        {
-            "window_id": 812317164,
-            "desktop_number": 0,
-            "pid": 1875850,
-            "username": "scott",
-            "window_position": {
-                "provider": "Meta",
-                "x_offset": 74,
-                "y_offset": 146,
+                "x_offset": 284,
+                "y_offset": 505,
                 "width": 1780,
                 "height": 1100
             },
             "client_machine_name": "metanoia",
-            "window_title": "Downloads",
+            "window_title": "All Eyez on Me",
             "app_name": "Files",
             "wm_class": "org.gnome.Nautilus",
             "wm_class_instance": "org.gnome.Nautilus",
             "cmd": [
-                "/nix/store/9drcpmhqzsakll9rbm5kycxfmrx4m89j-nautilus-46.2/bin/nautilus",
+                "/nix/store/95ji47wxjakkrg15ywf3sw4xkwv49i7c-nautilus-46.2/bin/nautilus",
                 "--gapplication-service"
             ],
-            "process_create_time": "Thu Oct 17 11:21:35 2024",
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
                 "meta_maximized": 0
             },
-            "windows_count": 1,
-            "cpu_percent": "0.1",
-            "memory_percent": "0.5",
+            "windows_count": 3,
+            "cpu_percent": "0.0",
+            "memory_percent": "0.4",
             "desktop_file_id": "org.gnome.Nautilus.desktop",
             "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Nautilus.desktop",
             "monitor_number": 1,
@@ -386,37 +159,113 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 812316958,
+            "window_id": 2798156679,
             "desktop_number": 0,
-            "pid": 3936,
+            "pid": 777685,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 2210,
+                "y_offset": 72,
+                "width": 1780,
+                "height": 1100
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "All Eyez on Me",
+            "app_name": "Files",
+            "wm_class": "org.gnome.Nautilus",
+            "wm_class_instance": "org.gnome.Nautilus",
+            "cmd": [
+                "/nix/store/95ji47wxjakkrg15ywf3sw4xkwv49i7c-nautilus-46.2/bin/nautilus",
+                "--gapplication-service"
+            ],
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 0
+            },
+            "windows_count": 3,
+            "cpu_percent": "0.0",
+            "memory_percent": "0.4",
+            "desktop_file_id": "org.gnome.Nautilus.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Nautilus.desktop",
+            "monitor_number": 2,
+            "is_on_primary_monitor": true,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 2798156146,
+            "desktop_number": 0,
+            "pid": 777685,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 2294,
+                "y_offset": 739,
+                "width": 1780,
+                "height": 1100
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "Documents",
+            "app_name": "Files",
+            "wm_class": "org.gnome.Nautilus",
+            "wm_class_instance": "org.gnome.Nautilus",
+            "cmd": [
+                "/nix/store/95ji47wxjakkrg15ywf3sw4xkwv49i7c-nautilus-46.2/bin/nautilus",
+                "--gapplication-service"
+            ],
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 0
+            },
+            "windows_count": 3,
+            "cpu_percent": "0.0",
+            "memory_percent": "0.4",
+            "desktop_file_id": "org.gnome.Nautilus.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Nautilus.desktop",
+            "monitor_number": 2,
+            "is_on_primary_monitor": true,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 2798155769,
+            "desktop_number": 0,
+            "pid": 777660,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
                 "x_offset": 0,
                 "y_offset": 72,
-                "width": 2160,
-                "height": 3768
+                "width": 1800,
+                "height": 1170
             },
             "client_machine_name": "metanoia",
-            "window_title": "* project-kokomo (Channel) - GalacticArena - Slack",
-            "app_name": "Slack",
-            "wm_class": "Slack",
-            "wm_class_instance": "slack",
+            "window_title": "~/.c/nix",
+            "app_name": "Console",
+            "wm_class": "org.gnome.Console",
+            "wm_class_instance": "org.gnome.Console",
             "cmd": [
-                "/nix/store/yawa9pl6fzf61m4pf14xa1l8chrzqvxv-slack-4.40.128/lib/slack/slack",
-                "-s"
+                "/nix/store/0rqfg05a8rbaql220j7ashi5wvl35b76-gnome-console-46.0/bin/kgx",
+                "--gapplication-service"
             ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
-                "meta_maximized": 3
+                "meta_maximized": 0
             },
-            "windows_count": 1,
-            "cpu_percent": "0.0",
-            "memory_percent": "0.6",
-            "desktop_file_id": "slack.desktop",
-            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/slack.desktop",
+            "windows_count": 3,
+            "cpu_percent": "0.3",
+            "memory_percent": "0.1",
+            "desktop_file_id": "org.gnome.Console.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
             "monitor_number": 1,
             "is_on_primary_monitor": false,
             "fullscreen": false,
@@ -424,9 +273,85 @@
             "compositor_type": "Wayland"
         },
         {
-            "window_id": 812316957,
+            "window_id": 2798156190,
             "desktop_number": 0,
-            "pid": 3912,
+            "pid": 777660,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 0,
+                "y_offset": 2670,
+                "width": 1800,
+                "height": 1170
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "sudo dmesg --follow  ~",
+            "app_name": "Console",
+            "wm_class": "org.gnome.Console",
+            "wm_class_instance": "org.gnome.Console",
+            "cmd": [
+                "/nix/store/0rqfg05a8rbaql220j7ashi5wvl35b76-gnome-console-46.0/bin/kgx",
+                "--gapplication-service"
+            ],
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 0
+            },
+            "windows_count": 3,
+            "cpu_percent": "0.3",
+            "memory_percent": "0.1",
+            "desktop_file_id": "org.gnome.Console.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
+            "monitor_number": 1,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 2798156443,
+            "desktop_number": 0,
+            "pid": 777660,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 360,
+                "y_offset": 1340,
+                "width": 1800,
+                "height": 1170
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "~",
+            "app_name": "Console",
+            "wm_class": "org.gnome.Console",
+            "wm_class_instance": "org.gnome.Console",
+            "cmd": [
+                "/nix/store/0rqfg05a8rbaql220j7ashi5wvl35b76-gnome-console-46.0/bin/kgx",
+                "--gapplication-service"
+            ],
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 0
+            },
+            "windows_count": 3,
+            "cpu_percent": "0.3",
+            "memory_percent": "0.1",
+            "desktop_file_id": "org.gnome.Console.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Console.desktop",
+            "monitor_number": 1,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 2798155774,
+            "desktop_number": 0,
+            "pid": 777687,
             "username": "scott",
             "window_position": {
                 "provider": "Meta",
@@ -441,9 +366,9 @@
             "wm_class": "Mailspring",
             "wm_class_instance": "mailspring",
             "cmd": [
-                "/nix/store/08izij91r03izwd7qimnigdm0s1v52qb-mailspring-1.13.3/share/mailspring/mailspring"
+                "/nix/store/rm6fsicvhg2azaac59baiq813p4kxs7g-mailspring-1.13.3/share/mailspring/mailspring"
             ],
-            "process_create_time": "Sun Oct 13 14:56:16 2024",
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
             "window_state": {
                 "is_sticky": false,
                 "is_above": false,
@@ -451,9 +376,201 @@
             },
             "windows_count": 1,
             "cpu_percent": "0.0",
-            "memory_percent": "0.6",
+            "memory_percent": "0.3",
             "desktop_file_id": "Mailspring.desktop",
             "desktop_file_id_full_path": "/run/current-system/sw/share/applications/Mailspring.desktop",
+            "monitor_number": 1,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 2798155776,
+            "desktop_number": 0,
+            "pid": 777667,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 0,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "Signal",
+            "app_name": "Signal",
+            "wm_class": "Signal",
+            "wm_class_instance": "signal",
+            "cmd": [
+                "/nix/store/mvzwhhd8ak51xz2gpbni6v40lybp6xla-signal-desktop-7.27.0/lib/Signal/signal-desktop",
+                "--no-sandbox"
+            ],
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 1,
+            "cpu_percent": "0.0",
+            "memory_percent": "0.3",
+            "desktop_file_id": "signal-desktop.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/signal-desktop.desktop",
+            "monitor_number": 1,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 2798156818,
+            "desktop_number": 0,
+            "pid": 3459897,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 4320,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "Music",
+            "app_name": "Music",
+            "wm_class": "org.gnome.Music",
+            "wm_class_instance": "org.gnome.Music",
+            "cmd": [
+                "/nix/store/wfbjq35kxs6x83c3ncpfxdyl5gbhdx4h-python3-3.12.6/bin/python3",
+                "/nix/store/ci0nh47jb5lksjllms03ah943dfdrc28-gnome-music-46.1/bin/.gnome-music-wrapped"
+            ],
+            "process_create_time": "Tue Dec 3 14:39:46 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 1,
+            "cpu_percent": "0.7",
+            "memory_percent": "2.8",
+            "desktop_file_id": "org.gnome.Music.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/org.gnome.Music.desktop",
+            "monitor_number": 0,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 2798155780,
+            "desktop_number": 0,
+            "pid": 782777,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 4320,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "Calendar | Fastmail",
+            "app_name": "Calendar",
+            "wm_class": "org.gnome.Epiphany.WebApp_adab5090ac6a1b7b5420faac7be86c41721ba27c",
+            "wm_class_instance": "org.gnome.Epiphany.WebApp_adab5090ac6a1b7b5420faac7be86c41721ba27c",
+            "cmd": [
+                "/run/current-system/sw/bin/epiphany",
+                "--application-mode",
+                "--profile=/home/scott/.local/share/org.gnome.Epiphany.WebApp_adab5090ac6a1b7b5420faac7be86c41721ba27c",
+                "https://app.fastmail.com/calendar/3day/2024-11-21?u=a839404f"
+            ],
+            "process_create_time": "Thu Nov 21 20:42:39 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 1,
+            "cpu_percent": "0.0",
+            "memory_percent": "0.5",
+            "desktop_file_id": "org.gnome.Epiphany.WebApp_adab5090ac6a1b7b5420faac7be86c41721ba27c.desktop",
+            "desktop_file_id_full_path": "/home/scott/.local/share/applications/org.gnome.Epiphany.WebApp_adab5090ac6a1b7b5420faac7be86c41721ba27c.desktop",
+            "monitor_number": 0,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 2798155775,
+            "desktop_number": 0,
+            "pid": 777676,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 4320,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "Bank accounts - notes - Obsidian v1.7.7",
+            "app_name": "Obsidian",
+            "wm_class": "obsidian",
+            "wm_class_instance": "obsidian",
+            "cmd": [
+                "/nix/store/a5k84p8zdj1987cl4z0rjdf6bbkxp8ah-electron-unwrapped-32.1.2/libexec/electron/electron",
+                "/nix/store/l1sh60qmc4zxlwbfrpsvpn3l6q0f0dpn-obsidian-1.6.7/share/obsidian/app.asar"
+            ],
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 1,
+            "cpu_percent": "0.0",
+            "memory_percent": "0.2",
+            "desktop_file_id": "obsidian.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/obsidian.desktop",
+            "monitor_number": 0,
+            "is_on_primary_monitor": false,
+            "fullscreen": false,
+            "minimized": false,
+            "compositor_type": "Wayland"
+        },
+        {
+            "window_id": 2798155773,
+            "desktop_number": 0,
+            "pid": 777684,
+            "username": "scott",
+            "window_position": {
+                "provider": "Meta",
+                "x_offset": 0,
+                "y_offset": 72,
+                "width": 2160,
+                "height": 3768
+            },
+            "client_machine_name": "metanoia",
+            "window_title": "video-games (Channel) - leadership - Slack",
+            "app_name": "Slack",
+            "wm_class": "Slack",
+            "wm_class_instance": "slack",
+            "cmd": [
+                "/nix/store/j382pp0id5y1zdg6as3x3b2xicwzsbmf-slack-4.40.128/lib/slack/slack",
+                "-s"
+            ],
+            "process_create_time": "Thu Nov 21 20:41:31 2024",
+            "window_state": {
+                "is_sticky": false,
+                "is_above": false,
+                "meta_maximized": 3
+            },
+            "windows_count": 1,
+            "cpu_percent": "0.0",
+            "memory_percent": "0.3",
+            "desktop_file_id": "slack.desktop",
+            "desktop_file_id_full_path": "/run/current-system/sw/share/applications/slack.desktop",
             "monitor_number": 1,
             "is_on_primary_monitor": false,
             "fullscreen": false,

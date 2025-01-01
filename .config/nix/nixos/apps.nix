@@ -8,32 +8,56 @@
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    helvetica-neue-lt-std # open source version of helvetica font
+    # kdePackages.kajongg # mahjong for real
+    chromium # web browser
+    unstable.ghostty # terminal
+    todoist # todo list cli
+    todoist-electron # todo list gui
+    gapless # music player
+    lollypop # music player
+    resonance # music player
+    spot # minimal spotify player
+    tagger # edit tags in music files
     jujutsu # git competitor
-    git-delta # git delta syntax highlighter
+    delta # git delta syntax highlighter
+    whatsapp-for-linux # chat client
+    unstable.python312Packages.python-kasa
+    uefitool # get info from uefi images
+    gamescope # compositor for steam games
+    yubioath-flutter # gui for managing yubikey
     coreutils # for timeout for athome script
+    kakoune # editor with support for editorconfig
+    zulip # thread chat like slack but better?
+    ventoy-full # gui for iso installer tool
+    resources # pretty cpu usage visualizer
+    keeweb # keepass password manager gui?
+    speedtest-cli # to see how fast my internet is from the cli
+    moreutils # so I can lookup errno
+    amberol # gui music player
     apostrophe # gui markdown editor
-    dig # dns lookups
-    nodejs
+    dig # cli dns lookups
+    nodejs # javascript runtime environment
     # alacritty # a terminal
     # kitty # a terminal
     gcc # c compiler
-    onlyoffice-bin # office suite
+    libreoffice # office suite
+    # onlyoffice-bin # office suite
     glxinfo # gpu information
-    newsflash # rss reader
-    aseprite # animated sprite editor and pixel art tool
-    mailspring # nice looking gui mail client
+    newsflash # gui rss reader
+    libresprite # animated sprite editor and pixel art tool
+    # aseprite # animated sprite editor and pixel art tool
+    unstable.mailspring # nice looking gui mail client
     inputs.nixos-conf-editor.packages.${system}.nixos-conf-editor
     element-desktop # irc chat client
-    yubikey-manager-qt # gui for configuring yubikey settings
+    # yubikey-manager-qt # gui for configuring yubikey settings
     age-plugin-yubikey # yubikey support for age
     passage # cli password store using age
     rage # cli encryption, rust version
-    inputs.agenix.packages.${system}.default
+    # inputs.agenix.packages.${system}.default
     distrobox # virtualize other linux distros on top of this one
     monophony # youtube music player
     kdePackages.audiotube # youtube music player
-    gnome.zenity # display a dialog box in gnome
+    zenity # display a dialog box in gnome
     libnotify # display a gnome notification
     linuxKernel.packages.linux_zen.xone # xbox controller driver
     localsend # send files to others on the LAN like AirPlay
@@ -68,7 +92,7 @@
     atuin # tool for managing terminal command history
     socat # needed for bin/wol script
     # zed-editor # another cli text editor
-    gnome.dconf-editor
+    dconf-editor
     dconf2nix # convert dconf dumps to nix format
     obs-studio # video capture and streaming
     usbview # gui directory of usb devices
@@ -89,8 +113,8 @@
     slack # chat for work
     signal-desktop # chat with good security
     # ulauncher # app launcher
-    ollama # cli to run LLMs locally
-    gnome.gnome-tweaks # gui for changing less common gnome settings
+    unstable.ollama # cli to run LLMs locally
+    gnome-tweaks # gui for changing less common gnome settings
     wmctrl # cli for controlling windows in wayland
     # protonmail-desktop # email client for proton service
     obsidian # markdown based note taking

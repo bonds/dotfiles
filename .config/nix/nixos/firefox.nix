@@ -35,8 +35,8 @@ in
         Fingerprinting = true;
       };
       DisablePocket = true;
-      DisableFirefoxAccounts = true;
-      DisableAccounts = true;
+      DisableFirefoxAccounts = false;
+      DisableAccounts = false;
       DisableFirefoxScreenshots = true;
       OverrideFirstRunPage = "";
       OverridePostUpdatePage = "";
@@ -45,7 +45,7 @@ in
       DisplayMenuBar = "default-off"; # alternatives: "always", "never" or "default-on"
       SearchBar = "unified"; # alternative: "separate"
 
-      # check about:config for options
+      # don't ask me to enable DRM, I don't want it
       Preferences = {
         "browser.emi.ui.enable" = lock-false;
         "media.eme.enabled" = lock-false;

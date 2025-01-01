@@ -27,6 +27,8 @@
     };
     */
     systemd.user.services."ulauncher" = {
+      wantedBy = [ "graphical-session.target" ];
+      partOf = [ "graphical-session.target" ];
       unitConfig = {
         "Description" = "Linux Application Launcher";
         "Documentation" = ["https://ulauncher.io/"];
