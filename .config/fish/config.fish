@@ -206,7 +206,11 @@ function nr
     set config_dir $HOME/.config/nix
     cd $config_dir
     nice nix flake update
-    nh os switch . $argv
+    if test "$uname" = darwin
+        darwin-rebuild switch --flake .
+    else
+        nh os switch . $argv
+    end
     if command --query ulauncher
         systemctl --user restart ulauncher
     end
