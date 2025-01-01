@@ -24,7 +24,10 @@
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     # https://github.com/ryanccn/nix-darwin-custom-icons
     darwin-custom-icons.url = "github:ryanccn/nix-darwin-custom-icons";
-    nh_darwin.url = "github:ToyVo/nh_darwin";
+    mac-app-util.url = "github:hraban/mac-app-util";
+
+    # nh_darwin.url = "github:ToyVo/nh_darwin";
+    nh.url = "github:viperML/nh";
 
     # my favorite terminal font, thanks Apple!
     sf-mono-liga-src = {
@@ -46,6 +49,9 @@
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
 
+    # https://ghostty.org/docs/install/binary#macos
+    ghostty.url = "github:ghostty-org/ghostty";
+
   };
 
   outputs = {
@@ -57,9 +63,12 @@
     agenix,
     nix-darwin,
     darwin-custom-icons,
-    nh_darwin,
+    # nh_darwin,
+    nh,
     nix-index-database,
+    mac-app-util,
     # sops-nix,
+    ghostty,
     ...
   } @ inputs: let
     inherit (self) outputs;
@@ -101,8 +110,21 @@
           agenix.nixosModules.default
           home-manager.nixosModules.home-manager
           nix-index-database.nixosModules.nix-index
+          mac-app-util.darwinModules.default
+          ghostty.packages.x86_64-linux.default
         ];
       };
+      # "accismus.local" = nix-darwin.lib.darwinSystem {
+      # # "accismus.local" = nixpkgs.lib.darwinSystem {
+      #   specialArgs = {inherit inputs outputs;};
+      #   modules = [
+      #     # > Our main nixos configuration file <
+      #     ./laptop
+      #     darwin-custom-icons.darwinModules.default
+      #     lix-module.nixosModules.default
+      #     nix-index-database.darwinModules.nix-index
+      #   ];
+      # };
     };
 
     # Standalone home-manager configuration entrypoint
@@ -117,6 +139,7 @@
           agenix.nixosModules.default
           lix-module.nixosModules.default
           nix-index-database.hmModules.nix-index
+          mac-app-util.homeManagerModules.default
         ];
       };
     };
@@ -132,7 +155,7 @@
           darwin-custom-icons.darwinModules.default
           lix-module.nixosModules.default
           # nh_darwin.nixDarwinModules.default
-          nh_darwin.nixDarwinModules.prebuiltin
+          # nh_darwin.nixDarwinModules.prebuiltin
           nix-index-database.darwinModules.nix-index
         ];
         # Set Git commit hash for darwin-version.
