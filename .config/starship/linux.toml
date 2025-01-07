@@ -73,7 +73,7 @@ disabled = false
 
 [time]
 disabled = false
-format = "[at $time]($style) "
+format = "[at $time]($style)"
 style = "bold fg:#333333"
 time_format = "%F %T"
 
