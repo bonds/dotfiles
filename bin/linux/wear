@@ -17,10 +17,10 @@ for i in (seq 0 7)
     set written $written (smartctl --all /dev/nvme$i | grep "Data Units Written" | sed -E 's/.*\[(.*) TB\].*/\1/g')
 end
 set max_written (math max (string join ',' $written))
-set mwp (math --scale 1 "100 * $max_written / $TBW")
-set dlow (math --scale 0 "3*365 - ($(date +%s) - $(date +%s -d $PURCHASED))/60/60/24")
+set mwp (math --scale 1 "100*(1-$max_written/$TBW)")
+set dlow (math --scale 0 "3*365-($(date +%s)-$(date +%s -d $PURCHASED))/60/60/24")
 
-echo "$mwp% of write warranty (aka TBW) used"
+echo "$mwp% TB of writes (aka TBW) left on warranty"
 echo "$dlow days left on warranty"
 echo ""
 echo "note: this is just for the Leven drives"
