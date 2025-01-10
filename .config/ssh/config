@@ -17,19 +17,19 @@ Match !exec "echo %h | grep '\.'"
     Hostname %h.ggr.com
 
 # let me reconnect without asking me to reauthenticate again for a while
-Match host "*.ggr.com"
+Match host="*.ggr.com,*.local"
     ControlMaster auto
     ControlPath ~/.local/ssh/%r@%h:%p.control
     ControlPersist 2h
     ServerAliveInterval 10s
 
 # use a bastian host to get to home servers when away from home
-Match host "metanoia.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
-#Match host="!home.ggr.com,*.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
+# Match host="metanoia.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
+Match host="!home.ggr.com,*.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
     ProxyCommand /usr/bin/ssh home.ggr.com -W 192.168.4.98:22
 
 # forward SSH agent to hosts where I'm supposedly the only root user
-Match host "home.ggr.com"
+Match host="*.ggr.com,*.local"
     ForwardAgent yes
 
 Match host "*.ggr.com,*.local"
@@ -41,7 +41,8 @@ Match host "*.ggr.com,*.local"
     # e-wi keep in mind this is run locally, using the user's shell, in my
     # case /usr/local/bin/fish
     RequestTTY yes
-    RemoteCommand sh -c 'if which tmux >/dev/null; then tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0; else $SHELL; fi'
+    # RemoteCommand sh -c 'if which tmux >/dev/null; then tmux -u -T RGB new -A -s remote ";" set -g default-terminal "tmux-256color" ";" set -sg escape-time 0; else $SHELL; fi'
+    RemoteCommand sh -c 'if which tmux >/dev/null; then tmux -u -T RGB new -A -s remote ";" set -sg escape-time 0; else $SHELL; fi'
 
     # forward syncthing web ui ports so I can manage them locally
     LocalForward 8385 127.0.0.1:8384

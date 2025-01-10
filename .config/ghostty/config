@@ -3,4 +3,4 @@ font-size = 18.0
 window-height = 999
 window-width = 999
 macos-option-as-alt = true
-term = xterm-256color
+# term = xterm-256color
