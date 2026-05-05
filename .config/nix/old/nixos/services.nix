@@ -52,7 +52,7 @@
         # "default.clock.rate" = 192000; # default = 48000
         # "default.allowed-rates" = [ 192000 96000 48000 44100 ];
         # "default.clock.rate" = 44100; # default = 48000
-        "default.allowed-rates" = [ 384000 192000 96000 48000 44100 ];
+        "default.allowed-rates" = [384000 192000 96000 48000 44100];
         # https://www.reddit.com/r/VFIO/comments/u23zn4/crackling_with_audio_passthrough_pipewire_jack/
         # "default.clock.quantum" = 2048; # default = 1024
         # "default.clock.min-quantum" = 1024; # default = 32
@@ -83,7 +83,7 @@
       # HSA_OVERRIDE_GFX_VERSION = "11.0.2";
     };
   };
-  
+
   systemd.services.ollama.serviceConfig.Restart = lib.mkForce "always";
 
   # Enable the fingerprint scanner
@@ -126,14 +126,14 @@
   #   serviceConfig = {
   #     TimeoutStopSec = "5s";
   #   };
-  # }; 
+  # };
 
   services.pcscd.enable = true;
 
   # faster dbus implementation
   services.dbus.implementation = "broker";
 
-  # IRQ balancing algorithm to distribute work to more cores for better 
+  # IRQ balancing algorithm to distribute work to more cores for better
   # performance
   services.irqbalance.enable = true;
 
@@ -145,12 +145,12 @@
   services.fwupd.enable = true;
 
   services.vudials = {
-     enable = true;
+    enable = true;
     cpudial = "6A002D000650564139323920";
     gpudial = "860043000650564139323920";
     memdial = "60003D000650564139323920";
     dskdial = "6B002A000650564139323920";
-  };  
+  };
 
   # https://nixos.wiki/wiki/Samba
   # fileSystems."/home/scott/Music" = {
@@ -170,5 +170,4 @@
     gst-plugins-ugly
     gst-libav
   ]);
-
 }

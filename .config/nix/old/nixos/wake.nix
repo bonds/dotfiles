@@ -1,9 +1,4 @@
-{
-  systemd,
-  ...
-}:
-
-{
+{systemd, ...}: {
   systemd.services.wakeusb = {
     serviceConfig = {
       Description = "Reset USB devices on wake from sleep";

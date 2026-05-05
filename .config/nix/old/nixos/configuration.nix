@@ -62,7 +62,6 @@
     flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
   in {
     settings = {
-
       # Enable flakes and new 'nix' command
       experimental-features = "nix-command flakes";
 
@@ -74,9 +73,8 @@
 
       # don't keep telling me when my nix config hasn't been committed
       # to the git repro yet, I don't care!
-      # https://git.2li.ch/Nebucatnetzer/nixos/commit/36d3953121d968191cd5d83cab201af70e6c864b  
+      # https://git.2li.ch/Nebucatnetzer/nixos/commit/36d3953121d968191cd5d83cab201af70e6c864b
       warn-dirty = false;
-
     };
 
     # Opinionated: disable channels
@@ -93,7 +91,6 @@
     #   randomizedDelaySec = "14m";
     #   options = "--delete-older-than 30d";
     # };
-
   };
 
   networking.hostName = "metanoia";
@@ -110,7 +107,7 @@
       #   # TODO: Add your SSH public key(s) here, if you plan on using SSH to connect
       # ];
       # TODO: Be sure to add any other groups you need (such as networkmanager, audio, docker, etc)
-      extraGroups = [ "networkmanager" "wheel" ];
+      extraGroups = ["networkmanager" "wheel"];
     };
   };
 
@@ -154,7 +151,7 @@
 
   # rotate the console during boot to match my portrait monitors
   # https://discourse.nixos.org/t/option-to-configure-kernel-for-tallscreen-monitor/15986/2
-  boot.kernelParams = [ "fbcon=rotate:3" ];
+  boot.kernelParams = ["fbcon=rotate:3"];
 
   # this doesn't do anything unfortunately
   # systemd.user.services.ulauncher.restartTriggers = with config; [
@@ -162,7 +159,10 @@
   # ];
 
   home-manager = {
-    extraSpecialArgs = { inherit inputs; inherit outputs;};
+    extraSpecialArgs = {
+      inherit inputs;
+      inherit outputs;
+    };
     # useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "backup";
@@ -227,10 +227,11 @@
   # https://nixos.wiki/wiki/Doas
   security.doas.enable = true;
   security.sudo.enable = false;
-  security.doas.extraRules = [{
-    users = [":wheel"];
-    # keepEnv = true;
-    persist = true;
-  }];
-
+  security.doas.extraRules = [
+    {
+      users = [":wheel"];
+      # keepEnv = true;
+      persist = true;
+    }
+  ];
 }

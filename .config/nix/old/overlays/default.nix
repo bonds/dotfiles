@@ -13,20 +13,20 @@
 
     # https://github.com/shaunsingh/SFMono-Nerd-Font-Ligaturized
     sf-mono-liga-bin = prev.stdenvNoCC.mkDerivation rec {
-        pname = "sf-mono-liga-bin";
-        version = "dev";
-        src = inputs.sf-mono-liga-src;
-        dontConfigure = true;
-        installPhase = ''
-          mkdir -p $out/share/fonts/opentype
-          cp -R $src/*.otf $out/share/fonts/opentype/
-        '';
+      pname = "sf-mono-liga-bin";
+      version = "dev";
+      src = inputs.sf-mono-liga-src;
+      dontConfigure = true;
+      installPhase = ''
+        mkdir -p $out/share/fonts/opentype
+        cp -R $src/*.otf $out/share/fonts/opentype/
+      '';
     };
 
     # https://wiki.nixos.org/wiki/GNOME
     gnome = prev.gnome.overrideScope (gnomeFinal: gnomePrev: {
       mutter = gnomePrev.mutter.overrideAttrs (old: {
-        src = final.pkgs.fetchFromGitLab  {
+        src = final.pkgs.fetchFromGitLab {
           domain = "gitlab.gnome.org";
           owner = "vanvugt";
           repo = "mutter";
@@ -42,7 +42,6 @@
     #       --replace "aseprite %U" "env GDK_SCALE=2 aseprite %U"
     #   '';
     # });
-
   };
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will

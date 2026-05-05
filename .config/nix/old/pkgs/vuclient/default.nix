@@ -1,8 +1,7 @@
-{ pkgs ? import <nixpkgs> {} }:
-
+{pkgs ? import <nixpkgs> {}}:
 pkgs.stdenv.mkDerivation rec {
   pname = "vuclient";
-  version = "1.0.1"; 
+  version = "1.0.1";
 
   src = pkgs.fetchFromGitHub {
     owner = "bonds";
@@ -19,8 +18,7 @@ pkgs.stdenv.mkDerivation rec {
 
   meta = with pkgs.lib; {
     description = "A script that samples perf stats and sends them to a vuserver driving VU1 dials.";
-    license = licenses.mit; 
+    license = licenses.mit;
     platforms = platforms.linux;
   };
 }
-

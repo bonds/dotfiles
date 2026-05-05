@@ -1,25 +1,23 @@
 # Edit this configuration file to define what should be installed on
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
-
-{ config, pkgs, ... }:
-
-let
-
+{
+  config,
+  pkgs,
+  ...
+}: let
   # pinned to the version with ghostty v1.0.1
-  unstable = import
+  unstable =
+    import
     (builtins.fetchTarball https://github.com/nixos/nixpkgs/tarball/c44821d5fcbe4797868daa0838002577105a161f)
     # reuse the current configuration
-    { config = config.nixpkgs.config; };
-
-in
-
-{
-  imports =
-    [ # Include the results of the hardware scan.
-      ./hardware-configuration.nix
-      ((builtins.fetchTarball "https://github.com/hercules-ci/arion/archive/v0.2.2.0.tar.gz") + "/nixos-module.nix")
-    ];
+    {config = config.nixpkgs.config;};
+in {
+  imports = [
+    # Include the results of the hardware scan.
+    ./hardware-configuration.nix
+    ((builtins.fetchTarball "https://github.com/hercules-ci/arion/archive/v0.2.2.0.tar.gz") + "/nixos-module.nix")
+  ];
 
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
@@ -95,9 +93,9 @@ in
   users.users.scott = {
     isNormalUser = true;
     description = "Scott Bonds";
-    extraGroups = [ "networkmanager" "wheel" "docker" ];
+    extraGroups = ["networkmanager" "wheel" "docker"];
     packages = with pkgs; [
-    #  thunderbird
+      #  thunderbird
     ];
   };
 
@@ -110,8 +108,8 @@ in
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-  #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-  #  wget
+    #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+    #  wget
     fd
     units
     smartmontools
@@ -160,7 +158,7 @@ in
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "24.11"; # Did you read the comment?
 
-  boot.supportedFilesystems = [ "zfs" ];
+  boot.supportedFilesystems = ["zfs"];
   boot.zfs.forceImportRoot = false;
   networking.hostId = "bf6ff4c5";
   services.zfs.autoScrub.enable = true;
@@ -217,23 +215,23 @@ in
         "fruit:veto_appledouble" = "no";
         "fruit:nfs_aces" = "no";
         "fruit:wipe_intentionally_left_blank_rfork" = "yes";
-        "fruit:delete_empty_adfiles" = "yes"; 
+        "fruit:delete_empty_adfiles" = "yes";
       };
       "media" = {
-        "path"          = "/dragon/media";
-        "guest ok"      = "yes";
-        "writeable"     = "no";
+        "path" = "/dragon/media";
+        "guest ok" = "yes";
+        "writeable" = "no";
       };
       "timemachine" = {
-        "path"          = "/dragon/timemachine";
-        "guest ok"      = "yes";
-        "writeable"     = "yes";
+        "path" = "/dragon/timemachine";
+        "guest ok" = "yes";
+        "writeable" = "yes";
         "fruit:time machine" = "yes";
       };
       "uploads" = {
-        "path"          = "/dragon/uploads";
-        "guest ok"      = "yes";
-        "writeable"     = "yes";
+        "path" = "/dragon/uploads";
+        "guest ok" = "yes";
+        "writeable" = "yes";
       };
     };
   };
@@ -267,11 +265,10 @@ in
   virtualisation.arion = {
     backend = "docker";
     projects = {
-
       minecraft.settings.services.minecraft.service = {
         image = "itzg/minecraft-bedrock-server";
         restart = "on-failure:5";
-        environment = { 
+        environment = {
           EULA = "TRUE";
         };
         user = "1000:100";
@@ -296,7 +293,6 @@ in
           "12346-12347:12346-12347/udp"
         ];
       };
-
     };
   };
 
@@ -340,7 +336,7 @@ in
            -X "PATCH" \
            -i "https://api.dnsimple.com/v2/$ACCOUNT_ID/zones/$ZONE_ID/records/$RECORD_ID" \
            -d "{\"content\":\"$IP\"}"
-      '';
+    '';
   };
 
   # https://wiki.nixos.org/wiki/Syncthing
@@ -356,14 +352,14 @@ in
     # };
     settings = {
       devices = {
-        "laptop" = { id = "UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB"; };
-        "workstation" = { id = "PO67TVE-4DPKQ3W-A3TNX5K-5OFVKUQ-7GR4VCN-WMVSQ2U-MGOREMU-ZB4UHAY"; };
+        "laptop" = {id = "UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB";};
+        "workstation" = {id = "PO67TVE-4DPKQ3W-A3TNX5K-5OFVKUQ-7GR4VCN-WMVSQ2U-MGOREMU-ZB4UHAY";};
       };
       folders = {
         "Documents" = {
           path = "/home/scott/Documents";
           id = "mz9zh-usrfi";
-          devices = [ "laptop" "workstation" ];
+          devices = ["laptop" "workstation"];
         };
         # "Example" = {
         #   path = "/home/myusername/Example";
@@ -399,7 +395,7 @@ in
 
   services.zfs.zed.settings = {
     ZED_DEBUG_LOG = "/tmp/zed.debug.log";
-    ZED_EMAIL_ADDR = [ "root" ];
+    ZED_EMAIL_ADDR = ["root"];
     ZED_EMAIL_PROG = "${pkgs.msmtp}/bin/msmtp";
     ZED_EMAIL_OPTS = "@ADDRESS@";
 
@@ -411,5 +407,4 @@ in
   };
   # this option does not work; will return error
   services.zfs.zed.enableMail = false;
-
 }

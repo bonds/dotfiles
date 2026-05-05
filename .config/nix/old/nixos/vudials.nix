@@ -1,8 +1,10 @@
-{ config, lib, pkgs, ... }:
-
-with lib;
-
-let
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+with lib; let
   cfg = config.services.vudials;
 in {
   options.services.vudials = {
@@ -49,7 +51,6 @@ in {
       default = "";
       description = "UID of the dial that will display % of the  disk space used on root partition";
     };
-    
   };
 
   config = mkIf cfg.enable {
@@ -68,7 +69,7 @@ in {
 
     systemd.services."vuserver@" = {
       description = "VU Server for %I. Provides API, admin web page, and pushed updates to USB dials";
-      partOf = [ "vuserver.target" ];
+      partOf = ["vuserver.target"];
 
       serviceConfig = {
         ExecStart = "${pkgs.vuserver}/bin/vuserver";
@@ -96,9 +97,9 @@ in {
     systemd.services.vuclient = {
       enable = true;
       description = "Monitor computer and push info to VU server.";
-      wantedBy = [ "multi-user.target" ];
-      wants = [ "vuserver.target" ];
-      after = [ "vuserver.target" ];
+      wantedBy = ["multi-user.target"];
+      wants = ["vuserver.target"];
+      after = ["vuserver.target"];
       serviceConfig = {
         ExecStart = "${pkgs.vuclient}/bin/vuclient";
         TimeoutStopSec = "5s";
@@ -110,7 +111,7 @@ in {
           "DSKDIAL=${cfg.dskdial}"
         ];
       };
-    }; 
+    };
 
     powerManagement.powerDownCommands = lib.mkAfter ''
       systemctl stop vuclient.service
@@ -121,6 +122,6 @@ in {
       systemctl start vuclient.service
     '';
 
-    environment.systemPackages = [ pkgs.vuserver ];
+    environment.systemPackages = [pkgs.vuserver];
   };
 }

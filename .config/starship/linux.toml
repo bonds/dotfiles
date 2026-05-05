@@ -74,7 +74,7 @@ disabled = false
 [time]
 disabled = false
 format = "[at $time]($style)"
-style = "bold fg:#333333"
+style = "bold fg:#444444"
 time_format = "%F %T"
 
 [os.symbols]

@@ -1,9 +1,9 @@
-{ lib
-, python3Packages
-, fetchFromGitHub
-, makeWrapper
+{
+  lib,
+  python3Packages,
+  fetchFromGitHub,
+  makeWrapper,
 }:
-
 python3Packages.buildPythonApplication rec {
   pname = "vuserver";
   version = "20240329";
@@ -17,7 +17,7 @@ python3Packages.buildPythonApplication rec {
 
   format = "other";
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [makeWrapper];
 
   propagatedBuildInputs = with python3Packages; [
     tornado
@@ -82,6 +82,6 @@ python3Packages.buildPythonApplication rec {
     description = "VU Server for controlling VU dials";
     homepage = "https://github.com/SasaKaranovic/VU-Server";
     license = licenses.mit;
-    maintainers = with maintainers; [ bonds ];
+    maintainers = with maintainers; [bonds];
   };
 }

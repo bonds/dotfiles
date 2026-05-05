@@ -2,6 +2,6 @@
 # You can build them using 'nix build .#example'
 pkgs: {
   # example = pkgs.callPackage ./example { };
-  vuserver = pkgs.callPackage ./vuserver { };
-  vuclient = pkgs.callPackage ./vuclient { };
+  vuserver = pkgs.callPackage ./vuserver {};
+  vuclient = pkgs.callPackage ./vuclient {};
 }

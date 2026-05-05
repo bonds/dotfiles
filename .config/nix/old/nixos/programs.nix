@@ -8,7 +8,6 @@
   pkgs,
   ...
 }: {
-
   programs.mtr.enable = true;
   programs.fish.enable = true;
   programs.tmux.enable = true;
@@ -20,7 +19,7 @@
     localNetworkGameTransfers.openFirewall = true;
     package = pkgs.steam.override {
       extraEnv = {
-        GDK_SCALE=2;
+        GDK_SCALE = 2;
       };
     };
   };
@@ -64,5 +63,4 @@
   };
 
   programs.command-not-found.enable = false;
-
 }

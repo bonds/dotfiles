@@ -10,6 +10,7 @@ argparse v/verbose -- $argv
 
 function mac2ip
     set mac $argv[1]
+    set arptable (arp -a)
     for line in $arptable
         if string match -i -e "$mac" "$line" >/dev/null
             echo $line | awk '{print $2}' | tr -d '()'
@@ -19,20 +20,19 @@ end
 
 # set WORKSTATION "192.168.4.62"
 # set SERVERRACK "10.0.0.189"
-# set WORKMAC "24:2f:d0:26:2:c9"
-# set SERVERMAC "24:2F:D0:25:FF:AE"
+set WORKMAC "24:2f:d0:26:2:c9"
+set SERVERMAC "24:2F:D0:25:FF:AE"
 
 set names workstation servers
 set macs $WORKMAC $SERVERMAC
-set ips "192.168.4.62" "192.168.4.61"
+# set ips "192.168.4.62" "192.168.4.61"
 
 # set bpip (ifconfig | grep "broadcast" | sed -e 's/.*broadcast \(.*\)/\1/g')
 # ping -c 2 $bpip >/dev/null # this refreshes the arp table
-# set arptable (arp -a)
 
-# for mac in $macs
-#     set hosts $hosts (mac2ip $mac)
-# end
+for mac in $macs
+    set hosts $hosts (mac2ip $mac)
+end
 set hosts $ips
 
 for i in (seq (count $names))

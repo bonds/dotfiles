@@ -23,7 +23,7 @@ set --append fish_user_paths ~/.cargo/bin
 # set --append fish_user_paths ~/Library/Python/3.10/bin
 
 # for python
-source $VENV_DIR/bin/activate.fish
+# source $VENV_DIR/bin/activate.fish
 
 # for building idris2 on openbsd
 # remember to run pkg_add racket-minimal
@@ -43,6 +43,9 @@ set -x NIXPKGS_ALLOW_UNFREE 1
 
 # devbox on linux needs this
 set -x NIX_REMOTE daemon
+
+# to avoid warning about missing path
+set -e NIX_PATH
 
 # docker cli on util.local needs this
 # set -x DOCKER_HOST ssh://root@172.16.0.100
@@ -194,22 +197,23 @@ function ping
     end
 end
 
-if command --query nh_darwin
-    alias nh "nice nh_darwin"
-else
-    alias nh "nice (which nh)"
-end
+# if command --query nh_darwin
+#     alias nh "nice nh_darwin"
+# else
+#     alias nh "nice (which nh)"
+# end
 
 # https://nixos-and-flakes.thiscute.world/nixos-with-flakes/update-the-system
 function nr
     set starting_dir (pwd)
     set config_dir $HOME/.config/nix
     cd $config_dir
-    nice nix flake update
+    # nice nix flake update
     if test "$uname" = darwin
-        darwin-rebuild switch --flake .
+        # darwin-rebuild switch --flake .
+        nh darwin switch --update . $argv
     else
-        nh os switch . $argv
+        nh os switch --update . $argv
     end
     if command --query ulauncher
         systemctl --user restart ulauncher
@@ -238,9 +242,13 @@ end
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"
 set fzf_fd_opts --hidden --exclude=.git
 
-if not set --query NIX_CONFIG
-    set id $HOME/.config/passage/(hostname).identity
-    if test -e $id
-        set -x NIX_CONFIG (age -d -i ~/.config/passage/(hostname).identity ~/.config/passage/store/NIX_CONFIG.age)
-    end
-end
+# if not set --query NIX_CONFIG
+#     set id $HOME/.config/passage/(hostname).identity
+#     if test -e $id
+#         set -x NIX_CONFIG (age -d -i ~/.config/passage/(hostname).identity ~/.config/passage/store/NIX_CONFIG.age)
+#     end
+# end
+
+# Added by LM Studio CLI (lms)
+set -gx PATH $PATH /Users/scott/.lmstudio/bin
+# End of LM Studio CLI section

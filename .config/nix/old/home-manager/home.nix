@@ -104,7 +104,7 @@
     # ".config/nix/nix.conf".text = ''
     #   $(${pkgs.coreutils}/bin/cat ${config.age.secrets.github.path});
     # '';
-    
+
     # https://gist.github.com/gtirloni/4384f4de6f4d3fda8446b04057ca5f9d
     ".config/wireplumber/wireplumber.conf.d/51-disable-devices.conf".text = ''
       monitor.alsa.rules = [
@@ -150,23 +150,21 @@
 
     # https://discourse.nixos.org/t/generate-and-install-ublock-config-file-with-home-manager/19209
     # https://www.reddit.com/r/uBlockOrigin/comments/16bzb11/configuring_ublock_origin_for_nix_users_just_in/
-    ".mozilla/managed-storage/uBlock0@raymondhill.net.json".text =
-      builtins.toJSON {
-        name = "uBlock0@raymondhill.net";
-        description = "_";
-        type = "storage";
-        data = {
-          adminSettings = {
-            userFilters = ''
-              cnn.com##.header__wrapper-outer:style(height: 30px !important)
-            '';
-          };
+    ".mozilla/managed-storage/uBlock0@raymondhill.net.json".text = builtins.toJSON {
+      name = "uBlock0@raymondhill.net";
+      description = "_";
+      type = "storage";
+      data = {
+        adminSettings = {
+          userFilters = ''
+            cnn.com##.header__wrapper-outer:style(height: 30px !important)
+          '';
         };
-      }; 
+      };
+    };
   };
 
   xdg.desktopEntries = {
-
     dwarf = {
       name = "Dwarf Fortress";
       comment = "a really great game";
@@ -175,7 +173,6 @@
         Path = "/run/current-system/sw/bin";
       };
     };
-    
   };
 
   # Home Manager can also manage your environment variables through
@@ -198,7 +195,9 @@
     # EDITOR = "emacs";
   };
 
-  dconf.settings = let inherit (lib.gvariant) mkTuple mkUint32 mkVariant; in {
+  dconf.settings = let
+    inherit (lib.gvariant) mkTuple mkUint32 mkVariant;
+  in {
     "org/gnome/settings-daemon/plugins/power" = {
       sleep-inactive-ac-timeout = 900;
     };
@@ -255,31 +254,31 @@
 
     "org/gnome/shell/weather" = {
       automatic-location = true;
-      locations = [ 
+      locations = [
         (mkVariant (mkTuple [
-            (mkUint32 2) 
-            (mkVariant (mkTuple [
-              "Palo Alto" 
-              "KPAO" 
-              true 
-              [(mkTuple [0.6539166988983063 (-2.1313379107115065)])]
-              [(mkTuple [0.653484136496492  (-2.1317978398759916)])]
-            ])) 
+          (mkUint32 2)
+          (mkVariant (mkTuple [
+            "Palo Alto"
+            "KPAO"
+            true
+            [(mkTuple [0.6539166988983063 (-2.1313379107115065)])]
+            [(mkTuple [0.653484136496492 (-2.1317978398759916)])]
+          ]))
         ]))
       ];
     };
 
     "org/gnome/shell/world-clocks" = {
-      locations = [ 
-        (mkVariant (mkTuple [ 
-          (mkUint32 2) 
-          (mkVariant (mkTuple [ 
+      locations = [
+        (mkVariant (mkTuple [
+          (mkUint32 2)
+          (mkVariant (mkTuple [
             "Tel Aviv"
             "LLBG"
-            true 
-            [(mkTuple [0.5585053606381855 0.609119908946021 ])]
+            true
+            [(mkTuple [0.5585053606381855 0.609119908946021])]
             [(mkTuple [0.5596689192906126 0.6067928090944594])]
-            ]))
+          ]))
         ]))
       ];
     };
@@ -291,7 +290,7 @@
     "org/gnome/desktop/background" = {
       picture-option = "spanned";
     };
-    
+
     "org/gnome/desktop/background" = {
       picture-uri-dark = "file:///home/scott/.config/background";
     };
@@ -308,13 +307,13 @@
       binding = "<Control>space";
       command = "/run/current-system/sw/bin/ulauncher-toggle";
     };
-    
+
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
       name = "maximize window across all monitors";
       binding = "<Control><Shift>m";
       command = "/home/scott/bin/linux/maximize_across_multiple_monitors";
     };
-    
+
     "org/gnome/Console" = {
       font-scale = 1.3;
     };
@@ -342,7 +341,6 @@
       restore-at-startup-without-asking = true;
       autorestore-sessions = "defaultSession";
     };
-
   };
 
   # systemd.user.services.ulauncher = {
@@ -360,7 +358,7 @@
   #     Environment = "GDK_BACKEND=x11";
   #     Restart = "always";
   #   };
-  # }; 
+  # };
 
   # systemd.user.services.vu1server = {
   #   Unit = {
@@ -373,7 +371,7 @@
   #     ExecStart = "/home/scott/bin/linux/vu1server";
   #     TimeoutStopSec = "1s";
   #   };
-  # }; 
+  # };
 
   # systemd.user.services.vu1monitor = {
   #   Unit = {
@@ -386,7 +384,7 @@
   #     ExecStart = "/home/scott/bin/linux/vu1";
   #     TimeoutStopSec = "1s";
   #   };
-  # }; 
+  # };
 
   # systemd.user.services.vu1wake = {
   #   Unit = {
@@ -406,4 +404,3 @@
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
   home.stateVersion = "24.05";
 }
-
