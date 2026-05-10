@@ -1,42 +1,25 @@
-# Edit this configuration file to define what should be installed on
-# your system.  Help is available in the configuration.nix(5) man page
-# and in the NixOS manual (accessible by running ‘nixos-help’).
 {
   config,
   pkgs,
+  pkgs-unstable,
   ...
-}: let
-  # pinned to the version with ghostty v1.0.1
-  unstable =
-    import
-    (builtins.fetchTarball https://github.com/nixos/nixpkgs/tarball/c44821d5fcbe4797868daa0838002577105a161f)
-    # reuse the current configuration
-    {config = config.nixpkgs.config;};
-in {
+}: {
   imports = [
-    # Include the results of the hardware scan.
     ./hardware-configuration.nix
-    ((builtins.fetchTarball "https://github.com/hercules-ci/arion/archive/v0.2.2.0.tar.gz") + "/nixos-module.nix")
   ];
 
-  # Bootloader.
+  nix.package = pkgs.lix;
+  nix.settings.experimental-features = "nix-command flakes";
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = "util"; # Define your hostname.
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  networking.hostName = "util";
 
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
-  # Enable networking
   networking.networkmanager.enable = true;
 
-  # Set your time zone.
   time.timeZone = "America/Los_Angeles";
 
-  # Select internationalisation properties.
   i18n.defaultLocale = "en_US.UTF-8";
 
   i18n.extraLocaleSettings = {
@@ -51,65 +34,45 @@ in {
     LC_TIME = "en_US.UTF-8";
   };
 
-  # Enable the X11 windowing system.
   services.xserver.enable = true;
 
-  # Enable the GNOME Desktop Environment.
-  services.xserver.displayManager.gdm.enable = true;
-  services.xserver.desktopManager.gnome.enable = true;
+  services.displayManager.gdm.enable = true;
+  services.desktopManager.gnome.enable = true;
 
-  # Configure keymap in X11
   services.xserver.xkb = {
     layout = "us";
     variant = "dvorak";
   };
 
-  # Configure console keymap
   console.keyMap = "dvorak";
 
-  # Enable CUPS to print documents.
   services.printing.enable = true;
 
-  # Enable sound with pipewire.
-  hardware.pulseaudio.enable = false;
+  services.pulseaudio.enable = false;
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    # If you want to use JACK applications, uncomment this
-    #jack.enable = true;
-
-    # use the example session manager (no others are packaged yet so this is enabled by default,
-    # no need to redefine it in your config for now)
-    #media-session.enable = true;
   };
 
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
-
-  # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.scott = {
     isNormalUser = true;
     description = "Scott Bonds";
     extraGroups = ["networkmanager" "wheel" "docker"];
-    packages = with pkgs; [
-      #  thunderbird
-    ];
+    packages = with pkgs; [];
   };
 
-  # Install firefox.
   programs.firefox.enable = true;
 
-  # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
   environment.systemPackages = with pkgs; [
-    #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-    #  wget
+    fastfetch
+    ffmpeg
+    beets
+    ripgrep
     fd
     units
     smartmontools
@@ -127,36 +90,18 @@ in {
     starship
     git
     btop
-    unstable.ghostty
+    ghostty
     helix
+    nh
+    fzf
+    speedtest-cli
+    dmidecode
+    edac-utils
   ];
 
-  # Some programs need SUID wrappers, can be configured further or are
-  # started in user sessions.
-  # programs.mtr.enable = true;
-  # programs.gnupg.agent = {
-  #   enable = true;
-  #   enableSSHSupport = true;
-  # };
-
-  # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
   services.openssh.enable = true;
 
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  # networking.firewall.enable = false;
-
-  # This value determines the NixOS release from which the default
-  # settings for stateful data, like file locations and database versions
-  # on your system were taken. It‘s perfectly fine and recommended to leave
-  # this value at the release version of the first install of this system.
-  # Before changing this value read the documentation for this option
-  # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "24.11"; # Did you read the comment?
+  system.stateVersion = "24.11";
 
   boot.supportedFilesystems = ["zfs"];
   boot.zfs.forceImportRoot = false;
@@ -183,35 +128,23 @@ in {
       enable = true;
       addresses = true;
       hinfo = true;
-      # workstation = true;
-      # userServices = true;
     };
   };
 
   services.samba = {
     enable = true;
     openFirewall = true;
-    # securityType = "user";
     settings = {
       global = {
         "workgroup" = "WORKGROUP";
         "server string" = "%h server (Samba, NixOS)";
         "server role" = "standalone server";
         "netbios name" = "util";
-        # "hosts allow" = "192.168.0. 127.0.0.1 localhost";
-        # "hosts deny" = "0.0.0.0/0";
-        # "interfaces" = "192.168.4.43";
-        # "bind interfaces only" = "yes";
         "map to guest" = "bad user";
         "inherit permissions" = "yes";
-        # "mdns name" = "mdns";
-        # "dns proxy" = "no";
-
-        # https://wiki.samba.org/index.php/Configure_Samba_to_Work_Better_with_Mac_OS_X
-        # https://www.samba.org/samba/docs/current/man-html/vfs_catia.8.html
         "vfs objects" = "catia fruit streams_xattr";
         "fruit:metadata" = "stream";
-        "fruit:model" = "RackMount"; # https://www.reddit.com/r/samba/comments/p70nft/fruitmodel_valid_options/
+        "fruit:model" = "RackMount";
         "fruit:veto_appledouble" = "no";
         "fruit:nfs_aces" = "no";
         "fruit:wipe_intentionally_left_blank_rfork" = "yes";
@@ -241,14 +174,8 @@ in {
     openFirewall = true;
   };
 
-  # networking.firewall.enable = true;
-  # networking.firewall.allowPing = true;
-
-  # networking.firewall.extraCommands = ''iptables -t raw -A OUTPUT -p udp -m udp --dport 137 -j CT --helper netbios-ns'';
-
   programs.tmux.enable = true;
 
-  # https://github.com/NixOS/nixpkgs/issues/100390
   security.polkit.extraConfig = ''
     polkit.addRule(function(action, subject) {
         if (action.id == "org.freedesktop.login1.suspend" ||
@@ -261,7 +188,6 @@ in {
     });
   '';
 
-  # virtualisation.docker.enable = true;
   virtualisation.arion = {
     backend = "docker";
     projects = {
@@ -284,7 +210,6 @@ in {
         image = "jamesits/dst-server:latest";
         restart = "on-failure:5";
         stop_grace_period = "6m";
-        # user = "1000:100";
         volumes = [
           "/dragon/docker/dontstarve:/data"
         ];
@@ -293,6 +218,32 @@ in {
           "12346-12347:12346-12347/udp"
         ];
       };
+
+      whisper.settings.services.whisper.service = {
+        image = "rhasspy/wyoming-whisper";
+        restart = "on-failure:5";
+        stop_grace_period = "6m";
+        volumes = [
+          "/dragon/docker/whisper:/data"
+        ];
+        ports = [
+          "10300:10300/tcp"
+        ];
+        command = "--model tiny-int8 --language en";
+      };
+
+      piper.settings.services.piper.service = {
+        image = "rhasspy/wyoming-piper";
+        restart = "on-failure:5";
+        stop_grace_period = "6m";
+        volumes = [
+          "/dragon/docker/piper:/data"
+        ];
+        ports = [
+          "10200:10200/tcp"
+        ];
+        command = "--voice en_US-lessac-medium";
+      };
     };
   };
 
@@ -300,25 +251,37 @@ in {
     enable = true;
     openFirewall = true;
     extraComponents = [
-      # Components required to complete the onboarding
       "analytics"
       "google_translate"
       "met"
       "radio_browser"
       "shopping_list"
-      # Recommended for fast zlib compression
-      # https://www.home-assistant.io/integrations/isal
       "isal"
+      "apple_tv"
+      "homekit_controller"
+      "thread"
+      "tplink_omada"
+      "tplink"
+      "spotify"
+      "brother"
+      "ipp"
+      "sonos"
+      "improv_ble"
+      "aranet"
+      "piper"
+      "whisper"
+      "wyoming"
+      "ollama"
     ];
+    customComponents = [];
     config = {
-      # Includes dependencies for a basic setup
-      # https://www.home-assistant.io/integrations/default_config/
       default_config = {};
+      bluetooth = {};
     };
   };
 
   systemd.services.ddns = {
-    startAt = "*:0/15"; # every 15 minutes
+    startAt = "*:0/15";
     serviceConfig.Type = "oneshot";
     path = [
       pkgs.curl
@@ -339,21 +302,16 @@ in {
     '';
   };
 
-  # https://wiki.nixos.org/wiki/Syncthing
   services.syncthing = {
     enable = true;
     openDefaultPorts = true;
     user = "scott";
     group = "users";
     configDir = "/home/scott/.config/syncthing";
-    # settings.gui = {
-    #   user = "myuser";
-    #   password = "mypassword";
-    # };
     settings = {
       devices = {
         "laptop" = {id = "UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB";};
-        "workstation" = {id = "PO67TVE-4DPKQ3W-A3TNX5K-5OFVKUQ-7GR4VCN-WMVSQ2U-MGOREMU-ZB4UHAY";};
+        "workstation" = {id = "PO67TVE-4DPKQ3W-A3TNX5K-5OFVKUQ-7GR4VCN-WMVSQ2U-MGOREMU-ZB4U4HAY";};
       };
       folders = {
         "Documents" = {
@@ -361,17 +319,10 @@ in {
           id = "mz9zh-usrfi";
           devices = ["laptop" "workstation"];
         };
-        # "Example" = {
-        #   path = "/home/myusername/Example";
-        #   devices = [ "device1" ];
-        #   # By default, Syncthing doesn't sync file permissions. This line enables it for this folder.
-        #   ignorePerms = false;
-        # };
       };
     };
   };
 
-  # https://wiki.nixos.org/wiki/ZFS
   programs.msmtp = {
     enable = true;
     setSendmail = true;
@@ -387,24 +338,70 @@ in {
       default = {
         host = "smtp.gmail.com";
         user = "woaifafong@gmail.com";
+        from = "woaifafong@gmail.com";
         passwordeval = "cat /etc/emailpass.txt";
-        # from = "user@example.com";
       };
     };
   };
 
-  services.zfs.zed.settings = {
-    ZED_DEBUG_LOG = "/tmp/zed.debug.log";
-    ZED_EMAIL_ADDR = ["root"];
-    ZED_EMAIL_PROG = "${pkgs.msmtp}/bin/msmtp";
-    ZED_EMAIL_OPTS = "@ADDRESS@";
+  services.zfs.zed = {
+    enableMail = false;
+    settings = {
+      ZED_DEBUG_LOG = "/tmp/zed.debug.log";
+      ZED_EMAIL_ADDR = ["root"];
+      ZED_EMAIL_PROG = "${pkgs.msmtp}/bin/msmtp";
+      ZED_EMAIL_OPTS = "@ADDRESS@";
 
-    ZED_NOTIFY_INTERVAL_SECS = 3600;
-    ZED_NOTIFY_VERBOSE = true;
+      ZED_NOTIFY_INTERVAL_SECS = 3600;
+      ZED_NOTIFY_VERBOSE = true;
 
-    ZED_USE_ENCLOSURE_LEDS = true;
-    ZED_SCRUB_AFTER_RESILVER = true;
+      ZED_USE_ENCLOSURE_LEDS = true;
+      ZED_SCRUB_AFTER_RESILVER = true;
+    };
   };
-  # this option does not work; will return error
-  services.zfs.zed.enableMail = false;
+
+  environment.etc = {
+    "aliases" = {
+      text = ''
+        root: scott@ggr.com
+      '';
+      mode = "0644";
+    };
+  };
+
+  services.ollama = {
+    enable = true;
+    package = pkgs-unstable.ollama;
+    models = "/dragon/ollama";
+  };
+
+  services.open-webui = {
+    enable = true;
+  };
+
+  services.dbus.implementation = "broker";
+
+  services.matter-server.enable = true;
+
+  services.immich = {
+    enable = true;
+    port = 2283;
+    mediaLocation = "/dragon/immich";
+  };
+
+  services.tailscale = {
+    enable = true;
+    useRoutingFeatures = "both";
+    package = pkgs-unstable.tailscale;
+  };
+
+  nix.optimise.automatic = true;
+  nix.optimise.dates = ["03:45"];
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 30d";
+  };
+
+  hardware.rasdaemon.enable = true;
 }
