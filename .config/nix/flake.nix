@@ -10,7 +10,7 @@
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
     arion.url = "github:hercules-ci/arion/v0.2.2.0";
-    vudials.url = "git+file:///Users/scott/.config/nix-vudials";
+    vudials.url = "github:bonds/nix-vudials";
   };
   outputs = inputs @ {
     self,

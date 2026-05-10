@@ -195,17 +195,17 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1778441528,
-        "narHash": "sha256-waiddQu0i6jbzuqvyyn/i1TkJ5Zf804JlDdm3mnr6DI=",
-        "ref": "refs/heads/main",
-        "rev": "4ff15ea612fd593dba8a57c589809e93477144ac",
-        "revCount": 22,
-        "type": "git",
-        "url": "file:///Users/scott/.config/nix-vudials"
+        "lastModified": 1778443923,
+        "narHash": "sha256-BJ4iXPps+GRdVbQ6Tp4NRn9O+KvDiN5onDoveLI9xvA=",
+        "owner": "bonds",
+        "repo": "nix-vudials",
+        "rev": "792bd291c416517a2b808f0f19ff11edeccc4d40",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///Users/scott/.config/nix-vudials"
+        "owner": "bonds",
+        "repo": "nix-vudials",
+        "type": "github"
       }
     }
   },
