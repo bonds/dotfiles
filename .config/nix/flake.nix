@@ -9,6 +9,9 @@
 
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+
+    nix-index-database.url = "github:nix-community/nix-index-database";
+    nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = inputs @ {
@@ -16,6 +19,7 @@
     nix-darwin,
     nixpkgs,
     home-manager,
+    nix-index-database,
   }: let
     configuration = {pkgs, ...}: {
       # https://github.com/nix-darwin/nix-darwin?tab=readme-ov-file#prerequisites
@@ -24,6 +28,10 @@
       # List packages installed in system profile. To search by name, run:
       # $ nix search nixpkgs wget
       environment.systemPackages = with pkgs; [
+        smartmontools # for smartctl
+        pv # for watching progress
+        watch # for running scripts in a loop
+        xclip # for copying from terminal to clipboard
         alejandra # nix code formatter
         tokei # like cloc but uses treesitteng to count tokens
         opencode # like claude code but open source
@@ -35,8 +43,7 @@
         discord
         daisydisk
         coconutbattery
-        nix-index # for command-not-found
-        turbo # javascript runtime
+        # turbo # javascript runtime
         gh # github cli tool
         bun # javascript runtime
         typescript # javascript dialect
@@ -148,18 +155,37 @@
   in {
     formatter.aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.alejandra;
 
-    # Build darwin flake using:
-    # $ darwin-rebuild build --flake .#accismus
+    overlays = import ./overlays;
+
     darwinConfigurations."accismus" = nix-darwin.lib.darwinSystem {
       modules = [
+        {
+          nixpkgs.overlays = [
+            inputs.nix-index-database.overlays.nix-index
+            (import ./overlays).additions
+          ];
+        }
+        nix-index-database.darwinModules.nix-index
         configuration
         home-manager.darwinModules.home-manager
+        ./modules/vudials.nix
+        {
+          services.vudials = {
+            enable = true;
+            device = "/dev/cu.usbserial-DQ0164KM";
+            cpudial = "6A002D000650564139323920";
+            gpudial = "860043000650564139323920";
+            memdial = "60003D000650564139323920";
+            dskdial = "6B002A000650564139323920";
+          };
+        }
         {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
+          home-manager.backupFileExtension = "old";
           home-manager.users.scott = {pkgs, ...}: {
             home = {
-              stateVersion = "25.11";
+              stateVersion = "24.11";
               homeDirectory = "/Users/scott";
 
               # https://github.com/nix-community/nix-index/issues/126
@@ -167,7 +193,7 @@
                 "bin/nix-command-not-found" = {
                   text = ''
                     #!/usr/bin/env bash
-                    source ${pkgs.nix-index}/etc/profile.d/command-not-found.sh
+                    source ${pkgs.nix-index-with-db}/etc/profile.d/command-not-found.sh
                     command_not_found_handle "$@"
                   '';
 
@@ -176,9 +202,6 @@
               };
             };
           };
-
-          # Optionally, use home-manager.extraSpecialArgs to pass
-          # arguments to home.nix
         }
       ];
     };
