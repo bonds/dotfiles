@@ -30,7 +30,8 @@ nixos-rebuild build --flake .#util
 sudo nixos-rebuild switch --flake .#util
 
 # Deploy from laptop via ssh (target-host requires sudo passwordless or --use-remote-sudo)
-nixos-rebuild switch --flake .#util --target-host scott@util.local --use-remote-sudo
+# home.ggr.com works from anywhere; util.local is faster on LAN but mDNS-only
+nixos-rebuild switch --flake .#util --target-host scott@home.ggr.com --use-remote-sudo
 ```
 
 ### metanoia (workstation)

@@ -71,7 +71,6 @@
   environment.systemPackages = with pkgs; [
     fastfetch
     ffmpeg
-    beets
     ripgrep
     fd
     units
@@ -107,6 +106,12 @@
   boot.zfs.forceImportRoot = false;
   networking.hostId = "bf6ff4c5";
   services.zfs.autoScrub.enable = true;
+  systemd.services.zfs-scrub-dragon = {
+    wantedBy = ["multi-user.target"];
+    after = ["zfs-import-dragon.service" "zfs-mount.service"];
+    serviceConfig.Type = "oneshot";
+    script = "${pkgs.zfs}/bin/zpool scrub dragon || ${pkgs.zfs}/bin/zpool status dragon | grep -q 'scrub in progress'";
+  };
   programs.fish.enable = true;
 
   programs.bash = {
