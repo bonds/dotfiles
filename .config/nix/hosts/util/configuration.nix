@@ -10,6 +10,7 @@
 
   nix.package = pkgs.lix;
   nix.settings.experimental-features = "nix-command flakes";
+  nix.settings.trusted-users = ["scott"];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;

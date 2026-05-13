@@ -31,7 +31,10 @@
       config = {allowUnfree = true;};
     };
   in {
-    formatter.aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.alejandra;
+    formatter = {
+      aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.alejandra;
+      x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.alejandra;
+    };
     darwinConfigurations."accismus" = nix-darwin.lib.darwinSystem {
       specialArgs = {
         inherit self inputs;
@@ -46,6 +49,7 @@
         home-manager.darwinModules.home-manager
         vudials.darwinModules.default
         ./modules/vudials-uids.nix
+        ./modules/fish-command-not-found.nix
         {services.vudials.enable = true;}
         {
           home-manager.useGlobalPkgs = true;
@@ -54,6 +58,7 @@
           home-manager.users.scott = {pkgs, ...}: {
             home.stateVersion = "24.11";
             home.homeDirectory = "/Users/scott";
+            programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
           };
         }
       ];
@@ -66,7 +71,13 @@
           config = {allowUnfree = true;};
         };
       };
-      modules = [./hosts/util/configuration.nix ./hosts/util/hardware-configuration.nix arion.nixosModules.arion];
+      modules = [
+        ./hosts/util/configuration.nix
+        ./hosts/util/hardware-configuration.nix
+        arion.nixosModules.arion
+        nix-index-database.nixosModules.nix-index
+        ./modules/fish-command-not-found.nix
+      ];
     };
     nixosConfigurations.metanoia = nixpkgs-stable.lib.nixosSystem {
       system = "x86_64-linux";
@@ -85,6 +96,7 @@
         ./hosts/metanoia/hardware-configuration.nix
         vudials.nixosModules.default
         ./modules/vudials-uids.nix
+        ./modules/fish-command-not-found.nix
         home-manager.nixosModules.home-manager
         nix-index-database.nixosModules.nix-index
       ];

@@ -7,13 +7,26 @@ Personal nix flake for:
 
 ## Commands
 
+The `nr` fish function (in `~/.config/fish/config.fish`) wraps `nh` for all machines:
+
+```fish
+# Rebuild current machine (uses --hostname to pick the right flake target)
+nr
+
+# Rebuild and update all flake inputs (commits flake.lock)
+nr --update
+
+# Rebuild and update specific input only
+nr -U nix-index-database
+```
+
 ### accismus (laptop)
 
 ```bash
 # Build (safe, does not apply changes)
 darwin-rebuild build --flake .#accismus
 
-# Switch (requires sudo)
+# Switch (requires sudo) — prefer `nr` from fish instead
 sudo darwin-rebuild switch --flake .#accismus
 
 # Format: alejandra

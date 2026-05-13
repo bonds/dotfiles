@@ -28,24 +28,12 @@ set --append fish_user_paths ~/.cargo/bin
 # for building idris2 on openbsd
 # remember to run pkg_add racket-minimal
 # remember to run raco pkg install compiler-lib
-set CFLAGS "-I/usr/local/include -L/usr/local/lib"
-
-# workaround for a bug in ghc 9.0.2: https://gitlab.haskell.org/ghc/ghc/-/issues/20592
-if command --query xcrun
-    set -x C_INCLUDE_PATH (xcrun --show-sdk-path)/usr/include/ffi
-end
 
 # set where I want Idris2 looking for packages
 set -x IDRIS2_PREFIX ~/.local/lib
 
 # nix flakes needs this
 set -x NIXPKGS_ALLOW_UNFREE 1
-
-# devbox on linux needs this
-set -x NIX_REMOTE daemon
-
-# to avoid warning about missing path
-set -e NIX_PATH
 
 # docker cli on util.local needs this
 # set -x DOCKER_HOST ssh://root@172.16.0.100
@@ -75,20 +63,6 @@ end
 # use the hardware SSH key in my TPM
 if test "$uname" = darwin
     set -x SSH_AUTH_SOCK /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh
-end
-
-# install the fisher plugin manager (and plugins) if its not installed yet
-if not functions --query fisher
-    # don't start an infinite recursion when we start a new fish instance to
-    # install fisher
-    if test "$installing_fisher" != TRUE
-        set -x installing_fisher TRUE
-        curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source
-        # restore my plugins list after its overwritten by the installer
-        git restore ~/.config/fish/fish_plugins
-        # and then install all my plugins
-        fisher update
-    end
 end
 
 # aliases for convenience
@@ -132,24 +106,27 @@ else
     set -x EDITOR vi
 end
 
-# function ssh
-#     if test $uname = darwin
-#         set timeoutflag G
-#     else
-#         set timeoutflag w
-#     end
-#     if test $argv[1] = metanoia;
-#         and not nc -z -$timeoutflag 1 metanoia 22 >/dev/null 2>&1
-#         echo -n trying to wake metanoia before SSHing in
-#         wol "a8:a1:59:36:7d:d4"
-#         while not nc -z -$timeoutflag 1 metanoia 22 >/dev/null 2>&1
-#             echo -n .
-#             sleep 1
-#         end
-#     end
-#     command ssh -F ~/.config/ssh/config $argv
-# end
 alias ssh "command ssh -F ~/.config/ssh/config $argv"
+
+function ssh
+    set -l timeout_flag
+    if test $uname = darwin
+        set timeout_flag G
+    else
+        set timeout_flag w
+    end
+    if string match -q "metanoia*" -- $argv[1]
+        and not nc -z -$timeout_flag 1 metanoia 22 >/dev/null 2>&1
+        echo -n "trying to wake metanoia before SSHing in"
+        wol "a8:a1:59:36:7d:d4"
+        while not nc -z -$timeout_flag 1 metanoia 22 >/dev/null 2>&1
+            echo -n .
+            sleep 1
+        end
+        echo
+    end
+    command ssh -F ~/.config/ssh/config $argv
+end
 
 function ls
     if command --query lsd
@@ -203,22 +180,12 @@ end
 #     alias nh "nice (which nh)"
 # end
 
-# https://nixos-and-flakes.thiscute.world/nixos-with-flakes/update-the-system
 function nr
-    set starting_dir (pwd)
-    set config_dir $HOME/.config/nix
-    cd $config_dir
-    # nice nix flake update
     if test "$uname" = darwin
-        # darwin-rebuild switch --flake .
-        nh darwin switch --update . $argv
+        nh darwin switch $HOME/.config/nix $argv
     else
-        nh os switch --update . $argv
+        nh os switch $HOME/.config/nix $argv
     end
-    if command --query ulauncher
-        systemctl --user restart ulauncher
-    end
-    cd $starting_dir
 end
 
 function hr
