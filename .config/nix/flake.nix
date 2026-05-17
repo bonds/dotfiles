@@ -85,17 +85,8 @@
         arion.nixosModules.arion
         nix-index-database.nixosModules.nix-index
         ./modules/fish-command-not-found.nix
-        home-manager.nixosModules.home-manager
-        {
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.backupFileExtension = "old";
-          home-manager.users.scott = {pkgs, ...}: {
-            home.stateVersion = "24.11";
-            home.homeDirectory = "/home/scott";
-            programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
-          };
-        }
+        # home-manager omitted: current release relies on nixpkgs APIs
+        # not in nixos-25.11. Add back when upgrading to a newer channel.
       ];
     };
     nixosConfigurations.metanoia = nixpkgs-stable.lib.nixosSystem {
