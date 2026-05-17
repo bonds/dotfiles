@@ -15,6 +15,11 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # Mitigation for CVE-2026-31431 (Copy Fail) — local privilege escalation via
+  # authencesn not yet backported to 6.12.x. Remove when kernel >= 6.18.22.
+  # https://mtlynch.io/claude-code-found-linux-vulnerability/
+  boot.blacklistedKernelModules = ["authencesn"];
+
   networking.hostName = "sophrosyne";
 
   networking.networkmanager.enable = true;
