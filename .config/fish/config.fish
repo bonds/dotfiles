@@ -61,7 +61,7 @@ if status --is-interactive
 end
 
 if status --is-interactive && test -n "$SSH_CONNECTION" && not set --query TMUX && command --query tmux
-    tmux -u -T RGB new -A -s remote \; set -g default-terminal "tmux-256color" \; set -sg escape-time 0
+    exec tmux -u -T RGB new -A -s remote \; set -g default-terminal "tmux-256color" \; set -sg escape-time 0
 end
 
 # use the hardware SSH key in my TPM
