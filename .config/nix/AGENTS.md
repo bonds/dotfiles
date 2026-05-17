@@ -89,6 +89,9 @@ modules/           # Shared modules
 
 ## Gotchas
 
+- **`inputs.nixpkgs.follows` can break things on stable channels.** Latest home-manager requires nixpkgs APIs (`lib/services/lib.nix`) not yet in `nixos-25.11`. If home-manager fails to build, remove the follows: let it use its own pinned nixpkgs. Same issue can happen with other inputs (e.g. arion).
+- **Can't cross-build x86_64 from aarch64.** `nix flake check` fails evaluating NixOS configs on darwin. Build directly on the target machine (`ssh sophrosyne.local nixos-rebuild build --flake ...`) or deploy via `--target-host`.
+- **`nixos-rebuild switch` needs sudo.** Remote deploy from laptop uses `--target-host scott@host --use-remote-sudo`. Passwordless sudo (`NOPASSWD` in sudoers) is needed for automated deploys.
 - **`nh` is flaky on macOS.** If it breaks, fall back to plain `darwin-rebuild`.
 - **`flake.lock` is tracked.** Commit it after `nix flake update`.
 - **`warn-dirty = false`** is set in `nix.conf` — builds work fine with uncommitted changes.
@@ -97,9 +100,11 @@ modules/           # Shared modules
 - **Server uses two nixpkgs:** `nixos-25.11` (stable) for most packages, `nixpkgs-unstable` for ollama + tailscale (passed via `pkgs-unstable` specialArg). Same pattern for metanoia.
 - **Server arion** comes from a flake input rather than `builtins.fetchTarball`.
 - **`nix-index-database`** replaces the old `~/bin/nix-command-not-found` hand-rolled script with the upstream module.
+- **`nix fmt` is unreliable.** It sometimes fails on stdin ("unexpected end of file"). When it does, run alejandra directly on the changed files instead: `alejandra <file> <file>...`.
+- **Run alejandra after every nix file change.** Before building or deploying, always format any modified `.nix` files: `alejandra <file> <file>...` (from both `~/.config/nix` and `~/.config/nix-vudials`).
+- **Pushing to a checked-out branch on a remote** requires the remote repo to have `receive.denyCurrentBranch = updateInstead` (set on sophrosyne's `~/.git/config`). This auto-updates the work tree when pushed.
+- **When renaming a host**, keep old hostnames in SSH config during the transition. After the first rebuild with the new hostname, clean up old references in ssh config and known_hosts.
 
 - **VU dials live in a separate flake** at `/Users/scott/.config/nix-vudials` (`github:bonds/nix-vudials`). It exports `overlays.default` (vuserver + vuclient packages), `nixosModules.default`, and `darwinModules.default`. Dial UIDs are configured in `modules/vudials-uids.nix` in this repo (shared by accismus + metanoia).
 - **Launchd agents auto-restart on `darwin-rebuild switch`** via an activation script that detects package hash changes. To manually bounce them: `launchctl kickstart -k gui/501/org.nixos.vuserver && launchctl kickstart -k gui/501/org.nixos.vuclient`.
-- **`nix fmt` is unreliable.** It sometimes fails on stdin ("unexpected end of file"). When it does, run alejandra directly on the changed files instead: `alejandra <file> <file>...`.
-- **Run alejandra after every nix file change.** Before building or deploying, always format any modified `.nix` files: `alejandra <file> <file>...` (from both `~/.config/nix` and `~/.config/nix-vudials`).
 - **VU dials require the FTDI VCP driver (dext)** installed once manually from [ftdichip.com/drivers/vcp-drivers/](https://ftdichip.com/drivers/vcp-drivers/). On darwin the device path is `/dev/cu.usbserial-DQ0164KM`; on NixOS it's `/dev/vuserver-DQ0164KM` (managed by udev rules in the vudials module).
