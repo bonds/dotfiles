@@ -7,21 +7,22 @@ if not fish_is_root_user
 end
 
 # https://www.leven.com.tw/en/ssd/view/JP600-4TB
-set TBW 1200
-set WARRANTY 3
+set LEVEN_TBW 1200
+set LEVEN_WARRANTY 3
+set SP_TBW 2400
+set SP_WARRANTY 5
 
 # https://www.amazon.com/gp/your-account/order-details?orderID=113-4883724-6718656
-set PURCHASED 20241120
+set LEVEN_PURCHASED 20241120
 
-for i in (seq 0 7)
+for i in 0 2 3 4 5 6 7
     set written $written (smartctl --all /dev/nvme$i | grep "Data Units Written" | sed -E 's/.*\[(.*) TB\].*/\1/g')
 end
 set max_written (math max (string join ',' $written))
-set mwp (math --scale 1 "100*(1-$max_written/$TBW)")
-set dlow (math --scale 0 "3*365-($(date +%s)-$(date +%s -d $PURCHASED))/60/60/24")
+set mwp (math --scale 1 "100*(1-$max_written/$LEVEN_TBW)")
+set dlow (math --scale 0 "$LEVEN_WARRANTY*365-($(date +%s)-$(date +%s -d $LEVEN_PURCHASED))/60/60/24")
 
 echo "$mwp% TB of writes (aka TBW) left on warranty"
 echo "$dlow days left on warranty"
-echo ""
-echo "note: this is just for the Leven drives"
+echo "note: this is just for the LEVEN drives"
 echo "the Silicon Power drive has a different warranty"
