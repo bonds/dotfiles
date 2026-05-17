@@ -35,7 +35,7 @@ set -x IDRIS2_PREFIX ~/.local/lib
 # nix flakes needs this
 set -x NIXPKGS_ALLOW_UNFREE 1
 
-# docker cli on util.local needs this
+# docker cli on sophrosyne.local needs this
 # set -x DOCKER_HOST ssh://root@172.16.0.100
 
 # my favorite date format

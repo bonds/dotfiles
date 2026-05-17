@@ -2,7 +2,7 @@
 
 Personal nix flake for:
 - macOS laptop **accismus** (`aarch64-darwin`, nix-darwin, `nixpkgs-unstable`)
-- NixOS server **util** (`x86_64-linux`, `nixos-25.11`, also at `util.local` / `home.ggr.com`)
+- NixOS server **sophrosyne** (`x86_64-linux`, `nixos-25.11`, also at `sophrosyne.local` / `home.ggr.com`)
 - NixOS workstation **metanoia** (`x86_64-linux`, `nixos-25.11`)
 
 ## Commands
@@ -33,18 +33,18 @@ sudo darwin-rebuild switch --flake .#accismus
 nix fmt
 ```
 
-### util (server)
+### sophrosyne (server)
 
 ```bash
 # Build (safe, does not apply changes)
-nixos-rebuild build --flake .#util
+nixos-rebuild build --flake .#sophrosyne
 
 # Switch (requires sudo on the server)
-sudo nixos-rebuild switch --flake .#util
+sudo nixos-rebuild switch --flake .#sophrosyne
 
 # Deploy from laptop via ssh (target-host requires sudo passwordless or --use-remote-sudo)
-# home.ggr.com works from anywhere; util.local is faster on LAN but mDNS-only
-nixos-rebuild switch --flake .#util --target-host scott@home.ggr.com --use-remote-sudo
+# home.ggr.com works from anywhere; sophrosyne.local is faster on LAN but mDNS-only
+nixos-rebuild switch --flake .#sophrosyne --target-host scott@home.ggr.com --use-remote-sudo
 ```
 
 ### metanoia (workstation)
@@ -80,7 +80,7 @@ hosts/
   metanoia/        # Workstation NixOS config
     configuration.nix
     hardware-configuration.nix
-  util/            # Server NixOS config
+  sophrosyne/      # Server NixOS config
     configuration.nix
     hardware-configuration.nix
 modules/           # Shared modules

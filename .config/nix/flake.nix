@@ -63,7 +63,7 @@
         }
       ];
     };
-    nixosConfigurations.util = nixpkgs-stable.lib.nixosSystem {
+    nixosConfigurations.sophrosyne = nixpkgs-stable.lib.nixosSystem {
       system = "x86_64-linux";
       specialArgs = {
         pkgs-unstable = import nixpkgs {
@@ -72,8 +72,8 @@
         };
       };
       modules = [
-        ./hosts/util/configuration.nix
-        ./hosts/util/hardware-configuration.nix
+        ./hosts/sophrosyne/configuration.nix
+        ./hosts/sophrosyne/hardware-configuration.nix
         arion.nixosModules.arion
         nix-index-database.nixosModules.nix-index
         ./modules/fish-command-not-found.nix
