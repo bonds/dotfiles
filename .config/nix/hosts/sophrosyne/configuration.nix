@@ -77,6 +77,7 @@
   environment.systemPackages = with pkgs; [
     fastfetch
     ffmpeg
+    jq
     ripgrep
     fd
     units
