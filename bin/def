@@ -1,0 +1,88 @@
+#!/usr/bin/env fish
+
+function format_entry
+    set -l pos $argv[1]
+    set -l num $argv[2]
+    set -l raw $argv[3..-1]
+    set -l text (string join " " $raw)
+    set -l clean (echo "$text" | sed 's/<[^>]*>//g; s/&quot;/"/g; s/&#039;/'"'"'/g; s/&amp;/\&/g; s/^[[:space:]]*//; s/[[:space:]]*$//')
+    set -l pos_lower (string lower -- "$pos")
+    printf "  \033[1m%-12s\033[0m %d. %s\n" "$pos_lower" "$num" "$clean"
+end
+
+if test (count $argv) -lt 1
+    echo >&2 "usage: def <word>"
+    exit 1
+end
+
+set word (string lower -- $argv[1])
+
+set scrabble_file ~/.local/share/scrabble-words.txt
+if not test -f $scrabble_file
+    mkdir -p (dirname $scrabble_file)
+    echo -n "caching Scrabble word list..." >&2
+    curl -sL --connect-timeout 10 \
+        "https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt" \
+        >$scrabble_file 2>/dev/null
+    echo " done" >&2
+end
+
+if grep -qix "$word" $scrabble_file 2>/dev/null
+    set scrabble "✅ valid Scrabble word"
+else
+    set scrabble "❌ not a Scrabble word"
+end
+
+echo
+echo "$word"
+echo "$scrabble"
+echo "────────────────────────────────────────"
+
+set found false
+
+set response (curl -sL --connect-timeout 5 \
+    "https://api.dictionaryapi.dev/api/v2/entries/en/$word" 2>/dev/null)
+
+if test $status -eq 0
+    set -l grouped (echo "$response" | jq -c '
+        if type == "array" then
+          [.[0].meanings[]? | {pos: .partOfSpeech, defs: [.definitions[].definition]}]
+        else empty end' 2>/dev/null)
+
+    if test -n "$grouped"
+        set found true
+        set n 1
+        for entry in (echo "$grouped" | jq -c '.[]' 2>/dev/null)
+            set pos (echo "$entry" | jq -r .pos)
+            for def in (echo "$entry" | jq -r '.defs[]' 2>/dev/null)
+                format_entry "$pos" "$n" "$def"
+                set n (math $n + 1)
+            end
+        end
+    end
+end
+
+if not $found
+    set wk (curl -sL --connect-timeout 5 \
+        "https://en.wiktionary.org/api/rest_v1/page/definition/$word" 2>/dev/null)
+
+    if test $status -eq 0
+        set -l entries (echo "$wk" | jq -c '.en[]? | {pos: .partOfSpeech, def: .definitions[0].definition}' 2>/dev/null)
+        if test -n "$entries"
+            set found true
+            set n 1
+            for entry in $entries
+                set pos (echo "$entry" | jq -r .pos)
+                set def (echo "$entry" | jq -r .def)
+                format_entry "$pos" "$n" "$def"
+                set n (math $n + 1)
+            end
+        end
+    end
+end
+
+if not $found
+    echo "  no definitions found"
+end
+
+echo
