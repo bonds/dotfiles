@@ -20,6 +20,11 @@
   # https://mtlynch.io/claude-code-found-linux-vulnerability/
   boot.blacklistedKernelModules = ["authencesn"];
 
+  # Mitigations for CVE-2026-46333 — local privilege escalation via
+  # pidfd_getfd on setuid helpers. ptrace_scope=2 blocks all known exploits.
+  # Remove when kernel >= 6.12.88. https://lobste.rs/s/wskhre
+  boot.kernel.sysctl."kernel.yama.ptrace_scope" = 2;
+
   networking.hostName = "sophrosyne";
 
   networking.networkmanager.enable = true;
