@@ -39,6 +39,25 @@
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
+
+  boot.supportedFilesystems = ["zfs"];
   boot.zfs.devNodes = "/dev/disk/by-id";
   boot.zfs.extraPools = ["dragon"];
+
+  boot.kernelParams = [
+    "nvme_core.io_timeout=10"
+    "nvme_core.max_retries=3"
+    "zfs.zfs_deadman_failmode=wait"
+    "panic=60"
+  ];
+
+  systemd.settings.Manager = {
+    RuntimeWatchdogSec = "30s";
+    RebootWatchdogSec = "4min";
+  };
+
+  # Mitigation for CVE-2026-31431 (Copy Fail) — local privilege escalation via
+  # authencesn not yet backported to 6.12.x. Remove when kernel >= 6.18.22.
+  # https://mtlynch.io/claude-code-found-linux-vulnerability/
+  boot.blacklistedKernelModules = ["authencesn"];
 }

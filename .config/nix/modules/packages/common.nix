@@ -1,0 +1,45 @@
+{
+  config,
+  pkgs,
+  ...
+}: {
+  environment.systemPackages = with pkgs; [
+    alejandra
+    atuin
+    bat
+    btop
+    cabal-install
+    fastfetch
+    fd
+    ffmpeg
+    fzf
+    gh
+    ghc
+    git
+    helix
+    hyperfine
+    idris2
+    jq
+    lsd
+    moreutils
+    mpv
+    nh
+    pstree
+    pv
+    rclone
+    ripgrep
+    rlwrap
+    rsync
+    smartmontools
+    socat
+    speedtest-cli
+    starship
+    sysbench
+    tokei
+    units
+    unzip
+    watch
+    weather
+    yt-dlp
+  ];
+}

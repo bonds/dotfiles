@@ -92,6 +92,7 @@
         nix-index-database.darwinModules.nix-index
         ./modules/nix.nix
         ./modules/secrets-check.nix
+        ./modules/packages/common.nix
         ./hosts/accismus/configuration.nix
         home-manager.darwinModules.home-manager
         vudials.darwinModules.default
@@ -109,6 +110,7 @@
       modules = [
         ./modules/nix.nix
         ./modules/secrets-check.nix
+        ./modules/packages/common.nix
         ./hosts/sophrosyne/configuration.nix
         ./hosts/sophrosyne/hardware-configuration.nix
         arion.nixosModules.arion
@@ -130,6 +132,7 @@
       modules = [
         ./modules/nix.nix
         ./modules/secrets-check.nix
+        ./modules/packages/common.nix
         ./hosts/metanoia/configuration.nix
         ./hosts/metanoia/hardware-configuration.nix
         vudials.nixosModules.default

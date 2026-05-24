@@ -422,6 +422,7 @@
   '';
 
   environment.systemPackages = with pkgs; [
+    # Common packages shared with all machines are in modules/packages/common.nix
     chromium
     pkgs-unstable.ghostty
     todoist
@@ -444,8 +445,7 @@
     ventoy-full
     resources
     keeweb
-    speedtest-cli
-    moreutils
+    # moreutils, pstree are in modules/packages/common.nix
     amberol
     apostrophe
     dig
@@ -474,8 +474,6 @@
     xclip
     rocmPackages.rocminfo
     usb-reset
-    rlwrap
-    idris2
     gimp
     krita
     glmark2
@@ -483,34 +481,21 @@
     nix-search-cli
     cpu-x
     bsd-finger
-    weather
     foliate
-    fzf
-    pstree
-    idris2
-    cabal-install
-    ghc
-    ffmpeg
     nms
     bc
-    atuin
-    socat
     dconf-editor
     dconf2nix
     obs-studio
     usbview
-    fastfetch
     gsound
     libgda6
     gnomeExtensions.easyeffects-preset-selector
     gnomeExtensions.pano
     pkgs-unstable.gnomeExtensions.another-window-session-manager
     gnomeExtensions.dash-to-panel
-    jq
     libsecret
     jless
-    unzip
-    helix
     spotify
     discord
     slack
@@ -520,17 +505,9 @@
     wmctrl
     obsidian
     dwarf-fortress
-    git
-    starship
-    lsd
-    ripgrep
-    fd
     nerdfonts
-    hyperfine
-    sysbench
     zoom-us
     desktop-file-utils
-    btop
     rustc
     wget
     usbutils

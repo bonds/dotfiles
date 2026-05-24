@@ -22,23 +22,6 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  boot.kernelParams = [
-    "nvme_core.io_timeout=10"
-    "nvme_core.max_retries=3"
-    "zfs.zfs_deadman_failmode=wait"
-    "panic=60"
-  ];
-
-  systemd.settings.Manager = {
-    RuntimeWatchdogSec = "30s";
-    RebootWatchdogSec = "4min";
-  };
-
-  # Mitigation for CVE-2026-31431 (Copy Fail) — local privilege escalation via
-  # authencesn not yet backported to 6.12.x. Remove when kernel >= 6.18.22.
-  # https://mtlynch.io/claude-code-found-linux-vulnerability/
-  boot.blacklistedKernelModules = ["authencesn"];
-
   networking.hostName = "sophrosyne";
 
   networking.networkmanager.enable = true;
@@ -92,34 +75,13 @@
   programs.firefox.enable = true;
 
   environment.systemPackages = with pkgs; [
-    fastfetch
-    ffmpeg
-    jq
-    ripgrep
-    fd
-    units
-    smartmontools
     nvme-cli
-    idris2
-    cabal-install
-    ghc
     util-linux
-    hyperfine
-    sysbench
-    pv
-    lsd
-    unzip
     docker-compose
-    starship
-    git
-    btop
     ghostty
-    helix
-    nh
-    fzf
-    speedtest-cli
     dmidecode
     edac-utils
+    # most common packages are in modules/packages/common.nix
   ];
 
   services.openssh.enable = true;
@@ -150,7 +112,6 @@
 
   system.stateVersion = "24.11";
 
-  boot.supportedFilesystems = ["zfs"];
   boot.zfs.forceImportRoot = false;
   networking.hostId = "bf6ff4c5";
   services.zfs.autoScrub.enable = true;
@@ -318,7 +279,6 @@
       "ipp"
       "sonos"
       "improv_ble"
-      "aranet"
       "piper"
       "whisper"
       "wyoming"

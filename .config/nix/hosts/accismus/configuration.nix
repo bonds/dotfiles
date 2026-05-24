@@ -9,13 +9,9 @@
 
   # List packages installed in system profile. To search by name, run:
   # $ nix search nixpkgs wget
+  # Common packages shared with all machines are in modules/packages/common.nix
   environment.systemPackages = with pkgs; [
-    smartmontools # for smartctl
-    pv # for watching progress
-    watch # for running scripts in a loop
     xclip # for copying from terminal to clipboard
-    alejandra # nix code formatter
-    tokei # like cloc but uses treesitteng to count tokens
     opencode # like claude code but open source
     openssh # macos ssh doesn't come with resident ssh support
     ollama
@@ -25,8 +21,7 @@
     discord
     daisydisk
     coconutbattery
-    # turbo # javascript runtime
-    gh # github cli tool
+    # gh, yt-dlp, mpv, rclone, rsync, nh are in modules/packages/common.nix
     bun # javascript runtime
     typescript # javascript dialect
     google-cloud-sdk # google cloud CLI and friends
@@ -34,7 +29,6 @@
     cloc # count lines of code
     nodejs # needed for hihello development
     whisper-cpp # cli tool for converting audio to text
-    yt-dlp # youtube downloader
     angband # best cli game ever
     rustup # rust installer
     autokbisw # switch layout based on which keyboard is plugged in
@@ -42,16 +36,8 @@
     clamav # antivirus
     cowsay # cli to print stuff with a pic of a cow saying it
     fortune # random quotes
-    cabal-install # haskell library installer
-    ghc # haskell compiler
     delta # git delta syntax highlighter
     the-powder-toy # physics simulation game
-    mpv # to watch videos in weird formats
-    ffmpeg # convert videos
-    rclone # for backups
-    rsync # get latest version
-    speedtest-cli # benchmark for internet speeds
-    nh # improved darwin-rebuild ui
     coreutils # for timeout for athome script
     hugo # blog engine
     libreoffice-bin # office suite
@@ -59,27 +45,11 @@
     element-desktop
     docker # docker
     colima # docker for mac
-    jq # json parser
-    weather # cli weather report
     mtr # better traceroute
     age-plugin-yubikey
     passage
-    atuin # pretty terminal history
-    fzf # fast fuzzy matching
-    socat
-    btop # pretty top
-    lsd # pretty ls
-    fd # faster find
-    ripgrep # faster grep
-    sysbench # cli benchmark
-    hyperfine # cli benchmark
-    fastfetch
-    starship # terminal prompt pretty formatting
-    rlwrap # command line wrapper for idris2
     idris2Packages.idris2Lsp # language service provider for idris2
     idris2Packages.pack # packages manager for idris2
-    idris2 # functional language
-    helix # better cli text editor
     (python3.withPackages (p:
       with p; [
         python-kasa
