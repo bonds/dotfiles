@@ -411,6 +411,13 @@
     openFirewall = true;
   };
 
+  # Homebridge needs Node.js >=24.5.0 for Eufy PKCS1 padding support
+  nixpkgs.overlays = [
+    (final: prev: {
+      nodejs = final.nodejs_24;
+    })
+  ];
+
   hardware.rasdaemon.enable = true;
 
   system.configurationRevision = self.rev or self.dirtyRev or null;
