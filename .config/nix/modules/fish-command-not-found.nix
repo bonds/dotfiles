@@ -1,4 +1,5 @@
 {lib, ...}: {
+  programs.fish.enable = lib.mkDefault true;
   programs.fish.interactiveShellInit = ''
     function fish_command_not_found
       set -l cmd $argv[1]

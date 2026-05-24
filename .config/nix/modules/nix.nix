@@ -14,4 +14,5 @@
     automatic = lib.mkDefault true;
     options = lib.mkDefault "--delete-older-than 30d";
   };
+  nixpkgs.config.allowUnfree = lib.mkDefault true;
 }

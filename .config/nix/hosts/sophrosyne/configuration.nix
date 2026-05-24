@@ -91,8 +91,6 @@
 
   programs.firefox.enable = true;
 
-  nixpkgs.config.allowUnfree = true;
-
   environment.systemPackages = with pkgs; [
     fastfetch
     ffmpeg
@@ -138,8 +136,6 @@
     serviceConfig.Type = "oneshot";
     script = "${pkgs.zfs}/bin/zpool scrub dragon || ${pkgs.zfs}/bin/zpool status dragon | grep -q 'scrub in progress'";
   };
-  programs.fish.enable = true;
-
   programs.bash = {
     interactiveShellInit = ''
       if [[ $(${pkgs.procps}/bin/ps --no-header --pid=$PPID --format=comm) != "fish" && -z ''${BASH_EXECUTION_STRING} ]]

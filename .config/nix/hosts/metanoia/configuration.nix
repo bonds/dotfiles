@@ -11,8 +11,6 @@
     ./hardware-configuration.nix
   ];
 
-  nixpkgs.config.allowUnfree = true;
-
   nix = let
     flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
   in {
@@ -287,9 +285,6 @@
   ];
 
   programs.mtr.enable = true;
-  programs.fish = {
-    enable = true;
-  };
   programs.tmux.enable = true;
   programs.steam = {
     enable = true;

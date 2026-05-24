@@ -88,9 +88,6 @@
 
   security.pam.services.sudo_local.touchIdAuth = true;
 
-  # Enable alternative shell support in nix-darwin.
-  programs.fish.enable = true;
-
   # Set Git commit hash for darwin-version.
   system.configurationRevision = self.rev or self.dirtyRev or null;
 
@@ -102,7 +99,6 @@
   nixpkgs.hostPlatform = "aarch64-darwin";
 
   # add a font so libreoffice docs look the same across mac and linux
-  nixpkgs.config.allowUnfree = true;
   fonts.packages = with pkgs; [
     helvetica-neue-lt-std
   ];
