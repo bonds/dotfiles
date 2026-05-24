@@ -314,7 +314,7 @@
       pkgs.curl
     ];
     script = ''
-      TOKEN="3sfxws61bbVvhuTZgXBq3Tfu5CZuQiUg"
+      TOKEN=$(cat /etc/ddns-token)
       ACCOUNT_ID="75214"
       ZONE_ID="ggr.com"
       RECORD_ID="47161920"
