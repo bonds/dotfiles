@@ -2,15 +2,21 @@
   config,
   pkgs,
   pkgs-unstable,
+  lib,
+  inputs,
   ...
 }: {
   imports = [
     ./hardware-configuration.nix
   ];
 
-  nix.package = pkgs.lix;
-  nix.settings.experimental-features = "nix-command flakes";
-  nix.settings.trusted-users = ["scott"];
+  nix = let
+    flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
+  in {
+    channel.enable = false;
+    registry = lib.mapAttrs (_: flake: {inherit flake;}) flakeInputs;
+    nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
+  };
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -405,14 +411,6 @@
     enable = true;
     useRoutingFeatures = "both";
     package = pkgs-unstable.tailscale;
-  };
-
-  nix.optimise.automatic = true;
-  nix.optimise.dates = ["03:45"];
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 30d";
   };
 
   hardware.rasdaemon.enable = true;

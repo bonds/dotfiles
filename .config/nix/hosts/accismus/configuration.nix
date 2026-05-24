@@ -6,7 +6,6 @@
   ...
 }: {
   # https://github.com/nix-darwin/nix-darwin?tab=readme-ov-file#prerequisites
-  nix.package = pkgs.lix;
 
   # List packages installed in system profile. To search by name, run:
   # $ nix search nixpkgs wget
@@ -74,6 +73,7 @@
     ripgrep # faster grep
     sysbench # cli benchmark
     hyperfine # cli benchmark
+    fastfetch
     starship # terminal prompt pretty formatting
     rlwrap # command line wrapper for idris2
     idris2Packages.idris2Lsp # language service provider for idris2
@@ -85,15 +85,6 @@
         python-kasa
       ]))
   ];
-
-  # Necessary for using flakes on this system.
-  nix.settings.experimental-features = "nix-command flakes";
-  nix.optimise.automatic = true;
-  nix.gc = {
-    automatic = true;
-    options = "--delete-older-than 30d";
-  };
-  nix.settings.trusted-users = ["scott"];
 
   security.pam.services.sudo_local.touchIdAuth = true;
 

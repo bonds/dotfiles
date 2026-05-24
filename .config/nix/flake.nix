@@ -49,12 +49,14 @@
     darwinConfigurations.accismus = nix-darwin.lib.darwinSystem {
       specialArgs = {
         inherit self inputs;
+        isDarwin = true; # required by vudials module
         vuserver = darwinPkgs.callPackage "${vudials}/pkgs/vuserver" {};
         vuclient = darwinPkgs.callPackage "${vudials}/pkgs/vuclient" {};
       };
       modules = [
         {nixpkgs.overlays = [inputs.nix-index-database.overlays.nix-index];}
         nix-index-database.darwinModules.nix-index
+        ./modules/nix.nix
         ./hosts/accismus/configuration.nix
         home-manager.darwinModules.home-manager
         vudials.darwinModules.default
@@ -80,6 +82,7 @@
         pkgs-unstable = pkgs-unstable;
       };
       modules = [
+        ./modules/nix.nix
         ./hosts/sophrosyne/configuration.nix
         ./hosts/sophrosyne/hardware-configuration.nix
         arion.nixosModules.arion
@@ -93,11 +96,13 @@
       system = "x86_64-linux";
       specialArgs = {
         inherit inputs;
+        isDarwin = false; # required by vudials module
         vuserver = linuxStablePkgs.callPackage "${vudials}/pkgs/vuserver" {};
         vuclient = linuxStablePkgs.callPackage "${vudials}/pkgs/vuclient" {};
         pkgs-unstable = pkgs-unstable;
       };
       modules = [
+        ./modules/nix.nix
         ./hosts/metanoia/configuration.nix
         ./hosts/metanoia/hardware-configuration.nix
         vudials.nixosModules.default
