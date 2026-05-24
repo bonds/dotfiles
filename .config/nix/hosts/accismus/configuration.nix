@@ -127,4 +127,15 @@
       };
     };
   };
+
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+    backupFileExtension = "old";
+    users.scott = {pkgs, ...}: {
+      home.stateVersion = "24.11";
+      home.homeDirectory = "/Users/scott";
+      programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
+    };
+  };
 }

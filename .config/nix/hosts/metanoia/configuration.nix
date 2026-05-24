@@ -4,6 +4,7 @@
   pkgs-unstable,
   lib,
   inputs,
+  self,
   ...
 }: {
   imports = [
@@ -253,6 +254,8 @@
   };
 
   system.stateVersion = "24.05";
+
+  system.configurationRevision = self.rev or self.dirtyRev or null;
 
   users.users.root.hashedPassword = "*";
 

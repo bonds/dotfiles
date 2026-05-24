@@ -47,7 +47,6 @@ All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git
 
 ### Passwords & Secrets
 - `.config/passage/` — password store (age-encrypted, via passage)
-- `.config/secrets/` — encrypted secrets (age)
 
 ### Display
 - `.local/share/icc/` — monitor ICC color profiles (Mstar, 3x U2718Q)
@@ -84,3 +83,5 @@ Three machines managed from this repo:
 - Shell history: atuin (synced database)
 - Password management: passage (age-encrypted, not GPG)
 - Nix formatting: alejandra (`nix fmt` — unreliable, prefer `alejandra <file>` directly)
+- After each batch of changes, commit and push to all remotes (`git push origin && git push sophrosyne`)
+- Code repos I'm actively working on live in `~/Documents/undated/repos/`

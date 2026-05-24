@@ -21,22 +21,32 @@
     arion,
     vudials,
   }: let
-    pkgs-unstable = import nixpkgs {
-      system = "x86_64-linux";
-      config = {allowUnfree = true;};
-    };
-    darwinPkgs = import nixpkgs {
-      system = "aarch64-darwin";
-      config = {allowUnfree = true;};
-    };
-    linuxStablePkgs = import nixpkgs-stable {
-      system = "x86_64-linux";
-      config = {allowUnfree = true;};
-    };
+    mkPkgs = importNixpkgs: system:
+      import importNixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
   in {
     formatter = {
       aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.alejandra;
       x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.alejandra;
+    };
+
+    checks = {
+      aarch64-darwin.format-check =
+        nixpkgs.legacyPackages.aarch64-darwin.runCommand "format-check"
+        {buildInputs = [nixpkgs.legacyPackages.aarch64-darwin.alejandra];} ''
+          cd ${self}
+          alejandra -c . || (echo "Run: alejandra ." && exit 1)
+          touch $out
+        '';
+      x86_64-linux.format-check =
+        nixpkgs.legacyPackages.x86_64-linux.runCommand "format-check"
+        {buildInputs = [nixpkgs.legacyPackages.x86_64-linux.alejandra];} ''
+          cd ${self}
+          alejandra -c . || (echo "Run: alejandra ." && exit 1)
+          touch $out
+        '';
     };
 
     devShells.aarch64-darwin.default = nixpkgs.legacyPackages.aarch64-darwin.mkShell {
@@ -50,8 +60,8 @@
       specialArgs = {
         inherit self inputs;
         isDarwin = true; # required by vudials module
-        vuserver = darwinPkgs.callPackage "${vudials}/pkgs/vuserver" {};
-        vuclient = darwinPkgs.callPackage "${vudials}/pkgs/vuclient" {};
+        vuserver = (mkPkgs nixpkgs "aarch64-darwin").callPackage "${vudials}/pkgs/vuserver" {};
+        vuclient = (mkPkgs nixpkgs "aarch64-darwin").callPackage "${vudials}/pkgs/vuclient" {};
       };
       modules = [
         {nixpkgs.overlays = [inputs.nix-index-database.overlays.nix-index];}
@@ -63,23 +73,13 @@
         ./modules/vudials-uids.nix
         ./modules/fish-command-not-found.nix
         {services.vudials.enable = true;}
-        {
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.backupFileExtension = "old";
-          home-manager.users.scott = {pkgs, ...}: {
-            home.stateVersion = "24.11";
-            home.homeDirectory = "/Users/scott";
-            programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
-          };
-        }
       ];
     };
     nixosConfigurations.sophrosyne = nixpkgs-stable.lib.nixosSystem {
       system = "x86_64-linux";
       specialArgs = {
-        inherit inputs;
-        pkgs-unstable = pkgs-unstable;
+        inherit self inputs;
+        pkgs-unstable = mkPkgs nixpkgs "x86_64-linux";
       };
       modules = [
         ./modules/nix.nix
@@ -95,11 +95,11 @@
     nixosConfigurations.metanoia = nixpkgs-stable.lib.nixosSystem {
       system = "x86_64-linux";
       specialArgs = {
-        inherit inputs;
+        inherit self inputs;
         isDarwin = false; # required by vudials module
-        vuserver = linuxStablePkgs.callPackage "${vudials}/pkgs/vuserver" {};
-        vuclient = linuxStablePkgs.callPackage "${vudials}/pkgs/vuclient" {};
-        pkgs-unstable = pkgs-unstable;
+        vuserver = (mkPkgs nixpkgs-stable "x86_64-linux").callPackage "${vudials}/pkgs/vuserver" {};
+        vuclient = (mkPkgs nixpkgs-stable "x86_64-linux").callPackage "${vudials}/pkgs/vuclient" {};
+        pkgs-unstable = mkPkgs nixpkgs "x86_64-linux";
       };
       modules = [
         ./modules/nix.nix

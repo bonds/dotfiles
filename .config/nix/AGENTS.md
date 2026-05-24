@@ -36,6 +36,9 @@ nix fmt
 ### sophrosyne (server)
 
 ```bash
+# Interactive rebuild (recommended — runs nh from fish)
+nr
+
 # Build (safe, does not apply changes)
 nixos-rebuild build --flake .#sophrosyne
 
@@ -102,6 +105,9 @@ modules/           # Shared modules
 - **`nix-index-database`** replaces the old `~/bin/nix-command-not-found` hand-rolled script with the upstream module.
 - **`nix fmt` is unreliable.** It sometimes fails on stdin ("unexpected end of file"). When it does, run alejandra directly on the changed files instead: `alejandra <file> <file>...`.
 - **Run alejandra after every nix file change.** Before building or deploying, always format any modified `.nix` files: `alejandra <file> <file>...` (from both `~/.config/nix` and `~/.config/nix-vudials`).
+- **After every nix file change, always run the build step to catch errors before attempting a switch.** The switch step requires `sudo` which may fail remotely; the build step catches evaluation and compilation errors first. Do not commit and push changes to sophrosyne or metanoia without first building remotely to verify they compile clean.
+- **When changes require a reboot to take effect (kernel params, boot config), tell the user explicitly.** After a successful switch, check whether any changes need a reboot — `boot.kernelParams` changes always do, as do filesystem changes and some systemd settings. Say "reboot needed" rather than just "run nr".
+- **After each batch of changes, commit and push to all remotes** (`git push origin && git push sophrosyne`).
 - **Pushing to a checked-out branch on a remote** requires the remote repo to have `receive.denyCurrentBranch = updateInstead` (set on sophrosyne's `~/.git/config`). This auto-updates the work tree when pushed.
 - **When renaming a host**, keep old hostnames in SSH config during the transition. After the first rebuild with the new hostname, clean up old references in ssh config and known_hosts.
 

@@ -4,6 +4,7 @@
   pkgs-unstable,
   lib,
   inputs,
+  self,
   ...
 }: {
   imports = [
@@ -426,4 +427,6 @@
   };
 
   hardware.rasdaemon.enable = true;
+
+  system.configurationRevision = self.rev or self.dirtyRev or null;
 }
