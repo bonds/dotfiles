@@ -2,4 +2,3 @@
 .vscode
 
 **/.claude/settings.local.json
-.config/btop/btop.conf
