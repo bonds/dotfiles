@@ -47,6 +47,30 @@
           alejandra -c . || (echo "Run: alejandra ." && exit 1)
           touch $out
         '';
+      aarch64-darwin.secrets-check =
+        nixpkgs.legacyPackages.aarch64-darwin.runCommand "secrets-check"
+        {buildInputs = [nixpkgs.legacyPackages.aarch64-darwin.gitleaks];} ''
+          cd ${self}
+          gitleaks detect \
+            --source . \
+            --no-git \
+            -c ${self}/.gitleaks.toml \
+            --verbose \
+            --exit-code 1
+          touch $out
+        '';
+      x86_64-linux.secrets-check =
+        nixpkgs.legacyPackages.x86_64-linux.runCommand "secrets-check"
+        {buildInputs = [nixpkgs.legacyPackages.x86_64-linux.gitleaks];} ''
+          cd ${self}
+          gitleaks detect \
+            --source . \
+            --no-git \
+            -c ${self}/.gitleaks.toml \
+            --verbose \
+            --exit-code 1
+          touch $out
+        '';
     };
 
     devShells.aarch64-darwin.default = nixpkgs.legacyPackages.aarch64-darwin.mkShell {
@@ -67,6 +91,7 @@
         {nixpkgs.overlays = [inputs.nix-index-database.overlays.nix-index];}
         nix-index-database.darwinModules.nix-index
         ./modules/nix.nix
+        ./modules/secrets-check.nix
         ./hosts/accismus/configuration.nix
         home-manager.darwinModules.home-manager
         vudials.darwinModules.default
@@ -83,6 +108,7 @@
       };
       modules = [
         ./modules/nix.nix
+        ./modules/secrets-check.nix
         ./hosts/sophrosyne/configuration.nix
         ./hosts/sophrosyne/hardware-configuration.nix
         arion.nixosModules.arion
@@ -103,6 +129,7 @@
       };
       modules = [
         ./modules/nix.nix
+        ./modules/secrets-check.nix
         ./hosts/metanoia/configuration.nix
         ./hosts/metanoia/hardware-configuration.nix
         vudials.nixosModules.default
