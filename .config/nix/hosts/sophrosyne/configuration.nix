@@ -406,6 +406,11 @@
     package = pkgs-unstable.tailscale;
   };
 
+  services.homebridge = {
+    enable = true;
+    openFirewall = true;
+  };
+
   hardware.rasdaemon.enable = true;
 
   system.configurationRevision = self.rev or self.dirtyRev or null;
