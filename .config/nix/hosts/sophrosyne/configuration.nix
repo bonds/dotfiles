@@ -28,9 +28,9 @@
     "panic=60"
   ];
 
-  systemd.watchdog = {
-    runtimeTime = "30s";
-    rebootTime = "4min";
+  systemd.settings.Manager = {
+    RuntimeWatchdogSec = "30s";
+    RebootWatchdogSec = "4min";
   };
 
   # Mitigation for CVE-2026-31431 (Copy Fail) — local privilege escalation via
