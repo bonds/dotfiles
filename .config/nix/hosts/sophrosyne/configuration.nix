@@ -366,7 +366,7 @@
         host = "smtp.gmail.com";
         user = "woaifafong@gmail.com";
         from = "woaifafong@gmail.com";
-        passwordeval = "cat /etc/emailpass.txt";
+        passwordeval = "cat /etc/email-pass";
       };
     };
   };
