@@ -124,6 +124,30 @@
 
   services.openssh.enable = true;
 
+  system.activationScripts.checkSecrets = {
+    text = ''
+      warn_missing() {
+        echo "WARNING: $1 is missing!" >&2
+        echo "  Purpose: $2" >&2
+        echo "  Source: $3" >&2
+      }
+
+      if [ ! -f /etc/ddns-token ]; then
+        warn_missing \
+          /etc/ddns-token \
+          "DNSimple API token for DDNS (updates home.ggr.com A record)" \
+          "Bitwarden vault entry: \"home.ggr.com dns token\""
+      fi
+
+      if [ ! -f /etc/email-pass ]; then
+        warn_missing \
+          /etc/email-pass \
+          "Gmail app password for msmtp (system emails, ZED alerts)" \
+          "Bitwarden vault entry: \"server email account\""
+      fi
+    '';
+  };
+
   system.stateVersion = "24.11";
 
   boot.supportedFilesystems = ["zfs"];
