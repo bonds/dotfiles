@@ -21,6 +21,18 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  boot.kernelParams = [
+    "nvme_core.io_timeout=10"
+    "nvme_core.max_retries=3"
+    "zfs.zfs_deadman_failmode=wait"
+    "panic=60"
+  ];
+
+  systemd.watchdog = {
+    runtimeTime = "30s";
+    rebootTime = "4min";
+  };
+
   # Mitigation for CVE-2026-31431 (Copy Fail) — local privilege escalation via
   # authencesn not yet backported to 6.12.x. Remove when kernel >= 6.18.22.
   # https://mtlynch.io/claude-code-found-linux-vulnerability/
