@@ -397,6 +397,8 @@
     })
   ];
 
+  hardware.bluetooth.enable = true;
+
   hardware.rasdaemon.enable = true;
 
   system.configurationRevision = self.rev or self.dirtyRev or null;
