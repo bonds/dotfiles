@@ -108,6 +108,9 @@
         pkgs-unstable = mkPkgs nixpkgs "x86_64-linux";
       };
       modules = [
+        ({lib, ...}: {
+          nixpkgs.config.doCheckByDefault = lib.mkDefault false;
+        })
         ./modules/nix.nix
         ./modules/secrets-check.nix
         ./modules/packages/common.nix
