@@ -388,6 +388,8 @@
     };
   };
 
+  systemd.services.homebridge.path = [pkgs.python3];
+
   # Homebridge needs Node.js >=24.5.0 for Eufy PKCS1 padding support
   nixpkgs.overlays = [
     (final: prev: {
