@@ -21,7 +21,8 @@
     discord
     daisydisk
     coconutbattery
-    # gh, yt-dlp, mpv, rclone, rsync, nh are in modules/packages/common.nix
+    mpv
+    yt-dlp
     bun # javascript runtime
     typescript # javascript dialect
     google-cloud-sdk # google cloud CLI and friends

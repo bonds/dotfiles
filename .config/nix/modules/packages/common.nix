@@ -22,7 +22,6 @@
     jq
     lsd
     moreutils
-    mpv
     nh
     pstree
     pv
@@ -40,6 +39,5 @@
     unzip
     watch
     weather
-    yt-dlp
   ];
 }
