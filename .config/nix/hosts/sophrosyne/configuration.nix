@@ -378,6 +378,7 @@
     settings = {
       bridge.mdns = {
         interface = "enp0s31f6";
+        advertiser = "avahi";
       };
       platforms = [
         {
