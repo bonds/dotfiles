@@ -375,8 +375,21 @@
   services.homebridge = {
     enable = true;
     openFirewall = true;
-    settings.bridge.mdns = {
-      interface = "enp0s31f6";
+    settings = {
+      bridge.mdns = {
+        interface = "enp0s31f6";
+      };
+      platforms = [
+        {
+          platform = "EufySecurity";
+          name = "EufySecurity";
+          _bridge = {
+            mdns = {
+              advertiser = "avahi";
+            };
+          };
+        }
+      ];
     };
   };
 
