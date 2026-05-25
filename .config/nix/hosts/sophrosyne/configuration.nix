@@ -259,37 +259,7 @@
     };
   };
 
-  services.home-assistant = {
-    enable = true;
-    openFirewall = true;
-    extraComponents = [
-      "analytics"
-      "google_translate"
-      "met"
-      "radio_browser"
-      "shopping_list"
-      "isal"
-      "apple_tv"
-      "homekit_controller"
-      "thread"
-      "tplink_omada"
-      "tplink"
-      "spotify"
-      "brother"
-      "ipp"
-      "sonos"
-      "improv_ble"
-      "piper"
-      "whisper"
-      "wyoming"
-      "ollama"
-    ];
-    customComponents = [];
-    config = {
-      default_config = {};
-      bluetooth = {};
-    };
-  };
+  services.home-assistant.enable = false;
 
   systemd.services.ddns = {
     startAt = "*:0/15";
@@ -405,6 +375,9 @@
   services.homebridge = {
     enable = true;
     openFirewall = true;
+    settings.bridge.mdns = {
+      interface = "enp0s31f6";
+    };
   };
 
   # Homebridge needs Node.js >=24.5.0 for Eufy PKCS1 padding support
