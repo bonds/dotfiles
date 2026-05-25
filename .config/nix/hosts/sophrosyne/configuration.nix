@@ -383,6 +383,11 @@
         {
           platform = "EufySecurity";
           name = "EufySecurity";
+          username = "scott+homebridge@ggr.com";
+          password = "find8myCAR?";
+          country = "US";
+          deviceName = "sophrosyne";
+          ignoreDevices = ["T8400P3121431D4D"];
         }
       ];
     };
