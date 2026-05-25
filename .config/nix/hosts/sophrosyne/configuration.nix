@@ -386,10 +386,6 @@
     models = "/dragon/ollama";
   };
 
-  services.open-webui = {
-    enable = true;
-  };
-
   services.dbus.implementation = "broker";
 
   services.matter-server.enable = true;
