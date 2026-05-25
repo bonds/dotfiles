@@ -392,6 +392,9 @@
             {
               serialNumber = "T8131N632232044C";
               talkback = false;
+              videoConfig = {
+                maxBitrate = 6000;
+              };
             }
           ];
         }
