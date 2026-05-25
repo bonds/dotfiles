@@ -42,28 +42,28 @@
     LC_TIME = "en_US.UTF-8";
   };
 
-  services.xserver.enable = true;
-
-  services.displayManager.gdm.enable = true;
-  services.desktopManager.gnome.enable = true;
-
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "dvorak";
-  };
+  # services.xserver.enable = true;
+  #
+  # services.displayManager.gdm.enable = true;
+  # services.desktopManager.gnome.enable = true;
+  #
+  # services.xserver.xkb = {
+  #   layout = "us";
+  #   variant = "dvorak";
+  # };
 
   console.keyMap = "dvorak";
 
-  services.printing.enable = true;
-
-  services.pulseaudio.enable = false;
-  security.rtkit.enable = true;
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-  };
+  # services.printing.enable = true;
+  #
+  # services.pulseaudio.enable = false;
+  # security.rtkit.enable = true;
+  # services.pipewire = {
+  #   enable = true;
+  #   alsa.enable = true;
+  #   alsa.support32Bit = true;
+  #   pulse.enable = true;
+  # };
 
   users.users.scott = {
     isNormalUser = true;
@@ -72,7 +72,7 @@
     packages = with pkgs; [];
   };
 
-  programs.firefox.enable = true;
+  # programs.firefox.enable = true;
 
   environment.systemPackages = with pkgs; [
     nvme-cli
