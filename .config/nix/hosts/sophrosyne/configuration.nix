@@ -359,6 +359,7 @@
       bridge.mdns = {
         interface = "enp0s31f6";
         advertiser = "avahi";
+        address = "192.168.4.43";
       };
       platforms = [
         {
