@@ -358,6 +358,7 @@
     settings = {
       bridge.mdns = {
         interface = "enp0s31f6";
+        advertiser = "avahi";
         address = "192.168.4.43";
       };
       platforms = [
@@ -386,7 +387,7 @@
   systemd.services.homebridge = {
     path = [pkgs.python3];
     preStart = ''
-      ${pkgs.jq}/bin/jq 'del(.bridge.mdns.advertiser) | del(.platforms[] | select(.platform == "EufySecurity")._bridge) | del(.platforms[] | select(.platform == "EufySecurity").autoSyncStation)' \
+      ${pkgs.jq}/bin/jq 'del(.platforms[] | select(.platform == "EufySecurity")._bridge) | del(.platforms[] | select(.platform == "EufySecurity").autoSyncStation)' \
         /var/lib/homebridge/config.json > /var/lib/homebridge/config.json.tmp \
       && mv /var/lib/homebridge/config.json.tmp /var/lib/homebridge/config.json
     '';
