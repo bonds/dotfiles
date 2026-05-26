@@ -112,6 +112,7 @@
     openFirewall = true;
     nssmdns4 = true;
     nssmdns6 = true;
+    allowInterfaces = ["enp0s31f6"];
     publish = {
       enable = true;
       addresses = true;
