@@ -356,11 +356,7 @@
     enable = true;
     openFirewall = true;
     settings = {
-      bridge.mdns = {
-        interface = "enp0s31f6";
-        advertiser = "avahi";
-        address = "192.168.4.43";
-      };
+      bridge.bind = ["enp0s31f6"];
       platforms = [
         {
           platform = "EufySecurity";
