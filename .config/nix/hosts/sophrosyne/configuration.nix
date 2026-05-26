@@ -365,7 +365,6 @@
           country = "US";
           deviceName = "Cedar Port 95";
           ignoreDevices = ["T8400P3121431D4D"];
-          ignoreStations = ["T8131N632232044C"];
           cameras = [
             {
               serialNumber = "T8131N632232044C";
