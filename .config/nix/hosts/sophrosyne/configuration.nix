@@ -384,14 +384,7 @@
     };
   };
 
-  systemd.services.homebridge = {
-    path = [pkgs.python3];
-    preStart = ''
-      ${pkgs.jq}/bin/jq 'del(.platforms[] | select(.platform == "EufySecurity")._bridge) | del(.platforms[] | select(.platform == "EufySecurity").autoSyncStation)' \
-        /var/lib/homebridge/config.json > /var/lib/homebridge/config.json.tmp \
-      && mv /var/lib/homebridge/config.json.tmp /var/lib/homebridge/config.json
-    '';
-  };
+  systemd.services.homebridge.path = [pkgs.python3];
 
   # Homebridge needs Node.js >=24.5.0 for Eufy PKCS1 padding support
   nixpkgs.overlays = [
