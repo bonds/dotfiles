@@ -226,6 +226,21 @@
       };
 
       scrypted.settings.services = {
+        eufy-ws.service = {
+          image = "bropat/eufy-security-ws:latest";
+          restart = "unless-stopped";
+          network_mode = "host";
+          environment = {
+            USERNAME = "scott+homebridge@ggr.com";
+            PASSWORD = "argyle TALENT 4box!!";
+            COUNTRY = "US";
+            TRUSTED_DEVICE_NAME = "sophrosyne";
+            PORT = "3000";
+          };
+          volumes = [
+            "/dragon/docker/eufy-security-ws/data:/data"
+          ];
+        };
         scrypted.service = {
           image = "ghcr.io/koush/scrypted";
           restart = "unless-stopped";
