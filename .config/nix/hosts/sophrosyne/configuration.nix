@@ -371,6 +371,7 @@
               talkback = false;
               videoConfig = {
                 maxBitrate = 6000;
+                vcodec = "copy";
               };
             }
           ];
