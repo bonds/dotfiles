@@ -108,19 +108,7 @@
   };
 
   services.avahi = {
-    enable = true;
-    openFirewall = true;
-    nssmdns4 = true;
-    nssmdns6 = true;
-    extraConfig = ''
-      [server]
-      allow-interfaces=enp0s31f6
-    '';
-    publish = {
-      enable = true;
-      addresses = true;
-      hinfo = true;
-    };
+    enable = false;
   };
 
   services.samba = {
@@ -235,6 +223,37 @@
           "10200:10200/tcp"
         ];
         command = "--voice en_US-lessac-medium";
+      };
+
+      scrypted.settings.services = {
+        scrypted.service = {
+          image = "ghcr.io/koush/scrypted";
+          restart = "unless-stopped";
+          network_mode = "host";
+          environment = {
+            SCRYPTED_DOCKER_AVAHI = "true";
+          };
+          devices = [];
+          volumes = [
+            "/dragon/docker/scrypted/volume:/server/volume"
+            "/etc/avahi/services:/etc/avahi/services:ro"
+          ];
+          logging.driver = "none";
+          dns = ["1.1.1.1" "8.8.8.8"];
+        };
+        watchtower.service = {
+          image = "nickfedor/watchtower";
+          container_name = "scrypted-watchtower";
+          restart = "unless-stopped";
+          volumes = [
+            "/var/run/docker.sock:/var/run/docker.sock"
+          ];
+          ports = [
+            "10444:8080"
+          ];
+          command = "--interval 3600 --cleanup --scope scrypted";
+          dns = ["1.1.1.1" "8.8.8.8"];
+        };
       };
     };
   };
