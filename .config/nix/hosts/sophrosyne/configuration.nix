@@ -233,12 +233,10 @@
           environment = {
             SCRYPTED_DOCKER_AVAHI = "true";
           };
-          devices = [];
           volumes = [
             "/dragon/docker/scrypted/volume:/server/volume"
             "/etc/avahi/services:/etc/avahi/services:ro"
           ];
-          logging.driver = "none";
           dns = ["1.1.1.1" "8.8.8.8"];
         };
         watchtower.service = {
