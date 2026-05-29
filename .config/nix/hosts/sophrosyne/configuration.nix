@@ -252,7 +252,7 @@
 
       scrypted.settings.services = {
         eufy-ws.service = {
-          image = "fuatakgun/eufy-security-ws:latest";
+          image = "bropat/eufy-security-ws:latest";
           restart = "unless-stopped";
           network_mode = "host";
           environment = {
