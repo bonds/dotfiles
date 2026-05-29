@@ -36,7 +36,9 @@ Match host "*.ggr.com,*.local,sophrosyne"
     # forward syncthing web ui ports so I can manage them locally
     LocalForward 8385 127.0.0.1:8384
 
-Match host "sophrosyne.local,sophrosyne,sophrosyne.ggr.com"
+Match host "sophrosyne.local,sophrosyne,sophrosyne.ggr.com,home.ggr.com"
     # forward immich port
     LocalForward 2283 localhost:2283
     LocalForward 8080 localhost:8080
+    # forward scrypted port
+    LocalForward 10443 localhost:10443
