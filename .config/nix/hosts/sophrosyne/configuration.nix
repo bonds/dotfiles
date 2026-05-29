@@ -376,7 +376,7 @@
     models = "/dragon/ollama";
   };
 
-  services.dbus.implementation = "broker";
+  services.dbus.implementation = null;
 
   # services.matter-server.enable = true;
 
