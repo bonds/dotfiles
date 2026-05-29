@@ -278,7 +278,7 @@
           };
           volumes = [
             "/dragon/docker/scrypted/volume:/server/volume"
-            "/dragon/docker/scrypted/avahi/avahi-daemon.conf:/etc/avahi/avahi-daemon.conf"
+            "/dragon/docker/scrypted/avahi:/etc/avahi"
           ];
           dns = ["1.1.1.1" "8.8.8.8"];
         };
