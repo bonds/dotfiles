@@ -55,7 +55,10 @@
     {
       users = ["scott"];
       commands = [
-        {command = "ALL"; options = ["NOPASSWD"];}
+        {
+          command = "ALL";
+          options = ["NOPASSWD"];
+        }
       ];
     }
   ];
@@ -264,6 +267,10 @@
           image = "ghcr.io/koush/scrypted";
           restart = "unless-stopped";
           network_mode = "host";
+          privileged = true;
+          environment = {
+            SCRYPTED_DOCKER_AVAHI = "true";
+          };
           volumes = [
             "/dragon/docker/scrypted/volume:/server/volume"
             "/var/run/dbus:/var/run/dbus"
