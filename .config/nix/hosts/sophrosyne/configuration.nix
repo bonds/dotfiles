@@ -51,6 +51,15 @@
     packages = with pkgs; [];
   };
 
+  security.sudo.extraRules = [
+    {
+      users = ["scott"];
+      commands = [
+        {command = "ALL"; options = ["NOPASSWD"];}
+      ];
+    }
+  ];
+
   environment.systemPackages = with pkgs; [
     nvme-cli
     util-linux
@@ -376,7 +385,7 @@
     models = "/dragon/ollama";
   };
 
-  services.dbus.implementation = null;
+  services.dbus.implementation = "dbus";
 
   # services.matter-server.enable = true;
 
