@@ -108,14 +108,14 @@
   };
 
   services.avahi = {
-    enable = false;
-    openFirewall = false;
-    nssmdns4 = false;
-    nssmdns6 = false;
+    enable = true;
+    openFirewall = true;
+    nssmdns4 = true;
+    nssmdns6 = true;
     publish = {
-      enable = false;
-      addresses = false;
-      hinfo = false;
+      enable = true;
+      addresses = true;
+      hinfo = true;
     };
   };
 
@@ -255,13 +255,10 @@
           image = "ghcr.io/koush/scrypted";
           restart = "unless-stopped";
           network_mode = "host";
-          privileged = true;
-          environment = {
-            SCRYPTED_DOCKER_AVAHI = "true";
-          };
           volumes = [
             "/dragon/docker/scrypted/volume:/server/volume"
             "/var/run/dbus:/var/run/dbus"
+            "/var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket"
           ];
           dns = ["1.1.1.1" "8.8.8.8"];
         };
