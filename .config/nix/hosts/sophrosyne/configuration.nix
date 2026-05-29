@@ -108,14 +108,14 @@
   };
 
   services.avahi = {
-    enable = true;
-    openFirewall = true;
-    nssmdns4 = true;
-    nssmdns6 = true;
+    enable = false;
+    openFirewall = false;
+    nssmdns4 = false;
+    nssmdns6 = false;
     publish = {
-      enable = true;
-      addresses = true;
-      hinfo = true;
+      enable = false;
+      addresses = false;
+      hinfo = false;
     };
   };
 
@@ -240,11 +240,13 @@
           network_mode = "host";
           environment = {
             USERNAME = "scott+homebridge@ggr.com";
-            PASSWORD = "argyle TALENT 4box!!";
             COUNTRY = "US";
             TRUSTED_DEVICE_NAME = "sophrosyne";
             PORT = "3000";
           };
+          env_file = [
+            "/dragon/docker/eufy-security-ws/.env"
+          ];
           volumes = [
             "/dragon/docker/eufy-security-ws/data:/data"
           ];
@@ -253,11 +255,13 @@
           image = "ghcr.io/koush/scrypted";
           restart = "unless-stopped";
           network_mode = "host";
+          privileged = true;
+          environment = {
+            SCRYPTED_DOCKER_AVAHI = "true";
+          };
           volumes = [
             "/dragon/docker/scrypted/volume:/server/volume"
             "/var/run/dbus:/var/run/dbus"
-            "/var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket"
-            "/etc/avahi/services:/etc/avahi/services:ro"
           ];
           dns = ["1.1.1.1" "8.8.8.8"];
         };
