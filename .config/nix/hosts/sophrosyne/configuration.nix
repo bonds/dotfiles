@@ -120,14 +120,14 @@
   };
 
   services.avahi = {
-    enable = true;
-    openFirewall = true;
-    nssmdns4 = true;
-    nssmdns6 = true;
+    enable = false;
+    openFirewall = false;
+    nssmdns4 = false;
+    nssmdns6 = false;
     publish = {
-      enable = true;
-      addresses = true;
-      hinfo = true;
+      enable = false;
+      addresses = false;
+      hinfo = false;
     };
   };
 
@@ -274,7 +274,6 @@
           volumes = [
             "/dragon/docker/scrypted/volume:/server/volume"
             "/var/run/dbus:/var/run/dbus"
-            "/var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket"
           ];
           dns = ["1.1.1.1" "8.8.8.8"];
         };
