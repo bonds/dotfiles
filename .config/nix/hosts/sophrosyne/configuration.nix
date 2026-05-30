@@ -29,6 +29,7 @@
   networking.firewall.allowedTCPPorts = [10443 11080];
   networking.firewall.extraCommands = ''
     iptables -I nixos-fw 1 -i enp0s31f6 -p tcp -j ACCEPT
+    iptables -I nixos-fw 2 -i enp0s31f6 -p udp -j ACCEPT
   '';
 
   time.timeZone = "America/Los_Angeles";
