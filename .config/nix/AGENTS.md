@@ -3,7 +3,7 @@
 Personal nix flake for:
 - macOS laptop **accismus** (`aarch64-darwin`, nix-darwin, `nixpkgs-unstable`)
 - NixOS server **sophrosyne** (`x86_64-linux`, `nixos-26.05`, also at `sophrosyne.local` / `home.ggr.com`)
-- NixOS workstation **metanoia** (`x86_64-linux`, `nixos-26.05`)
+- NixOS workstation **metanoia** (`x86_64-linux`, `nixos-26.05` — currently offline, not plugged in)
 
 ## Commands
 
