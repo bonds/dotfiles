@@ -100,6 +100,7 @@ modules/           # Shared modules
 - **After each batch of changes, commit and push to all remotes** (`git push origin && git push sophrosyne`).
 - **Pushing to a checked-out branch on a remote** requires the remote repo to have `receive.denyCurrentBranch = updateInstead` (set on sophrosyne's `~/.git/config`). This auto-updates the work tree when pushed.
 - **When renaming a host**, keep old hostnames in SSH config during the transition. After the first rebuild with the new hostname, clean up old references in ssh config and known_hosts.
+- **The `dragon` pool on sophrosyne is intentionally degraded.** One drive (`nvme-JAJP600M4TB_C2525C6C11301647512`) is kept offline on purpose. Don't panic if `zpool status` shows DEGRADED — this is expected.
 
 - **VU dials live in a separate flake** at `/Users/scott/.config/nix-vudials` (`github:bonds/nix-vudials`). It exports `overlays.default` (vuserver + vuclient packages), `nixosModules.default`, and `darwinModules.default`. Dial UIDs are configured in `modules/vudials-uids.nix` in this repo (shared by accismus + metanoia).
 - **Launchd agents auto-restart on `darwin-rebuild switch`** via an activation script that detects package hash changes. To manually bounce them: `launchctl kickstart -k gui/501/org.nixos.vuserver && launchctl kickstart -k gui/501/org.nixos.vuclient`.
