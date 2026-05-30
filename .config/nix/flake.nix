@@ -2,7 +2,7 @@
   description = "Scott Bonds <scott@ggr.com> multi-machine flake (darwin + NixOS)";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-26.05";
     nix-darwin.url = "github:nix-darwin/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     home-manager.url = "github:nix-community/home-manager";
@@ -116,8 +116,7 @@
         arion.nixosModules.arion
         nix-index-database.nixosModules.nix-index
         ./modules/fish-command-not-found.nix
-        # home-manager omitted: current release relies on nixpkgs APIs
-        # not in nixos-25.11. Add back when upgrading to a newer channel.
+        home-manager.nixosModules.home-manager
       ];
     };
     nixosConfigurations.metanoia = nixpkgs-stable.lib.nixosSystem {

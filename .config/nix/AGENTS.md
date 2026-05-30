@@ -2,8 +2,8 @@
 
 Personal nix flake for:
 - macOS laptop **accismus** (`aarch64-darwin`, nix-darwin, `nixpkgs-unstable`)
-- NixOS server **sophrosyne** (`x86_64-linux`, `nixos-25.11`, also at `sophrosyne.local` / `home.ggr.com`)
-- NixOS workstation **metanoia** (`x86_64-linux`, `nixos-25.11`)
+- NixOS server **sophrosyne** (`x86_64-linux`, `nixos-26.05`, also at `sophrosyne.local` / `home.ggr.com`)
+- NixOS workstation **metanoia** (`x86_64-linux`, `nixos-26.05`)
 
 ## Commands
 
@@ -92,7 +92,7 @@ modules/           # Shared modules
 
 ## Gotchas
 
-- **`inputs.nixpkgs.follows` can break things on stable channels.** Latest home-manager requires nixpkgs APIs (`lib/services/lib.nix`) not yet in `nixos-25.11`. If home-manager fails to build, remove the follows: let it use its own pinned nixpkgs. Same issue can happen with other inputs (e.g. arion).
+- **`inputs.nixpkgs.follows` can break things on stable channels.** Latest home-manager requires nixpkgs APIs (`lib/services/lib.nix`) not yet in `nixos-26.05`. If home-manager fails to build, remove the follows: let it use its own pinned nixpkgs. Same issue can happen with other inputs (e.g. arion).
 - **Can't cross-build x86_64 from aarch64.** `nix flake check` fails evaluating NixOS configs on darwin. Build directly on the target machine (`ssh sophrosyne.local nixos-rebuild build --flake ...`) or deploy via `--target-host`.
 - **`nixos-rebuild switch` needs sudo.** Remote deploy from laptop uses `--target-host scott@host --use-remote-sudo`. Passwordless sudo (`NOPASSWD` in sudoers) is needed for automated deploys.
 - **`nh` is flaky on macOS.** If it breaks, fall back to plain `darwin-rebuild`.
@@ -100,7 +100,7 @@ modules/           # Shared modules
 - **`warn-dirty = false`** is set in `nix.conf` — builds work fine with uncommitted changes.
 - **Uses `pkgs.lix`** as the nix package on all machines, not the default `pkgs.nix`.
 - **`allowUnfree = true`** — required for `helvetica-neue-lt-std` font on laptop.
-- **Server uses two nixpkgs:** `nixos-25.11` (stable) for most packages, `nixpkgs-unstable` for ollama + tailscale (passed via `pkgs-unstable` specialArg). Same pattern for metanoia.
+- **Server uses two nixpkgs:** `nixos-26.05` (stable) for most packages, `nixpkgs-unstable` for ollama + tailscale (passed via `pkgs-unstable` specialArg). Same pattern for metanoia.
 - **Server arion** comes from a flake input rather than `builtins.fetchTarball`.
 - **`nix-index-database`** replaces the old `~/bin/nix-command-not-found` hand-rolled script with the upstream module.
 - **`nix fmt` is unreliable.** It sometimes fails on stdin ("unexpected end of file"). When it does, run alejandra directly on the changed files instead: `alejandra <file> <file>...`.
