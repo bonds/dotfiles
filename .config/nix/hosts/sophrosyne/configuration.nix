@@ -287,7 +287,6 @@
           privileged = true;
           environment = {
             SCRYPTED_DOCKER_AVAHI = "true";
-            SCRYPTED_SERVER_LISTEN_HOSTNAMES = "192.168.4.43";
           };
           volumes = [
             "/dragon/docker/scrypted/volume:/server/volume"
