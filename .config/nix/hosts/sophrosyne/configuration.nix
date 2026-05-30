@@ -79,6 +79,8 @@
 
   services.openssh.enable = true;
 
+  # REMINDER: When adding a new local-only secret file consumed by this
+  # configuration, add a corresponding warn_missing check here.
   system.activationScripts.checkSecrets = {
     text = ''
       warn_missing() {
@@ -99,6 +101,13 @@
           /etc/email-pass \
           "Gmail app password for msmtp (system emails, ZED alerts)" \
           "Bitwarden vault entry: \"server email account\""
+      fi
+
+      if [ ! -f /dragon/docker/eufy-security-ws/.env ]; then
+        warn_missing \
+          /dragon/docker/eufy-security-ws/.env \
+          "Eufy password for scrypted homebridge plugin (eufy-security-ws)" \
+          "Bitwarden vault entry: \"eufy homebridge\""
       fi
     '';
   };
@@ -251,6 +260,8 @@
       };
 
       scrypted.settings.services = {
+        # REMINDER: When adding a secret here, also add a warn_missing check
+        # in system.activationScripts.checkSecrets above.
         eufy-ws.service = {
           image = "bropat/eufy-security-ws:latest";
           restart = "unless-stopped";
@@ -301,6 +312,8 @@
 
   services.home-assistant.enable = false;
 
+  # REMINDER: When adding a secret here, also add a warn_missing check
+  # in system.activationScripts.checkSecrets above.
   systemd.services.ddns = {
     startAt = "*:0/15";
     serviceConfig.Type = "oneshot";
@@ -355,6 +368,8 @@
       auth = "login";
       tls_starttls = "off";
     };
+    # REMINDER: When adding a secret here, also add a warn_missing check
+    # in system.activationScripts.checkSecrets above.
     accounts = {
       default = {
         host = "smtp.gmail.com";
@@ -411,43 +426,6 @@
     useRoutingFeatures = "both";
     package = pkgs-unstable.tailscale;
   };
-
-  services.homebridge = {
-    enable = true;
-    openFirewall = true;
-    settings = {
-      bridge.bind = ["enp0s31f6"];
-      platforms = [
-        {
-          platform = "EufySecurity";
-          name = "EufySecurity";
-          username = "scott+homebridge@ggr.com";
-          country = "US";
-          deviceName = "Cedar Port 95";
-          ignoreDevices = ["T8400P3121431D4D"];
-          cameras = [
-            {
-              serialNumber = "T8131N632232044C";
-              talkback = false;
-              videoConfig = {
-                maxBitrate = 6000;
-                vcodec = "copy";
-              };
-            }
-          ];
-        }
-      ];
-    };
-  };
-
-  systemd.services.homebridge.path = [pkgs.python3];
-
-  # Homebridge needs Node.js >=24.5.0 for Eufy PKCS1 padding support
-  nixpkgs.overlays = [
-    (final: prev: {
-      nodejs = final.nodejs_24;
-    })
-  ];
 
   hardware.bluetooth.enable = true;
 
