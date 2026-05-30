@@ -311,6 +311,33 @@
     };
   };
 
+  # Patch scrypted homekit plugin to handle cameras without direct tcp:// URLs
+  # (e.g., Eufy battery cameras). Fixes: TypeError: Cannot read properties of undefined (reading 'startsWith')
+  systemd.services.scrypted-homekit-patch = {
+    description = "Patch Scrypted HomeKit plugin for Eufy battery cameras";
+    after = ["arion-scrypted.service"];
+    wants = ["arion-scrypted.service"];
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      PLUGIN_JS="/dragon/docker/scrypted/volume/plugins/@scrypted/homekit/zip/unzipped/main.nodejs.js"
+      if [ -f "$PLUGIN_JS" ]; then
+        if grep -q '!p.url.startsWith("tcp://")' "$PLUGIN_JS"; then
+          echo "Patching HomeKit plugin for battery camera compatibility..."
+          ${pkgs.gnused}/bin/sed -i 's/!p.url.startsWith("tcp:\/\/")/!p.url?.startsWith("tcp:\/\/")/g' "$PLUGIN_JS"
+          ${pkgs.docker}/bin/docker restart scrypted-scrypted-1 || true
+        else
+          echo "HomeKit plugin already patched or not patchable."
+        fi
+      else
+        echo "HomeKit plugin not found yet, will patch on next run."
+      fi
+    '';
+  };
+
   services.home-assistant.enable = false;
 
   # REMINDER: When adding a secret here, also add a warn_missing check
