@@ -7,10 +7,10 @@ Personal nix flake for:
 
 ## Commands
 
-The `nr` fish function (in `~/.config/fish/config.fish`) wraps `nh` for all machines:
+**Always use `nr` for rebuilds.** The `nr` fish function (in `~/.config/fish/config.fish`) wraps `nh` and auto-detects the host to pick the right flake target. Do not recommend raw `nixos-rebuild` or `darwin-rebuild` commands unless `nr` is broken.
 
 ```fish
-# Rebuild current machine (uses --hostname to pick the right flake target)
+# Rebuild current machine
 nr
 
 # Rebuild and update all flake inputs (commits flake.lock)
@@ -20,54 +20,41 @@ nr --update
 nr -U nix-index-database
 ```
 
-### accismus (laptop)
+### Per-machine fallbacks (only if `nr` breaks)
 
+**accismus** (laptop):
 ```bash
-# Build (safe, does not apply changes)
+# Build only
 darwin-rebuild build --flake .#accismus
-
-# Switch (requires sudo) — prefer `nr` from fish instead
+# Switch
 sudo darwin-rebuild switch --flake .#accismus
-
-# Format: alejandra
-nix fmt
 ```
 
-### sophrosyne (server)
-
+**sophrosyne** (server):
 ```bash
-# Interactive rebuild (recommended — runs nh from fish)
-nr
-
-# Build (safe, does not apply changes)
+# Build only
 nixos-rebuild build --flake .#sophrosyne
-
-# Switch (requires sudo on the server)
+# Switch
 sudo nixos-rebuild switch --flake .#sophrosyne
-
-# Deploy from laptop via ssh (target-host requires sudo passwordless or --use-remote-sudo)
-# home.ggr.com works from anywhere; sophrosyne.local is faster on LAN but mDNS-only
+# Deploy from laptop via ssh
 nixos-rebuild switch --flake .#sophrosyne --target-host scott@home.ggr.com --use-remote-sudo
 ```
 
-### metanoia (workstation)
-
+**metanoia** (workstation):
 ```bash
-# Build (safe, does not apply changes)
+# Build only
 nixos-rebuild build --flake .#metanoia
-
-# Switch (requires sudo on the workstation)
+# Switch
 sudo nixos-rebuild switch --flake .#metanoia
-
 # Deploy from laptop via ssh
 nixos-rebuild switch --flake .#metanoia --target-host scott@metanoia.local --use-remote-sudo
 ```
 
-### Both
+### Utility commands
 
 ```bash
-# Format: alejandra
-nix fmt
+# Format: alejandra (nix fmt is unreliable; prefer alejandra directly)
+alejandra <file> ...
 
 # Update flake inputs (commit flake.lock afterward)
 nix flake update
