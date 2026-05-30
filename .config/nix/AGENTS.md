@@ -79,7 +79,7 @@ modules/           # Shared modules
 
 ## Gotchas
 
-- **`inputs.nixpkgs.follows` can break things on stable channels.** Latest home-manager requires nixpkgs APIs (`lib/services/lib.nix`) not yet in `nixos-26.05`. If home-manager fails to build, remove the follows: let it use its own pinned nixpkgs. Same issue can happen with other inputs (e.g. arion).
+- **`inputs.nixpkgs.follows` can break things on stable channels.** Letting an input follow your nixpkgs can cause build failures if the input expects newer nixpkgs APIs than the stable channel provides. If an input fails to build on a stable channel, remove its follows so it uses its own pinned nixpkgs. This has happened with home-manager and arion in the past.
 - **Can't cross-build x86_64 from aarch64.** `nix flake check` fails evaluating NixOS configs on darwin. Build directly on the target machine (`ssh sophrosyne.local nixos-rebuild build --flake ...`) or deploy via `--target-host`.
 - **`nixos-rebuild switch` needs sudo.** Remote deploy from laptop uses `--target-host scott@host --use-remote-sudo`. Passwordless sudo (`NOPASSWD` in sudoers) is needed for automated deploys.
 - **`nh` is flaky on macOS.** If it breaks, fall back to plain `darwin-rebuild`.
