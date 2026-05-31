@@ -70,7 +70,7 @@
         homeDirectory = "/home/scott";
         stateVersion = "24.05";
         packages = with pkgs; [
-          gnome-themes-extra
+          gnome-themes-extra # GTK theme engine and base themes
         ];
         file = {
           ".config/wireplumber/wireplumber.conf.d/51-disable-devices.conf".text = ''
@@ -257,11 +257,6 @@
 
   users.users.root.hashedPassword = "*";
 
-  system.switch = {
-    enable = false;
-    enableNg = true;
-  };
-
   boot.initrd.systemd.enable = true;
   boot.tmp.useTmpfs = true;
   systemd.services.nix-daemon = {
@@ -405,7 +400,6 @@
   hardware.xone.enable = true;
 
   services.pcscd.enable = true;
-  services.dbus.implementation = "broker";
   services.irqbalance.enable = true;
   services.fstrim.enable = true;
   services.fwupd.enable = true;
@@ -423,97 +417,97 @@
 
   environment.systemPackages = with pkgs; [
     # Common packages shared with all machines are in modules/packages/common.nix
-    chromium
-    pkgs-unstable.ghostty
-    todoist
-    todoist-electron
-    gapless
-    lollypop
-    resonance
-    spot
-    tagger
-    jujutsu
-    delta
-    whatsapp-for-linux
-    pkgs-unstable.python312Packages.python-kasa
-    uefitool
-    gamescope
-    yubioath-flutter
-    coreutils
-    kakoune
-    zulip
-    ventoy-full
-    resources
-    keeweb
+    chromium # web browser
+    pkgs-unstable.ghostty # fast GPU-accelerated terminal emulator
+    todoist # task manager desktop app
+    todoist-electron # todoist wrapped in Electron
+    gapless # gapless music player
+    lollypop # GNOME music player
+    resonance # music player and library manager
+    spot # lightweight Spotify client
+    tagger # music metadata editor
+    jujutsu # version control system (git-compatible)
+    delta # syntax-highlighting pager for git
+    whatsapp-for-linux # WhatsApp desktop client
+    pkgs-unstable.python312Packages.python-kasa # control TP-Link smart home devices
+    uefitool # UEFI firmware image viewer and editor
+    gamescope # micro-compositor for running games in a window
+    yubioath-flutter # YubiKey OTP and oath manager
+    coreutils # GNU core utilities (cp, mv, ls, etc.)
+    kakoune # modal code editor (vim-inspired)
+    zulip # team chat desktop client
+    ventoy-full # create bootable USB drives for ISOs
+    resources # system resource monitor (like htop GUI)
+    keeweb # cross-platform password manager
     # moreutils, pstree are in modules/packages/common.nix
-    amberol
-    apostrophe
-    dig
-    nodejs
-    gcc
-    libreoffice
-    glxinfo
-    newsflash
-    libresprite
-    pkgs-unstable.mailspring
-    element-desktop
-    age-plugin-yubikey
-    passage
-    rage
-    distrobox
-    monophony
-    kdePackages.audiotube
-    zenity
-    libnotify
-    linuxKernel.packages.linux_zen.xone
-    localsend
-    easyeffects
-    noise-repellent
-    cargo
-    rust-script
-    xclip
-    rocmPackages.rocminfo
-    usb-reset
-    gimp
-    krita
-    glmark2
-    radeontop
-    nix-search-cli
-    cpu-x
-    bsd-finger
-    foliate
-    nms
-    bc
-    dconf-editor
-    dconf2nix
-    obs-studio
-    usbview
-    gsound
-    libgda6
-    gnomeExtensions.easyeffects-preset-selector
-    gnomeExtensions.pano
-    pkgs-unstable.gnomeExtensions.another-window-session-manager
-    gnomeExtensions.dash-to-panel
-    libsecret
-    jless
-    spotify
-    discord
-    slack
-    signal-desktop
-    pkgs-unstable.ollama
-    gnome-tweaks
-    wmctrl
-    obsidian
-    dwarf-fortress
-    nerdfonts
-    zoom-us
-    desktop-file-utils
-    rustc
-    wget
-    usbutils
-    ulauncher
-    tlp
-    (python3.withPackages (pp: with pp; [python-kasa]))
+    amberol # small and simple music player
+    apostrophe # distraction-free Markdown editor
+    dig # DNS lookup utility
+    nodejs # JavaScript runtime
+    gcc # GNU C compiler
+    libreoffice # open-source office suite
+    glxinfo # display OpenGL and GLX info
+    newsflash # RSS feed reader
+    libresprite # pixel art editor (Aseprite fork)
+    pkgs-unstable.mailspring # open-source email client
+    element-desktop # Matrix chat client
+    age-plugin-yubikey # age encryption with YubiKey support
+    passage # age-based password manager
+    rage # encryption tool (age in Rust)
+    distrobox # use any Linux distribution in a container
+    monophony # YouTube music player
+    kdePackages.audiotube # YouTube music client (Kirigami)
+    zenity # display GTK dialogs from shell scripts
+    libnotify # desktop notification library
+    linuxKernel.packages.linux_zen.xone # Xbox One controller driver
+    localsend # share files to nearby devices
+    easyeffects # real-time audio effects processor
+    noise-repellent # noise suppression plugin
+    cargo # Rust package manager and build tool
+    rust-script # run Rust scripts without a project
+    xclip # copy data between X clipboard and stdout
+    rocmPackages.rocminfo # AMD ROCm GPU info utility
+    usb-reset # reset USB devices from the command line
+    gimp # image manipulation program
+    krita # digital painting and illustration
+    glmark2 # OpenGL benchmark
+    radeontop # AMD GPU usage monitor
+    nix-search-cli # search nix packages from the command line
+    cpu-x # CPU and system information tool
+    bsd-finger # user information lookup
+    foliate # eBook reader (epub, mobi, etc.)
+    nms # no more secrets (decrypt text like in Sneakers)
+    bc # arbitrary precision calculator
+    dconf-editor # low-level GNOME settings editor
+    dconf2nix # convert dconf settings to Nix
+    obs-studio # live streaming and screen recording
+    usbview # USB device tree viewer
+    gsound # GObject library for playing event sounds
+    libgda6 # database abstraction library
+    gnomeExtensions.easyeffects-preset-selector # switch audio presets from panel
+    gnomeExtensions.pano # clipboard manager for GNOME
+    pkgs-unstable.gnomeExtensions.another-window-session-manager # save/restore window sessions
+    gnomeExtensions.dash-to-panel # combine dash and top panel
+    libsecret # store and retrieve passwords/secrets
+    jless # JSON viewer with folding and jq integration
+    spotify # music streaming client
+    discord # voice and text chat
+    slack # team communication
+    signal-desktop # private messaging app
+    pkgs-unstable.ollama # run LLMs locally
+    gnome-tweaks # advanced GNOME settings
+    wmctrl # control X window manager from scripts
+    obsidian # knowledge base and note-taking app
+    dwarf-fortress # colony management simulation game
+    nerdfonts # icon fonts for developers
+    zoom-us # video conferencing client
+    desktop-file-utils # utilities for .desktop files
+    rustc # Rust compiler
+    wget # download files from the web
+    usbutils # USB device information utilities
+    ulauncher # fast application launcher
+    tlp # Linux laptop power saving
+    (python3.withPackages (pp: with pp; [python-kasa])) # TP-Link smart home control
   ];
 
   systemd.services.wakeusb = {

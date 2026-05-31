@@ -70,11 +70,11 @@
   ];
 
   environment.systemPackages = with pkgs; [
-    nvme-cli
-    util-linux
-    docker-compose
-    dmidecode
-    edac-utils
+    nvme-cli # manage NVMe devices from the command line
+    util-linux # system utilities (lsblk, fdisk, etc.)
+    docker-compose # define and run multi-container Docker apps
+    dmidecode # read system DMI/BIOS info
+    edac-utils # memory error detection and reporting tools
     # most common packages are in modules/packages/common.nix
   ];
 
@@ -438,8 +438,6 @@
     package = pkgs-unstable.ollama;
     models = "/dragon/ollama";
   };
-
-  services.dbus.implementation = "dbus";
 
   # services.matter-server.enable = true;
 
