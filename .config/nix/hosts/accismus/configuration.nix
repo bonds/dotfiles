@@ -14,15 +14,15 @@
     xclip # for copying from terminal to clipboard
     opencode # like claude code but open source
     openssh # macos ssh doesn't come with resident ssh support
-    ollama
-    jan
-    utm
-    flux
-    discord
-    daisydisk
-    coconutbattery
-    mpv
-    yt-dlp
+    ollama # run LLMs locally
+    jan # local AI chat desktop app
+    utm # virtual machine manager for macOS
+    flux # blue light filter for sleep
+    discord # voice and text chat
+    daisydisk # disk usage visualizer
+    coconutbattery # battery health monitor
+    mpv # minimalist media player
+    yt-dlp # download videos from YouTube and more
     bun # javascript runtime
     typescript # javascript dialect
     google-cloud-sdk # google cloud CLI and friends
@@ -42,18 +42,18 @@
     coreutils # for timeout for athome script
     hugo # blog engine
     libreoffice-bin # office suite
-    rage
-    element-desktop
+    rage # encryption tool (age alternative)
+    element-desktop # matrix chat client
     docker # docker
     colima # docker for mac
     mtr # better traceroute
-    age-plugin-yubikey
-    passage
+    age-plugin-yubikey # age encryption with YubiKey support
+    passage # age-based password manager
     idris2Packages.idris2Lsp # language service provider for idris2
     idris2Packages.pack # packages manager for idris2
     (python3.withPackages (p:
       with p; [
-        python-kasa
+        python-kasa # control TP-Link smart home devices
       ]))
   ];
 

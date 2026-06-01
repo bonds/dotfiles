@@ -55,6 +55,8 @@
     "nvme_core.max_retries=3"
     "zfs.zfs_deadman_failmode=wait"
     "panic=60"
+    # Suppress harmless AER spam from Intel USB/PCIe root ports on console.
+    "pci=noaer"
   ];
 
   systemd.settings.Manager = {

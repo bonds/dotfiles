@@ -37,6 +37,8 @@ Match host "*.ggr.com,*.local,sophrosyne"
     LocalForward 8385 127.0.0.1:8384
 
 Match host "sophrosyne.local,sophrosyne,sophrosyne.ggr.com,home.ggr.com"
+    # sophrosyne doesn't know about xterm-ghostty
+    SetEnv TERM=xterm-256color
     # forward immich port
     LocalForward 2283 localhost:2283
     LocalForward 8080 localhost:8080
