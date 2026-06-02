@@ -85,6 +85,7 @@ alias reset_camera "sudo usb-reset 0fd9:008a"
 alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
 alias reset_mouse "sudo rmmod hid_magicmouse; sudo modprobe hid_magicmouse"
 alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
+alias ssh-clean "rm ~/.local/ssh/*.control"
 alias ssht "ssh -o RemoteCommand=none"
 alias width "tput cols"
 alias xclip "command xclip -selection c"
@@ -110,27 +111,7 @@ else
     set -x EDITOR vi
 end
 
-alias ssh "command ssh -F ~/.config/ssh/config $argv"
-
-function ssh
-    set -l timeout_flag
-    if test $uname = darwin
-        set timeout_flag G
-    else
-        set timeout_flag w
-    end
-    if string match -q "metanoia*" -- $argv[1]
-        and not nc -z -$timeout_flag 1 metanoia 22 >/dev/null 2>&1
-        echo -n "trying to wake metanoia before SSHing in"
-        wol "a8:a1:59:36:7d:d4"
-        while not nc -z -$timeout_flag 1 metanoia 22 >/dev/null 2>&1
-            echo -n .
-            sleep 1
-        end
-        echo
-    end
-    command ssh -F ~/.config/ssh/config $argv
-end
+alias ssh "command ssh -F ~/.config/ssh/config"
 
 function ls
     if command --query lsd
