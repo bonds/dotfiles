@@ -16,8 +16,14 @@ Match exec "test -e /Users/scott/Library/Containers/com.maxgoedjen.Secretive.Sec
 # Match !exec "echo %h | grep '\.'"
 #     Hostname %h.ggr.com
 
+Match host sophrosyne exec "bash -c 'ping -c 1 -t 1 sophrosyne.local >/dev/null 2>&1' 2>/dev/null"
+    HostName sophrosyne.local
+
+Host sophrosyne
+    HostName home.ggr.com
+
 # let me reconnect without asking me to reauthenticate again for a while
-Match host "*.ggr.com,*.local"
+Match host "*.ggr.com,*.local,sophrosyne"
     ControlMaster auto
     ControlPath ~/.local/ssh/%r@%h:%p.control
     ControlPersist 2h
@@ -29,7 +35,7 @@ Match host "*.ggr.com,*.local"
 #     ProxyCommand /usr/bin/ssh home.ggr.com -W 192.168.4.98:22
 
 # forward SSH agent to hosts where I'm supposedly the only root user
-Match host "*.ggr.com,*.local"
+Match host "*.ggr.com,*.local,sophrosyne"
     ForwardAgent yes
 
 Match host "*.ggr.com,*.local,sophrosyne"
