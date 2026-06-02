@@ -77,6 +77,7 @@ Three machines managed from this repo:
 
 ## Conventions
 
+- **Shell commands must be fish-compatible.** The main interactive shell is fish; zsh only exists as a minimal entry point that immediately execs fish. Use `and` instead of `&&`, `(cmd)` instead of `$(cmd)`, `set -x FOO bar` instead of `export FOO=bar`, and avoid bashisms.
 - `$EDITOR` is helix (`hx`), set in fish config
 - SSH agent via Secretive (TouchID/T2 secure enclave) on macOS
 - Font: Liga SFMono Nerd Font
