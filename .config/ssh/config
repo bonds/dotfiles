@@ -1,6 +1,16 @@
 # moving stuff to XDG directory
 UserKnownHostsFile ~/.local/ssh/known_hosts
 
+# ssh key setup:
+# - primary auth is Secretive (TouchID via Secure Enclave). the socket at
+#   .../SecretAgent/Data/socket.ssh is auto-detected below. this is the key
+#   that should be registered with GitHub, home.ggr.com, etc.
+# - ~/.ssh/id_ed25519_sk (FIDO2 hardware key) currently throws
+#   "sign_and_send_pubkey: invalid format" and doesn't work. avoid it for now.
+# - when both are configured, ssh may try the FIDO key first and hang waiting
+#   for physical touch. if a push/command hangs, check if the FIDO key is
+#   being attempted before Secretive.
+
 # use TouchID SSH keys via Secretive when I'm on my laptop
 Match exec "test -e /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh"
 
