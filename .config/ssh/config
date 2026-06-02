@@ -32,21 +32,13 @@ Host *.ggr.com *.local sophrosyne metanoia
     ControlPath ~/.local/ssh/%r@%h:%p.control
     ControlPersist 2h
     ServerAliveInterval 10s
-
-# use a bastian host to get to home servers when away from home
-# Match host="metanoia.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
-# Match host "!home.ggr.com,*.ggr.com" !exec "nc -G 1 -z %h %p >/dev/null 2>&1"
-#     ProxyCommand /usr/bin/ssh home.ggr.com -W 192.168.4.98:22
-
-# forward SSH agent to hosts where I'm supposedly the only root user
-Host *.ggr.com *.local sophrosyne metanoia
     ForwardAgent yes
 
 Host *.ggr.com *.local sophrosyne
     # forward syncthing web ui ports so I can manage them locally
     LocalForward 8385 127.0.0.1:8384
 
-Match host "sophrosyne.local,sophrosyne,sophrosyne.ggr.com,home.ggr.com"
+Host sophrosyne.local sophrosyne sophrosyne.ggr.com home.ggr.com
     # sophrosyne doesn't know about xterm-ghostty
     SetEnv TERM=xterm-256color
     # forward immich port
