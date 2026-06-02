@@ -22,8 +22,12 @@ Match host sophrosyne exec "bash -c 'ping -c 1 -t 1 sophrosyne.local >/dev/null 
 Host sophrosyne
     HostName home.ggr.com
 
+Host metanoia
+    HostName 192.168.4.98
+    ProxyCommand /Users/scott/bin/metanoia-proxy %h %p
+
 # let me reconnect without asking me to reauthenticate again for a while
-Match host "*.ggr.com,*.local,sophrosyne"
+Host *.ggr.com *.local sophrosyne metanoia
     ControlMaster auto
     ControlPath ~/.local/ssh/%r@%h:%p.control
     ControlPersist 2h
@@ -35,10 +39,10 @@ Match host "*.ggr.com,*.local,sophrosyne"
 #     ProxyCommand /usr/bin/ssh home.ggr.com -W 192.168.4.98:22
 
 # forward SSH agent to hosts where I'm supposedly the only root user
-Match host "*.ggr.com,*.local,sophrosyne"
+Host *.ggr.com *.local sophrosyne metanoia
     ForwardAgent yes
 
-Match host "*.ggr.com,*.local,sophrosyne"
+Host *.ggr.com *.local sophrosyne
     # forward syncthing web ui ports so I can manage them locally
     LocalForward 8385 127.0.0.1:8384
 

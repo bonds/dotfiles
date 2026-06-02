@@ -1,0 +1,41 @@
+#!/usr/bin/env fish
+
+set ip $argv[1]
+set port $argv[2]
+set mac "a8:a1:59:36:7d:d4"
+
+# Determine if we're on the home LAN (0 = at home)
+timeout 1 /Users/scott/bin/athome >/dev/null 2>&1
+set -l at_home $status
+
+function is_reachable
+    if test $at_home -eq 0
+        nc -z -w 1 -G 1 $ip $port >/dev/null 2>&1
+    else
+        ssh -o RemoteCommand=none home.ggr.com nc -z -w 1 $ip $port >/dev/null 2>&1
+    end
+end
+
+if not is_reachable
+    echo -n "waking metanoia"
+    if test $at_home -eq 0
+        /Users/scott/bin/wol "$mac" >/dev/null 2>&1
+    else
+        ssh home.ggr.com -o RemoteCommand=none /Users/scott/bin/wol "$mac" >/dev/null 2>&1
+    end
+
+    for i in (seq 120)
+        echo -n .
+        sleep 1
+        if is_reachable
+            break
+        end
+    end
+    echo
+end
+
+if test $at_home -eq 0
+    exec nc $ip $port
+else
+    exec ssh -W $ip:$port home.ggr.com
+end
