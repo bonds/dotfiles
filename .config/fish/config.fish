@@ -166,6 +166,10 @@ end
 # end
 
 function nr
+    if contains -- --update $argv
+        and test "$uname" = darwin
+        update-ollama --no-rebuild
+    end
     if test "$uname" = darwin
         nh darwin switch $HOME/.config/nix $argv
     else
