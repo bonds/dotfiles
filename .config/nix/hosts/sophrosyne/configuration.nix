@@ -57,6 +57,15 @@
     packages = with pkgs; [];
   };
 
+  # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
+  system.activationScripts.sshAuthorizedKeys = {
+    text = ''
+      mkdir -p /home/scott/.ssh
+      ln -sf /home/scott/.config/ssh/keys /home/scott/.ssh/authorized_keys
+    '';
+    deps = [];
+  };
+
   security.sudo.extraRules = [
     {
       users = ["scott"];
