@@ -88,7 +88,7 @@
         vuclient = (mkPkgs nixpkgs "aarch64-darwin").callPackage "${vudials}/pkgs/vuclient" {};
       };
       modules = [
-        {nixpkgs.overlays = [inputs.nix-index-database.overlays.nix-index];}
+        {nixpkgs.overlays = [inputs.nix-index-database.overlays.nix-index (import ./modules/ollama-overlay.nix)];}
         nix-index-database.darwinModules.nix-index
         ./modules/nix.nix
         ./modules/secrets-check.nix
