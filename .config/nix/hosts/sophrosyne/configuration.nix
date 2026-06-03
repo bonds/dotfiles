@@ -9,15 +9,8 @@
 }: {
   imports = [
     ./hardware-configuration.nix
+    ../../modules/nixos-common.nix
   ];
-
-  nix = let
-    flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
-  in {
-    channel.enable = false;
-    registry = lib.mapAttrs (_: flake: lib.mkDefault {inherit flake;}) flakeInputs;
-    nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
-  };
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -31,22 +24,6 @@
     iptables -I nixos-fw 1 -i enp0s31f6 -p tcp -j ACCEPT
     iptables -I nixos-fw 2 -i enp0s31f6 -p udp -j ACCEPT
   '';
-
-  time.timeZone = "America/Los_Angeles";
-
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "en_US.UTF-8";
-    LC_IDENTIFICATION = "en_US.UTF-8";
-    LC_MEASUREMENT = "en_US.UTF-8";
-    LC_MONETARY = "en_US.UTF-8";
-    LC_NAME = "en_US.UTF-8";
-    LC_NUMERIC = "en_US.UTF-8";
-    LC_PAPER = "en_US.UTF-8";
-    LC_TELEPHONE = "en_US.UTF-8";
-    LC_TIME = "en_US.UTF-8";
-  };
 
   console.keyMap = "dvorak";
 

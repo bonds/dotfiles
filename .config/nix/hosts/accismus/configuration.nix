@@ -57,6 +57,8 @@
       ]))
   ];
 
+  nix.channel.enable = false;
+
   security.pam.services.sudo_local.touchIdAuth = true;
 
   # Set Git commit hash for darwin-version.

@@ -74,6 +74,11 @@ hosts/
     configuration.nix
     hardware-configuration.nix
 modules/           # Shared modules
+  home/            # Home-manager modules (metanoia)
+    gnome.nix      #   GNOME dconf, extensions, keybindings
+    firefox.nix    #   Firefox policies and extensions
+    misc.nix       #   WirePlumber, uBlock, fish plugins, ulauncher
+  nixos-common.nix # Shared NixOS settings (locale, timezone, nix channels)
   vudials-uids.nix # Scott's dial UID defaults (imported by both accismus + metanoia)
 ```
 
@@ -82,7 +87,6 @@ modules/           # Shared modules
 - **`inputs.nixpkgs.follows` can break things on stable channels.** Letting an input follow your nixpkgs can cause build failures if the input expects newer nixpkgs APIs than the stable channel provides. If an input fails to build on a stable channel, remove its follows so it uses its own pinned nixpkgs. This has happened with home-manager and arion in the past.
 - **Can't cross-build x86_64 from aarch64.** `nix flake check` fails evaluating NixOS configs on darwin. Build directly on the target machine (`ssh sophrosyne.local nixos-rebuild build --flake ...`) or deploy via `--target-host`.
 - **`nixos-rebuild switch` needs sudo.** Remote deploy from laptop uses `--target-host scott@host --use-remote-sudo`. Passwordless sudo (`NOPASSWD` in sudoers) is needed for automated deploys.
-- **`nh` is flaky on macOS.** If it breaks, fall back to plain `darwin-rebuild`.
 - **`flake.lock` is tracked.** Commit it after `nix flake update`.
 - **`warn-dirty = false`** is set in `nix.conf` — builds work fine with uncommitted changes.
 - **Uses `pkgs.lix`** as the nix package on all machines, not the default `pkgs.nix`.
@@ -105,3 +109,5 @@ modules/           # Shared modules
 - **VU dials live in a separate flake** at `/Users/scott/.config/nix-vudials` (`github:bonds/nix-vudials`). It exports `overlays.default` (vuserver + vuclient packages), `nixosModules.default`, and `darwinModules.default`. Dial UIDs are configured in `modules/vudials-uids.nix` in this repo (shared by accismus + metanoia).
 - **Launchd agents auto-restart on `darwin-rebuild switch`** via an activation script that detects package hash changes. To manually bounce them: `launchctl kickstart -k gui/501/org.nixos.vuserver && launchctl kickstart -k gui/501/org.nixos.vuclient`.
 - **VU dials require the FTDI VCP driver (dext)** installed once manually from [ftdichip.com/drivers/vcp-drivers/](https://ftdichip.com/drivers/vcp-drivers/). On darwin the device path is `/dev/cu.usbserial-DQ0164KM`; on NixOS it's `/dev/vuserver-DQ0164KM` (managed by udev rules in the vudials module).
+
+- **The ollama overlay on accismus (`modules/ollama-overlay.nix`) is intentionally pinned.** Upstream nixpkgs ollama lags behind upstream releases. This overlay fetches the latest macOS binary directly. The pinned version is updated via the `nr` command's update capability. Do not replace this with `pkgs.ollama` or `pkgs-unstable.ollama` — it's pinned on purpose.

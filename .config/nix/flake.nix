@@ -21,64 +21,41 @@
     arion,
     vudials,
   }: let
+    systems = ["aarch64-darwin" "x86_64-linux"];
+    forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     mkPkgs = importNixpkgs: system:
       import importNixpkgs {
         inherit system;
         config.allowUnfree = true;
       };
+    mkCheck = pkgs: name: buildInputs: script:
+      pkgs.runCommand name {inherit buildInputs;} ''
+        cd ${self}
+        ${script}
+        touch $out
+      '';
   in {
-    formatter = {
-      aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.alejandra;
-      x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.alejandra;
-    };
+    formatter = forAllSystems (pkgs: pkgs.alejandra);
 
-    checks = {
-      aarch64-darwin.format-check =
-        nixpkgs.legacyPackages.aarch64-darwin.runCommand "format-check"
-        {buildInputs = [nixpkgs.legacyPackages.aarch64-darwin.alejandra];} ''
-          cd ${self}
-          alejandra -c . || (echo "Run: alejandra ." && exit 1)
-          touch $out
-        '';
-      x86_64-linux.format-check =
-        nixpkgs.legacyPackages.x86_64-linux.runCommand "format-check"
-        {buildInputs = [nixpkgs.legacyPackages.x86_64-linux.alejandra];} ''
-          cd ${self}
-          alejandra -c . || (echo "Run: alejandra ." && exit 1)
-          touch $out
-        '';
-      aarch64-darwin.secrets-check =
-        nixpkgs.legacyPackages.aarch64-darwin.runCommand "secrets-check"
-        {buildInputs = [nixpkgs.legacyPackages.aarch64-darwin.gitleaks];} ''
-          cd ${self}
-          gitleaks detect \
-            --source . \
-            --no-git \
-            -c ${self}/.gitleaks.toml \
-            --verbose \
-            --exit-code 1
-          touch $out
-        '';
-      x86_64-linux.secrets-check =
-        nixpkgs.legacyPackages.x86_64-linux.runCommand "secrets-check"
-        {buildInputs = [nixpkgs.legacyPackages.x86_64-linux.gitleaks];} ''
-          cd ${self}
-          gitleaks detect \
-            --source . \
-            --no-git \
-            -c ${self}/.gitleaks.toml \
-            --verbose \
-            --exit-code 1
-          touch $out
-        '';
-    };
+    checks = forAllSystems (pkgs: {
+      format-check = mkCheck pkgs "format-check" [pkgs.alejandra] ''
+        alejandra -c . || (echo "Run: alejandra ." && exit 1)
+      '';
+      secrets-check = mkCheck pkgs "secrets-check" [pkgs.gitleaks] ''
+        gitleaks detect \
+          --source . \
+          --no-git \
+          -c ${self}/.gitleaks.toml \
+          --verbose \
+          --exit-code 1
+      '';
+    });
 
-    devShells.aarch64-darwin.default = nixpkgs.legacyPackages.aarch64-darwin.mkShell {
-      packages = [nixpkgs.legacyPackages.aarch64-darwin.alejandra];
-    };
-    devShells.x86_64-linux.default = nixpkgs.legacyPackages.x86_64-linux.mkShell {
-      packages = with nixpkgs.legacyPackages.x86_64-linux; [alejandra nh];
-    };
+    devShells = forAllSystems (pkgs: {
+      default = pkgs.mkShell {
+        packages = [pkgs.alejandra] ++ nixpkgs.lib.optionals (pkgs.stdenv.isLinux) [pkgs.nh];
+      };
+    });
 
     darwinConfigurations.accismus = nix-darwin.lib.darwinSystem {
       specialArgs = {
@@ -115,7 +92,6 @@
         ./hosts/sophrosyne/hardware-configuration.nix
         arion.nixosModules.arion
         nix-index-database.nixosModules.nix-index
-        ./modules/fish-command-not-found.nix
         home-manager.nixosModules.home-manager
       ];
     };
@@ -136,9 +112,8 @@
         ./hosts/metanoia/hardware-configuration.nix
         vudials.nixosModules.default
         ./modules/vudials-uids.nix
-        ./modules/fish-command-not-found.nix
-        home-manager.nixosModules.home-manager
         nix-index-database.nixosModules.nix-index
+        home-manager.nixosModules.home-manager
       ];
     };
   };

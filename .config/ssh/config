@@ -16,8 +16,8 @@ Match exec "test -e /Users/scott/Library/Containers/com.maxgoedjen.Secretive.Sec
 # Match !exec "echo %h | grep '\.'"
 #     Hostname %h.ggr.com
 
-Match host sophrosyne exec "bash -c 'ping -c 1 -t 1 sophrosyne.local >/dev/null 2>&1' 2>/dev/null"
-    HostName sophrosyne.local
+Match host sophrosyne exec "bash -c 'ping -c 1 -t 1 192.168.4.43 >/dev/null 2>&1' 2>/dev/null"
+    HostName 192.168.4.43
 
 Host sophrosyne
     HostName home.ggr.com

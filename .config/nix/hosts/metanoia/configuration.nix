@@ -9,15 +9,8 @@
 }: {
   imports = [
     ./hardware-configuration.nix
+    ../../modules/nixos-common.nix
   ];
-
-  nix = let
-    flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
-  in {
-    channel.enable = false;
-    registry = lib.mapAttrs (_: flake: lib.mkDefault {inherit flake;}) flakeInputs;
-    nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
-  };
 
   networking.hostName = "metanoia";
 
@@ -36,22 +29,6 @@
   networking.networkmanager.enable = true;
   networking.nftables.enable = true;
 
-  time.timeZone = "America/Los_Angeles";
-
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "en_US.UTF-8";
-    LC_IDENTIFICATION = "en_US.UTF-8";
-    LC_MEASUREMENT = "en_US.UTF-8";
-    LC_MONETARY = "en_US.UTF-8";
-    LC_NAME = "en_US.UTF-8";
-    LC_NUMERIC = "en_US.UTF-8";
-    LC_PAPER = "en_US.UTF-8";
-    LC_TELEPHONE = "en_US.UTF-8";
-    LC_TIME = "en_US.UTF-8";
-  };
-
   fonts.packages = with pkgs; [
     helvetica-neue-lt-std
   ];
@@ -69,175 +46,13 @@
         username = "scott";
         homeDirectory = "/home/scott";
         stateVersion = "24.05";
-        packages = with pkgs; [
-          gnome-themes-extra # GTK theme engine and base themes
-        ];
-        file = {
-          ".config/wireplumber/wireplumber.conf.d/51-disable-devices.conf".text = ''
-            monitor.alsa.rules = [
-              {
-                matches = [
-                  {
-                    device.name = "~alsa_card.pci-*"
-                  }
-                  {
-                    device.name = "~alsa_card.usb-Elgato_*"
-                  }
-                ]
-                actions = {
-                  update-props = {
-                  	device.disabled = true
-                  }
-                }
-              }
-            ]
-          '';
-
-          ".mozilla/managed-storage/uBlock0@raymondhill.net.json".text = builtins.toJSON {
-            name = "uBlock0@raymondhill.net";
-            description = "_";
-            type = "storage";
-            data = {
-              adminSettings = {
-                userFilters = ''
-                  cnn.com##.header__wrapper-outer:style(height: 30px !important)
-                '';
-              };
-            };
-          };
-        };
       };
 
-      programs.home-manager.enable = true;
-      programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
-      systemd.user.startServices = "sd-switch";
-
-      xdg.desktopEntries = {
-        dwarf = {
-          name = "Dwarf Fortress";
-          comment = "a really great game";
-          exec = "dwarf-fortress";
-          settings = {
-            Path = "/run/current-system/sw/bin";
-          };
-        };
-      };
-
-      dconf.settings = let
-        inherit (lib.gvariant) mkTuple mkUint32 mkVariant;
-      in {
-        "org/gnome/settings-daemon/plugins/power" = {
-          sleep-inactive-ac-timeout = 900;
-        };
-        "org/gnome/desktop/interface" = {
-          color-scheme = "prefer-dark";
-          gtk-theme = "Adwaita-dark";
-        };
-        "org/gnome/settings-daemon/plugins/color" = {
-          night-light-enabled = true;
-        };
-        "org/gnome/shell" = {
-          enabled-extensions = [
-            "dash-to-panel@jderose9.github.com"
-            "another-window-session-manager@gmail.com"
-            "pano@elhan.io"
-            "blur-my-shell@aunetx"
-            "espresso@coadmunkee.github.com"
-            "window-calls@domandoman.xyz"
-          ];
-        };
-        "org/gnome/shell/extensions/dash-to-panel" = {
-          dot-position = "BOTTOM";
-          show-favorites = false;
-          hide-overview-on-startup = false;
-          isolate-monitors = true;
-          panel-positions = ''
-            {"0":"TOP","1":"TOP","2":"TOP"}
-          '';
-          panel-sizes = ''
-            {"0":36,"1":36,"2":36}
-          '';
-          status-icon-padding = 4;
-          panel-element-positions = ''
-            {"0":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":false,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"1":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":false,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}],"2":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":true,"position":"stackedBR"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":false,"position":"stackedBR"},{"element":"systemMenu","visible":false,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}
-          '';
-        };
-        "org/gnome/desktop/input-sources" = {
-          xkb-options = [
-            "terminate:ctrl_alt_bksp"
-            "ctrl:swap_lwin_lctl"
-            "ctrl:swap_rwin_rctl"
-          ];
-        };
-        "org/gnome/desktop/wm/preferences" = {
-          num-workspaces = 1;
-        };
-        "org/gnome/shell/weather" = {
-          automatic-location = true;
-          locations = [
-            (mkVariant (mkTuple [
-              (mkUint32 2)
-              (mkVariant (mkTuple [
-                "Palo Alto"
-                "KPAO"
-                true
-                [(mkTuple [0.6539166988983063 (-2.1313379107115065)])]
-                [(mkTuple [0.653484136496492 (-2.1317978398759916)])]
-              ]))
-            ]))
-          ];
-        };
-        "org/gnome/shell/world-clocks" = {
-          locations = [
-            (mkVariant (mkTuple [
-              (mkUint32 2)
-              (mkVariant (mkTuple [
-                "Tel Aviv"
-                "LLBG"
-                true
-                [(mkTuple [0.5585053606381855 0.609119908946021])]
-                [(mkTuple [0.5596689192906126 0.6067928090944594])]
-              ]))
-            ]))
-          ];
-        };
-        "org/gnome/desktop/background" = {
-          picture-uri = "file:///home/scott/.config/background";
-          picture-option = "spanned";
-          picture-uri-dark = "file:///home/scott/.config/background";
-        };
-        "org/gnome/settings-daemon/plugins/media-keys" = {
-          custom-keybindings = [
-            "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
-            "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
-          ];
-        };
-        "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
-          name = "Ulauncher";
-          binding = "<Control>space";
-          command = "/run/current-system/sw/bin/ulauncher-toggle";
-        };
-        "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
-          name = "maximize window across all monitors";
-          binding = "<Control><Shift>m";
-          command = "/home/scott/bin/linux/maximize_across_multiple_monitors";
-        };
-        "org/gnome/Console" = {
-          font-scale = 1.3;
-          use-system-font = false;
-          custom-font = "Liga SFMono Nerd Font 10";
-        };
-        "org/gnome/shell/keybindings" = {
-          show-screen-recording-ui = [
-            "<Shift><Control>p"
-          ];
-        };
-        "org/gnome/shell/extensions/another-window-session-manager" = {
-          enable-autorestore-sessions = true;
-          restore-at-startup-without-asking = true;
-          autorestore-sessions = "defaultSession";
-        };
-      };
+      imports = [
+        ../../modules/home/gnome.nix
+        ../../modules/home/firefox.nix
+        ../../modules/home/misc.nix
+      ];
     };
   };
 
@@ -428,15 +243,14 @@
     tagger # music metadata editor
     jujutsu # version control system (git-compatible)
     delta # syntax-highlighting pager for git
-    whatsapp-for-linux # WhatsApp desktop client
+    karere # WhatsApp desktop client (replaces unmaintained whatsapp-for-linux)
     pkgs-unstable.python312Packages.python-kasa # control TP-Link smart home devices
     uefitool # UEFI firmware image viewer and editor
     gamescope # micro-compositor for running games in a window
     yubioath-flutter # YubiKey OTP and oath manager
     coreutils # GNU core utilities (cp, mv, ls, etc.)
     kakoune # modal code editor (vim-inspired)
-    zulip # team chat desktop client
-    ventoy-full # create bootable USB drives for ISOs
+
     resources # system resource monitor (like htop GUI)
     keeweb # cross-platform password manager
     # moreutils, pstree are in modules/packages/common.nix
@@ -446,7 +260,7 @@
     nodejs # JavaScript runtime
     gcc # GNU C compiler
     libreoffice # open-source office suite
-    glxinfo # display OpenGL and GLX info
+    mesa-demos # display OpenGL and GLX info (formerly glxinfo)
     newsflash # RSS feed reader
     libresprite # pixel art editor (Aseprite fork)
     pkgs-unstable.mailspring # open-source email client
@@ -499,7 +313,6 @@
     wmctrl # control X window manager from scripts
     obsidian # knowledge base and note-taking app
     dwarf-fortress # colony management simulation game
-    nerdfonts # icon fonts for developers
     zoom-us # video conferencing client
     desktop-file-utils # utilities for .desktop files
     rustc # Rust compiler
