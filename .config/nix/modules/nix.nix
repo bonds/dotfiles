@@ -4,7 +4,6 @@
   ...
 }: {
   nix.package = lib.mkDefault pkgs.lix;
-  nix.settings.experimental-features = lib.mkDefault "nix-command flakes";
   nix.settings.nix-path = lib.mkDefault "";
   nix.settings.flake-registry = lib.mkDefault "";
   nix.settings.warn-dirty = lib.mkDefault false;
