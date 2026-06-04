@@ -39,10 +39,6 @@
     text = ''
       mkdir -p /home/scott/.ssh
       ln -sf /home/scott/.config/ssh/keys /home/scott/.ssh/authorized_keys
-      # Don't track the symlink in git (activation script recreates it)
-      mkdir -p /home/scott/.config/nix/.git/info
-      grep -q 'authorized_keys' /home/scott/.config/nix/.git/info/exclude 2>/dev/null || \
-        echo "../../.ssh/authorized_keys" >> /home/scott/.config/nix/.git/info/exclude
     '';
     deps = [];
   };
