@@ -14,6 +14,7 @@
     nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
     settings.experimental-features = lib.mkDefault "nix-command flakes auto-allocate-uids";
     settings.auto-allocate-uids = lib.mkDefault true;
+    settings.use-cgroups = lib.mkDefault true;
   };
 
   time.timeZone = "America/Los_Angeles";
