@@ -7,7 +7,6 @@ import Data.Maybe
 import Data.Nat
 import Data.String
 import System
-import System.Console.GetOpt
 import System.File
 
 -- rainbow
@@ -127,18 +126,23 @@ record Options where
 defaults : Options
 defaults = MkOptions False Nothing Nothing
 
-opts : List (OptDescr (Options -> Options))
-opts =
-    [ MkOpt ['h']     ["help"]
-        -- (NoArg (\os => { optShowHelp := True } os))
-        (NoArg (\os =>  MkOptions True os.optWidth Nothing))
-        "show this help text"
-    , MkOpt ['w']     ["width"]
-        (OptArg ((\w,os => 
-            MkOptions os.optShowHelp (parseInteger (fromMaybe "" w)) Nothing))
-            "number")
-        "width of rainbow to print"
-    ]
+parseArgs : List String -> Options
+parseArgs args = go args defaults
+  where
+    go : List String -> Options -> Options
+    go [] opts = opts
+    go (x :: rest) opts = case x of
+        "--help" => go rest (MkOptions True opts.optWidth opts.optMessage)
+        "-h" => go rest (MkOptions True opts.optWidth opts.optMessage)
+        "--width" => case rest of
+            (w :: rest') => go rest' (MkOptions opts.optShowHelp (parseInteger w) opts.optMessage)
+            [] => opts
+        "-w" => case rest of
+            (w :: rest') => go rest' (MkOptions opts.optShowHelp (parseInteger w) opts.optMessage)
+            [] => opts
+        _ => case opts.optMessage of
+                Nothing => go rest (MkOptions opts.optShowHelp opts.optWidth (Just x))
+                Just m  => go rest (MkOptions opts.optShowHelp opts.optWidth (Just (m ++ " " ++ x)))
 
 -- |Get the width of the current terminal in columns. BTW using 'stty size'
 -- instead of 'tput cols' because 'tput' reports the wrong size under certain
@@ -148,50 +152,61 @@ terminalWidth = do
     (output, _) <- run "stty size | awk '{print $2}'"
     pure $ parseInteger output
 
-finalOpts : List String -> Options
-finalOpts args = 
-    {optMessage := non $ nonOptions (results args)}
-        (foldl (flip id) defaults (options $ results args))
-  where
-    results : List String -> Result (Options -> Options)
-    results args = getOpt Permute opts args
-    non : List String -> Maybe String
-    non [ ] = Nothing
-    non [_] = Nothing
-    non (x::xs) = Just $ unwords xs 
-
-helpHeader : String
-helpHeader = "rainbow - print all the colors of the " 
-          ++ rainbowize "rainbow" ++ "\n\n"
-          ++ "Usage: rainbow [OPTIONS] [STRING]\n\n"
-          ++ "Available options:"
+helpText : String
+helpText = "rainbow - print all the colors of the " 
+        ++ rainbowize "rainbow" ++ "\n\n"
+        ++ "Usage: rainbow [-w|--width WIDTH] [STRING]\n\n"
+        ++ "Available options:\n"
+        ++ "  -w,--width WIDTH         number of characters to print, defaults to the\n"
+        ++ "                           width of the terminal\n"
+        ++ "  STRING                   string to rainbowize\n"
+        ++ "  -h,--help                Show this help text\n"
 
 clearRainbow : Maybe Integer -> Maybe Integer -> String
 clearRainbow (Just ow) _ = rainbowize ow
 clearRainbow _ (Just tw) = rainbowize tw
 clearRainbow Nothing Nothing = rainbowize 80
 
-getPipedMessage : IO (Either FileError String)
-getPipedMessage = do
-    Right f <- openFile "/dev/stdin" Read
-        | Left e => pure $ Left e
-    Right s <- fileSize f
-        | Left e => pure $ Left e
-    fGetChars f s
+readAllLines : File -> IO (Either FileError String)
+readAllLines f = go ""
+  where
+    go : String -> IO (Either FileError String)
+    go acc = do
+        Right line <- fGetLine f
+            | Left _ => pure (Right acc)
+        let acc' = acc ++ line
+        if line == ""
+            then pure (Right acc')
+            else go acc'
 
-messageOrBar : Options -> IO ()
-messageOrBar o = do
-    case o.optMessage of 
-        Just m  => putStrLn $ rainbowize m
-        Nothing => putStr $ clearRainbow o.optWidth !terminalWidth
+getPipedMessage : IO (Maybe String)
+getPipedMessage = do
+    (isTerm, _) <- run "test -t 0 && echo yes || echo no"
+    case trim isTerm of
+        "yes" => pure Nothing
+        _ => do
+            Right f <- openFile "/dev/stdin" Read
+                | Left _ => pure Nothing
+            Right contents <- readAllLines f
+                | Left _ => pure Nothing
+            closeFile f
+            let trimmed = trim contents
+            case trimmed of
+                "" => pure Nothing
+                _  => pure (Just trimmed)
 
 main : IO ()
 main = do
-    let o = finalOpts !getArgs
+    allArgs <- getArgs
+    let o = parseArgs (drop 1 allArgs)
     if o.optShowHelp
-        then putStr $ usageInfo helpHeader opts
-        else case !getPipedMessage of
-            Right m => case m of
-                ""        => messageOrBar o
-                otherwise => putStr $ rainbowize m
-            Left _ => messageOrBar o
+        then putStr helpText
+        else do
+            piped <- getPipedMessage
+            case piped of
+                Just m  => putStrLn $ rainbowize m
+                Nothing => case o.optMessage of
+                    Just m  => putStrLn $ rainbowize m
+                    Nothing => do
+                        tw <- terminalWidth
+                        putStr $ clearRainbow o.optWidth tw
