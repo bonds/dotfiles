@@ -61,7 +61,7 @@
     docker-compose # define and run multi-container Docker apps
     dmidecode # read system DMI/BIOS info
     edac-utils # memory error detection and reporting tools
-    # most common packages are in modules/packages/common.nix
+    # most common packages are in modules/packages/dev.nix and utils.nix
   ];
 
   services.openssh.enable = true;

@@ -9,7 +9,7 @@
 
   # List packages installed in system profile. To search by name, run:
   # $ nix search nixpkgs wget
-  # Common packages shared with all machines are in modules/packages/common.nix
+  # Common packages shared with all machines are in modules/packages/dev.nix and utils.nix
   environment.systemPackages = with pkgs; [
     xclip # for copying from terminal to clipboard
     opencode # like claude code but open source

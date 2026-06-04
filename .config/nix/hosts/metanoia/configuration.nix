@@ -231,7 +231,7 @@
   '';
 
   environment.systemPackages = with pkgs; [
-    # Common packages shared with all machines are in modules/packages/common.nix
+    # Common packages shared with all machines are in modules/packages/dev.nix and utils.nix
     chromium # web browser
     pkgs-unstable.ghostty # fast GPU-accelerated terminal emulator
     todoist # task manager desktop app
@@ -253,7 +253,7 @@
 
     resources # system resource monitor (like htop GUI)
     keeweb # cross-platform password manager
-    # moreutils, pstree are in modules/packages/common.nix
+    # moreutils, pstree are in modules/packages/utils.nix
     amberol # small and simple music player
     apostrophe # distraction-free Markdown editor
     dig # DNS lookup utility

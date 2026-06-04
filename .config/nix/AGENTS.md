@@ -79,13 +79,16 @@ modules/           # Shared modules
     firefox.nix    #   Firefox policies and extensions
     misc.nix       #   WirePlumber, uBlock, fish plugins, ulauncher
   nixos-common.nix # Shared NixOS settings (locale, timezone, nix channels)
+  packages/        # Per-machine package lists
+    dev.nix        #   Dev tools (editors, languages, SCM)
+    utils.nix      #   System utilities (file, network, system tools)
   vudials-uids.nix # Scott's dial UID defaults (imported by both accismus + metanoia)
 ```
 
 ## Gotchas
 
 - **`inputs.nixpkgs.follows` can break things on stable channels.** Letting an input follow your nixpkgs can cause build failures if the input expects newer nixpkgs APIs than the stable channel provides. If an input fails to build on a stable channel, remove its follows so it uses its own pinned nixpkgs. This has happened with home-manager and arion in the past.
-- **Can't cross-build x86_64 from aarch64.** `nix flake check` fails evaluating NixOS configs on darwin. Build directly on the target machine (`ssh sophrosyne.local nixos-rebuild build --flake ...`) or deploy via `--target-host`.
+- **`nix flake check` works on darwin** — NixOS configs evaluate fine cross-platform. Cannot cross-build x86_64 from aarch64 though; build directly on the target machine or deploy via `--target-host`.
 - **`nixos-rebuild switch` needs sudo.** Remote deploy from laptop uses `--target-host scott@host --use-remote-sudo`. Passwordless sudo (`NOPASSWD` in sudoers) is needed for automated deploys.
 - **`flake.lock` is tracked.** Commit it after `nix flake update`.
 - **`warn-dirty = false`** is set in `nix.conf` — builds work fine with uncommitted changes.

@@ -1,14 +1,5 @@
 # Commands to run in interactive sessions can go here
 
-# if test -n "$SSH_CONNECTION"
-#     set from (echo $SSH_CONNECTION | awk '{print $1}')
-#     set to (echo $SSH_CONNECTION | awk '{print $3}')
-#     gnome-session-inhibit \
-#         --app-id scott@ggr.com \
-#         --reason "is SSHed into $hostname ($to) from $from" \
-#         --inhibit-only &
-# end
-
 set uname (string lower (uname))
 
 if command --query ionice
@@ -20,11 +11,6 @@ set --append fish_user_paths ~/bin/"$uname"
 set --append fish_user_paths ~/bin
 set --append fish_user_paths ~/.local/bin
 set --append fish_user_paths ~/.cargo/bin
-# set --append fish_user_paths ~/Library/Python/3.10/bin
-
-# for python
-# source $VENV_DIR/bin/activate.fish
-
 # for building idris2 on openbsd
 # remember to run pkg_add racket-minimal
 # remember to run raco pkg install compiler-lib
@@ -35,9 +21,6 @@ set -x IDRIS2_PREFIX ~/.local/lib
 # nix flakes needs this
 set -x NIXPKGS_ALLOW_UNFREE 1
 
-# docker cli on sophrosyne.local needs this
-# set -x DOCKER_HOST ssh://root@172.16.0.100
-
 # my favorite date format
 set -x DATEFMT "+%F %T"
 
@@ -45,7 +28,6 @@ set -x PASSAGE_DIR $HOME/.config/passage/store
 set -x PASSAGE_IDENTITIES_FILE $HOME/.config/passage/identities
 
 if status --is-interactive
-    #    devbox global shellenv --init-hook | source
     if command --query starship
         set ssc "$HOME/.config/starship/$uname.toml"
         if locale 2>&1 | grep -q UTF-8; and test -e "$ssc"
@@ -76,10 +58,8 @@ alias day "date '+%Y%m%d'"
 alias ghci "ghci -ghci-script ~/.config/ghc/ghci.rio.conf -ghci-script ~/.config/ghc/ghci.conf"
 alias height "tput lines"
 alias idris "rlwrap --history-filename ~/.local/idris.history idris2 --package contrib"
-# alias myip "curl --silent https://checkip.amazonaws.com"
 alias myip "mylocation | jq \".ip\" | sed 's/\\\"//g'"
 alias myweather "weather (mylocation | jq \".loc\" | sed 's/\\\"//g')"
-# alias nix "command nix --extra-experimental-features nix-command --extra-experimental-features flakes"
 alias nix-shell "command nix-shell --command fish"
 alias reset_camera "sudo usb-reset 0fd9:008a"
 alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
@@ -159,12 +139,6 @@ function ping
     end
 end
 
-# if command --query nh_darwin
-#     alias nh "nice nh_darwin"
-# else
-#     alias nh "nice (which nh)"
-# end
-
 function nr
     if contains -- --update $argv
         and test "$uname" = darwin
@@ -181,12 +155,6 @@ function hr
     nice home-manager $argv switch --flake ~/.config/nix
 end
 
-# function nix
-#     # set -x NIX_CONFIG (secret-tool lookup name 'NIX_CONFIG')
-#     # set -x NIX_CONFIG (passage NIX_CONFIG)
-#     command nix --extra-experimental-features nix-command --extra-experimental-features flakes $argv
-# end
-
 function age
     if command --query rage
         rage $argv
@@ -197,13 +165,6 @@ end
 
 set fzf_directory_opts --bind "ctrl-o:execute($EDITOR {} &> /dev/tty)"
 set fzf_fd_opts --hidden --exclude=.git
-
-# if not set --query NIX_CONFIG
-#     set id $HOME/.config/passage/(hostname).identity
-#     if test -e $id
-#         set -x NIX_CONFIG (age -d -i ~/.config/passage/(hostname).identity ~/.config/passage/store/NIX_CONFIG.age)
-#     end
-# end
 
 # Added by LM Studio CLI (lms)
 set -gx PATH $PATH /Users/scott/.lmstudio/bin
