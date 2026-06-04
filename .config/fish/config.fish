@@ -159,7 +159,7 @@ function age
     if command --query rage
         rage $argv
     else
-        age $argv
+        command age $argv
     end
 end
 

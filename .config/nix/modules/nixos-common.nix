@@ -9,7 +9,6 @@
   nix = let
     flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
   in {
-    channel.enable = false;
     registry = lib.mapAttrs (_: flake: lib.mkDefault {inherit flake;}) flakeInputs;
     nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
     settings.experimental-features = lib.mkDefault "nix-command flakes auto-allocate-uids cgroups";

@@ -15,5 +15,6 @@
     automatic = lib.mkDefault true;
     options = lib.mkDefault "--delete-older-than 30d";
   };
+  nix.channel.enable = lib.mkDefault false;
   nixpkgs.config.allowUnfree = lib.mkDefault true;
 }

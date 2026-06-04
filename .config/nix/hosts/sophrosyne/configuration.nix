@@ -31,6 +31,7 @@
     isNormalUser = true;
     description = "Scott Bonds";
     extraGroups = ["networkmanager" "wheel" "docker"];
+    shell = pkgs.fish;
     packages = with pkgs; [];
   };
 
@@ -323,8 +324,6 @@
       fi
     '';
   };
-
-  services.home-assistant.enable = false;
 
   # REMINDER: When adding a secret here, also add a warn_missing check
   # in system.activationScripts.checkSecrets above.

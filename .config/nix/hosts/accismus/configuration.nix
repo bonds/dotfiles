@@ -57,7 +57,6 @@
       ]))
   ];
 
-  nix.channel.enable = false;
   nix.settings.experimental-features = "nix-command flakes";
 
   security.pam.services.sudo_local.touchIdAuth = true;
