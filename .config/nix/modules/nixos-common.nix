@@ -12,9 +12,7 @@
     channel.enable = false;
     registry = lib.mapAttrs (_: flake: lib.mkDefault {inherit flake;}) flakeInputs;
     nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
-    settings.experimental-features = lib.mkDefault "nix-command flakes auto-allocate-uids";
-    settings.auto-allocate-uids = lib.mkDefault true;
-    settings.use-cgroups = lib.mkDefault true;
+    settings.experimental-features = lib.mkDefault "nix-command flakes";
   };
 
   time.timeZone = "America/Los_Angeles";
