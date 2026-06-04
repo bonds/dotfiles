@@ -1,0 +1,2 @@
+# Managed by nix activation scripts (symlink to ~/.config/ssh/keys)
+.ssh/authorized_keys

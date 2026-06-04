@@ -62,6 +62,15 @@
 
   security.pam.services.sudo_local.touchIdAuth = true;
 
+  # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
+  system.activationScripts.sshAuthorizedKeys = {
+    text = ''
+      mkdir -p /Users/scott/.ssh
+      ln -sf /Users/scott/.config/ssh/keys /Users/scott/.ssh/authorized_keys
+    '';
+    deps = [];
+  };
+
   # Set Git commit hash for darwin-version.
   system.configurationRevision = self.rev or self.dirtyRev or null;
 

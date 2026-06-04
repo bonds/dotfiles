@@ -33,8 +33,8 @@ All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git
 
 ### SSH
 - `.config/ssh/config` — SSH client config (Secretive agent on macOS, ControlMaster for `*.ggr.com`/`*.local`, auto-tmux on remote connections, port forwarding)
-- `.config/ssh/keys` — authorized SSH keys (directory)
-- `.ssh/authorized_keys` — keys allowed to connect to this machine
+- `.config/ssh/keys` — authorized SSH keys (content tracked in git)
+- `.ssh/authorized_keys` — symlink to `~/.config/ssh/keys`, created by nix activation (not tracked in git)
 
 ### Nix
 - `.config/nix/` — **full nix flake for all machines** (see `.config/nix/AGENTS.md` for detailed docs)
