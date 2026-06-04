@@ -83,13 +83,9 @@ main = do
                  Just . decodeUtf8Lenient <$> B.getContents
              else 
                  return $ message args
-    B.putStr $ encodeUtf8 $ colorit wi mmsg' <> "\n"
-  where
-    colorit :: Int -> Maybe Text -> Text
-    colorit wid mmess =
-        case mmess of
-            Just mess -> rainbowize mess
-            Nothing   -> rainbowize wid
+    case mmsg' of
+        Just mess -> B.putStr $ encodeUtf8 $ rainbowize mess <> "\n"
+        Nothing   -> B.putStr $ encodeUtf8 $ rainbowize wi
 
 data Options = Options
   { width :: Maybe Int
@@ -215,6 +211,6 @@ rainbow'' wi (rx, gx, bx) cy@(ry, gy, by) sofar
     | wi == 1 = sofar
     | otherwise = rainbow'' (wi-1) newcolor cy (sofar ++ [newcolor])
   where
-    newcolor = ((rx + (ry-rx) `div` wi)
-              , (gx + (gy-gx) `div` wi)
-              , (bx + (by-bx) `div` wi))
+    newcolor = ((rx + (ry-rx) `quot` wi)
+              , (gx + (gy-gx) `quot` wi)
+              , (bx + (by-bx) `quot` wi))
