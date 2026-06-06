@@ -140,6 +140,7 @@ function ping
 end
 
 function nr
+    set -l _nr_old_system (command readlink /run/current-system)
     if contains -- --update $argv
         and test "$uname" = darwin
         update-ollama --no-rebuild
@@ -148,6 +149,10 @@ function nr
         nh darwin switch $HOME/.config/nix $argv
     else
         nh os switch $HOME/.config/nix $argv
+    end
+    set -l _nr_new_system (command readlink /run/current-system)
+    if test "$_nr_old_system" != "$_nr_new_system"
+        what-changed "$_nr_old_system" "$_nr_new_system"
     end
 end
 
