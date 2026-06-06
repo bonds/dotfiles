@@ -209,7 +209,7 @@
       };
 
       dontstarve.settings.services.dontstarve.service = {
-        image = "jamesits/dst-server:latest";
+        image = "jamesits/dst-server:nightly";
         restart = "on-failure:5";
         stop_grace_period = "6m";
         volumes = [
@@ -431,12 +431,6 @@
   #   port = 2283;
   #   mediaLocation = "/dragon/immich";
   # };
-
-  services.tailscale = {
-    enable = true;
-    useRoutingFeatures = "both";
-    package = pkgs-unstable.tailscale;
-  };
 
   hardware.bluetooth.enable = true;
 
