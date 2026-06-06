@@ -74,6 +74,7 @@ Three machines managed from this repo:
 - **accismus** — macOS laptop (aarch64-darwin, nix-darwin)
 - **metanoia** — NixOS workstation (x86_64-linux)
 - **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
+  - **Temperature logging:** NVMe/CPU temps and fan speeds are logged every minute to `/dragon/logs/temps.log` via `log-temps.timer`. After a crash or lockup, check the last entries in this file to see if temps spiked before the failure. The log survives reboots since it's on the ZFS pool.
 
 ## Conventions
 
