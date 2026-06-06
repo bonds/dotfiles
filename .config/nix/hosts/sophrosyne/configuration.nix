@@ -436,5 +436,38 @@
 
   hardware.rasdaemon.enable = true;
 
+  # Log NVMe/CPU temps and fan speeds every minute for thermal diagnostics
+  systemd.services.log-temps = let
+    logScript = pkgs.writeShellScript "log-temps" ''
+      log=/dragon/logs/temps.log
+      ts=$(date +%s)
+      printf "%s " "$ts" >> "$log"
+      for d in /dev/nvme*n1; do
+        t=$(${pkgs.nvme-cli}/bin/nvme smart-log "$d" 2>/dev/null | sed -n 's/^temperature.*: *\([0-9]*\).*/\1/p')
+        printf "nvme-%s=%s " "$(basename $d)" "$t" >> "$log"
+      done
+      cpu=$(cat /sys/devices/platform/coretemp.0/hwmon/hwmon9/temp1_input 2>/dev/null)
+      printf "cpu=%s " "$((cpu / 1000))" >> "$log"
+      f1=$(cat /sys/devices/platform/dell_smm_hwmon/hwmon/hwmon10/fan1_input 2>/dev/null)
+      f2=$(cat /sys/devices/platform/dell_smm_hwmon/hwmon/hwmon10/fan2_input 2>/dev/null)
+      printf "fan-cpu=%s fan-sys=%s" "$f1" "$f2" >> "$log"
+      echo >> "$log"
+    '';
+  in {
+    description = "Log temperatures to /dragon/logs/temps.log";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = logScript;
+    };
+  };
+  systemd.timers.log-temps = {
+    description = "Log temperatures every minute";
+    timerConfig = {
+      OnCalendar = "minutely";
+      Persistent = true;
+    };
+    wantedBy = ["timers.target"];
+  };
+
   system.configurationRevision = self.rev or self.dirtyRev or null;
 }
