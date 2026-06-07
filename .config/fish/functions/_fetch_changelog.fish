@@ -73,7 +73,17 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
                     for i in (seq 1 (math "min($max_bullets, $bcount)"))
                         set -l b (echo "$bullets[$i]" | string replace -ra '(\w+)\s+\1' '$1' | string trim)
                         set_color brblack
-                        echo "  • $b"
+                        if command --query python3
+                            echo "$b" | python3 -sc "
+import textwrap, shutil, sys
+w = shutil.get_terminal_size().columns
+line = sys.stdin.read().strip()
+if line:
+    print(textwrap.fill(line, w, initial_indent='  • ', subsequent_indent='    '))
+" 2>/dev/null
+                        else
+                            echo "  • $b"
+                        end
                         set_color normal
                     end
                     if test $bcount -gt $max_bullets
@@ -86,7 +96,18 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
                 # No bullets found — dump as single line fallback
                 if test (count $non_bullets) -gt 0
                     set_color brblack
-                    echo "  "(string join ' ' $non_bullets)
+                    set -l fb (string join ' ' $non_bullets)
+                    if command --query python3
+                        echo "$fb" | python3 -sc "
+import textwrap, shutil, sys
+w = shutil.get_terminal_size().columns
+line = sys.stdin.read().strip()
+if line:
+    print(textwrap.fill(line, w, initial_indent='  ', subsequent_indent='    '))
+" 2>/dev/null
+                    else
+                        echo "  $fb"
+                    end
                     set_color normal
                     return
                 end
@@ -95,7 +116,18 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
 
         set_color brblack
         for i in (seq 1 (math "min(25, "(count $buf)")"))
-            echo "  $buf[$i]"
+            set -l l (string trim -- "$buf[$i]")
+            if command --query python3
+                echo "$l" | python3 -sc "
+import textwrap, shutil, sys
+w = shutil.get_terminal_size().columns
+line = sys.stdin.read().strip()
+if line:
+    print(textwrap.fill(line, w, initial_indent='  ', subsequent_indent='    '))
+" 2>/dev/null
+            else
+                echo "  $l"
+            end
         end
         if test (count $buf) -gt 25
             echo "  ... (truncated)"
