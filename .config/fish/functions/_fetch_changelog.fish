@@ -19,7 +19,7 @@ function _fetch_changelog -a url pkg_name pkg_desc
 
         if command --query ollama
             set -l text (printf '%s\n' $buf | head -c 10000)
-            set -l summary (printf '%s' "Summarize in 1 line: what changed in $pkg_name. Be brief.
+            set -l summary (printf '%s' "Summarize in 1 line: what changed in $pkg_name. Be brief. Respond in English.
 
 $text" | env OLLAMA_HOST=192.168.4.43:11434 timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
             if test -n "$summary"
