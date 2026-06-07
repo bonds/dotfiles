@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import itertools
 import shutil
+import sys
 import textwrap
+import threading
+import time
 
 def _dim(text: str, **kwargs):
     print(f"\033[90m{text}\033[m", **kwargs)
@@ -22,6 +26,31 @@ def _bold_cyan(text: str, **kwargs):
 def _wrap(text: str, indent: str = "  ", subsequent: str = "    ") -> str:
     w = shutil.get_terminal_size().columns
     return textwrap.fill(text, w, initial_indent=indent, subsequent_indent=subsequent)
+
+
+def _spinner_thread(stop: threading.Event, total: int, done_ref: list[int]):
+    for frame in itertools.cycle(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]):
+        if stop.is_set():
+            break
+        d = done_ref[0]
+        sys.stdout.write(f"\r  {frame} Checking {d}/{total} packages... ")
+        sys.stdout.flush()
+        time.sleep(0.08)
+
+
+def run_spinner(total: int) -> tuple[threading.Thread, threading.Event, list[int]]:
+    stop = threading.Event()
+    done_ref = [0]
+    t = threading.Thread(target=_spinner_thread, args=(stop, total, done_ref), daemon=True)
+    t.start()
+    return t, stop, done_ref
+
+
+def stop_spinner(t: threading.Thread, stop: threading.Event):
+    stop.set()
+    t.join()
+    sys.stdout.write("\r" + " " * shutil.get_terminal_size().columns + "\r")
+    sys.stdout.flush()
 
 
 def show_header(count: int):

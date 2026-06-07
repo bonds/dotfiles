@@ -43,7 +43,7 @@ def main():
     max_width = max(len(c.name) for c in changes) + 2
     max_width = max(max_width, 18)
 
-    display.show_header(len(changes))
+    spin_thread, spin_stop, spin_done = display.run_spinner(len(changes))
 
     results: dict[int, tuple[str | None, list[str] | None]] = {}
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -54,7 +54,11 @@ def main():
                 results[idx] = (description, bullets)
             except Exception:
                 pass
+            spin_done[0] += 1
 
+    display.stop_spinner(spin_thread, spin_stop)
+
+    display.show_header(len(changes))
     for i, c in enumerate(changes):
         description, bullets = results.get(i, (None, None))
         display.show_package(
