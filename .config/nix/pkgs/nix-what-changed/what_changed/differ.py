@@ -27,7 +27,7 @@ def run_diff(old_system: str, new_system: str) -> list[PackageChange]:
         if not m:
             continue
         pkg = m.group(1)
-        old_ver = m.group(2).strip()
+        old_ver = re.sub(r",.*$", "", m.group(2)).strip()
         new_ver = re.sub(r",.*$", "", m.group(3)).strip()
         if old_ver != "∅" and new_ver != "∅":
             changes.append(PackageChange(pkg, old_ver, new_ver))

@@ -29,6 +29,8 @@ def main():
     for c in changes:
         changelog_url = metadata.get_changelog_url(c.name)
         description = metadata.get_description(c.name)
+        if not description and c.name == "darwin-system":
+            description = "nix-darwin system closure"
         bullets = None
 
         if not changelog_url:

@@ -11,8 +11,8 @@ def _green(text: str, **kwargs):
     print(f"\033[32m{text}\033[m", **kwargs)
 
 
-def _bold(text: str, **kwargs):
-    print(f"\033[1m{text}\033[m", **kwargs)
+def _yellow(text: str, **kwargs):
+    print(f"\033[33m{text}\033[m", **kwargs)
 
 
 def _bold_cyan(text: str, **kwargs):
@@ -34,13 +34,13 @@ def show_package(pkg: str, old_ver: str, new_ver: str,
                  description: str | None,
                  bullets: list[str] | None,
                  max_width: int):
-    bold_part = f"\033[1m  {pkg:<{max_width}}\033[m"
+    name_part = f"\033[33m  {pkg:<{max_width}}\033[m"
     dim_part = f"\033[90m{old_ver}\033[m"
     green_part = f"\033[32m → {new_ver}\033[m"
-    print(f"{bold_part}{dim_part}{green_part}")
+    print(f"{name_part}{dim_part}{green_part}")
 
     if description:
-        print(_wrap(description, indent="  ↳ ", subsequent="    "))
+        print(f"\033[33m{_wrap(description, indent='  ↳ ', subsequent='    ')}\033[m")
 
     if bullets:
         max_bullets = 5
