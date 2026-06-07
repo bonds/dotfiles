@@ -1,7 +1,17 @@
 function _fetch_changelog -a url pkg_name pkg_desc
     if test -n "$pkg_desc" -a "$pkg_desc" != "null"
         set_color brblack
-        echo "  ↳ $pkg_desc"
+        if command --query python3
+            echo "$pkg_desc" | python3 -sc "
+import textwrap, shutil, sys
+w = shutil.get_terminal_size().columns
+desc = sys.stdin.read().strip()
+if desc:
+    print(textwrap.fill(desc, w, initial_indent='  ↳ ', subsequent_indent='    '))
+" 2>/dev/null
+        else
+            echo "  ↳ $pkg_desc"
+        end
         set_color normal
     end
 
@@ -21,7 +31,7 @@ function _fetch_changelog -a url pkg_name pkg_desc
             set -l text (printf '%s\n' $buf | head -c 5000)
             if test (string length -- "$text") -lt 100
                 set_color brblack
-                echo "    (no release notes available)"
+                echo "  (no release notes available)"
                 set_color normal
                 return
             end
@@ -63,12 +73,12 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
                     for i in (seq 1 (math "min($max_bullets, $bcount)"))
                         set -l b (echo "$bullets[$i]" | string replace -ra '(\w+)\s+\1' '$1' | string trim)
                         set_color brblack
-                        echo "    • $b"
+                        echo "  • $b"
                         set_color normal
                     end
                     if test $bcount -gt $max_bullets
                         set_color brblack
-                        echo "    … and "(math "$bcount - $max_bullets")" more changes"
+                        echo "  … and "(math "$bcount - $max_bullets")" more changes"
                         set_color normal
                     end
                     return
@@ -76,7 +86,7 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
                 # No bullets found — dump as single line fallback
                 if test (count $non_bullets) -gt 0
                     set_color brblack
-                    echo "    "(string join ' ' $non_bullets)
+                    echo "  "(string join ' ' $non_bullets)
                     set_color normal
                     return
                 end
@@ -85,13 +95,15 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
 
         set_color brblack
         for i in (seq 1 (math "min(25, "(count $buf)")"))
-            echo "    $buf[$i]"
+            echo "  $buf[$i]"
         end
         if test (count $buf) -gt 25
-            echo "    ... (truncated)"
+            echo "  ... (truncated)"
         end
         set_color normal
     end
+
+    echo ""
 
     # Case 1: GitHub blob URLs → raw content (CHANGELOG.md, RelNotes, etc.)
     set -l m (string match -r '^https://github\.com/([^/]+)/([^/]+)/blob/([^/]+)/(.+)' $url)
