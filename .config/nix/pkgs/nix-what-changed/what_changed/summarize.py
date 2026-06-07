@@ -38,7 +38,7 @@ KNOWN_MERGES = {
     "fixeshell": "fix shell",
     "forility": "for utility",
     "orkernel": "or kernel",
-    "eaks": "leaks",
+    "lleaks": "leaks",
     "andecoding": "and decoding",
     "morefficiently": "more efficiently",
     "specifich": "specific",
@@ -51,6 +51,9 @@ KNOWN_MERGES = {
     "ilable": "available",
     "emulation": "emulation",
     "ystem": "system",
+    "githubuntu": "github ubuntu",
+    "incorrectimestamps": "incorrect timestamps",
+    "variouscenarios": "various scenarios",
 }
 
 
