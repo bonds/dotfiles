@@ -44,10 +44,7 @@ function what-changed -d "Show release notes for packages updated between two sy
             set_color brblack
             echo -n "$old_ver"
             set_color green
-            echo -n " → "
-            set_color normal
-            set_color brblack
-            echo "$new_ver"
+            echo " → $new_ver"
             set_color normal
 
             set -l changelog_url (command nix eval --raw "nixpkgs#$pkg.meta.changelog" 2>/dev/null)
@@ -115,7 +112,7 @@ function what-changed -d "Show release notes for packages updated between two sy
                 echo ""
             else if test -n "$pkg_desc" -a "$pkg_desc" != "null"
                 set_color brblack
-                echo "  $pkg — $pkg_desc"
+                echo "  ↳ $pkg_desc"
                 set_color normal
                 echo ""
             else
@@ -125,7 +122,9 @@ function what-changed -d "Show release notes for packages updated between two sy
     end
 
     if test "$found" -eq 0
+        set_color brblack
         echo "  (no version changes detected)"
+        set_color normal
     end
     echo ""
 end

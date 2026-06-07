@@ -1,7 +1,7 @@
 function _fetch_changelog -a url pkg_name pkg_desc
     if test -n "$pkg_desc" -a "$pkg_desc" != "null"
         set_color brblack
-        echo "  $pkg_name — $pkg_desc"
+        echo "  ↳ $pkg_desc"
         set_color normal
     end
 
