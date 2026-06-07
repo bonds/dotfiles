@@ -13,13 +13,16 @@ function _fetch_changelog -a url
         end
 
         if command --query ollama
-            set -l text (printf '%s\n' $buf | head -c 30000)
-            set -l summary (printf '%s' "Summarize these release notes in 1-3 concise lines: what the package does and what changed in this version. Be brief, no preamble.
+            set -l text (printf '%s\n' $buf | head -c 10000)
+            set -l summary (printf '%s' "Summarize in 1-2 lines: what the package is and what changed. Be brief.
 
-$text" | env OLLAMA_HOST=192.168.4.43:11434 ollama run gemma4:latest 2>/dev/null | string collect)
+$text" | env OLLAMA_HOST=192.168.4.43:11434 timeout 15 ollama run qwen2.5:0.5b 2>/dev/null | string collect)
             if test -n "$summary"
-                echo "$summary"
-                return
+                set -l clean (echo "$summary" | string replace -ra '\e\[[0-9;]*[a-zA-Z]' '' | string trim)
+                if test -n "$clean"
+                    echo "$clean"
+                    return
+                end
             end
         end
 
