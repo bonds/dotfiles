@@ -3,7 +3,7 @@ function _fetch_changelog -a url
     function __print_lines
         set -l buf
         while read -l line
-            set line (string trim "$line")
+            set line (string trim -- "$line")
             if test -n "$line"
                 set -a buf "$line"
             end
