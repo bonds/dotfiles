@@ -471,5 +471,31 @@
     wantedBy = ["timers.target"];
   };
 
+  # Pin fans at max on boot to keep NVMe temps down (prevents PCIe AER errors)
+  systemd.services.set-max-fans = let
+    fanScript = pkgs.writeShellScript "set-max-fans" ''
+      for _ in 1 2 3 4 5; do
+        for pwm in /sys/devices/platform/dell_smm_hwmon/hwmon/hwmon*/pwm[12]; do
+          if [ -f "$pwm" ]; then
+            echo 255 > "$pwm"
+          fi
+        done
+        # check if it worked
+        if [ "$(cat /sys/devices/platform/dell_smm_hwmon/hwmon/hwmon*/fan1_input 2>/dev/null)" -gt 4000 ]; then
+          exit 0
+        fi
+        sleep 2
+      done
+    '';
+  in {
+    description = "Pin fans to maximum speed";
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = fanScript;
+      RemainAfterExit = true;
+    };
+  };
+
   system.configurationRevision = self.rev or self.dirtyRev or null;
 }
