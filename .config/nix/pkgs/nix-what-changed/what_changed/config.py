@@ -17,8 +17,7 @@ class Config:
     max_bullets: int = 5
     max_changelog_bytes: int = 50000
     cache_dir: str = "~/.cache/what-changed"
-    llm_timeout: int = 15
-    github_timeout: int = 8
+    gh_timeout: int = 15
     http_timeout: int = 8
 
 
