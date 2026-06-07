@@ -11,17 +11,22 @@ from what_changed.config import Config
 
 
 async def _fetch(url: str, cfg: Config) -> str | None:
-    for attempt in range(3):
-        try:
-            async with httpx.AsyncClient(timeout=cfg.http_timeout, follow_redirects=True) as c:
+    headers = {"User-Agent": "what-changed/0.7.0"}
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(cfg.http_timeout),
+        follow_redirects=True,
+        headers=headers,
+    ) as c:
+        for attempt in range(3):
+            try:
                 resp = await c.get(url)
                 resp.raise_for_status()
                 return resp.text
-        except Exception:
-            if attempt < 2:
-                await asyncio.sleep(2 ** attempt)
-            else:
-                return None
+            except Exception:
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
+                else:
+                    return None
     return None
 
 

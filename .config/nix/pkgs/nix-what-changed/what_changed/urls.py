@@ -98,6 +98,13 @@ def _make_gcc_url(new_ver: str) -> str | None:
 KNOWN_URLS["gcc"] = _make_gcc_url
 
 
+def _make_what_changed_url(new_ver: str) -> str | None:
+    return "https://api.github.com/repos/bonds/dotfiles/commits?path=.config/nix/pkgs/nix-what-changed&per_page=10"
+
+
+KNOWN_URLS["what-changed"] = _make_what_changed_url
+
+
 def _make_github_blob(owner: str, repo: str, path: str, ref: str = "master"):
     def make(new_ver: str) -> str:
         return f"https://github.com/{owner}/{repo}/blob/{ref}/{path}"

@@ -71,6 +71,8 @@ async def main():
             desc = info.get("description")
             if not desc and c.name == "darwin-system":
                 desc = "nix-darwin system closure"
+            if not desc and c.name == "what-changed":
+                desc = "Show nix system package changelogs using LLM"
             cl_url = info.get("changelog")
             if cl_url:
                 cl_url = await urls.patch_release_tag(cl_url, c.new_version, cfg)
