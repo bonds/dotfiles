@@ -34,7 +34,7 @@ def show_package(pkg: str, old_ver: str, new_ver: str,
                  description: str | None,
                  bullets: list[str] | None,
                  max_width: int):
-    name_part = f"\033[33m  {pkg:<{max_width}}\033[m"
+    name_part = f"\033[1;33m  {pkg:<{max_width}}\033[m"
     dim_part = f"\033[90m{old_ver}\033[m"
     green_part = f"\033[32m → {new_ver}\033[m"
     print(f"{name_part}{dim_part}{green_part}")
