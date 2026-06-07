@@ -59,12 +59,14 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
                 end
                 if test (count $bullets) -gt 0
                     set -l max_bullets 5
-                    for i in (seq 1 (math "min($max_bullets, "(count $bullets)")"))
-                        echo "  - $bullets[$i]"
+                    set -l bcount (count $bullets)
+                    for i in (seq 1 (math "min($max_bullets, $bcount)"))
+                        set -l b (echo "$bullets[$i]" | string replace -ra '(\w+)\s+\1' '$1' | string trim)
+                        echo "  - $b"
                     end
-                    if test (count $bullets) -gt $max_bullets
+                    if test $bcount -gt $max_bullets
                         set_color brblack
-                        echo "  … and "(math "(count $bullets) - $max_bullets")" more changes"
+                        echo "  … and "(math "$bcount - $max_bullets")" more changes"
                         set_color normal
                     end
                     return
@@ -96,13 +98,25 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
     # Case 2: GitHub releases URLs → use gh release view
     set -l m2 (string match -r '^https://github\.com/([^/]+)/([^/]+)/releases/tag/(.+)' $url)
     if test (count $m2) -ge 4
+        set -l owner $m2[2]
+        set -l repo $m2[3]
+        set -l tag $m2[4]
         if command --query gh
-            set -l release_notes (command gh release view $m2[4] --repo "$m2[2]/$m2[3]" --json body --jq '.body' 2>/dev/null)
+            set -l release_notes (command gh release view $tag --repo "$owner/$repo" --json body --jq '.body' 2>/dev/null)
             if test -n "$release_notes"
                 echo "$release_notes" | __print_lines $pkg_name
+                return
             end
-            return
         end
+        # Fallback: try raw changelog files at the tagged commit
+        for path in ChangeLog NEWS CHANGES.md CHANGELOG.md RELEASE_NOTES.md NEWS.md
+            set -l raw_url "https://raw.githubusercontent.com/$owner/$repo/$tag/$path"
+            if command curl -sL --max-time 4 "$raw_url" 2>/dev/null | head -c 1000 | string match -q -r '(?i)change|fix|version|release|bug'
+                command curl -sL --max-time 8 "$raw_url" 2>/dev/null | head -c 50000 | __print_lines $pkg_name
+                return
+            end
+        end
+        return
     end
 
     # Case 3: Other URLs → fetch and attempt text extraction
