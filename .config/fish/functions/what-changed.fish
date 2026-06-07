@@ -62,7 +62,7 @@ function what-changed -d "Show release notes for packages updated between two sy
                     # Try specific release tag first (most useful)
                     for tag in "v$new_ver" "$new_ver" "$pkg-$new_ver"
                         set changelog_url "$gh_url/releases/tag/$tag"
-                        if command curl -sIL --max-time 2 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                        if command curl -sIL --max-time 4 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
                             break
                         end
                         set changelog_url ""
@@ -71,7 +71,7 @@ function what-changed -d "Show release notes for packages updated between two sy
                     if test -z "$changelog_url"
                         for path in CHANGELOG.md CHANGES.md RELEASE_NOTES.md NEWS.md ChangeLog CHANGELOG NEWS
                             set changelog_url "$gh_url/blob/main/$path"
-                            if command curl -sIL --max-time 2 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                            if command curl -sIL --max-time 4 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
                                 break
                             end
                             set changelog_url ""
@@ -85,14 +85,11 @@ function what-changed -d "Show release notes for packages updated between two sy
                 # Common GitHub naming conventions: {pkg}/{pkg}, {pkg}-users/{pkg}, {pkg}-engine/{pkg}
                 for guess in "$pkg/$pkg" "$pkg-users/$pkg" "$pkg-engine/$pkg"
                     set -l gh_url "https://github.com/$guess"
-                    if not command curl -sIL --max-time 2 "$gh_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
-                        continue
-                    end
-                    set changelog_url ""
                     # Try specific release tag first (most useful)
+                    set changelog_url ""
                     for tag in "v$new_ver" "$new_ver" "$pkg-$new_ver"
                         set changelog_url "$gh_url/releases/tag/$tag"
-                        if command curl -sIL --max-time 2 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                        if command curl -sIL --max-time 4 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
                             break
                         end
                         set changelog_url ""
@@ -101,7 +98,7 @@ function what-changed -d "Show release notes for packages updated between two sy
                         # Fallback: try changelog files
                         for path in CHANGELOG.md CHANGES.md RELEASE_NOTES.md NEWS.md ChangeLog CHANGELOG NEWS
                             set changelog_url "$gh_url/blob/main/$path"
-                            if command curl -sIL --max-time 2 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                            if command curl -sIL --max-time 4 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
                                 break
                             end
                             set changelog_url ""
