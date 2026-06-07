@@ -9,35 +9,44 @@ from what_changed import cache, config, display, fetch, metadata, summarize, url
 from what_changed.differ import PackageChange, run_diff
 
 cfg = config.Config()
+no_cache = False
 
 
 async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[int, list[str] | None]:
-    cached = cache.get_summary(c.name, c.old_version, c.new_version, cfg)
-    if cached is not None:
-        return idx, cached
+    global no_cache
+    if not no_cache:
+        cached = cache.get_summary(c.name, c.old_version, c.new_version, cfg)
+        if cached is not None:
+            return idx, cached
 
     bullets = None
     if cl_url:
-        raw = cache.get_changelog(cl_url, cfg)
+        raw = None
+        if not no_cache:
+            raw = cache.get_changelog(cl_url, cfg)
         if raw is None:
             raw = await fetch.fetch_changelog(cl_url, cfg)
-            cache.set_changelog(cl_url, raw, cfg)
+            if not no_cache:
+                cache.set_changelog(cl_url, raw, cfg)
         if raw:
             bullets = await summarize.summarize(c.name, raw, cfg)
-            cache.set_summary(c.name, c.old_version, c.new_version, bullets, cfg)
-    else:
+            if not no_cache:
+                cache.set_summary(c.name, c.old_version, c.new_version, bullets, cfg)
+    elif not no_cache:
         cache.set_summary(c.name, c.old_version, c.new_version, None, cfg)
     return idx, bullets
 
 
 async def main():
-    global cfg
+    global cfg, no_cache
     parser = argparse.ArgumentParser(description="Show package changelogs after nix rebuilds")
     parser.add_argument("old_system", nargs="?", help="Old system closure path")
     parser.add_argument("new_system", nargs="?", help="New system closure path")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     parser.add_argument("--brief", action="store_true", help="Compact output, no bullet points")
+    parser.add_argument("--no-cache", action="store_true", help="Skip cache, fetch fresh summaries")
     args = parser.parse_args()
+    no_cache = args.no_cache
 
     if not args.old_system or not args.new_system:
         parser.print_help()

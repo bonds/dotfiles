@@ -179,10 +179,22 @@ def _postprocess(bullets: list[str], cfg: Config) -> list[str]:
     return result
 
 
+def _smarter_truncate(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    truncated = text[:limit]
+    # prefer heading boundary, then double newline, then single newline
+    for sep in ("\n## ", "\n# ", "\n\n", "\n"):
+        pos = truncated.rfind(sep)
+        if pos > limit * 0.5:
+            return text[:pos]
+    return truncated
+
+
 async def summarize(pkg_name: str, changelog_text: str, cfg: Config) -> list[str] | None:
     if len(changelog_text) < 100:
         return None
-    text = changelog_text[: cfg.max_input_bytes]
+    text = _smarter_truncate(changelog_text, cfg.max_input_bytes)
     stype = _detect_source_type(text)
     prompt = (
         f"{PROMPTS[stype]}"
