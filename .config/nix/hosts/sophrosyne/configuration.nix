@@ -422,6 +422,8 @@
     enable = true;
     package = pkgs-unstable.ollama;
     models = "/dragon/ollama";
+    host = "0.0.0.0";
+    openFirewall = true;
   };
 
   # services.matter-server.enable = true;

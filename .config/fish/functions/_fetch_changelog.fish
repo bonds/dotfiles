@@ -8,13 +8,26 @@ function _fetch_changelog -a url
                 set -a buf "$line"
             end
         end
-        if test (count $buf) -gt 0
-            for i in (seq 1 (math "min(25, "(count $buf)")"))
-                echo $buf[$i]
+        if test (count $buf) -eq 0
+            return
+        end
+
+        if command --query ollama
+            set -l text (printf '%s\n' $buf | head -c 30000)
+            set -l summary (printf '%s' "Summarize these release notes in 1-3 concise lines: what the package does and what changed in this version. Be brief, no preamble.
+
+$text" | env OLLAMA_HOST=192.168.4.43:11434 ollama run gemma4:31b 2>/dev/null | string collect)
+            if test -n "$summary"
+                echo "$summary"
+                return
             end
-            if test (count $buf) -gt 25
-                echo "  ... (truncated)"
-            end
+        end
+
+        for i in (seq 1 (math "min(25, "(count $buf)")"))
+            echo $buf[$i]
+        end
+        if test (count $buf) -gt 25
+            echo "  ... (truncated)"
         end
     end
 
@@ -80,11 +93,9 @@ if re.search(r"(?i)<(?:html|!doctype)\b", data[:500]):
 lines = [l.strip() for l in data.split("\n")]
 lines = [l for l in lines if l]
 if lines:
-    print("\n".join(lines[:25]))
-    if len(lines) > 25:
-        print("  ... (truncated)")
-' 2>/dev/null
+    print("\n".join(lines))
+' 2>/dev/null | __print_lines
     else
-        echo "$content" | head -c 10000 | string trim | string match -rv '^\s*<[^>]*>\s*$' | string replace -ra '<[^>]+>' '' | string trim | string match -rv '^$' | head -25
+        echo "$content" | head -c 30000 | string trim | string match -rv '^\s*<[^>]*>\s*$' | string replace -ra '<[^>]+>' '' | string trim | string match -rv '^$' | __print_lines
     end
 end
