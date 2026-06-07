@@ -146,6 +146,11 @@ function what-changed -d "Show release notes for packages updated between two sy
                 echo "  ↳ $pkg_desc"
                 set_color normal
                 echo ""
+            else if test "$pkg" = "darwin-system"
+                set_color brblack
+                echo "  ↳ nix-darwin system closure"
+                set_color normal
+                echo ""
             else
                 echo ""
             end
