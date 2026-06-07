@@ -190,6 +190,10 @@ from html.parser import HTMLParser
 data = sys.stdin.read(80000)
 if not data.strip(): sys.exit(0)
 if re.search(r"(?i)<(?:html|!doctype)\b", data[:500]):
+    # Extract main content area for wiki/changelog pages
+    m = re.search("<div[^>]*class\\s*=\\s*\"[^\"]*\\bmw-parser-output\\b[^\"]*\"[^>]*>", data)
+    if m:
+        data = data[m.end():]
     class P(HTMLParser):
         def __init__(self):
             super().__init__(convert_charrefs=True)
@@ -198,12 +202,17 @@ if re.search(r"(?i)<(?:html|!doctype)\b", data[:500]):
         def handle_starttag(self, tag, attrs):
             if tag in ("script","style","nav","header","footer","nav"):
                 self.skip = True
-            if tag in ("br","p","li","tr","h1","h2","h3","h4","dd","dt"):
+            if tag in ("br","p","li","tr","h1","h2","h3","h4","dd","dt","div"):
                 self.text.append("\n")
+            # Skip sidebar/nav/toc/panel divs
+            if tag == "div":
+                for name, val in attrs:
+                    if name == "class" and val and any(x in val for x in ["sidebar", "nav", "toc", "panel", "side"]):
+                        self.skip = True
         def handle_endtag(self, tag):
             if tag in ("script","style","nav","header","footer","nav"):
                 self.skip = False
-            if tag in ("p","li","tr","h1","h2","h3","h4","dd","dt"):
+            if tag in ("p","li","tr","h1","h2","h3","h4","dd","dt","div"):
                 self.text.append("\n")
         def handle_data(self, d):
             if not self.skip:
