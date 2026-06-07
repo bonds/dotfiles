@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "what-changed"
+version = "0.2.0"
+description = "Show nix system package changelogs using LLM"
+requires-python = ">=3.10"
+
+[project.scripts]
+what-changed = "what_changed.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["what_changed*"]
