@@ -18,7 +18,13 @@ def run_diff(old_system: str, new_system: str) -> list[PackageChange]:
         timeout=60,
     )
     if result.returncode != 0:
-        print(f"Error: {result.stderr.strip()}", file=__import__("sys").stderr)
+        err = result.stderr.strip()
+        if "does not exist" in err or "No such file" in err:
+            print("  Previous system closure was garbage collected — nothing to compare.", file=__import__("sys").stderr)
+        elif "not found" in err.lower():
+            print("  One of the specified store paths was not found.", file=__import__("sys").stderr)
+        else:
+            print(f"Error: {err}", file=__import__("sys").stderr)
         return []
 
     changes: list[PackageChange] = []

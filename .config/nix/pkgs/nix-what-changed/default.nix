@@ -8,6 +8,7 @@ python3.pkgs.buildPythonApplication {
   src = ./.;
   format = "pyproject";
   nativeBuildInputs = with python3.pkgs; [setuptools];
+  propagatedBuildInputs = with python3.pkgs; [rich];
   doCheck = false;
   meta = with lib; {
     description = "Show nix system package changelogs using LLM";

@@ -7,6 +7,7 @@ name = "what-changed"
 version = "0.4.0"
 description = "Show nix system package changelogs using LLM"
 requires-python = ">=3.10"
+dependencies = ["rich"]
 
 [project.scripts]
 what-changed = "what_changed.cli:main"

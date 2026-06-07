@@ -1,22 +1,20 @@
 from __future__ import annotations
 
-import itertools
 import shutil
-import sys
 import textwrap
-import threading
-import time
+from contextlib import contextmanager
+
+try:
+    from rich.console import Console
+    from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+
+    _HAS_RICH = True
+except ImportError:
+    _HAS_RICH = False
+
 
 def _dim(text: str, **kwargs):
     print(f"\033[90m{text}\033[m", **kwargs)
-
-
-def _green(text: str, **kwargs):
-    print(f"\033[32m{text}\033[m", **kwargs)
-
-
-def _yellow(text: str, **kwargs):
-    print(f"\033[33m{text}\033[m", **kwargs)
 
 
 def _bold_cyan(text: str, **kwargs):
@@ -28,32 +26,67 @@ def _wrap(text: str, indent: str = "  ", subsequent: str = "    ") -> str:
     return textwrap.fill(text, w, initial_indent=indent, subsequent_indent=subsequent)
 
 
-def _spinner_thread(stop: threading.Event, total: int, done_ref: list[int]):
-    for frame in itertools.cycle(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]):
-        if stop.is_set():
-            break
-        d = done_ref[0]
-        if d <= total:
-            sys.stdout.write(f"\r  {frame} Checking {d}/{total} packages... ")
-        else:
-            sys.stdout.write(f"\r  {frame} Summarizing {d - total}/{total}...   ")
-        sys.stdout.flush()
-        time.sleep(0.4)
+@contextmanager
+def progress_bar(total: int):
+    """Context manager yielding an update(advance=1, desc=None) callable.
 
+    The progress bar disappears when the context exits. Falls back to a simple
+    spinner (no rich progress columns) when the ``rich`` package is unavailable.
+    """
+    if not _HAS_RICH:
+        import itertools
+        import sys
+        import threading
+        import time
 
-def run_spinner(total: int) -> tuple[threading.Thread, threading.Event, list[int]]:
-    stop = threading.Event()
-    done_ref = [0]
-    t = threading.Thread(target=_spinner_thread, args=(stop, total, done_ref), daemon=True)
-    t.start()
-    return t, stop, done_ref
+        stop = threading.Event()
+        done = [0]
 
+        def _spin():
+            for frame in itertools.cycle(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]):
+                if stop.is_set():
+                    break
+                d = done[0]
+                if d <= total:
+                    sys.stdout.write(f"\r  {frame} Checking {d}/{total}... ")
+                else:
+                    sys.stdout.write(f"\r  {frame} Summarizing {d - total}/{total}... ")
+                sys.stdout.flush()
+                time.sleep(0.4)
 
-def stop_spinner(t: threading.Thread, stop: threading.Event):
-    stop.set()
-    t.join()
-    sys.stdout.write("\r" + " " * shutil.get_terminal_size().columns + "\r")
-    sys.stdout.flush()
+        t = threading.Thread(target=_spin, daemon=True)
+        t.start()
+
+        def update(advance: int = 1, desc: str | None = None):
+            done[0] += advance
+
+        try:
+            yield update
+        finally:
+            stop.set()
+            t.join()
+            sys.stdout.write("\r" + " " * shutil.get_terminal_size().columns + "\r")
+            sys.stdout.flush()
+        return
+
+    console = Console()
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("  {task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        console=console,
+        transient=True,
+    ) as progress:
+        task_id = progress.add_task("Checking packages...", total=total * 2)
+
+        def update(advance: int = 1, desc: str | None = None):
+            if progress.tasks[0].completed < total:
+                progress.update(task_id, advance=advance, description=desc or "Looking up...")
+            else:
+                progress.update(task_id, advance=advance, description=desc or "Summarizing...")
+
+        yield update
 
 
 def show_header(count: int):

@@ -29,45 +29,41 @@ def main():
     max_width = max(len(c.name) for c in changes) + 2
     max_width = max(max_width, 18)
 
-    spin_thread, spin_stop, spin_done = display.run_spinner(len(changes))
+    with display.progress_bar(len(changes)) as update:
 
-    # Phase 1: batch metadata lookup (single nix eval call)
-    pkg_names = [c.name for c in changes]
-    batch = metadata.get_metadata_batch(pkg_names)
-    metas: dict[int, tuple[str | None, str | None]] = {}
-    for i, c in enumerate(changes):
-        info = batch.get(c.name, {})
-        desc = info.get("description")
-        if not desc and c.name == "darwin-system":
-            desc = "nix-darwin system closure"
-        cl_url = info.get("changelog")
-        if cl_url:
-            cl_url = urls.patch_release_tag(cl_url, c.new_version, cfg)
-        if not cl_url:
-            cl_url = urls.guess_url(c.name, c.new_version, cfg)
-        metas[i] = (desc, cl_url)
-        spin_done[0] += 1
-
-    # Phase 2: parallel fetch + summarize with error tracking
-    results: dict[int, list[str] | None] = {}
-    errors: dict[int, str | None] = {}
-
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        futures = {}
+        pkg_names = [c.name for c in changes]
+        batch = metadata.get_metadata_batch(pkg_names)
+        metas: dict[int, tuple[str | None, str | None]] = {}
         for i, c in enumerate(changes):
-            _, cl_url = metas[i]
-            futures[pool.submit(_fetch_for, c, cl_url, i)] = i
-        for future in as_completed(futures):
-            try:
-                idx, bullets = future.result()
-                results[idx] = bullets
-            except Exception as e:
-                idx = futures[future]
-                results[idx] = None
-                errors[idx] = str(e)[:60]
-            spin_done[0] += 1
+            info = batch.get(c.name, {})
+            desc = info.get("description")
+            if not desc and c.name == "darwin-system":
+                desc = "nix-darwin system closure"
+            cl_url = info.get("changelog")
+            if cl_url:
+                cl_url = urls.patch_release_tag(cl_url, c.new_version, cfg)
+            if not cl_url:
+                cl_url = urls.guess_url(c.name, c.new_version, cfg)
+            metas[i] = (desc, cl_url)
+            update(advance=1, desc=c.name)
 
-    display.stop_spinner(spin_thread, spin_stop)
+        results: dict[int, list[str] | None] = {}
+        errors: dict[int, str | None] = {}
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futures = {}
+            for i, c in enumerate(changes):
+                _, cl_url = metas[i]
+                futures[pool.submit(_fetch_for, c, cl_url, i)] = i
+            for future in as_completed(futures):
+                try:
+                    idx, bullets = future.result()
+                    results[idx] = bullets
+                except Exception as e:
+                    idx = futures[future]
+                    results[idx] = None
+                    errors[idx] = str(e)[:60]
+                update(advance=1, desc=changes[idx].name)
 
     display.show_header(len(changes))
     for i, c in enumerate(changes):
