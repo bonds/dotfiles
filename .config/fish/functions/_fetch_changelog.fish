@@ -27,11 +27,45 @@ function _fetch_changelog -a url pkg_name pkg_desc
             end
             set -l summary (printf '%s' "Read text and write 3-5 specific bullet points about $pkg_name. Include real version bumps, PR numbers, or commit hashes if present. No generic filler or invented features. Only state what is directly in the text. Respond in English.
 
-$text" | env OLLAMA_HOST=192.168.4.43:11434 timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
+$text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
             if test -n "$summary"
-                set -l clean (echo "$summary" | string replace -ra '\e\[[0-9;]*[a-zA-Z]' '' | string trim)
-                if test -n "$clean"
-                    echo "  $clean"
+                # Strip ANSI codes and split into lines
+                set -l lines (echo "$summary" | string replace -ra '\e\[[0-9;]*[a-zA-Z]' '' | string trim | string split \n)
+                set -l bullets
+                set -l non_bullets
+                set -l in_bullets 0
+                for line in $lines
+                    set line (string trim "$line")
+                    if test -z "$line"
+                        continue
+                    end
+                    if string match -q -r '^[\*\-\d]' "$line"
+                        set in_bullets 1
+                        # Strip leading bullet markers and bold
+                        set line (string replace -ra '^\s*[\*\-\d]+\.?\s*' '' "$line" | string replace -ra '\*\*' '' | string trim)
+                        if test -n "$line"
+                            set -a bullets "$line"
+                        end
+                    else if test $in_bullets -eq 1 -a (count $bullets) -gt 0
+                        # Continuation of last bullet (terminal word-wrap)
+                        set line (echo "$line" | string replace -ra '\*\*' '' | string trim)
+                        if test -n "$line"
+                            set bullets[-1] "$bullets[-1] $line"
+                        end
+                    else
+                        # Preamble (before first bullet) — save in case no bullets found
+                        set -a non_bullets "$line"
+                    end
+                end
+                if test (count $bullets) -gt 0
+                    for b in $bullets
+                        echo "  - $b"
+                    end
+                    return
+                end
+                # No bullets found — dump as single line fallback
+                if test (count $non_bullets) -gt 0
+                    echo "  "(string join ' ' $non_bullets)
                     return
                 end
             end
