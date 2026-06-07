@@ -1,23 +1,34 @@
 from __future__ import annotations
 
 import re
-import urllib.request
 from collections.abc import Callable
+
+import httpx
 
 from what_changed import metadata
 from what_changed.config import Config
 
 
-def _http_ok(url: str, cfg: Config) -> bool:
-    try:
-        req = urllib.request.Request(url, method="HEAD")
-        with urllib.request.urlopen(req, timeout=cfg.http_timeout) as resp:
-            return 200 <= resp.status < 300
-    except Exception:
-        return False
+def __getattr__(name):
+    """Lazy import workaround for module-level httpx client."""
+    raise AttributeError(name)
 
 
-def _guess_from_homepage(pkg: str, homepage: str | None, new_ver: str, cfg: Config) -> str | None:
+async def _http_ok(url: str, cfg: Config) -> bool:
+    for attempt in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=cfg.http_timeout, follow_redirects=True) as c:
+                resp = await c.head(url)
+                return 200 <= resp.status_code < 300
+        except Exception:
+            if attempt < 1:
+                await __import__("asyncio").sleep(1)
+            else:
+                return False
+    return False
+
+
+async def _guess_from_homepage(pkg: str, homepage: str | None, new_ver: str, cfg: Config) -> str | None:
     if not homepage:
         return None
     m = re.match(r"^https://github\.com/([^/]+)/([^/]+)/?$", homepage)
@@ -27,25 +38,25 @@ def _guess_from_homepage(pkg: str, homepage: str | None, new_ver: str, cfg: Conf
     gh_url = f"https://github.com/{owner}/{repo}"
     for tag in (f"v{new_ver}", new_ver, f"{pkg}-{new_ver}"):
         url = f"{gh_url}/releases/tag/{tag}"
-        if _http_ok(url, cfg):
+        if await _http_ok(url, cfg):
             return url
     for path in ("CHANGELOG.md", "CHANGES.md", "RELEASE_NOTES.md", "NEWS.md", "ChangeLog", "CHANGELOG", "NEWS"):
         url = f"{gh_url}/blob/main/{path}"
-        if _http_ok(url, cfg):
+        if await _http_ok(url, cfg):
             return url
     return None
 
 
-def _guess_from_name(pkg: str, new_ver: str, cfg: Config) -> str | None:
+async def _guess_from_name(pkg: str, new_ver: str, cfg: Config) -> str | None:
     for guess in (f"{pkg}/{pkg}", f"{pkg}-users/{pkg}", f"{pkg}-engine/{pkg}"):
         gh_url = f"https://github.com/{guess}"
         for tag in (f"v{new_ver}", new_ver, f"{pkg}-{new_ver}"):
             url = f"{gh_url}/releases/tag/{tag}"
-            if _http_ok(url, cfg):
+            if await _http_ok(url, cfg):
                 return url
         for path in ("CHANGELOG.md", "CHANGES.md", "RELEASE_NOTES.md", "NEWS.md", "ChangeLog", "CHANGELOG", "NEWS"):
             url = f"{gh_url}/blob/main/{path}"
-            if _http_ok(url, cfg):
+            if await _http_ok(url, cfg):
                 return url
     return None
 
@@ -64,23 +75,14 @@ KNOWN_URLS["qemu"] = _make_qemu_url
 
 
 def _make_darwin_system_url(new_ver: str) -> str | None:
-    import urllib.request
     parts = new_ver.split(".")
     if len(parts) < 2:
         return None
     ver_no_dot = parts[0] + parts[1].zfill(2)
-    candidates = [
-        f"https://raw.githubusercontent.com/NixOS/nixpkgs/nixpkgs-unstable/nixos/doc/manual/release-notes/rl-{ver_no_dot}.section.md",
-        f"https://raw.githubusercontent.com/NixOS/nixpkgs/nixos-{new_ver}/nixos/doc/manual/release-notes/rl-{ver_no_dot}.section.md",
-    ]
-    for url in candidates:
-        try:
-            req = urllib.request.Request(url, method="HEAD")
-            with urllib.request.urlopen(req, timeout=4):
-                return url
-        except Exception:
-            continue
-    return None
+    return (
+        f"https://raw.githubusercontent.com/NixOS/nixpkgs/nixpkgs-unstable/"
+        f"nixos/doc/manual/release-notes/rl-{ver_no_dot}.section.md"
+    )
 
 
 KNOWN_URLS["darwin-system"] = _make_darwin_system_url
@@ -137,33 +139,29 @@ def _make_dwarf_fortress_url(new_ver: str) -> str | None:
 KNOWN_URLS["dwarf-fortress"] = _make_dwarf_fortress_url
 
 
-def patch_release_tag(url: str, new_ver: str, cfg: Config) -> str:
-    """If the URL is a GitHub release tag pointing to a different version, try the new one."""
+async def patch_release_tag(url: str, new_ver: str, cfg: Config) -> str:
     m = re.match(r"(https://github\.com/[^/]+/[^/]+/releases/tag/)(.*)", url)
     if not m:
         return url
     base, tag = m.group(1), m.group(2)
-    # Check if the tag contains a version different from new_ver
     tag_ver = re.sub(r"^v", "", tag)
     if tag_ver == new_ver:
-        return url  # already matches
-    # Try the new version with various tag formats
+        return url
     for fmt in (f"v{new_ver}", new_ver, f"unknown-{new_ver}"):
         new_url = f"{base}{fmt}"
-        if _http_ok(new_url, cfg):
+        if await _http_ok(new_url, cfg):
             return new_url
     return url
 
 
-def guess_url(pkg: str, new_ver: str, cfg: Config) -> str | None:
+async def guess_url(pkg: str, new_ver: str, cfg: Config) -> str | None:
     if pkg in KNOWN_URLS:
         url = KNOWN_URLS[pkg](new_ver)
         if url:
             return url
-    changelog_url = None
     homepage = metadata.get_homepage(pkg)
     if homepage:
-        changelog_url = _guess_from_homepage(pkg, homepage, new_ver, cfg)
-    if not changelog_url:
-        changelog_url = _guess_from_name(pkg, new_ver, cfg)
-    return changelog_url
+        url = await _guess_from_homepage(pkg, homepage, new_ver, cfg)
+        if url:
+            return url
+    return await _guess_from_name(pkg, new_ver, cfg)

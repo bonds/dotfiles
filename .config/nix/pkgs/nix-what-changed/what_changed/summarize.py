@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
-import urllib.request
+
+import httpx
 
 from what_changed.config import Config
 
@@ -53,7 +55,6 @@ KNOWN_MERGES = {
 
 
 def _detect_source_type(text: str) -> str:
-    """Classify changelog source for prompt tailoring."""
     lines = text.splitlines()
     non_empty = [l for l in lines if l.strip()]
     if not non_empty:
@@ -91,50 +92,48 @@ PROMPTS = {
 }
 
 
-def _call_ollama(prompt: str, cfg: Config) -> str | None:
+async def _call_ollama(prompt: str, cfg: Config) -> str | None:
     data = json.dumps({
         "model": cfg.model,
         "prompt": prompt,
         "stream": False,
         "options": {"num_predict": 512},
-    }).encode()
-    req = urllib.request.Request(
-        f"{cfg.host}/api/generate",
-        data=data,
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=cfg.timeout) as resp:
-            result = json.loads(resp.read())
-            return result.get("response", "")
-    except Exception:
-        return None
+    })
+    for attempt in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=cfg.timeout) as c:
+                resp = await c.post(f"{cfg.host}/api/generate", content=data, headers={"Content-Type": "application/json"})
+                resp.raise_for_status()
+                return resp.json().get("response", "")
+        except Exception:
+            if attempt < 1:
+                await asyncio.sleep(2)
+    return None
 
 
-def _call_openai(prompt: str, cfg: Config) -> str | None:
+async def _call_openai(prompt: str, cfg: Config) -> str | None:
     data = json.dumps({
         "model": cfg.model,
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 512,
-    }).encode()
+    })
     host = cfg.host.rstrip("/")
-    req = urllib.request.Request(
-        f"{host}/chat/completions",
-        data=data,
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=cfg.timeout) as resp:
-            result = json.loads(resp.read())
-            return result["choices"][0]["message"]["content"]
-    except Exception:
-        return None
+    for attempt in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=cfg.timeout) as c:
+                resp = await c.post(f"{host}/chat/completions", content=data, headers={"Content-Type": "application/json"})
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"]
+        except Exception:
+            if attempt < 1:
+                await asyncio.sleep(2)
+    return None
 
 
-def _call_llm(prompt: str, cfg: Config) -> str | None:
+async def _call_llm(prompt: str, cfg: Config) -> str | None:
     if cfg.backend == "openai":
-        return _call_openai(prompt, cfg)
-    return _call_ollama(prompt, cfg)
+        return await _call_openai(prompt, cfg)
+    return await _call_ollama(prompt, cfg)
 
 
 def _parse_bullets(text: str) -> tuple[list[str], list[str]]:
@@ -177,7 +176,7 @@ def _postprocess(bullets: list[str], cfg: Config) -> list[str]:
     return result
 
 
-def summarize(pkg_name: str, changelog_text: str, cfg: Config) -> list[str] | None:
+async def summarize(pkg_name: str, changelog_text: str, cfg: Config) -> list[str] | None:
     if len(changelog_text) < 100:
         return None
     text = changelog_text[: cfg.max_input_bytes]
@@ -190,7 +189,7 @@ def summarize(pkg_name: str, changelog_text: str, cfg: Config) -> list[str] | No
         "No generic filler. Respond in English.\n\n"
         f"{text}"
     )
-    response = _call_llm(prompt, cfg)
+    response = await _call_llm(prompt, cfg)
     if not response:
         return None
     bullets, _non_bullets = _parse_bullets(response)

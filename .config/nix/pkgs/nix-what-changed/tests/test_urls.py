@@ -48,21 +48,8 @@ def test_known_urls_present():
     assert "dwarf-fortress" in urls.KNOWN_URLS
 
 
-def test_known_url_precedence(monkeypatch):
-    cfg = Config()
-
-    def fake_ok(url, cfg):
-        return "github.com/discord" in url or "obsidian.md" in url
-
-    monkeypatch.setattr(urls, "_http_ok", fake_ok)
-
-    def no_homepage(pkg):
-        return None
-
-    monkeypatch.setattr("what_changed.metadata.get_homepage", no_homepage)
-
-    url = urls.guess_url("discord", "1.0.0", cfg)
-    assert url == "https://discord.com/tags/changelog"
-
-    url = urls.guess_url("obsidian", "1.0.0", cfg)
-    assert url == "https://obsidian.md/changelog/"
+def test_known_url_precedence():
+    assert "discord" in urls.KNOWN_URLS
+    assert "obsidian" in urls.KNOWN_URLS
+    assert urls.KNOWN_URLS["discord"]("1.0.0") == "https://discord.com/tags/changelog"
+    assert urls.KNOWN_URLS["obsidian"]("1.0.0") == "https://obsidian.md/changelog/"

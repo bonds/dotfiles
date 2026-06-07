@@ -1,25 +1,33 @@
 from __future__ import annotations
 
+import asyncio
 import re
 import subprocess
-import urllib.request
 from html.parser import HTMLParser
+
+import httpx
 
 from what_changed.config import Config
 
 
-def _fetch(url: str, timeout: float) -> str | None:
-    try:
-        req = urllib.request.Request(url)
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.read().decode("utf-8", errors="replace")
-    except Exception:
-        return None
+async def _fetch(url: str, cfg: Config) -> str | None:
+    for attempt in range(3):
+        try:
+            async with httpx.AsyncClient(timeout=cfg.http_timeout, follow_redirects=True) as c:
+                resp = await c.get(url)
+                resp.raise_for_status()
+                return resp.text
+        except Exception:
+            if attempt < 2:
+                await asyncio.sleep(2 ** attempt)
+            else:
+                return None
+    return None
 
 
-def _raw_github(owner: str, repo: str, ref: str, path: str, timeout: float) -> str | None:
+async def _raw_github(owner: str, repo: str, ref: str, path: str, cfg: Config) -> str | None:
     url = f"https://raw.githubusercontent.com/{owner}/{repo}/{ref}/{path}"
-    return _fetch(url, timeout)
+    return await _fetch(url, cfg)
 
 
 class _HTMLTextExtractor(HTMLParser):
@@ -56,7 +64,7 @@ def _extract_text(html: str) -> str | None:
         r'<div[^>]*class\s*=\s*"[^"]*\bmw-parser-output\b[^"]*"[^>]*>', data
     )
     if m:
-        data = data[m.end() :]
+        data = data[m.end():]
     parser = _HTMLTextExtractor()
     parser.feed(data)
     result = "".join(parser.text)
@@ -64,7 +72,7 @@ def _extract_text(html: str) -> str | None:
     return "\n".join(lines) if lines else None
 
 
-def _fetch_github_release(owner: str, repo: str, tag: str, cfg: Config) -> str | None:
+async def _fetch_github_release(owner: str, repo: str, tag: str, cfg: Config) -> str | None:
     try:
         result = subprocess.run(
             ["gh", "release", "view", tag, "--repo", f"{owner}/{repo}", "--json", "body", "--jq", ".body"],
@@ -77,23 +85,23 @@ def _fetch_github_release(owner: str, repo: str, tag: str, cfg: Config) -> str |
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     for path in ("ChangeLog", "NEWS", "CHANGES.md", "CHANGELOG.md", "RELEASE_NOTES.md", "NEWS.md"):
-        content = _raw_github(owner, repo, tag, path, cfg.http_timeout)
+        content = await _raw_github(owner, repo, tag, path, cfg)
         if content and re.search(r"(?i)change|fix|version|release|bug", content[:1000]):
             return content
     return None
 
 
-def fetch_changelog(url: str, cfg: Config) -> str | None:
+async def fetch_changelog(url: str, cfg: Config) -> str | None:
     m = re.match(r"^https://github\.com/([^/]+)/([^/]+)/blob/([^/]+)/(.+)", url)
     if m:
-        raw = _raw_github(m.group(1), m.group(2), m.group(3), m.group(4), cfg.http_timeout)
+        raw = await _raw_github(m.group(1), m.group(2), m.group(3), m.group(4), cfg)
         return raw[:cfg.max_changelog_bytes] if raw else None
 
     m = re.match(r"^https://github\.com/([^/]+)/([^/]+)/releases/tag/(.+)", url)
     if m:
-        return _fetch_github_release(m.group(1), m.group(2), m.group(3), cfg)
+        return await _fetch_github_release(m.group(1), m.group(2), m.group(3), cfg)
 
-    html = _fetch(url, cfg.http_timeout)
+    html = await _fetch(url, cfg)
     if not html:
         return None
     return _extract_text(html)

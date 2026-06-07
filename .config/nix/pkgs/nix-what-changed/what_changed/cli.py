@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import argparse
+import asyncio
+import json
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from what_changed import cache, config, display, fetch, metadata, summarize, urls
 from what_changed.differ import PackageChange, run_diff
@@ -9,18 +11,39 @@ from what_changed.differ import PackageChange, run_diff
 cfg = config.Config()
 
 
-def main():
+async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[int, list[str] | None]:
+    cached = cache.get_summary(c.name, c.old_version, c.new_version, cfg)
+    if cached is not None:
+        return idx, cached
+
+    bullets = None
+    if cl_url:
+        raw = cache.get_changelog(cl_url, cfg)
+        if raw is None:
+            raw = await fetch.fetch_changelog(cl_url, cfg)
+            cache.set_changelog(cl_url, raw, cfg)
+        if raw:
+            bullets = await summarize.summarize(c.name, raw, cfg)
+            cache.set_summary(c.name, c.old_version, c.new_version, bullets, cfg)
+    else:
+        cache.set_summary(c.name, c.old_version, c.new_version, None, cfg)
+    return idx, bullets
+
+
+async def main():
     global cfg
-    args = sys.argv[1:]
-    if len(args) < 2:
-        print("Usage: what-changed <old-store-path> <new-store-path>", file=sys.stderr)
-        print(file=sys.stderr)
-        print("  Shows release notes for packages updated between two system closures.", file=sys.stderr)
-        print(file=sys.stderr)
-        print("  Automatically called by 'nr' when the system closure changes.", file=sys.stderr)
+    parser = argparse.ArgumentParser(description="Show package changelogs after nix rebuilds")
+    parser.add_argument("old_system", nargs="?", help="Old system closure path")
+    parser.add_argument("new_system", nargs="?", help="New system closure path")
+    parser.add_argument("--json", action="store_true", help="Output as JSON")
+    parser.add_argument("--brief", action="store_true", help="Compact output, no bullet points")
+    args = parser.parse_args()
+
+    if not args.old_system or not args.new_system:
+        parser.print_help()
         sys.exit(1)
 
-    old_system, new_system = args[0], args[1]
+    old_system, new_system = args.old_system, args.new_system
     cfg = config.load()
     changes = run_diff(old_system, new_system)
     if not changes:
@@ -41,29 +64,54 @@ def main():
                 desc = "nix-darwin system closure"
             cl_url = info.get("changelog")
             if cl_url:
-                cl_url = urls.patch_release_tag(cl_url, c.new_version, cfg)
+                cl_url = await urls.patch_release_tag(cl_url, c.new_version, cfg)
             if not cl_url:
-                cl_url = urls.guess_url(c.name, c.new_version, cfg)
+                cl_url = await urls.guess_url(c.name, c.new_version, cfg)
             metas[i] = (desc, cl_url)
             update(advance=1, desc=c.name)
 
+        sem = asyncio.Semaphore(4)
+
+        async def run(c: PackageChange, cl_url: str | None, idx: int):
+            async with sem:
+                return await _fetch_for(c, cl_url, idx)
+
+        tasks = [
+            asyncio.create_task(run(c, metas[i][1], i))
+            for i, c in enumerate(changes)
+        ]
         results: dict[int, list[str] | None] = {}
         errors: dict[int, str | None] = {}
 
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            futures = {}
-            for i, c in enumerate(changes):
-                _, cl_url = metas[i]
-                futures[pool.submit(_fetch_for, c, cl_url, i)] = i
-            for future in as_completed(futures):
-                try:
-                    idx, bullets = future.result()
-                    results[idx] = bullets
-                except Exception as e:
-                    idx = futures[future]
-                    results[idx] = None
-                    errors[idx] = str(e)[:60]
-                update(advance=1, desc=changes[idx].name)
+        for coro in asyncio.as_completed(tasks):
+            try:
+                idx, bullets = await coro
+                results[idx] = bullets
+            except Exception as e:
+                idx = next(i for i, t in enumerate(tasks) if t is coro)
+                results[idx] = None
+                errors[idx] = str(e)[:60]
+            update(advance=1, desc=changes[idx].name)
+
+    if args.json:
+        data = []
+        for i, c in enumerate(changes):
+            desc, _ = metas[i]
+            data.append({
+                "name": c.name,
+                "old_version": c.old_version,
+                "new_version": c.new_version,
+                "description": desc,
+                "bullets": results.get(i),
+                "error": errors.get(i),
+            })
+        print(json.dumps(data, indent=2))
+        return
+
+    if args.brief:
+        for i, c in enumerate(changes):
+            print(f"  {c.name:<{max_width}} {c.old_version} → {c.new_version}")
+        return
 
     display.show_header(len(changes))
     for i, c in enumerate(changes):
@@ -77,24 +125,9 @@ def main():
     display.show_footer(len(changes))
 
 
-def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[int, list[str] | None]:
-    cached = cache.get_summary(c.name, c.old_version, c.new_version, cfg)
-    if cached is not None:
-        return idx, cached
-
-    bullets = None
-    if cl_url:
-        raw = cache.get_changelog(cl_url, cfg)
-        if raw is None:
-            raw = fetch.fetch_changelog(cl_url, cfg)
-            cache.set_changelog(cl_url, raw, cfg)
-        if raw:
-            bullets = summarize.summarize(c.name, raw, cfg)
-            cache.set_summary(c.name, c.old_version, c.new_version, bullets, cfg)
-    else:
-        cache.set_summary(c.name, c.old_version, c.new_version, None, cfg)
-    return idx, bullets
+def entry():
+    asyncio.run(main())
 
 
 if __name__ == "__main__":
-    main()
+    entry()

@@ -52,7 +52,7 @@
         " 2>&1
       '';
       pytest = let
-        py = pkgs.python3.withPackages (ps: [ps.pytest ps.tomli-w]);
+        py = pkgs.python3.withPackages (ps: [ps.pytest ps.tomli-w ps.httpx]);
       in
         mkCheck pkgs "what-changed-tests" [py] ''
           export HOME=$(mktemp -d)

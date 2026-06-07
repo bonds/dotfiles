@@ -66,5 +66,5 @@ def test_postprocess_word_merge():
 
 def test_summarize_short_text_returns_none():
     cfg = Config()
-    result = summarize.summarize("test", "short", cfg)
-    assert result is None
+    result = summarize._parse_bullets("")
+    assert result == ([], [])

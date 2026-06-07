@@ -4,11 +4,11 @@
 }:
 python3.pkgs.buildPythonApplication {
   pname = "what-changed";
-  version = "0.5.0";
+  version = "0.6.0";
   src = ./.;
   format = "pyproject";
   nativeBuildInputs = with python3.pkgs; [setuptools];
-  propagatedBuildInputs = with python3.pkgs; [rich];
+  propagatedBuildInputs = with python3.pkgs; [rich httpx];
   doCheck = false;
   meta = with lib; {
     description = "Show nix system package changelogs using LLM";
