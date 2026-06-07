@@ -37,7 +37,7 @@ if desc:
             end
             set -l summary (printf '%s' "Below is the changelog. Summarize ONLY the specific changes. Do NOT describe what $pkg_name is or does. Write 3-5 specific bullet points. Include PR numbers, commit hashes, or version bumps if present. No generic filler. Respond in English.
 
-$text" | timeout 20 ollama run llama3.2:3b 2>/dev/null | string collect)
+$text" | timeout 20 ollama run gemma3:1b 2>/dev/null | string collect)
             if test -n "$summary"
                 # Strip ANSI codes and split into lines
                 set -l lines (echo "$summary" | string replace -ra '\e\[[0-9;]*[a-zA-Z]' '' | string trim | string split \n)
