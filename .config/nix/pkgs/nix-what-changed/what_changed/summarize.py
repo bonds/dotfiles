@@ -6,6 +6,90 @@ import urllib.request
 
 from what_changed.config import Config
 
+KNOWN_MERGES = {
+    "mimallocator": "mimalloc allocator",
+    "backendriver": "backend driver",
+    "versionumber": "version number",
+    "removedue": "removed due",
+    "addresspace": "address space",
+    "featuresuch": "feature such",
+    "argumento": "argument to",
+    "weremoved": "were removed",
+    "removedeprecated": "removed deprecated",
+    "thexcerpt": "the excerpt",
+    "formathe": "for the",
+    "revisionumbers": "revision numbers",
+    "isupported": "is supported",
+    "wereduced": "were reduced",
+    "aremployed": "are employed",
+    "withe": "with the",
+    "andling": "and handling",
+    "ecoding": "encoding",
+    "irectoken": "direct token",
+    "upporthrough": "support through",
+    "ockets": "sockets",
+    "ystem": "system",
+    "pecific": "specific",
+    "inpm": "in npm",
+    "returnil": "return nil",
+    "wheno": "when no",
+    "fixeshell": "fix shell",
+    "forility": "for utility",
+    "orkernel": "or kernel",
+    "eaks": "leaks",
+    "andecoding": "and decoding",
+    "morefficiently": "more efficiently",
+    "specifich": "specific",
+    "ommandsuch": "command such",
+    "portra": "portrait",
+    "errored": "error",
+    "luded": "included",
+    "nto": "into",
+    "ancelled": "cancelled",
+    "ilable": "available",
+    "emulation": "emulation",
+    "ystem": "system",
+}
+
+
+def _detect_source_type(text: str) -> str:
+    """Classify changelog source for prompt tailoring."""
+    lines = text.splitlines()
+    non_empty = [l for l in lines if l.strip()]
+    if not non_empty:
+        return "generic"
+    bullet_likes = sum(
+        1 for l in non_empty if re.match(r"^\s*[\*\-]|^\d+[\.\)]\s", l)
+    )
+    ratio = bullet_likes / len(non_empty)
+    if ratio > 0.3:
+        return "release"
+    avg_len = sum(len(l) for l in non_empty) / len(non_empty)
+    if avg_len > 200:
+        return "wiki"
+    return "changelog"
+
+
+PROMPTS = {
+    "release": (
+        "Below are structured release notes. "
+        "Summarize ONLY the specific changes the user would notice. "
+        "Focus on new features, breaking changes, and important bug fixes. "
+    ),
+    "wiki": (
+        "Below is a wiki changelog. "
+        "Extract the specific technical changes and improvements. "
+        "Ignore administrative notes, release schedules, and deprecation warnings. "
+    ),
+    "changelog": (
+        "Below is a raw changelog. "
+        "Pick the most recent version's changes and summarize them. "
+    ),
+    "generic": (
+        "Below is the changelog. "
+    ),
+}
+
 
 def _call_ollama(prompt: str, cfg: Config) -> str | None:
     data = json.dumps({
@@ -84,6 +168,9 @@ def _postprocess(bullets: list[str], cfg: Config) -> list[str]:
     for b in bullets:
         b = re.sub(r"(\w+)\s+\1", r"\1", b)
         b = re.sub(r"([a-z])([A-Z])", r"\1 \2", b)
+        b = re.sub(r"\b(\w{4,})\s+(\1\w{1,3})\b", r"\2", b)
+        for wrong, right in KNOWN_MERGES.items():
+            b = b.replace(wrong, right)
         b = b.strip()
         if b:
             result.append(b)
@@ -94,8 +181,9 @@ def summarize(pkg_name: str, changelog_text: str, cfg: Config) -> list[str] | No
     if len(changelog_text) < 100:
         return None
     text = changelog_text[: cfg.max_input_bytes]
+    stype = _detect_source_type(text)
     prompt = (
-        "Below is the changelog. Summarize ONLY the specific changes. "
+        f"{PROMPTS[stype]}"
         f"Do NOT describe what {pkg_name} is or does. "
         f"Write 3-{cfg.max_bullets} specific bullet points. "
         "Include PR numbers, commit hashes, or version bumps if present. "

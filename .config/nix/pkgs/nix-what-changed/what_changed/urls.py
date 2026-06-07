@@ -114,6 +114,24 @@ def _make_dwarf_fortress_url(new_ver: str) -> str | None:
 KNOWN_URLS["dwarf-fortress"] = _make_dwarf_fortress_url
 
 
+def patch_release_tag(url: str, new_ver: str, cfg: Config) -> str:
+    """If the URL is a GitHub release tag pointing to a different version, try the new one."""
+    m = re.match(r"(https://github\.com/[^/]+/[^/]+/releases/tag/)(.*)", url)
+    if not m:
+        return url
+    base, tag = m.group(1), m.group(2)
+    # Check if the tag contains a version different from new_ver
+    tag_ver = re.sub(r"^v", "", tag)
+    if tag_ver == new_ver:
+        return url  # already matches
+    # Try the new version with various tag formats
+    for fmt in (f"v{new_ver}", new_ver, f"unknown-{new_ver}"):
+        new_url = f"{base}{fmt}"
+        if _http_ok(new_url, cfg):
+            return new_url
+    return url
+
+
 def guess_url(pkg: str, new_ver: str, cfg: Config) -> str | None:
     if pkg in KNOWN_URLS:
         url = KNOWN_URLS[pkg](new_ver)

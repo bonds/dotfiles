@@ -65,7 +65,8 @@ def show_header(count: int):
 def show_package(pkg: str, old_ver: str, new_ver: str,
                  description: str | None,
                  bullets: list[str] | None,
-                 max_width: int):
+                 max_width: int,
+                 error: str | None = None):
     name_part = f"\033[1;33m  {pkg:<{max_width}}\033[m"
     dim_part = f"\033[90m{old_ver}\033[m"
     green_part = f"\033[32m → {new_ver}\033[m"
@@ -80,6 +81,8 @@ def show_package(pkg: str, old_ver: str, new_ver: str,
             print(_wrap(b, indent="  • ", subsequent="    "))
         if len(bullets) > max_bullets:
             _dim(f"  … and {len(bullets) - max_bullets} more changes")
+    elif error:
+        _dim(f"  ⚠ {error}")
     print()
 
 
