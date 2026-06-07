@@ -70,6 +70,14 @@ $text" | timeout 20 ollama run gemma3:1b 2>/dev/null | string collect)
                         set -a non_bullets "$line"
                     end
                 end
+                # Remove bullets that are just version numbers (LLM artifact)
+                set -l filtered_bullets
+                for b in $bullets
+                    if not string match -q -r -- '^v?\d+(\.\d+)+\s*\.?\s*$' "$b"
+                        set -a filtered_bullets "$b"
+                    end
+                end
+                set bullets $filtered_bullets
                 if test (count $bullets) -gt 0
                     set -l max_bullets 5
                     set -l bcount (count $bullets)
@@ -180,14 +188,14 @@ if line:
 
     # Try lynx for HTML rendering, fall back to basic tag stripping
     if command --query lynx
-        echo "$content" | command lynx -stdin -dump -nolist 2>/dev/null | head -c 40000 | __print_lines $pkg_name
+        echo "$content" | command lynx -stdin -dump -nolist 2>/dev/null | head -c 200000 | __print_lines $pkg_name
     else if command --query w3m
-        echo "$content" | command w3m -dump -T text/html 2>/dev/null | head -c 40000 | __print_lines $pkg_name
+        echo "$content" | command w3m -dump -T text/html 2>/dev/null | head -c 200000 | __print_lines $pkg_name
     else if command --query python3
         echo "$content" | python3 -sc '
 import sys, re
 from html.parser import HTMLParser
-data = sys.stdin.read(80000)
+data = sys.stdin.read(200000)
 if not data.strip(): sys.exit(0)
 if re.search(r"(?i)<(?:html|!doctype)\b", data[:500]):
     # Extract main content area for wiki/changelog pages
@@ -198,24 +206,19 @@ if re.search(r"(?i)<(?:html|!doctype)\b", data[:500]):
         def __init__(self):
             super().__init__(convert_charrefs=True)
             self.text = []
-            self.skip = False
+            self.skip = 0
         def handle_starttag(self, tag, attrs):
-            if tag in ("script","style","nav","header","footer","nav"):
-                self.skip = True
+            if tag in ("script","style","nav","header","footer"):
+                self.skip += 1
             if tag in ("br","p","li","tr","h1","h2","h3","h4","dd","dt","div"):
                 self.text.append("\n")
-            # Skip sidebar/nav/toc/panel divs
-            if tag == "div":
-                for name, val in attrs:
-                    if name == "class" and val and any(x in val for x in ["sidebar", "nav", "toc", "panel", "side"]):
-                        self.skip = True
         def handle_endtag(self, tag):
-            if tag in ("script","style","nav","header","footer","nav"):
-                self.skip = False
+            if tag in ("script","style","nav","header","footer"):
+                self.skip = max(0, self.skip - 1)
             if tag in ("p","li","tr","h1","h2","h3","h4","dd","dt","div"):
                 self.text.append("\n")
         def handle_data(self, d):
-            if not self.skip:
+            if self.skip == 0:
                 self.text.append(d)
     parser = P()
     parser.feed(data)
@@ -226,6 +229,6 @@ if lines:
     print("\n".join(lines))
 ' 2>/dev/null | __print_lines $pkg_name
     else
-        echo "$content" | head -c 30000 | string trim | string match -rv '^\s*<[^>]*>\s*$' | string replace -ra '<[^>]+>' '' | string trim | string match -rv '^$' | __print_lines $pkg_name
+        echo "$content" | head -c 200000 | string trim | string match -rv '^\s*<[^>]*>\s*$' | string replace -ra '<[^>]+>' '' | string trim | string match -rv '^$' | __print_lines $pkg_name
     end
 end
