@@ -1,10 +1,13 @@
-{ lib, python3 }:
+{
+  lib,
+  python3,
+}:
 python3.pkgs.buildPythonApplication {
   pname = "what-changed";
-  version = "0.2.0";
+  version = "0.3.0";
   src = ./.;
   format = "pyproject";
-  nativeBuildInputs = with python3.pkgs; [ setuptools ];
+  nativeBuildInputs = with python3.pkgs; [setuptools];
   doCheck = false;
   meta = with lib; {
     description = "Show nix system package changelogs using LLM";

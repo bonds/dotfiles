@@ -5,18 +5,19 @@ import urllib.request
 from collections.abc import Callable
 
 from what_changed import metadata
+from what_changed.config import Config
 
 
-def _http_ok(url: str, timeout: float = 4) -> bool:
+def _http_ok(url: str, cfg: Config) -> bool:
     try:
         req = urllib.request.Request(url, method="HEAD")
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=cfg.http_timeout) as resp:
             return 200 <= resp.status < 300
     except Exception:
         return False
 
 
-def _guess_from_homepage(pkg: str, homepage: str | None, new_ver: str) -> str | None:
+def _guess_from_homepage(pkg: str, homepage: str | None, new_ver: str, cfg: Config) -> str | None:
     if not homepage:
         return None
     m = re.match(r"^https://github\.com/([^/]+)/([^/]+)/?$", homepage)
@@ -26,25 +27,25 @@ def _guess_from_homepage(pkg: str, homepage: str | None, new_ver: str) -> str | 
     gh_url = f"https://github.com/{owner}/{repo}"
     for tag in (f"v{new_ver}", new_ver, f"{pkg}-{new_ver}"):
         url = f"{gh_url}/releases/tag/{tag}"
-        if _http_ok(url):
+        if _http_ok(url, cfg):
             return url
     for path in ("CHANGELOG.md", "CHANGES.md", "RELEASE_NOTES.md", "NEWS.md", "ChangeLog", "CHANGELOG", "NEWS"):
         url = f"{gh_url}/blob/main/{path}"
-        if _http_ok(url):
+        if _http_ok(url, cfg):
             return url
     return None
 
 
-def _guess_from_name(pkg: str, new_ver: str) -> str | None:
+def _guess_from_name(pkg: str, new_ver: str, cfg: Config) -> str | None:
     for guess in (f"{pkg}/{pkg}", f"{pkg}-users/{pkg}", f"{pkg}-engine/{pkg}"):
         gh_url = f"https://github.com/{guess}"
         for tag in (f"v{new_ver}", new_ver, f"{pkg}-{new_ver}"):
             url = f"{gh_url}/releases/tag/{tag}"
-            if _http_ok(url):
+            if _http_ok(url, cfg):
                 return url
         for path in ("CHANGELOG.md", "CHANGES.md", "RELEASE_NOTES.md", "NEWS.md", "ChangeLog", "CHANGELOG", "NEWS"):
             url = f"{gh_url}/blob/main/{path}"
-            if _http_ok(url):
+            if _http_ok(url, cfg):
                 return url
     return None
 
@@ -73,8 +74,6 @@ KNOWN_URLS["gcc"] = _make_gcc_url
 
 
 def _make_github_blob(owner: str, repo: str, path: str, ref: str = "master"):
-    """Factory: returns a callable that produces a GitHub blob URL."""
-
     def make(new_ver: str) -> str:
         return f"https://github.com/{owner}/{repo}/blob/{ref}/{path}"
     return make
@@ -115,7 +114,7 @@ def _make_dwarf_fortress_url(new_ver: str) -> str | None:
 KNOWN_URLS["dwarf-fortress"] = _make_dwarf_fortress_url
 
 
-def guess_url(pkg: str, new_ver: str) -> str | None:
+def guess_url(pkg: str, new_ver: str, cfg: Config) -> str | None:
     if pkg in KNOWN_URLS:
         url = KNOWN_URLS[pkg](new_ver)
         if url:
@@ -123,7 +122,7 @@ def guess_url(pkg: str, new_ver: str) -> str | None:
     changelog_url = None
     homepage = metadata.get_homepage(pkg)
     if homepage:
-        changelog_url = _guess_from_homepage(pkg, homepage, new_ver)
+        changelog_url = _guess_from_homepage(pkg, homepage, new_ver, cfg)
     if not changelog_url:
-        changelog_url = _guess_from_name(pkg, new_ver)
+        changelog_url = _guess_from_name(pkg, new_ver, cfg)
     return changelog_url

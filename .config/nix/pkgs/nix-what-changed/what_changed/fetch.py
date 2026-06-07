@@ -5,8 +5,10 @@ import subprocess
 import urllib.request
 from html.parser import HTMLParser
 
+from what_changed.config import Config
 
-def _fetch(url: str, timeout: float = 8) -> str | None:
+
+def _fetch(url: str, timeout: float) -> str | None:
     try:
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -15,9 +17,9 @@ def _fetch(url: str, timeout: float = 8) -> str | None:
         return None
 
 
-def _raw_github(owner: str, repo: str, ref: str, path: str) -> str | None:
+def _raw_github(owner: str, repo: str, ref: str, path: str, timeout: float) -> str | None:
     url = f"https://raw.githubusercontent.com/{owner}/{repo}/{ref}/{path}"
-    return _fetch(url)
+    return _fetch(url, timeout)
 
 
 class _HTMLTextExtractor(HTMLParser):
@@ -62,37 +64,36 @@ def _extract_text(html: str) -> str | None:
     return "\n".join(lines) if lines else None
 
 
-def _fetch_github_release(owner: str, repo: str, tag: str) -> str | None:
+def _fetch_github_release(owner: str, repo: str, tag: str, cfg: Config) -> str | None:
     try:
         result = subprocess.run(
             ["gh", "release", "view", tag, "--repo", f"{owner}/{repo}", "--json", "body", "--jq", ".body"],
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=cfg.gh_timeout,
         )
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
     for path in ("ChangeLog", "NEWS", "CHANGES.md", "CHANGELOG.md", "RELEASE_NOTES.md", "NEWS.md"):
-        content = _raw_github(owner, repo, tag, path)
+        content = _raw_github(owner, repo, tag, path, cfg.http_timeout)
         if content and re.search(r"(?i)change|fix|version|release|bug", content[:1000]):
             return content
     return None
 
 
-def fetch_changelog(url: str) -> str | None:
+def fetch_changelog(url: str, cfg: Config) -> str | None:
     m = re.match(r"^https://github\.com/([^/]+)/([^/]+)/blob/([^/]+)/(.+)", url)
     if m:
-        raw = _raw_github(m.group(1), m.group(2), m.group(3), m.group(4))
-        return raw[:50000] if raw else None
+        raw = _raw_github(m.group(1), m.group(2), m.group(3), m.group(4), cfg.http_timeout)
+        return raw[:cfg.max_changelog_bytes] if raw else None
 
     m = re.match(r"^https://github\.com/([^/]+)/([^/]+)/releases/tag/(.+)", url)
     if m:
-        return _fetch_github_release(m.group(1), m.group(2), m.group(3))
+        return _fetch_github_release(m.group(1), m.group(2), m.group(3), cfg)
 
-    html = _fetch(url)
+    html = _fetch(url, cfg.http_timeout)
     if not html:
         return None
-    text = _extract_text(html)
-    return text
+    return _extract_text(html)
