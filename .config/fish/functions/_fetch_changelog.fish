@@ -19,7 +19,13 @@ function _fetch_changelog -a url pkg_name pkg_desc
 
         if command --query ollama
             set -l text (printf '%s\n' $buf | head -c 10000)
-            set -l summary (printf '%s' "Summarize in 1 line: what changed in $pkg_name. Be brief. Respond in English.
+            if test (string length -- "$text") -lt 100
+                set_color yellow
+                echo "  (no release notes available)"
+                set_color normal
+                return
+            end
+            set -l summary (printf '%s' "Read text and write 3-5 specific bullet points about $pkg_name. Include real version bumps, PR numbers, or commit hashes if present. No generic filler or invented features. Only state what is directly in the text. Respond in English.
 
 $text" | env OLLAMA_HOST=192.168.4.43:11434 timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
             if test -n "$summary"

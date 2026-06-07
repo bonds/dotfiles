@@ -58,19 +58,57 @@ function what-changed -d "Show release notes for packages updated between two sy
                 set -l homepage (command nix eval --raw "nixpkgs#$pkg.meta.homepage" 2>/dev/null)
                 set -l gh_match (string match -r '^https://github\.com/([^/]+)/([^/]+)/?$' "$homepage")
                 if test (count $gh_match) -ge 3
-                    for path in CHANGELOG.md CHANGES.md RELEASE_NOTES.md NEWS.md ChangeLog CHANGELOG NEWS
-                        set changelog_url "https://github.com/$gh_match[2]/$gh_match[3]/blob/main/$path"
-                        if command curl -sIL --max-time 3 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                    set -l gh_url "https://github.com/$gh_match[2]/$gh_match[3]"
+                    # Try specific release tag first (most useful)
+                    for tag in "v$new_ver" "$new_ver" "$pkg-$new_ver"
+                        set changelog_url "$gh_url/releases/tag/$tag"
+                        if command curl -sIL --max-time 2 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
                             break
                         end
                         set changelog_url ""
                     end
-                    # If no file found, try releases page
+                    # Fallback: try changelog files
                     if test -z "$changelog_url"
-                        set changelog_url "https://github.com/$gh_match[2]/$gh_match[3]/releases"
-                        if not command curl -sIL --max-time 3 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                        for path in CHANGELOG.md CHANGES.md RELEASE_NOTES.md NEWS.md ChangeLog CHANGELOG NEWS
+                            set changelog_url "$gh_url/blob/main/$path"
+                            if command curl -sIL --max-time 2 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                                break
+                            end
                             set changelog_url ""
                         end
+                    end
+                end
+            end
+
+            # Fallback: guess GitHub URL from package name for well-known projects
+            if test -z "$changelog_url"
+                # Common GitHub naming conventions: {pkg}/{pkg}, {pkg}-users/{pkg}, {pkg}-engine/{pkg}
+                for guess in "$pkg/$pkg" "$pkg-users/$pkg" "$pkg-engine/$pkg"
+                    set -l gh_url "https://github.com/$guess"
+                    if not command curl -sIL --max-time 2 "$gh_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                        continue
+                    end
+                    set changelog_url ""
+                    # Try specific release tag first (most useful)
+                    for tag in "v$new_ver" "$new_ver" "$pkg-$new_ver"
+                        set changelog_url "$gh_url/releases/tag/$tag"
+                        if command curl -sIL --max-time 2 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                            break
+                        end
+                        set changelog_url ""
+                    end
+                    if test -z "$changelog_url"
+                        # Fallback: try changelog files
+                        for path in CHANGELOG.md CHANGES.md RELEASE_NOTES.md NEWS.md ChangeLog CHANGELOG NEWS
+                            set changelog_url "$gh_url/blob/main/$path"
+                            if command curl -sIL --max-time 2 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                                break
+                            end
+                            set changelog_url ""
+                        end
+                    end
+                    if test -n "$changelog_url"
+                        break
                     end
                 end
             end
