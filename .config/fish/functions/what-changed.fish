@@ -127,6 +127,17 @@ function what-changed -d "Show release notes for packages updated between two sy
                 end
             end
 
+            # Known changelog URLs for specific packages
+            if test -z "$changelog_url"
+                switch $pkg
+                    case qemu
+                        set -l ver_parts (string split "." $new_ver)
+                        if test (count $ver_parts) -ge 2
+                            set changelog_url "https://wiki.qemu.org/ChangeLog/$ver_parts[1].$ver_parts[2]"
+                        end
+                end
+            end
+
             if test -n "$changelog_url" -a "$changelog_url" != "null"
                 _fetch_changelog "$changelog_url" "$pkg" "$pkg_desc"
                 echo ""

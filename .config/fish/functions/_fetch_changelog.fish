@@ -35,7 +35,7 @@ if desc:
                 set_color normal
                 return
             end
-            set -l summary (printf '%s' "Read text and write 3-5 specific bullet points about $pkg_name. Include real version bumps, PR numbers, or commit hashes if present. No generic filler or invented features. Only state what is directly in the text. Respond in English.
+            set -l summary (printf '%s' "Below is the changelog. Summarize ONLY the specific changes. Do NOT describe what $pkg_name is or does. Write 3-5 specific bullet points. Include PR numbers, commit hashes, or version bumps if present. No generic filler. Respond in English.
 
 $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
             if test -n "$summary"
