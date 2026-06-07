@@ -58,11 +58,13 @@ def main():
     max_width = max(len(c.name) for c in changes) + 2
     max_width = max(max_width, 18)
 
+    spin_thread, spin_stop, spin_done = display.run_spinner(len(changes))
+
     metas = {}
     for i, c in enumerate(changes):
         metas[i] = _meta_for(c)
+        spin_done[0] += 1
 
-    spin_thread, spin_stop, spin_done = display.run_spinner(len(changes))
     results: dict[int, list[str] | None] = {}
     with ThreadPoolExecutor(max_workers=4) as pool:
         futures = {}

@@ -33,9 +33,12 @@ def _spinner_thread(stop: threading.Event, total: int, done_ref: list[int]):
         if stop.is_set():
             break
         d = done_ref[0]
-        sys.stdout.write(f"\r  {frame} Checking {d}/{total} packages... ")
+        if d <= total:
+            sys.stdout.write(f"\r  {frame} Checking {d}/{total} packages... ")
+        else:
+            sys.stdout.write(f"\r  {frame} Summarizing {d - total}/{total}...   ")
         sys.stdout.flush()
-        time.sleep(0.08)
+        time.sleep(0.4)
 
 
 def run_spinner(total: int) -> tuple[threading.Thread, threading.Event, list[int]]:
