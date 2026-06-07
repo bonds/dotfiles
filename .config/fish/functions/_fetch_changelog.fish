@@ -37,7 +37,7 @@ if desc:
             end
             set -l summary (printf '%s' "Below is the changelog. Summarize ONLY the specific changes. Do NOT describe what $pkg_name is or does. Write 3-5 specific bullet points. Include PR numbers, commit hashes, or version bumps if present. No generic filler. Respond in English.
 
-$text" | timeout 20 ollama run gemma3:1b 2>/dev/null | string collect)
+$text" | timeout 20 ollama run gemma3:1b-it-qat 2>/dev/null | string collect)
             if test -n "$summary"
                 # Strip ANSI codes and split into lines
                 set -l lines (echo "$summary" | string replace -ra '\e\[[0-9;]*[a-zA-Z]' '' | string trim | string split \n)
@@ -82,7 +82,7 @@ $text" | timeout 20 ollama run gemma3:1b 2>/dev/null | string collect)
                     set -l max_bullets 5
                     set -l bcount (count $bullets)
                     for i in (seq 1 (math "min($max_bullets, $bcount)"))
-                        set -l b (echo "$bullets[$i]" | string replace -ra '(\w+)\s+\1' '$1' | string trim)
+                        set -l b (echo "$bullets[$i]" | string replace -ra '(\w+)\s+\1' '$1' | string replace -ra '([a-z])([A-Z])' '$1 $2' | string trim)
                         set_color brblack
                         if command --query python3
                             echo "$b" | python3 -sc "
