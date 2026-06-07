@@ -4,7 +4,7 @@ Personal dotfiles repo — this is `$HOME` on each machine, but only a curated s
 
 ## Git tracking strategy
 
-All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git/config`). Only files explicitly `git add`ed are tracked. The global gitignore (`.config/git/ignore`) additionally ignores `.DS_Store`, `.vscode`, and `**/.claude/settings.local.json`.
+All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git/config`). Only files explicitly `git add`ed are tracked. The global gitignore (`.config/git/ignore`) additionally ignores `.DS_Store`, `.vscode`, `__pycache__/`, and `**/.claude/settings.local.json`.
 
 **To see tracked files:** `git ls-files`
 **To add new files to tracking:** `git add -f <path>` (normal `git add` works too since untracked files are shown as ignored)
@@ -40,6 +40,14 @@ All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git
 - `.config/nix/` — **full nix flake for all machines** (see `.config/nix/AGENTS.md` for detailed docs)
   - Flake for: laptop (accismus/darwin), server (sophrosyne/NixOS), workstation (metanoia/NixOS)
   - `nr` fish function wraps `nh` for rebuilds
+- `.config/nix/pkgs/nix-what-changed/` — **`what-changed` tool** — Ported from fish to Python (v0.5.0).
+  - Lives at `pkgs/nix-what-changed/` inside the dotfiles flake.
+  - Also publishable as a standalone flake: `github:bonds/dotfiles?dir=.config/nix/pkgs/nix-what-changed`.
+  - Shows LLM-summarized changelogs after `nr` via `what-changed <old-closure> <new-closure>`.
+  - Model: `gemma3:1b-it-qat` (ollama). Config at `~/.config/what-changed/config.toml`.
+  - Supports ollama + OpenAI-compatible backends. Caches results in `~/.cache/what-changed/`.
+  - NixOS/darwin module: `programs.what-changed.enable`.
+  - `nix flake check` runs alejandra format check, Python syntax check, and pytest suite.
 
 ### Haskell
 - `.config/ghc/ghci.conf` — GHCi config
@@ -88,3 +96,6 @@ Three machines managed from this repo:
 - Nix formatting: alejandra (`nix fmt` — unreliable, prefer `alejandra <file>` directly)
 - After each batch of changes, commit and push to all remotes (`git push origin && git push sophrosyne`)
 - Code repos I'm actively working on live in `~/Documents/undated/repos/`
+-
+- **Version bump policy for `what-changed`:** Bump the minor version (e.g. `0.4.0` → `0.5.0`) whenever user-facing features, behavior, or dependencies change. Bug fixes and internal refactors get a patch if there's a prior tagged release, otherwise batch into the next minor. Keep `default.nix` and `pyproject.toml` in sync.
+- **`git add` WITHOUT `-f` for `nix-what-changed`:** The directory has a `.gitignore` that excludes `__pycache__/`. Using `git add -f` overrides it and tracks `.pyc` files, which then need a cleanup commit. Use plain `git add .config/nix/pkgs/nix-what-changed/what_changed/<file>.py` for individual files, or `git add .config/nix/pkgs/nix-what-changed/` (without `-f`) to respect the gitignore.
