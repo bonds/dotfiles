@@ -16,7 +16,7 @@ function _fetch_changelog -a url
             set -l text (printf '%s\n' $buf | head -c 30000)
             set -l summary (printf '%s' "Summarize these release notes in 1-3 concise lines: what the package does and what changed in this version. Be brief, no preamble.
 
-$text" | env OLLAMA_HOST=192.168.4.43:11434 ollama run gemma4:31b 2>/dev/null | string collect)
+$text" | env OLLAMA_HOST=192.168.4.43:11434 ollama run gemma4:latest 2>/dev/null | string collect)
             if test -n "$summary"
                 echo "$summary"
                 return
