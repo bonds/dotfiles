@@ -12,12 +12,16 @@ function what-changed -d "Show release notes for packages updated between two sy
     end
 
     echo ""
+    set_color cyan --bold
     echo "━━━ Package Changes ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    set_color normal
     echo ""
 
     set -l diff_output (command nix store diff-closures $old_system $new_system 2>&1)
     if test $status -ne 0
+        set_color red
         echo "Error: $diff_output" >&2
+        set_color normal
         return 1
     end
 
@@ -34,16 +38,30 @@ function what-changed -d "Show release notes for packages updated between two sy
             end
 
             set found 1
-            echo "  $pkg  $old_ver → $new_ver"
+            set_color --bold
+            echo -n "  $pkg  "
+            set_color normal
+            set_color brblack
+            echo -n "$old_ver"
+            set_color green
+            echo -n " → "
+            set_color normal
+            set_color brblack
+            echo "$new_ver"
+            set_color normal
 
             set -l changelog_url (command nix eval --raw "nixpkgs#$pkg.meta.changelog" 2>/dev/null)
             set -l pkg_desc (command nix eval --raw "nixpkgs#$pkg.meta.description" 2>/dev/null)
             if test -n "$changelog_url" -a "$changelog_url" != "null"
+                set_color brblack
                 echo "  ────────────────────────────────────────────"
+                set_color normal
                 _fetch_changelog "$changelog_url" "$pkg" "$pkg_desc"
                 echo ""
             else if test -n "$pkg_desc" -a "$pkg_desc" != "null"
+                set_color yellow
                 echo "  $pkg — $pkg_desc"
+                set_color normal
                 echo ""
             else
                 echo ""

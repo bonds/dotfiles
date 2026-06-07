@@ -1,6 +1,8 @@
 function _fetch_changelog -a url pkg_name pkg_desc
     if test -n "$pkg_desc" -a "$pkg_desc" != "null"
-        echo "$pkg_name — $pkg_desc"
+        set_color yellow
+        echo "  $pkg_name — $pkg_desc"
+        set_color normal
     end
 
     function __print_lines -a pkg_name
@@ -23,14 +25,14 @@ $text" | env OLLAMA_HOST=192.168.4.43:11434 timeout 20 ollama run gemma3:270m 2>
             if test -n "$summary"
                 set -l clean (echo "$summary" | string replace -ra '\e\[[0-9;]*[a-zA-Z]' '' | string trim)
                 if test -n "$clean"
-                    echo "$clean"
+                    echo "  $clean"
                     return
                 end
             end
         end
 
         for i in (seq 1 (math "min(25, "(count $buf)")"))
-            echo $buf[$i]
+            echo "  $buf[$i]"
         end
         if test (count $buf) -gt 25
             echo "  ... (truncated)"
