@@ -49,14 +49,14 @@ $text" | timeout 20 ollama run gemma3:1b 2>/dev/null | string collect)
                     if test -z "$line"
                         continue
                     end
-                    if string match -q -r '^[\*\-\d]' "$line"
+                    if string match -q -r -- '^[\*\-](?!-)|^\d+[\.\)]\s' "$line"
                         set in_bullets 1
                         # Strip leading bullet markers and bold
-                        set line (string replace -ra '^\s*[\*\-\d]+\.?\s*' '' "$line" | string replace -ra '\*\*' '' | string trim)
+                        set line (string replace -ra -- '^\s*[\*\-\d]+\.?\s*' '' "$line" | string replace -ra '\*\*' '' | string trim)
                         if test -n "$line"
                             set -a bullets "$line"
                         end
-                    else if string match -q -r '^#+[ \t]|^https?://' "$line"
+                    else if string match -q -r -- '^#+[ \t]|^https?://' "$line"
                         # Markdown headers and standalone URLs — skip
                         continue
                     else if test $in_bullets -eq 1 -a (count $bullets) -gt 0
