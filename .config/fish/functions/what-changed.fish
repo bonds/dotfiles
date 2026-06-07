@@ -11,12 +11,6 @@ function what-changed -d "Show release notes for packages updated between two sy
         return 1
     end
 
-    echo ""
-    set_color cyan --bold
-    echo "━━━ Package Changes ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    set_color normal
-    echo ""
-
     set -l diff_output (command nix store diff-closures $old_system $new_system 2>&1)
     if test $status -ne 0
         set_color red
@@ -24,6 +18,32 @@ function what-changed -d "Show release notes for packages updated between two sy
         set_color normal
         return 1
     end
+
+    # First pass: count packages and find longest name for alignment
+    set -l pkg_count 0
+    set -l max_width 0
+    for line in $diff_output
+        set -l parsed (string match -r '^([a-zA-Z0-9._-]+): (.+) → (.+)' $line)
+        if test (count $parsed) -ge 4
+            set -l pkg $parsed[2]
+            set -l old_ver (string trim $parsed[3])
+            set -l new_ver (string trim (string replace -r ',.*$' '' $parsed[4]))
+            if test "$old_ver" != "∅" -a "$new_ver" != "∅"
+                set pkg_count (math "$pkg_count + 1")
+                set -l w (string length "$pkg")
+                if test $w -gt $max_width
+                    set max_width $w
+                end
+            end
+        end
+    end
+    set max_width (math "max($max_width + 2, 18)")
+
+    echo ""
+    set_color cyan --bold
+    echo "━━━ Package Changes ($pkg_count) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    set_color normal
+    echo ""
 
     set -l found 0
     for line in $diff_output
@@ -39,7 +59,7 @@ function what-changed -d "Show release notes for packages updated between two sy
 
             set found 1
             set_color --bold
-            echo -n "  $pkg  "
+            printf "  %-*s" $max_width "$pkg"
             set_color normal
             set_color brblack
             echo -n "$old_ver"
@@ -124,6 +144,10 @@ function what-changed -d "Show release notes for packages updated between two sy
     if test "$found" -eq 0
         set_color brblack
         echo "  (no version changes detected)"
+        set_color normal
+    else
+        set_color brblack
+        echo "  $pkg_count packages updated"
         set_color normal
     end
     echo ""
