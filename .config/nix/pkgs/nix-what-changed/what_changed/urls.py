@@ -108,6 +108,13 @@ def _make_discord_url(new_ver: str) -> str | None:
 KNOWN_URLS["discord"] = _make_discord_url
 
 
+def _make_dwarf_fortress_url(new_ver: str) -> str | None:
+    return "https://dwarffortresswiki.org/index.php/Version_history"
+
+
+KNOWN_URLS["dwarf-fortress"] = _make_dwarf_fortress_url
+
+
 def guess_url(pkg: str, new_ver: str) -> str | None:
     if pkg in KNOWN_URLS:
         url = KNOWN_URLS[pkg](new_ver)
