@@ -37,9 +37,13 @@ function what-changed -d "Show release notes for packages updated between two sy
             echo "  $pkg  $old_ver → $new_ver"
 
             set -l changelog_url (command nix eval --raw "nixpkgs#$pkg.meta.changelog" 2>/dev/null)
+            set -l pkg_desc (command nix eval --raw "nixpkgs#$pkg.meta.description" 2>/dev/null)
             if test -n "$changelog_url" -a "$changelog_url" != "null"
                 echo "  ────────────────────────────────────────────"
-                _fetch_changelog "$changelog_url"
+                _fetch_changelog "$changelog_url" "$pkg" "$pkg_desc"
+                echo ""
+            else if test -n "$pkg_desc" -a "$pkg_desc" != "null"
+                echo "  $pkg — $pkg_desc"
                 echo ""
             else
                 echo ""
