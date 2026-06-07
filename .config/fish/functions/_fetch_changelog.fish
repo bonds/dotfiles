@@ -1,6 +1,6 @@
 function _fetch_changelog -a url pkg_name pkg_desc
     if test -n "$pkg_desc" -a "$pkg_desc" != "null"
-        set_color yellow
+        set_color brblack
         echo "  $pkg_name — $pkg_desc"
         set_color normal
     end
@@ -20,7 +20,7 @@ function _fetch_changelog -a url pkg_name pkg_desc
         if command --query ollama
             set -l text (printf '%s\n' $buf | head -c 5000)
             if test (string length -- "$text") -lt 100
-                set_color yellow
+                set_color brblack
                 echo "  (no release notes available)"
                 set_color normal
                 return
@@ -62,7 +62,9 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
                     set -l bcount (count $bullets)
                     for i in (seq 1 (math "min($max_bullets, $bcount)"))
                         set -l b (echo "$bullets[$i]" | string replace -ra '(\w+)\s+\1' '$1' | string trim)
-                        echo "  - $b"
+                        set_color brblack
+                        echo "  • $b"
+                        set_color normal
                     end
                     if test $bcount -gt $max_bullets
                         set_color brblack
@@ -73,18 +75,22 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
                 end
                 # No bullets found — dump as single line fallback
                 if test (count $non_bullets) -gt 0
+                    set_color brblack
                     echo "  "(string join ' ' $non_bullets)
+                    set_color normal
                     return
                 end
             end
         end
 
+        set_color brblack
         for i in (seq 1 (math "min(25, "(count $buf)")"))
             echo "  $buf[$i]"
         end
         if test (count $buf) -gt 25
             echo "  ... (truncated)"
         end
+        set_color normal
     end
 
     # Case 1: GitHub blob URLs → raw content (CHANGELOG.md, RelNotes, etc.)

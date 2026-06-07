@@ -114,7 +114,7 @@ function what-changed -d "Show release notes for packages updated between two sy
                 _fetch_changelog "$changelog_url" "$pkg" "$pkg_desc"
                 echo ""
             else if test -n "$pkg_desc" -a "$pkg_desc" != "null"
-                set_color yellow
+                set_color brblack
                 echo "  $pkg — $pkg_desc"
                 set_color normal
                 echo ""
