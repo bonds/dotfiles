@@ -28,7 +28,7 @@ if desc:
         end
 
         if command --query ollama
-            set -l text (printf '%s\n' $buf | head -c 5000)
+            set -l text (printf '%s\n' $buf | head -c 15000)
             if test (string length -- "$text") -lt 100
                 set_color brblack
                 echo "  (no release notes available)"
