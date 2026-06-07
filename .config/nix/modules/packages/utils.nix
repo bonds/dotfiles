@@ -17,6 +17,7 @@
     moreutils # additional Unix utilities (sponge, etc.)
     pstree # display running processes as a tree
     pv # monitor data progress through a pipe
+    python3 # interpreter, used by _fetch_changelog for text wrapping
     rclone # sync files to/from cloud storage
     rsync # fast incremental file transfer
     smartmontools # monitor disk health (S.M.A.R.T.)
