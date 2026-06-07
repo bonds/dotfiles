@@ -18,7 +18,7 @@ function _fetch_changelog -a url pkg_name pkg_desc
         end
 
         if command --query ollama
-            set -l text (printf '%s\n' $buf | head -c 10000)
+            set -l text (printf '%s\n' $buf | head -c 5000)
             if test (string length -- "$text") -lt 100
                 set_color yellow
                 echo "  (no release notes available)"
@@ -58,8 +58,14 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
                     end
                 end
                 if test (count $bullets) -gt 0
-                    for b in $bullets
-                        echo "  - $b"
+                    set -l max_bullets 5
+                    for i in (seq 1 (math "min($max_bullets, "(count $bullets)")"))
+                        echo "  - $bullets[$i]"
+                    end
+                    if test (count $bullets) -gt $max_bullets
+                        set_color brblack
+                        echo "  … and "(math "(count $bullets) - $max_bullets")" more changes"
+                        set_color normal
                     end
                     return
                 end
@@ -94,8 +100,8 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
             set -l release_notes (command gh release view $m2[4] --repo "$m2[2]/$m2[3]" --json body --jq '.body' 2>/dev/null)
             if test -n "$release_notes"
                 echo "$release_notes" | __print_lines $pkg_name
-                return
             end
+            return
         end
     end
 
