@@ -62,6 +62,52 @@ def _make_qemu_url(new_ver: str) -> str | None:
 KNOWN_URLS["qemu"] = _make_qemu_url
 
 
+def _make_gcc_url(new_ver: str) -> str | None:
+    parts = new_ver.split(".")
+    if len(parts) >= 1:
+        return f"https://gcc.gnu.org/gcc-{parts[0]}/changes.html"
+    return None
+
+
+KNOWN_URLS["gcc"] = _make_gcc_url
+
+
+def _make_github_blob(owner: str, repo: str, path: str, ref: str = "master"):
+    """Factory: returns a callable that produces a GitHub blob URL."""
+
+    def make(new_ver: str) -> str:
+        return f"https://github.com/{owner}/{repo}/blob/{ref}/{path}"
+    return make
+
+
+KNOWN_URLS["cargo"] = _make_github_blob("rust-lang", "cargo", "CHANGELOG.md")
+KNOWN_URLS["rustc"] = _make_github_blob("rust-lang", "rust", "RELEASES.md")
+KNOWN_URLS["coreutils"] = _make_github_blob("coreutils", "coreutils", "NEWS")
+KNOWN_URLS["msmtp"] = _make_github_blob("marlam", "msmtp", "NEWS")
+KNOWN_URLS["rsync"] = _make_github_blob("WayneD", "rsync", "NEWS.md")
+
+
+def _make_gimp_url(new_ver: str) -> str | None:
+    return "https://gitlab.gnome.org/GNOME/gimp/-/raw/master/NEWS"
+
+
+KNOWN_URLS["gimp"] = _make_gimp_url
+
+
+def _make_obsidian_url(new_ver: str) -> str | None:
+    return "https://obsidian.md/changelog/"
+
+
+KNOWN_URLS["obsidian"] = _make_obsidian_url
+
+
+def _make_discord_url(new_ver: str) -> str | None:
+    return "https://discord.com/tags/changelog"
+
+
+KNOWN_URLS["discord"] = _make_discord_url
+
+
 def guess_url(pkg: str, new_ver: str) -> str | None:
     if pkg in KNOWN_URLS:
         url = KNOWN_URLS[pkg](new_ver)
