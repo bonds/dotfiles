@@ -52,6 +52,29 @@ function what-changed -d "Show release notes for packages updated between two sy
 
             set -l changelog_url (command nix eval --raw "nixpkgs#$pkg.meta.changelog" 2>/dev/null)
             set -l pkg_desc (command nix eval --raw "nixpkgs#$pkg.meta.description" 2>/dev/null)
+
+            # Fallback: derive changelog from GitHub homepage
+            if test -z "$changelog_url" -o "$changelog_url" = "null"
+                set -l homepage (command nix eval --raw "nixpkgs#$pkg.meta.homepage" 2>/dev/null)
+                set -l gh_match (string match -r '^https://github\.com/([^/]+)/([^/]+)/?$' "$homepage")
+                if test (count $gh_match) -ge 3
+                    for path in CHANGELOG.md CHANGES.md RELEASE_NOTES.md NEWS.md ChangeLog CHANGELOG NEWS
+                        set changelog_url "https://github.com/$gh_match[2]/$gh_match[3]/blob/main/$path"
+                        if command curl -sIL --max-time 3 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                            break
+                        end
+                        set changelog_url ""
+                    end
+                    # If no file found, try releases page
+                    if test -z "$changelog_url"
+                        set changelog_url "https://github.com/$gh_match[2]/$gh_match[3]/releases"
+                        if not command curl -sIL --max-time 3 "$changelog_url" 2>/dev/null | string match -q -r 'HTTP/[0-9.]+ 2[0-9][0-9]'
+                            set changelog_url ""
+                        end
+                    end
+                end
+            end
+
             if test -n "$changelog_url" -a "$changelog_url" != "null"
                 set_color brblack
                 echo "  ────────────────────────────────────────────"
