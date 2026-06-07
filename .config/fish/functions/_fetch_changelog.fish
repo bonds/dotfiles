@@ -16,7 +16,7 @@ function _fetch_changelog -a url
             set -l text (printf '%s\n' $buf | head -c 10000)
             set -l summary (printf '%s' "Summarize in 1-2 lines: what the package is and what changed. Be brief.
 
-$text" | env OLLAMA_HOST=192.168.4.43:11434 timeout 15 ollama run qwen2.5:0.5b 2>/dev/null | string collect)
+$text" | env OLLAMA_HOST=192.168.4.43:11434 timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
             if test -n "$summary"
                 set -l clean (echo "$summary" | string replace -ra '\e\[[0-9;]*[a-zA-Z]' '' | string trim)
                 if test -n "$clean"
