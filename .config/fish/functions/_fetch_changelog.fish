@@ -35,7 +35,7 @@ $text" | timeout 20 ollama run gemma3:270m 2>/dev/null | string collect)
                 set -l non_bullets
                 set -l in_bullets 0
                 for line in $lines
-                    set line (string trim "$line")
+                    set line (string trim -- "$line")
                     if test -z "$line"
                         continue
                     end
