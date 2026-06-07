@@ -63,6 +63,29 @@ def _make_qemu_url(new_ver: str) -> str | None:
 KNOWN_URLS["qemu"] = _make_qemu_url
 
 
+def _make_darwin_system_url(new_ver: str) -> str | None:
+    import urllib.request
+    parts = new_ver.split(".")
+    if len(parts) < 2:
+        return None
+    ver_no_dot = parts[0] + parts[1].zfill(2)
+    candidates = [
+        f"https://raw.githubusercontent.com/NixOS/nixpkgs/nixpkgs-unstable/nixos/doc/manual/release-notes/rl-{ver_no_dot}.section.md",
+        f"https://raw.githubusercontent.com/NixOS/nixpkgs/nixos-{new_ver}/nixos/doc/manual/release-notes/rl-{ver_no_dot}.section.md",
+    ]
+    for url in candidates:
+        try:
+            req = urllib.request.Request(url, method="HEAD")
+            with urllib.request.urlopen(req, timeout=4):
+                return url
+        except Exception:
+            continue
+    return None
+
+
+KNOWN_URLS["darwin-system"] = _make_darwin_system_url
+
+
 def _make_gcc_url(new_ver: str) -> str | None:
     parts = new_ver.split(".")
     if len(parts) >= 1:
