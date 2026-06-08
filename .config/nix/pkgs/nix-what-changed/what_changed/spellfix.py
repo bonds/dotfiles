@@ -20,25 +20,18 @@ _PREFIXES = {
 }
 
 
-_CODE_RE = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*\b")
-
-
-def _is_code(word: str) -> bool:
-    """Skip words that look like code identifiers (camelCase, snake_case, dotted.paths)."""
-    return bool(re.search(r"[._()\[\]{}<>]|^[a-z]+[A-Z]", word))
-
-
 def fix(text: str) -> str:
-    """Spell-check and word-split a single line of text."""
+    """Spell-check and word-split a single line of text.
+
+    Words that look like code (containing dots, underscores, parens) or
+    that are too far from any dictionary word are left unchanged.
+    """
     if not _HAS_SPELLCHECK:
         return text
     words = text.split()
     result: list[str] = []
     for word in words:
-        if _is_code(word):
-            result.append(word)
-        else:
-            result.append(_fix_word(word))
+        result.append(_fix_word(word))
     return " ".join(result)
 
 
@@ -59,9 +52,6 @@ def _fix_word(word: str) -> str:
         if _spell.known([rest]):
             return rest  # "sspecific" → "specific"
 
-    # Try the spell checker's best guess
-    candidates = _spell.candidates(word)
-    if candidates:
-        return _spell.correction(word)
-
-    return word
+    # Try the spell checker's best guess (returns None if no good match)
+    best = _spell.correction(word)
+    return best if best else word
