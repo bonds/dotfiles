@@ -166,6 +166,16 @@ async def guess_url(pkg: str, new_ver: str, cfg: Config) -> str | None:
         url = KNOWN_URLS[pkg](new_ver)
         if url:
             return url
+
+    if pkg.startswith("nixos-system-"):
+        parts = new_ver.split(".")
+        if len(parts) >= 2:
+            ver_no_dot = parts[0] + parts[1].zfill(2)
+            return (
+                f"https://raw.githubusercontent.com/NixOS/nixpkgs/nixpkgs-unstable/"
+                f"nixos/doc/manual/release-notes/rl-{ver_no_dot}.section.md"
+            )
+
     homepage = metadata.get_homepage(pkg)
     if homepage:
         url = await _guess_from_homepage(pkg, homepage, new_ver, cfg)
