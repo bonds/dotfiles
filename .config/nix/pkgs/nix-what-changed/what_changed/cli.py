@@ -162,6 +162,10 @@ async def main():
             _usage_gen()
             sys.exit(1)
         old_system, new_system = older_path, newer_path
+        output_json = "--json" in raw_args
+        output_brief = "--brief" in raw_args
+        verbose = "--verbose" in raw_args
+        output_verbose = verbose
     elif date_match:
         no_cache = "--no-cache" in raw_args
         if len(gen_args) == 1:
