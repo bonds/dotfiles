@@ -108,6 +108,7 @@ async def main():
         output_brief = args.brief
     cfg = config.load()
     changes = run_diff(old_system, new_system)
+
     if not changes:
         if gen_newer_num is not None:
             import datetime
@@ -123,6 +124,15 @@ async def main():
     max_width = max(max_width, 18)
 
     with display.progress_bar(len(changes)) as update:
+
+        needs_model = cfg.backend == "ollama" and any(
+            cache.get_summary(c.name, c.old_version, c.new_version, cfg) is None
+            for c in changes
+        )
+        if needs_model:
+            ok = await summarize.preflight(cfg, status=lambda desc: update(advance=0, desc=desc))
+            if not ok:
+                update(desc="LLM unavailable, changelogs disabled")
 
         pkg_names = [c.name for c in changes]
         batch = metadata.get_metadata_batch(pkg_names)

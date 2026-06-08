@@ -58,7 +58,8 @@ def progress_bar(total: int):
         t.start()
 
         def update(advance: int = 1, desc: str | None = None):
-            done[0] += advance
+            if advance:
+                done[0] += advance
 
         try:
             yield update
@@ -81,10 +82,13 @@ def progress_bar(total: int):
         task_id = progress.add_task("Checking packages...", total=total * 2)
 
         def update(advance: int = 1, desc: str | None = None):
-            if progress.tasks[0].completed < total:
-                progress.update(task_id, advance=advance, description=desc or "Looking up...")
-            else:
-                progress.update(task_id, advance=advance, description=desc or "Summarizing...")
+            if advance:
+                if progress.tasks[0].completed < total:
+                    progress.update(task_id, advance=advance, description=desc or "Looking up...")
+                else:
+                    progress.update(task_id, advance=advance, description=desc or "Summarizing...")
+            elif desc:
+                progress.update(task_id, description=desc)
 
         yield update
 

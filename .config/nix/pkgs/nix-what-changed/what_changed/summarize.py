@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import sys
 
 import httpx
 
@@ -95,27 +96,38 @@ PROMPTS = {
 }
 
 
-_model_checked = False
+async def preflight(cfg: Config, status: callable = lambda **kw: None) -> bool:
+    """Ensure the model is available. Shows download progress via *status*(desc=...).
 
-
-def _ensure_model(cfg: Config):
-    global _model_checked
-    if _model_checked:
-        return
-    _model_checked = True
-    import subprocess
+    Returns True if the model is ready, False on error.
+    """
     try:
-        result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
-        if cfg.model not in result.stdout:
-            __import__("sys").stderr.write(f"  (pulling {cfg.model}…)\n")
-            __import__("sys").stderr.flush()
-            subprocess.run(["ollama", "pull", cfg.model], capture_output=True, timeout=300)
+        async with httpx.AsyncClient(timeout=10) as c:
+            resp = await c.post(f"{cfg.host}/api/show", json={"name": cfg.model})
+            if resp.status_code == 200:
+                return True
     except Exception:
         pass
+    try:
+        status(desc=f"Downloading {cfg.model}...")
+        async with httpx.AsyncClient(timeout=300) as c:
+            async with c.stream("POST", f"{cfg.host}/api/pull", json={"name": cfg.model}) as resp:
+                async for line in resp.aiter_lines():
+                    if not line.strip():
+                        continue
+                    data = json.loads(line)
+                    total = data.get("total", 0)
+                    completed = data.get("completed", 0)
+                    digest = data.get("digest", "")[:12]
+                    if total and completed:
+                        pct = int(completed * 100 / total)
+                        status(desc=f"Downloading {cfg.model}  {digest} {pct}%")
+    except Exception:
+        return False
+    return True
 
 
 async def _call_ollama(prompt: str, cfg: Config) -> str | None:
-    _ensure_model(cfg)
     data = json.dumps({
         "model": cfg.model,
         "prompt": prompt,
