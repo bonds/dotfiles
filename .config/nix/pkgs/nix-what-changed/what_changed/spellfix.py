@@ -46,6 +46,10 @@ def _fix_word(word: str) -> str:
             rest = word[len(prefix):]
             if _spell.known([rest]):
                 return f"{word[:len(prefix)]} {rest}"
+            # rest might be a typo (e.g. "ummary" → "summary")
+            corrected = _spell.correction(rest)
+            if corrected and corrected != rest:
+                return f"{word[:len(prefix)]} {corrected}"
 
     # Try splitting at doubled-first-letter boundary (sspecific → s specific → specific)
     if len(word) >= 4 and word[0] == word[1]:
