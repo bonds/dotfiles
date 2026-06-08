@@ -176,7 +176,9 @@ async def main():
             epilog="Date shorthand:    what-changed YYYY-MM-DD            (current vs gen after date)\n"
                    "                    what-changed YYYY-MM-DD YYYY-MM-DD (gen after first vs second)\n"
                    "Generation:         what-changed -N                    (current vs N gens ago)\n"
-                   "                    what-changed -N -M                 (N gens ago vs M gens ago)",
+                   "                    what-changed -N -M                 (N gens ago vs M gens ago)\n"
+                   "Benchmark:          what-changed --benchmark           (test default model)\n"
+                   "                    what-changed --benchmark --models m1,m2 --samples s1,s2",
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         parser.add_argument("old_system", nargs="?", help="Old system closure path")
