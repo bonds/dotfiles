@@ -135,6 +135,14 @@ async def main():
     gen_newer_num = gen_older_num = None
     gen_newer_ts = gen_older_ts = 0.0
 
+    # Benchmark mode: --benchmark [--models ...] — handle before argparse
+    if "--benchmark" in raw_args:
+        from what_changed.benchmark import main as bench
+        import sys as _sys
+        _sys.argv[1:] = [a for a in raw_args if a != "--benchmark"]
+        await bench()
+        return
+
     # Generation offset mode: -N or -N -M
     gen_match = gen_args and re.match(r"^-(\d+)$", gen_args[0])
     # Date mode: YYYY-MM-DD or YYYY-MM-DD YYYY-MM-DD
@@ -187,25 +195,16 @@ async def main():
         parser.add_argument("--brief", action="store_true", help="Compact output, no bullet points")
         parser.add_argument("--no-cache", action="store_true", help="Skip cache, fetch fresh summaries")
         parser.add_argument("--verbose", action="store_true", help="Show per-package debug info")
-        parser.add_argument("--benchmark", action="store_true", help="Run model benchmark")
-        args = parser.parse_args()
         no_cache = args.no_cache
-
-        if args.benchmark:
-            import sys as _sys
-            _sys.argv = [a for a in _sys.argv if a != "--benchmark"]
-            from what_changed.benchmark import main as bench
-            await bench()
-            return
+        output_json = args.json
+        output_brief = args.brief
+        output_verbose = args.verbose
 
         if not args.old_system or not args.new_system:
             parser.print_help()
             sys.exit(1)
 
         old_system, new_system = args.old_system, args.new_system
-        output_json = args.json
-        output_brief = args.brief
-        output_verbose = args.verbose
     cfg = config.load()
     changes = run_diff(old_system, new_system)
 
