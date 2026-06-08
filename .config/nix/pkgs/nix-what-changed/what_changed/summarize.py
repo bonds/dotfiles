@@ -95,7 +95,26 @@ PROMPTS = {
 }
 
 
+_model_checked = False
+
+
+def _ensure_model(cfg: Config):
+    global _model_checked
+    if _model_checked:
+        return
+    _model_checked = True
+    import subprocess
+    try:
+        result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
+        if cfg.model not in result.stdout:
+            print(f"  (pulling {cfg.model}…)", file=__import__("sys").stderr)
+            subprocess.run(["ollama", "pull", cfg.model], timeout=300)
+    except Exception:
+        pass
+
+
 async def _call_ollama(prompt: str, cfg: Config) -> str | None:
+    _ensure_model(cfg)
     data = json.dumps({
         "model": cfg.model,
         "prompt": prompt,
