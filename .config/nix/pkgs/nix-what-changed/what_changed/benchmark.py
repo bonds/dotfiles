@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import datetime
 import json
 import re
+import subprocess
 import sys
 import time
 
@@ -90,6 +92,19 @@ def score_bullets(bullets: list[str], expected: int) -> float:
     return 0.2
 
 
+def _model_size(model: str) -> str:
+    try:
+        r = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
+        for line in r.stdout.splitlines():
+            if model in line:
+                parts = line.split()
+                if len(parts) >= 3:
+                    return parts[2]
+    except Exception:
+        pass
+    return "?"
+
+
 async def run_sample(cfg: Config, name: str, sample: dict) -> dict:
     """Run one model on one sample and return metrics."""
     text = sample["text"]
@@ -141,6 +156,7 @@ async def main():
         print("No matching samples found.", file=sys.stderr)
         sys.exit(1)
 
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     results = []
     for model in models:
         cfg = Config()
@@ -148,8 +164,9 @@ async def main():
         cfg.host = args.host
         cfg.backend = args.backend
         cfg.timeout = 180
+        size = _model_size(model)
 
-        print(f"\n  \033[1m{model}\033[m", file=sys.stderr)
+        print(f"\n  \033[1m{model}\033[m  ({size})  [{ts}]", file=sys.stderr)
         for sname, sample in samples.items():
             r = await run_sample(cfg, sname, sample)
             results.append(r)
