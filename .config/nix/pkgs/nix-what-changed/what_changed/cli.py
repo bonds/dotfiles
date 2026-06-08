@@ -53,6 +53,7 @@ async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[in
             if not no_cache:
                 cache.set_changelog(cl_url, raw, cfg)
         if raw:
+            raw = _prettify_gh_commits(raw)
             bullets = await summarize.summarize(c.name, raw, cfg)
             _v(f"{c.name}: bullets={'none' if bullets is None else str(len(bullets))}")
             if not no_cache:
@@ -65,6 +66,25 @@ async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[in
 def _v(msg: str):
     if verbose:
         print(f"  [verbose] {msg}", file=__import__("sys").stderr)
+
+
+def _prettify_gh_commits(text: str) -> str | None:
+    """If *text* is a GitHub commits API response, extract readable commit messages."""
+    if not text or not text.startswith("["):
+        return text
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return text
+    if not isinstance(data, list):
+        return text
+    lines = []
+    for c in data:
+        msg = c.get("commit", {}).get("message", "").split("\n")[0] if isinstance(c, dict) else ""
+        sha = c.get("sha", "")[:7] if isinstance(c, dict) else ""
+        if msg:
+            lines.append(f"{sha} {msg}")
+    return "\n".join(lines) if lines else text
 
 
 async def main():
