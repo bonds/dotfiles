@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "benchmark_version": "0.11.0",
+  "timestamp": "2026-06-08 10:23",
+  "prompt_style": "default",
+  "models": {
+    "gemma3:1b-it-qat": {
+      "size": "1.0 GB",
+      "results": {
+        "capstone": {"bullets": "4/2", "quality": 0.0, "time_s": 2.8, "merges": 2},
+        "hugo": {"bullets": "3/3", "quality": 1.0, "time_s": 2.2, "merges": 3},
+        "ollama": {"bullets": "4/4", "quality": 1.0, "time_s": 3.0, "merges": 2},
+        "nixpkgs-2605": {"bullets": "4/3", "quality": 0.3, "time_s": 3.1, "merges": 3}
+      },
+      "avg_quality": 0.575,
+      "avg_time": 2.8,
+      "total_merges": 10
+    },
+    "qwen2.5:1.5b": {
+      "size": "986 MB",
+      "results": {
+        "capstone": {"bullets": "2/2", "quality": 1.0, "time_s": 1.2, "merges": 0},
+        "hugo": {"bullets": "3/3", "quality": 1.0, "time_s": 2.5, "merges": 2},
+        "ollama": {"bullets": "4/4", "quality": 1.0, "time_s": 1.5, "merges": 0},
+        "nixpkgs-2605": {"bullets": "6/3", "quality": 0.0, "time_s": 1.9, "merges": 5}
+      },
+      "avg_quality": 0.75,
+      "avg_time": 1.8,
+      "total_merges": 7
+    },
+    "cajina/gemma4_e2b-q2_k_xl:v01": {
+      "size": "2.4 GB",
+      "results": {
+        "capstone": {"bullets": "3/2", "quality": 0.3, "time_s": 15.4, "merges": 1},
+        "hugo": {"bullets": "3/3", "quality": 1.0, "time_s": 9.9, "merges": 2},
+        "ollama": {"bullets": "4/4", "quality": 1.0, "time_s": 11.0, "merges": 1},
+        "nixpkgs-2605": {"bullets": "4/3", "quality": 0.3, "time_s": 11.5, "merges": 2}
+      },
+      "avg_quality": 0.65,
+      "avg_time": 12.0,
+      "total_merges": 6
+    }
+  }
+}

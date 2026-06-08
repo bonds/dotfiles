@@ -153,6 +153,7 @@ async def main():
     parser.add_argument("--backend", default="ollama", choices=["ollama", "openai"])
     parser.add_argument("--json", action="store_true", help="Output JSON")
     parser.add_argument("--prompt", default="default", help="Prompt style (default, strict, concise, no-hallucinate, numbered)")
+    parser.add_argument("--save", action="store_true", help="Save results to benchmarks/")
     args = parser.parse_args()
 
     models = [m.strip() for m in args.models.split(",")]
@@ -188,10 +189,21 @@ async def main():
         return
 
     # Summary table
-    print(f"\n  {'Model':<25s} {'Sample':<20s} {'Time':>6s} {'Bullets':>8s} {'Quality':>8s} {'Merges':>7s}")
-    print(f"  {'-'*25} {'-'*20} {'-'*6} {'-'*8} {'-'*8} {'-'*7}")
+    print(f"\n{'Model':<35s} {'Sample':<20s} {'Time':>6s} {'Bullets':>8s} {'Quality':>8s} {'Merges':>7s}")
+    print(f"{'-'*35} {'-'*20} {'-'*6} {'-'*8} {'-'*8} {'-'*7}")
     for r in results:
-        print(f"  {r['model']:<25s} {r['sample']:<20s} {r['time_s']:>5.1f}s  {r['post_bullets']}/{r['expected']:<2d}     {r['quality']:<.2f}  {r['post_merges']}")
+        print(f"{r['model']:<35s} {r['sample']:<20s} {r['time_s']:>5.1f}s  {r['post_bullets']}/{r['expected']:<2d}     {r['quality']:<.2f}  {r['post_merges']}")
+
+    if args.save and results:
+        import os.path
+        bench_dir = os.path.join(os.path.dirname(__file__), "..", "benchmarks")
+        os.makedirs(bench_dir, exist_ok=True)
+        models_str = "_".join(m.replace("/", "-").replace(":", "-") for m in models)
+        fname = f"{models_str}__{prompt_style}__{ts.replace(':', '-').replace(' ', '_')}.json"
+        filepath = os.path.join(bench_dir, fname)
+        with open(filepath, "w") as f:
+            json.dump({"timestamp": ts, "prompt_style": prompt_style, "models": models, "results": results}, f, indent=2)
+        print(f"\n  Saved: {filepath}", file=sys.stderr)
 
 
 if __name__ == "__main__":
