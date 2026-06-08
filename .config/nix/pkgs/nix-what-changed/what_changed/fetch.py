@@ -93,6 +93,12 @@ async def _fetch_github_release(owner: str, repo: str, tag: str, cfg: Config) ->
         content = await _raw_github(owner, repo, tag, path, cfg)
         if content and re.search(r"(?i)change|fix|version|release|bug", content[:1000]):
             return content
+    # Last resort: scrape the GitHub releases page HTML
+    html = await _fetch(f"https://github.com/{owner}/{repo}/releases/tag/{tag}", cfg)
+    if html:
+        text = _extract_text(html)
+        if text and len(text) > 200:
+            return text
     return None
 
 

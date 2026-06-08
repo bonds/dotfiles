@@ -12,7 +12,7 @@ class Config:
     backend: str = "ollama"
     host: str = "http://localhost:11434"
     model: str = "gemma3:1b-it-qat"
-    timeout: int = 80
+    timeout: int = 180
     max_input_bytes: int = 15000
     max_bullets: int = 5
     max_changelog_bytes: int = 50000
