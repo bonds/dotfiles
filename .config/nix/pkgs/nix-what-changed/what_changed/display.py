@@ -72,10 +72,10 @@ def progress_bar(total: int):
 
     console = Console()
     with Progress(
-        SpinnerColumn(),
-        TextColumn("  {task.description}"),
-        BarColumn(),
-        TextColumn("{task.completed}/{task.total}"),
+        SpinnerColumn(speed=0.5),
+        TextColumn("{task.description}"),
+        BarColumn(bar_width=None),
+        TextColumn(" {task.completed}/{task.total}"),
         console=console,
         transient=True,
     ) as progress:
