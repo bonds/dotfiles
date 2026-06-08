@@ -2,7 +2,9 @@
   lib,
   pkgs,
   ...
-}: {
+}: let
+  pruneGenerations = import ./prune-generations.nix {inherit pkgs;};
+in {
   nix.package = lib.mkDefault pkgs.lix;
   nix.settings.nix-path = lib.mkDefault "";
   nix.settings.flake-registry = lib.mkDefault "";
@@ -13,8 +15,9 @@
   nix.optimise.automatic = lib.mkDefault true;
   nix.gc = {
     automatic = lib.mkDefault true;
-    options = lib.mkDefault "--delete-older-than 30d";
+    options = lib.mkDefault "";
   };
   nix.channel.enable = lib.mkDefault false;
   nixpkgs.config.allowUnfree = lib.mkDefault true;
+  environment.systemPackages = [pruneGenerations];
 }

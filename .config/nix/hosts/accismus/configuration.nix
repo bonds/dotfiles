@@ -4,7 +4,9 @@
   lib,
   self,
   ...
-}: {
+}: let
+  pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
+in {
   # https://github.com/nix-darwin/nix-darwin?tab=readme-ov-file#prerequisites
 
   # List packages installed in system profile. To search by name, run:
@@ -100,6 +102,20 @@
             RunAtLoad = true;
             StandardOutPath = "/tmp/ollama.out.log";
             StandardErrorPath = "/tmp/ollama.err.log";
+          };
+        };
+        prune-generations = {
+          command = "${pruneGenerations}/bin/prune-generations";
+          serviceConfig = {
+            StartCalendarInterval = [
+              {
+                Hour = 3;
+                Minute = 0;
+                Weekday = 0;
+              }
+            ];
+            StandardOutPath = "/tmp/prune-generations.out.log";
+            StandardErrorPath = "/tmp/prune-generations.err.log";
           };
         };
       };

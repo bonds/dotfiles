@@ -5,7 +5,9 @@
   lib,
   inputs,
   ...
-}: {
+}: let
+  pruneGenerations = import ./prune-generations.nix {inherit pkgs;};
+in {
   nix = let
     flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
   in {
@@ -34,4 +36,26 @@
   imports = [
     ./fish-command-not-found.nix
   ];
+
+  systemd.services.prune-generations = {
+    description = "Prune old nix system profile generations";
+    after = ["nix-daemon.service"];
+    wantedBy = ["timers.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pruneGenerations}/bin/prune-generations";
+      Nice = 19;
+      IOSchedulingClass = "idle";
+    };
+  };
+
+  systemd.timers.prune-generations = {
+    description = "Weekly nix generation pruning";
+    wantedBy = ["timers.target"];
+    timerConfig = {
+      OnCalendar = "weekly";
+      Persistent = true;
+      RandomizedDelaySec = "1h";
+    };
+  };
 }
