@@ -1,0 +1,145 @@
+{
+  "version": 2,
+  "benchmark_version": "0.11.0",
+  "timestamp": "2026-06-08",
+  "prompt_style": "strict",
+  "system": {
+    "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "machine": "arm64"
+  },
+  "models": {
+    "qwen2.5:1.5b": {
+      "size": "986 MB",
+      "results": {
+        "capstone": {
+          "bullets": "3/2",
+          "quality": 0.3,
+          "time_s": 5.56,
+          "merges": 1
+        },
+        "hugo": {
+          "bullets": "3/3",
+          "quality": 1.0,
+          "time_s": 1.25,
+          "merges": 0
+        },
+        "ollama": {
+          "bullets": "4/4",
+          "quality": 1.0,
+          "time_s": 5.33,
+          "merges": 1
+        },
+        "nixpkgs-2605": {
+          "bullets": "4/3",
+          "quality": 0.3,
+          "time_s": 1.73,
+          "merges": 2
+        }
+      },
+      "avg_quality": 0.65,
+      "avg_time": 3.5,
+      "total_merges": 4,
+      "bullets": "14/12"
+    },
+    "qwen2.5-coder:1.5b": {
+      "size": "986 MB",
+      "results": {
+        "capstone": {
+          "bullets": "3/2",
+          "quality": 0.3,
+          "time_s": 7.38,
+          "merges": 0
+        },
+        "hugo": {
+          "bullets": "3/3",
+          "quality": 1.0,
+          "time_s": 7.91,
+          "merges": 2
+        },
+        "ollama": {
+          "bullets": "4/4",
+          "quality": 1.0,
+          "time_s": 7.36,
+          "merges": 1
+        },
+        "nixpkgs-2605": {
+          "bullets": "9/3",
+          "quality": 0.0,
+          "time_s": 21.39,
+          "merges": 4
+        }
+      },
+      "avg_quality": 0.575,
+      "avg_time": 11.0,
+      "total_merges": 7,
+      "bullets": "19/12"
+    },
+    "gemma3:1b-it-qat": {
+      "size": "1.0 GB",
+      "results": {
+        "capstone": {
+          "bullets": "5/2",
+          "quality": 0.0,
+          "time_s": 10.05,
+          "merges": 0
+        },
+        "hugo": {
+          "bullets": "5/3",
+          "quality": 0.0,
+          "time_s": 6.62,
+          "merges": 4
+        },
+        "ollama": {
+          "bullets": "5/4",
+          "quality": 0.3,
+          "time_s": 5.47,
+          "merges": 1
+        },
+        "nixpkgs-2605": {
+          "bullets": "5/3",
+          "quality": 0.0,
+          "time_s": 4.69,
+          "merges": 2
+        }
+      },
+      "avg_quality": 0.075,
+      "avg_time": 6.7,
+      "total_merges": 7,
+      "bullets": "20/12"
+    },
+    "cajina/gemma4_e2b-q2_k_xl:v01": {
+      "size": "2.4 GB",
+      "results": {
+        "capstone": {
+          "bullets": "2/2",
+          "quality": 1.0,
+          "time_s": 5.8,
+          "merges": 0
+        },
+        "hugo": {
+          "bullets": "2/3",
+          "quality": 0.5,
+          "time_s": 26.25,
+          "merges": 0
+        },
+        "ollama": {
+          "bullets": "4/4",
+          "quality": 1.0,
+          "time_s": 8.5,
+          "merges": 1
+        },
+        "nixpkgs-2605": {
+          "bullets": "2/3",
+          "quality": 0.5,
+          "time_s": 25.21,
+          "merges": 2
+        }
+      },
+      "avg_quality": 0.75,
+      "avg_time": 16.4,
+      "total_merges": 3,
+      "bullets": "10/12"
+    }
+  }
+}
