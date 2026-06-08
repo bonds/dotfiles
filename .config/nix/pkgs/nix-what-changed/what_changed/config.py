@@ -11,7 +11,7 @@ CONFIG_PATH = os.path.expanduser("~/.config/what-changed/config.toml")
 class Config:
     backend: str = "ollama"
     host: str = "http://localhost:11434"
-    model: str = "gemma3:1b-it-qat"
+    model: str = "qwen2.5:1.5b"
     timeout: int = 180
     max_input_bytes: int = 8000
     max_bullets: int = 5

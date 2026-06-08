@@ -44,7 +44,7 @@ All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git
   - Lives at `pkgs/nix-what-changed/` inside the dotfiles flake.
   - Also publishable as a standalone flake: `github:bonds/dotfiles?dir=.config/nix/pkgs/nix-what-changed`.
   - Shows LLM-summarized changelogs after `nr` via `what-changed <old-closure> <new-closure>`.
-  - Model: `gemma3:1b-it-qat` (ollama) — fastest acceptable quality. Only switch to models at **same speed or faster** with higher benchmark scores. Config at `~/.config/what-changed/config.toml`.
+  - Model: `qwen2.5:1.5b` (ollama) — fastest acceptable quality. Only switch to models at **same speed or faster** with higher benchmark scores. Config at `~/.config/what-changed/config.toml`.
 - Benchmark: `what-changed --benchmark [--models m1,m2]` compares speed, quality, bullet accuracy, and word merges. Run before switching default model.
   - Supports ollama + OpenAI-compatible backends. Caches results in `~/.cache/what-changed/`.
   - NixOS/darwin module: `programs.what-changed.enable`.
