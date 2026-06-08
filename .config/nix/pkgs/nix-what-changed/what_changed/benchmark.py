@@ -78,16 +78,21 @@ def count_merges(text: str) -> int:
 
 
 def score_bullets(bullets: list[str], expected: int) -> float:
-    """Score bullet quality: 1.0 = ideal, 0.0 = terrible."""
+    """Score bullet quality: 1.0 = ideal, 0.0 = terrible.
+
+    Extra bullets (hallucinations) are penalized more than missing bullets.
+    """
     n = len(bullets)
     if n == 0:
         return 0.0
-    # Ideal: within 1 of expected
-    if abs(n - expected) <= 1:
+    diff = n - expected
+    if diff == 0:
         return 1.0
-    # OK: within 2 of expected
-    if abs(n - expected) <= 2:
-        return 0.6
+    if diff < 0:
+        # Missing bullets: -1 → 0.5, -2 → 0.2, -3+ → 0.0
+        return max(0.0, 1.0 + diff * 0.5)
+    # Extra bullets (hallucinations): +1 → 0.3, +2+ → 0.0
+    return max(0.0, 0.8 - diff * 0.5)
     # Poor: way off
     return 0.2
 
