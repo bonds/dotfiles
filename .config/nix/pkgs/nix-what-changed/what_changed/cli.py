@@ -190,6 +190,8 @@ async def main():
         no_cache = args.no_cache
 
         if args.benchmark:
+            import sys as _sys
+            _sys.argv = [a for a in _sys.argv if a != "--benchmark"]
             from what_changed.benchmark import main as bench
             await bench()
             return
