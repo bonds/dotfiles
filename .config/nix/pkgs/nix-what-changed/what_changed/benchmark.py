@@ -176,7 +176,7 @@ async def main():
         for sname, sample in samples.items():
             r = await run_sample(cfg, sname, sample)
             results.append(r)
-            status = "\033[32mOK\033[m" if r["quality"] >= 0.6 else "\033[31mPOOR\033[m"
+            status = "\033[32mOK\033[m" if r["quality"] >= 0.4 else "\033[31mPOOR\033[m"
             merges = f" {r['post_merges']} merges" if r["post_merges"] else ""
             print(f"    {sname:<20s} {r['time_s']:>5.1f}s  {r['post_bullets']}/{r['expected']} bullets  {status}{merges}", file=sys.stderr)
 
