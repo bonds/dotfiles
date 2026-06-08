@@ -252,7 +252,7 @@ async def main():
                 cache.set_metadata(p, info, cfg)
         metas: dict[int, tuple[str | None, str | None]] = {}
         for i, c in enumerate(changes):
-            info = cached_metas.get(c.name, {}) or {}
+            info = cached_metas.get(c.name) or {}
             desc = info.get("description")
             if not desc and c.name == "darwin-system":
                 desc = "nix-darwin system closure"
@@ -264,7 +264,13 @@ async def main():
             if cl_url:
                 cl_url = await urls.patch_release_tag(cl_url, c.new_version, cfg)
             if not cl_url:
-                cl_url = await urls.guess_url(c.name, c.new_version, cfg)
+                guessed = info.get("guessed_url")
+                if guessed is None:
+                    cl_url = await urls.guess_url(c.name, c.new_version, cfg)
+                    info["guessed_url"] = cl_url
+                    cache.set_metadata(c.name, info, cfg)
+                else:
+                    cl_url = guessed
             metas[i] = (desc, cl_url)
             update(advance=1, desc=c.name)
 
