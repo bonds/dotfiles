@@ -8,6 +8,7 @@ import sys
 import httpx
 
 from what_changed.config import Config
+from what_changed.spellfix import fix as _spellfix
 
 KNOWN_MERGES = {
     "mimallocator": "mimalloc allocator",
@@ -213,6 +214,7 @@ def _postprocess(bullets: list[str], cfg: Config) -> list[str]:
         b = re.sub(r"\b(\w{4,})\s+(\1\w{1,3})\b", r"\2", b)
         b = re.sub(r"\b(\w)\1(\w{2,})\b", r"\1\2", b)
         b = b.replace("`", "")
+        b = _spellfix(b)
         for wrong, right in KNOWN_MERGES.items():
             b = b.replace(wrong, right)
         b = b.strip()
