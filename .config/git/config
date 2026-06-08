@@ -5,6 +5,7 @@
 	logallrefupdates = true
 	ignorecase = true
 	precomposeunicode = true
+	hooksPath = .githooks
 [status]
 	showUntrackedFiles = no
 [user]

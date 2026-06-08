@@ -1,0 +1,7 @@
+#!/bin/sh
+# Reject .pyc files — use `git add` without `-f` to respect .gitignore
+if git diff --cached --name-only --diff-filter=A | grep -q '\.pyc$'; then
+  echo "ERROR: .pyc files cannot be committed. Use 'git add' (without -f) to respect .gitignore."
+  git diff --cached --name-only --diff-filter=A | grep '\.pyc$' | sed 's/^/  /'
+  exit 1
+fi
