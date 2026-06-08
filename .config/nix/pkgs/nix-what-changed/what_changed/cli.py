@@ -242,14 +242,18 @@ async def main():
                 display._dim("  LLM unavailable — changelogs disabled")
 
         pkg_names = [c.name for c in changes]
-        # Check metadata cache first
-        cached_metas = {p: cache.get_metadata(p, cfg) for p in pkg_names}
-        uncached = [p for p in pkg_names if cached_metas.get(p) is None]
+        # Check metadata cache first (skip if --no-cache)
+        cached_metas: dict[str, dict] = {}
+        uncached = list(pkg_names) if no_cache else []
+        if not no_cache:
+            cached_metas = {p: cache.get_metadata(p, cfg) for p in pkg_names}
+            uncached = [p for p in pkg_names if cached_metas.get(p) is None]
         if uncached:
             batch = metadata.get_metadata_batch(uncached)
             for p, info in batch.items():
                 cached_metas[p] = info
-                cache.set_metadata(p, info, cfg)
+                if not no_cache:
+                    cache.set_metadata(p, info, cfg)
         metas: dict[int, tuple[str | None, str | None]] = {}
         for i, c in enumerate(changes):
             info = cached_metas.get(c.name) or {}
@@ -264,11 +268,12 @@ async def main():
             if cl_url:
                 cl_url = await urls.patch_release_tag(cl_url, c.new_version, cfg)
             if not cl_url:
-                guessed = info.get("guessed_url")
+                guessed = None if no_cache else info.get("guessed_url")
                 if guessed is None:
                     cl_url = await urls.guess_url(c.name, c.new_version, cfg)
-                    info["guessed_url"] = cl_url
-                    cache.set_metadata(c.name, info, cfg)
+                    if not no_cache:
+                        info["guessed_url"] = cl_url
+                        cache.set_metadata(c.name, info, cfg)
                 else:
                     cl_url = guessed
             metas[i] = (desc, cl_url)
