@@ -235,18 +235,64 @@ def _smarter_truncate(text: str, limit: int) -> str:
     return truncated
 
 
+PROMPT_STYLES = {
+    "default": (
+        "{source_prompt}"
+        "Do NOT describe what {pkg} is or does. "
+        "Write 3-{max} specific bullet points. "
+        "Include PR numbers, commit hashes, or version bumps if present. "
+        "No generic filler. Respond in English.\n\n"
+        "{text}"
+    ),
+    "strict": (
+        "{source_prompt}"
+        "Do NOT describe what {pkg} is or does. "
+        "Write EXACTLY {max} bullet points. Not more, not fewer. "
+        "Include PR numbers or commit hashes if present. "
+        "Start each bullet with a dash followed by a space. "
+        "No preamble, no summary — just the bullets.\n\n"
+        "{text}"
+    ),
+    "concise": (
+        "{source_prompt}"
+        "Summarize the key changes in {max} bullet points. "
+        "One sentence per bullet. "
+        "Never invent changes not in the text. "
+        "Be concise.\n\n"
+        "{text}"
+    ),
+    "no-hallucinate": (
+        "{source_prompt}"
+        "Do NOT describe what {pkg} is or does. "
+        "Write 3-{max} bullet points. "
+        "CRITICAL: Only include changes that are EXPLICITLY mentioned in the text below. "
+        "Do not add any bullet points that are not directly supported. "
+        "Include specific details like PR numbers or version numbers when present. "
+        "No preamble, no summary — just the bullets.\n\n"
+        "{text}"
+    ),
+    "numbered": (
+        "{source_prompt}"
+        "Do NOT describe what {pkg} is or does. "
+        "Write exactly 3-{max} numbered bullet points (1., 2., 3., ...). "
+        "Include PR numbers or commit hashes if present. "
+        "No introductory text — start directly with the first number.\n\n"
+        "{text}"
+    ),
+}
+
+
 async def summarize(pkg_name: str, changelog_text: str, cfg: Config) -> list[str] | None:
     if len(changelog_text) < 100:
         return None
     text = _smarter_truncate(changelog_text, cfg.max_input_bytes)
     stype = _detect_source_type(text)
-    prompt = (
-        f"{PROMPTS[stype]}"
-        f"Do NOT describe what {pkg_name} is or does. "
-        f"Write 3-{cfg.max_bullets} specific bullet points. "
-        "Include PR numbers, commit hashes, or version bumps if present. "
-        "No generic filler. Respond in English.\n\n"
-        f"{text}"
+    style = PROMPT_STYLES.get(cfg.prompt_style, PROMPT_STYLES["default"])
+    prompt = style.format(
+        source_prompt=PROMPTS[stype],
+        pkg=pkg_name,
+        max=cfg.max_bullets,
+        text=text,
     )
     response = await _call_llm(prompt, cfg)
     if not response:

@@ -152,6 +152,7 @@ async def main():
     parser.add_argument("--host", default="http://localhost:11434", help="LLM API host")
     parser.add_argument("--backend", default="ollama", choices=["ollama", "openai"])
     parser.add_argument("--json", action="store_true", help="Output JSON")
+    parser.add_argument("--prompt", default="default", help="Prompt style (default, strict, concise, no-hallucinate, numbered)")
     args = parser.parse_args()
 
     models = [m.strip() for m in args.models.split(",")]
@@ -163,6 +164,7 @@ async def main():
         sys.exit(1)
 
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    prompt_style = args.prompt
     results = []
     for model in models:
         cfg = Config()
@@ -170,9 +172,10 @@ async def main():
         cfg.host = args.host
         cfg.backend = args.backend
         cfg.timeout = 180
+        cfg.prompt_style = prompt_style
         size = _model_size(model)
 
-        print(f"\n  \033[1m{model}\033[m  ({size})  [{ts}]", file=sys.stderr)
+        print(f"\n  \033[1m{model}\033[m  ({size})  prompt={prompt_style}  [{ts}]", file=sys.stderr)
         for sname, sample in samples.items():
             r = await run_sample(cfg, sname, sample)
             results.append(r)

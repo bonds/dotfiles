@@ -15,6 +15,7 @@ class Config:
     timeout: int = 180
     max_input_bytes: int = 8000
     max_bullets: int = 5
+    prompt_style: str = "default"
     max_changelog_bytes: int = 50000
     cache_dir: str = "~/.cache/what-changed"
     gh_timeout: int = 15
