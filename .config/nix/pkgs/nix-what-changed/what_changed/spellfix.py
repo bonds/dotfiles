@@ -39,12 +39,13 @@ def _fix_word(word: str) -> str:
     if _spell.known([word]):
         return word
 
-    # Try splitting at a known prefix boundary
+    # Try splitting at a known prefix boundary (case-insensitive)
+    lower = word.lower()
     for prefix in _PREFIXES:
-        if word.startswith(prefix) and len(word) > len(prefix) + 1:
+        if lower.startswith(prefix) and len(word) > len(prefix) + 1:
             rest = word[len(prefix):]
             if _spell.known([rest]):
-                return f"{prefix} {rest}"
+                return f"{word[:len(prefix)]} {rest}"
 
     # Try splitting at doubled-first-letter boundary (sspecific → s specific → specific)
     if len(word) >= 4 and word[0] == word[1]:
