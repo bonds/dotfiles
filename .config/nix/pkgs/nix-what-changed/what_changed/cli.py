@@ -73,7 +73,12 @@ async def main():
         output_json = "--json" in raw_args
         output_brief = "--brief" in raw_args
     else:
-        parser = argparse.ArgumentParser(description="Show package changelogs after nix rebuilds")
+        parser = argparse.ArgumentParser(
+            description="Show package changelogs after nix rebuilds",
+            epilog="Generation shorthand: what-changed -N          (current vs N gens ago)\n"
+                   "                      what-changed -N -M       (N gens ago vs M gens ago)",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
         parser.add_argument("old_system", nargs="?", help="Old system closure path")
         parser.add_argument("new_system", nargs="?", help="New system closure path")
         parser.add_argument("--json", action="store_true", help="Output as JSON")
