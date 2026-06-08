@@ -12,6 +12,7 @@ from what_changed.differ import PackageChange, run_diff
 
 cfg = config.Config()
 no_cache = False
+verbose = False
 
 
 Profile = "/nix/var/nix/profiles/system"
@@ -37,8 +38,10 @@ async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[in
     if not no_cache:
         cached = cache.get_summary(c.name, c.old_version, c.new_version, cfg)
         if cached is not None:
+            _v(f"{c.name}: cache hit")
             return idx, cached
 
+    _v(f"{c.name}: cl_url={cl_url}")
     bullets = None
     if cl_url:
         raw = None
@@ -46,10 +49,12 @@ async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[in
             raw = cache.get_changelog(cl_url, cfg)
         if raw is None:
             raw = await fetch.fetch_changelog(cl_url, cfg)
+            _v(f"{c.name}: raw={'none' if raw is None else str(len(raw))+'b'}")
             if not no_cache:
                 cache.set_changelog(cl_url, raw, cfg)
         if raw:
             bullets = await summarize.summarize(c.name, raw, cfg)
+            _v(f"{c.name}: bullets={'none' if bullets is None else str(len(bullets))}")
             if not no_cache:
                 cache.set_summary(c.name, c.old_version, c.new_version, bullets, cfg)
     elif not no_cache:
@@ -57,8 +62,13 @@ async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[in
     return idx, bullets
 
 
+def _v(msg: str):
+    if verbose:
+        print(f"  [verbose] {msg}", file=__import__("sys").stderr)
+
+
 async def main():
-    global cfg, no_cache
+    global cfg, no_cache, verbose
     raw_args = sys.argv[1:]
 
     # Check for generation-based invocation: -N or -N -M
@@ -84,6 +94,8 @@ async def main():
         old_system, new_system = older_path, newer_path
         output_json = "--json" in raw_args
         output_brief = "--brief" in raw_args
+        verbose = "--verbose" in raw_args
+        output_verbose = verbose
     else:
         parser = argparse.ArgumentParser(
             description="Show package changelogs after nix rebuilds",
@@ -96,6 +108,7 @@ async def main():
         parser.add_argument("--json", action="store_true", help="Output as JSON")
         parser.add_argument("--brief", action="store_true", help="Compact output, no bullet points")
         parser.add_argument("--no-cache", action="store_true", help="Skip cache, fetch fresh summaries")
+        parser.add_argument("--verbose", action="store_true", help="Show per-package debug info")
         args = parser.parse_args()
         no_cache = args.no_cache
 
@@ -106,6 +119,7 @@ async def main():
         old_system, new_system = args.old_system, args.new_system
         output_json = args.json
         output_brief = args.brief
+        output_verbose = args.verbose
     cfg = config.load()
     changes = run_diff(old_system, new_system)
 
