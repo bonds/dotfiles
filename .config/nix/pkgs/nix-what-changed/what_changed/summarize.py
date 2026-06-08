@@ -107,8 +107,9 @@ def _ensure_model(cfg: Config):
     try:
         result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
         if cfg.model not in result.stdout:
-            print(f"  (pulling {cfg.model}…)", file=__import__("sys").stderr)
-            subprocess.run(["ollama", "pull", cfg.model], timeout=300)
+            __import__("sys").stderr.write(f"  (pulling {cfg.model}…)\n")
+            __import__("sys").stderr.flush()
+            subprocess.run(["ollama", "pull", cfg.model], capture_output=True, timeout=300)
     except Exception:
         pass
 

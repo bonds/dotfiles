@@ -14,15 +14,22 @@ cfg = config.Config()
 no_cache = False
 
 
-def _gen_store_path(offset: int) -> str:
-    """Resolve generation offset (0=current, 1=1 back, etc.) to a store path."""
-    profile = "/nix/var/nix/profiles/system"
-    current_link = os.readlink(profile)
-    m = re.search(r"system-(\d+)-link", current_link)
+Profile = "/nix/var/nix/profiles/system"
+
+
+def _current_gen() -> int:
+    m = re.search(r"system-(\d+)-link", os.readlink(Profile))
     if not m:
-        raise ValueError(f"Could not parse current generation from {current_link}")
-    target = int(m.group(1)) - offset
-    return os.readlink(f"{profile}-{target}-link")
+        raise ValueError("Could not find current generation")
+    return int(m.group(1))
+
+
+def _gen_info(offset: int) -> tuple[str, int, float]:
+    """Return (store_path, generation_number, creation_timestamp)."""
+    target = _current_gen() - offset
+    link = f"{Profile}-{target}-link"
+    st = os.lstat(link)
+    return os.readlink(link), target, st.st_mtime
 
 
 async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[int, list[str] | None]:
@@ -57,19 +64,24 @@ async def main():
     # Check for generation-based invocation: -N or -N -M
     gen_args = [a for a in raw_args if not a.startswith("--")]
     gen_match = gen_args and re.match(r"^-(\d+)$", gen_args[0])
+    gen_newer_num = gen_older_num = None
+    gen_newer_ts = gen_older_ts = 0.0
     if gen_match:
         no_cache = "--no-cache" in raw_args
         if len(gen_args) == 1:
-            newer = _gen_store_path(0)
-            older = _gen_store_path(int(gen_match.group(1)))
+            n = int(gen_match.group(1))
+            newer_path, gen_newer_num, gen_newer_ts = _gen_info(0)
+            older_path, gen_older_num, gen_older_ts = _gen_info(n)
         elif len(gen_args) == 2 and re.match(r"^-(\d+)$", gen_args[1]):
-            newer = _gen_store_path(int(gen_match.group(1)))
-            older = _gen_store_path(int(re.match(r"^-(\d+)$", gen_args[1]).group(1)))
+            n = int(gen_match.group(1))
+            m = int(re.match(r"^-(\d+)$", gen_args[1]).group(1))
+            newer_path, gen_newer_num, gen_newer_ts = _gen_info(n)
+            older_path, gen_older_num, gen_older_ts = _gen_info(m)
         else:
             print("Usage: what-changed -N        (diff current vs N gens ago)", file=sys.stderr)
             print("       what-changed -N -M     (diff N gens ago vs M gens ago)", file=sys.stderr)
             sys.exit(1)
-        old_system, new_system = older, newer
+        old_system, new_system = older_path, newer_path
         output_json = "--json" in raw_args
         output_brief = "--brief" in raw_args
     else:
@@ -97,6 +109,14 @@ async def main():
     cfg = config.load()
     changes = run_diff(old_system, new_system)
     if not changes:
+        if gen_newer_num is not None:
+            import datetime
+            def fmt(ts):
+                return datetime.datetime.fromtimestamp(ts).strftime("%b %d %H:%M")
+            n = gen_newer_num
+            o = gen_older_num
+            print(f"\n  Generation {n} ({fmt(gen_newer_ts)}) → Generation {o} ({fmt(gen_older_ts)})")
+            print("  ✓ No package changes between these generations.\n")
         return
 
     max_width = max(len(c.name) for c in changes) + 2
