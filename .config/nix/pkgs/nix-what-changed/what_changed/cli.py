@@ -16,6 +16,17 @@ verbose = False
 
 
 Profile = "/nix/var/nix/profiles/system"
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _usage_gen():
+    print("Usage: what-changed -N        (diff current vs N gens ago)", file=__import__("sys").stderr)
+    print("       what-changed -N -M     (diff N gens ago vs M gens ago)", file=__import__("sys").stderr)
+
+
+def _usage_date():
+    print("Usage: what-changed YYYY-MM-DD              (current vs gen after date)", file=__import__("sys").stderr)
+    print("       what-changed YYYY-MM-DD YYYY-MM-DD   (gen after first vs second)", file=__import__("sys").stderr)
 
 
 def _current_gen() -> int:
@@ -31,6 +42,35 @@ def _gen_info(offset: int) -> tuple[str, int, float]:
     link = f"{Profile}-{target}-link"
     st = os.lstat(link)
     return os.readlink(link), target, st.st_mtime
+
+
+def _gen_for_date(date_str: str) -> tuple[str, int, float]:
+    """Return (store_path, gen_number, timestamp) for nearest generation on or after *date_str*."""
+    import datetime
+    target_ts = datetime.datetime.strptime(date_str, "%Y-%m-%d").timestamp()
+    best_gen = best_ts = best_path = None
+    for entry in os.scandir("/nix/var/nix/profiles"):
+        m = re.fullmatch(r"system-(\d+)-link", entry.name)
+        if not m:
+            continue
+        st = entry.stat(follow_symlinks=False)
+        if st.st_mtime >= target_ts:
+            if best_gen is None or st.st_mtime < best_ts:
+                best_gen = int(m.group(1))
+                best_ts = st.st_mtime
+                best_path = os.readlink(entry.path)
+    if best_gen is None:
+        # fall back to oldest available
+        for entry in os.scandir("/nix/var/nix/profiles"):
+            m = re.fullmatch(r"system-(\d+)-link", entry.name)
+            if not m:
+                continue
+            n = int(m.group(1))
+            if best_gen is None or n < best_gen:
+                best_gen = n
+                best_ts = os.lstat(entry.path).st_mtime
+                best_path = os.readlink(entry.path)
+    return best_path, best_gen, best_ts
 
 
 async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[int, list[str] | None]:
@@ -91,25 +131,39 @@ async def main():
     global cfg, no_cache, verbose
     raw_args = sys.argv[1:]
 
-    # Check for generation-based invocation: -N or -N -M
     gen_args = [a for a in raw_args if not a.startswith("--")]
-    gen_match = gen_args and re.match(r"^-(\d+)$", gen_args[0])
     gen_newer_num = gen_older_num = None
     gen_newer_ts = gen_older_ts = 0.0
+
+    # Generation offset mode: -N or -N -M
+    gen_match = gen_args and re.match(r"^-(\d+)$", gen_args[0])
+    # Date mode: YYYY-MM-DD or YYYY-MM-DD YYYY-MM-DD
+    date_match = gen_args and _DATE_RE.match(gen_args[0])
+
     if gen_match:
         no_cache = "--no-cache" in raw_args
         if len(gen_args) == 1:
-            n = int(gen_match.group(1))
             newer_path, gen_newer_num, gen_newer_ts = _gen_info(0)
-            older_path, gen_older_num, gen_older_ts = _gen_info(n)
+            older_path, gen_older_num, gen_older_ts = _gen_info(int(gen_match.group(1)))
         elif len(gen_args) == 2 and re.match(r"^-(\d+)$", gen_args[1]):
             n = int(gen_match.group(1))
             m = int(re.match(r"^-(\d+)$", gen_args[1]).group(1))
             newer_path, gen_newer_num, gen_newer_ts = _gen_info(n)
             older_path, gen_older_num, gen_older_ts = _gen_info(m)
         else:
-            print("Usage: what-changed -N        (diff current vs N gens ago)", file=sys.stderr)
-            print("       what-changed -N -M     (diff N gens ago vs M gens ago)", file=sys.stderr)
+            _usage_gen()
+            sys.exit(1)
+        old_system, new_system = older_path, newer_path
+    elif date_match:
+        no_cache = "--no-cache" in raw_args
+        if len(gen_args) == 1:
+            newer_path, gen_newer_num, gen_newer_ts = _gen_info(0)
+            older_path, gen_older_num, gen_older_ts = _gen_for_date(gen_args[0])
+        elif len(gen_args) == 2 and _DATE_RE.match(gen_args[1]):
+            newer_path, gen_newer_num, gen_newer_ts = _gen_for_date(gen_args[0])
+            older_path, gen_older_num, gen_older_ts = _gen_for_date(gen_args[1])
+        else:
+            _usage_date()
             sys.exit(1)
         old_system, new_system = older_path, newer_path
         output_json = "--json" in raw_args
@@ -119,8 +173,10 @@ async def main():
     else:
         parser = argparse.ArgumentParser(
             description="Show package changelogs after nix rebuilds",
-            epilog="Generation shorthand: what-changed -N          (current vs N gens ago)\n"
-                   "                      what-changed -N -M       (N gens ago vs M gens ago)",
+            epilog="Date shorthand:    what-changed YYYY-MM-DD            (current vs gen after date)\n"
+                   "                    what-changed YYYY-MM-DD YYYY-MM-DD (gen after first vs second)\n"
+                   "Generation:         what-changed -N                    (current vs N gens ago)\n"
+                   "                    what-changed -N -M                 (N gens ago vs M gens ago)",
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         parser.add_argument("old_system", nargs="?", help="Old system closure path")
