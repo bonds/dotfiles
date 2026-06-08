@@ -195,6 +195,7 @@ async def main():
         parser.add_argument("--brief", action="store_true", help="Compact output, no bullet points")
         parser.add_argument("--no-cache", action="store_true", help="Skip cache, fetch fresh summaries")
         parser.add_argument("--verbose", action="store_true", help="Show per-package debug info")
+        args = parser.parse_args()
         no_cache = args.no_cache
         output_json = args.json
         output_brief = args.brief
