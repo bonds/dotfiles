@@ -195,15 +195,30 @@ async def main():
         print(f"{r['model']:<35s} {r['sample']:<20s} {r['time_s']:>5.1f}s  {r['post_bullets']}/{r['expected']:<2d}     {r['quality']:<.2f}  {r['post_merges']}")
 
     if args.save and results:
-        import os.path
-        bench_dir = os.path.join(os.path.expanduser("~/.cache/what-changed"), "benchmarks")
+        import os.path, platform
+        # Save to repo source if writable, otherwise cache
+        src_dir = os.path.join(os.path.dirname(__file__), "..", "benchmarks")
+        cache_dir = os.path.join(os.path.expanduser("~/.cache/what-changed"), "benchmarks")
+        bench_dir = src_dir if os.access(src_dir, os.W_OK) else cache_dir
         os.makedirs(bench_dir, exist_ok=True)
         models_str = "_".join(m.replace("/", "-").replace(":", "-") for m in models)
         fname = f"{models_str}__{prompt_style}__{ts.replace(':', '-').replace(' ', '_')}.json"
         filepath = os.path.join(bench_dir, fname)
+        system_info = {
+            "platform": platform.platform(),
+            "processor": platform.processor(),
+            "machine": platform.machine(),
+        }
         with open(filepath, "w") as f:
-            json.dump({"timestamp": ts, "prompt_style": prompt_style, "models": models, "results": results}, f, indent=2)
-        print(f"\n  Saved: {filepath}", file=sys.stderr)
+            json.dump({
+                "timestamp": ts,
+                "system": system_info,
+                "prompt_style": prompt_style,
+                "reference_samples": list(samples.keys()),
+                "config": {"model": cfg.model, "timeout": cfg.timeout, "prompt_style": cfg.prompt_style},
+                "results": results,
+            }, f, indent=2)
+        print(f"\n  Saved: {filepath}  ({platform.machine()}, {platform.processor()})", file=sys.stderr)
 
 
 if __name__ == "__main__":
