@@ -196,7 +196,7 @@ async def main():
 
     if args.save and results:
         import os.path
-        bench_dir = os.path.join(os.path.dirname(__file__), "..", "benchmarks")
+        bench_dir = os.path.join(os.path.expanduser("~/.cache/what-changed"), "benchmarks")
         os.makedirs(bench_dir, exist_ok=True)
         models_str = "_".join(m.replace("/", "-").replace(":", "-") for m in models)
         fname = f"{models_str}__{prompt_style}__{ts.replace(':', '-').replace(' ', '_')}.json"
