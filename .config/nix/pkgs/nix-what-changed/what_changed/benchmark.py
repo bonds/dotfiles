@@ -2,7 +2,7 @@
 
 Usage:
     python -m what_changed.benchmark                          # all models, all samples
-    python -m what_changed.benchmark --models gemma3:1b-it-qat # specific models
+    python -m what_changed.benchmark --models qwen2.5:1.5b     # specific models
     python -m what_changed.benchmark --samples capstone,hugo   # specific sample
     python -m what_changed.benchmark --json                     # machine-readable output
 """
@@ -141,14 +141,15 @@ async def run_sample(cfg: Config, name: str, sample: dict) -> dict:
 
 async def main():
     parser = argparse.ArgumentParser(description="Benchmark LLM models for changelog summarization")
-    parser.add_argument("--models", help="Comma-separated model names (default: gemma3:1b-it-qat)")
+    default_model = Config().model
+    parser.add_argument("--models", help=f"Comma-separated model names (default: {default_model})", default=default_model)
     parser.add_argument("--samples", help="Comma-separated sample names (default: all)")
     parser.add_argument("--host", default="http://localhost:11434", help="LLM API host")
     parser.add_argument("--backend", default="ollama", choices=["ollama", "openai"])
     parser.add_argument("--json", action="store_true", help="Output JSON")
     args = parser.parse_args()
 
-    models = [m.strip() for m in (args.models or "gemma3:1b-it-qat").split(",")]
+    models = [m.strip() for m in args.models.split(",")]
     samples = {k: v for k, v in REFERENCE.items()
                if not args.samples or k in args.samples.split(",")}
 
