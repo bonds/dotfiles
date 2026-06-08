@@ -123,6 +123,13 @@ async def preflight(cfg: Config, status: callable = lambda **kw: None) -> bool:
                         pct = int(completed * 100 / total)
                         status(desc=f"Downloading {cfg.model}  {digest} {pct}%")
         status(desc="Loading model...")
+        async with httpx.AsyncClient(timeout=300) as c:
+            await c.post(f"{cfg.host}/api/generate", json={
+                "model": cfg.model,
+                "prompt": "ok",
+                "stream": False,
+                "options": {"num_predict": 1},
+            })
     except Exception:
         return False
     return True
