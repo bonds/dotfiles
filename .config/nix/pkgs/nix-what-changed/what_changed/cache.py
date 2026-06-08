@@ -64,3 +64,26 @@ def set_changelog(url: str, text: str | None, cfg: Config):
             "url": url,
             "text": text,
         }, f)
+
+
+def get_metadata(pkg: str, cfg: Config) -> dict[str, str | None] | None:
+    """Get cached (changelog_url, description, homepage) for a package."""
+    key = f"meta:{pkg}"
+    fp = _path(key, cfg)
+    if os.path.exists(fp):
+        with open(fp) as f:
+            data = json.load(f)
+        if data.get("version") == CACHE_VERSION:
+            return {k: (None if v == "null" or not v else v) for k, v in data["meta"].items()}
+    return None
+
+
+def set_metadata(pkg: str, meta: dict[str, str | None], cfg: Config):
+    key = f"meta:{pkg}"
+    fp = _path(key, cfg)
+    with open(fp, "w") as f:
+        json.dump({
+            "version": CACHE_VERSION,
+            "pkg": pkg,
+            "meta": {k: (v or "null") for k, v in meta.items()},
+        }, f)

@@ -242,10 +242,17 @@ async def main():
                 display._dim("  LLM unavailable — changelogs disabled")
 
         pkg_names = [c.name for c in changes]
-        batch = metadata.get_metadata_batch(pkg_names)
+        # Check metadata cache first
+        cached_metas = {p: cache.get_metadata(p, cfg) for p in pkg_names}
+        uncached = [p for p in pkg_names if cached_metas.get(p) is None]
+        if uncached:
+            batch = metadata.get_metadata_batch(uncached)
+            for p, info in batch.items():
+                cached_metas[p] = info
+                cache.set_metadata(p, info, cfg)
         metas: dict[int, tuple[str | None, str | None]] = {}
         for i, c in enumerate(changes):
-            info = batch.get(c.name, {})
+            info = cached_metas.get(c.name, {}) or {}
             desc = info.get("description")
             if not desc and c.name == "darwin-system":
                 desc = "nix-darwin system closure"
