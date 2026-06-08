@@ -122,6 +122,7 @@ async def preflight(cfg: Config, status: callable = lambda **kw: None) -> bool:
                     if total and completed:
                         pct = int(completed * 100 / total)
                         status(desc=f"Downloading {cfg.model}  {digest} {pct}%")
+        status(desc="Loading model...")
     except Exception:
         return False
     return True
