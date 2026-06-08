@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
+import re
 import sys
 
 from what_changed import cache, config, display, fetch, metadata, summarize, urls
@@ -10,6 +12,17 @@ from what_changed.differ import PackageChange, run_diff
 
 cfg = config.Config()
 no_cache = False
+
+
+def _gen_store_path(offset: int) -> str:
+    """Resolve generation offset (0=current, 1=1 back, etc.) to a store path."""
+    profile = "/nix/var/nix/profiles/system"
+    current_link = os.readlink(profile)
+    m = re.search(r"system-(\d+)-link", current_link)
+    if not m:
+        raise ValueError(f"Could not parse current generation from {current_link}")
+    target = int(m.group(1)) - offset
+    return os.readlink(f"{profile}-{target}-link")
 
 
 async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[int, list[str] | None]:
@@ -39,20 +52,43 @@ async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[in
 
 async def main():
     global cfg, no_cache
-    parser = argparse.ArgumentParser(description="Show package changelogs after nix rebuilds")
-    parser.add_argument("old_system", nargs="?", help="Old system closure path")
-    parser.add_argument("new_system", nargs="?", help="New system closure path")
-    parser.add_argument("--json", action="store_true", help="Output as JSON")
-    parser.add_argument("--brief", action="store_true", help="Compact output, no bullet points")
-    parser.add_argument("--no-cache", action="store_true", help="Skip cache, fetch fresh summaries")
-    args = parser.parse_args()
-    no_cache = args.no_cache
+    raw_args = sys.argv[1:]
 
-    if not args.old_system or not args.new_system:
-        parser.print_help()
-        sys.exit(1)
+    # Check for generation-based invocation: -N or -N -M
+    gen_args = [a for a in raw_args if not a.startswith("--")]
+    gen_match = gen_args and re.match(r"^-(\d+)$", gen_args[0])
+    if gen_match:
+        no_cache = "--no-cache" in raw_args
+        if len(gen_args) == 1:
+            newer = _gen_store_path(0)
+            older = _gen_store_path(int(gen_match.group(1)))
+        elif len(gen_args) == 2 and re.match(r"^-(\d+)$", gen_args[1]):
+            newer = _gen_store_path(int(gen_match.group(1)))
+            older = _gen_store_path(int(re.match(r"^-(\d+)$", gen_args[1]).group(1)))
+        else:
+            print("Usage: what-changed -N        (diff current vs N gens ago)", file=sys.stderr)
+            print("       what-changed -N -M     (diff N gens ago vs M gens ago)", file=sys.stderr)
+            sys.exit(1)
+        old_system, new_system = older, newer
+        output_json = "--json" in raw_args
+        output_brief = "--brief" in raw_args
+    else:
+        parser = argparse.ArgumentParser(description="Show package changelogs after nix rebuilds")
+        parser.add_argument("old_system", nargs="?", help="Old system closure path")
+        parser.add_argument("new_system", nargs="?", help="New system closure path")
+        parser.add_argument("--json", action="store_true", help="Output as JSON")
+        parser.add_argument("--brief", action="store_true", help="Compact output, no bullet points")
+        parser.add_argument("--no-cache", action="store_true", help="Skip cache, fetch fresh summaries")
+        args = parser.parse_args()
+        no_cache = args.no_cache
 
-    old_system, new_system = args.old_system, args.new_system
+        if not args.old_system or not args.new_system:
+            parser.print_help()
+            sys.exit(1)
+
+        old_system, new_system = args.old_system, args.new_system
+        output_json = args.json
+        output_brief = args.brief
     cfg = config.load()
     changes = run_diff(old_system, new_system)
     if not changes:
@@ -106,7 +142,7 @@ async def main():
                 errors[idx] = str(e)[:60]
             update(advance=1, desc=changes[idx].name)
 
-    if args.json:
+    if output_json:
         data = []
         for i, c in enumerate(changes):
             desc, _ = metas[i]
@@ -121,7 +157,7 @@ async def main():
         print(json.dumps(data, indent=2))
         return
 
-    if args.brief:
+    if output_brief:
         for i, c in enumerate(changes):
             print(f"  {c.name:<{max_width}} {c.old_version} → {c.new_version}")
         return
