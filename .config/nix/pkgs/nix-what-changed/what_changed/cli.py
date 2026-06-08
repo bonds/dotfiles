@@ -185,8 +185,14 @@ async def main():
         parser.add_argument("--brief", action="store_true", help="Compact output, no bullet points")
         parser.add_argument("--no-cache", action="store_true", help="Skip cache, fetch fresh summaries")
         parser.add_argument("--verbose", action="store_true", help="Show per-package debug info")
+        parser.add_argument("--benchmark", action="store_true", help="Run model benchmark")
         args = parser.parse_args()
         no_cache = args.no_cache
+
+        if args.benchmark:
+            from what_changed.benchmark import main as bench
+            await bench()
+            return
 
         if not args.old_system or not args.new_system:
             parser.print_help()
