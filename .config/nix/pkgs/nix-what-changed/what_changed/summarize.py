@@ -224,9 +224,9 @@ def _smarter_truncate(text: str, limit: int) -> str:
         return text
     truncated = text[:limit]
     # prefer heading boundary, then double newline, then single newline
-    for sep in ("\n## ", "\n# ", "\n\n", "\n"):
+    for sep in ("\n## ", "\n# ", "\n\n", "\n    *", "\n"):
         pos = truncated.rfind(sep)
-        if pos > limit * 0.5:
+        if pos > limit * 0.4:
             return text[:pos]
     return truncated
 
