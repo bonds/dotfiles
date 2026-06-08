@@ -139,6 +139,24 @@ def _make_discord_url(new_ver: str) -> str | None:
 KNOWN_URLS["discord"] = _make_discord_url
 
 
+def _make_linux_url(new_ver: str) -> str | None:
+    parts = new_ver.split(".")
+    if len(parts) >= 2:
+        return f"https://cdn.kernel.org/pub/linux/kernel/v{parts[0]}.x/ChangeLog-{new_ver}"
+    return None
+
+
+KNOWN_URLS["linux"] = _make_linux_url
+
+
+def _make_zfs_kernel_url(new_ver: str) -> str | None:
+    zfs_ver = new_ver.split("-")[0]
+    return f"https://github.com/openzfs/zfs/releases/tag/zfs-{zfs_ver}"
+
+
+KNOWN_URLS["zfs-kernel"] = _make_zfs_kernel_url
+
+
 def _make_dwarf_fortress_url(new_ver: str) -> str | None:
     return "https://dwarffortresswiki.org/index.php/Version_history"
 
