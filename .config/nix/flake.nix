@@ -6,6 +6,9 @@
     nix-darwin.url = "github:nix-darwin/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    home-manager-stable.url = "github:nix-community/home-manager";
+    home-manager-stable.inputs.nixpkgs.follows = "nixpkgs-stable";
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
     arion.url = "github:hercules-ci/arion/v0.2.2.0";
@@ -17,6 +20,7 @@
     nixpkgs,
     nixpkgs-stable,
     home-manager,
+    home-manager-stable,
     nix-index-database,
     arion,
     vudials,
@@ -94,7 +98,7 @@
         ./hosts/sophrosyne/hardware-configuration.nix
         arion.nixosModules.arion
         nix-index-database.nixosModules.nix-index
-        home-manager.nixosModules.home-manager
+        home-manager-stable.nixosModules.home-manager
       ];
     };
     nixosConfigurations.metanoia = nixpkgs-stable.lib.nixosSystem {
@@ -116,7 +120,7 @@
         vudials.nixosModules.default
         ./modules/vudials-uids.nix
         nix-index-database.nixosModules.nix-index
-        home-manager.nixosModules.home-manager
+        home-manager-stable.nixosModules.home-manager
       ];
     };
   };
