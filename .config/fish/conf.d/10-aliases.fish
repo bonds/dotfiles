@@ -15,7 +15,10 @@ alias ssh-clean "rm ~/.local/ssh/*.control"
 alias ssht "ssh -o RemoteCommand=none"
 alias width "tput cols"
 alias xclip "command xclip -selection c"
-alias ssh "command ssh -F ~/.config/ssh/config"
+function ssh --description "SSH with custom config"
+    command ssh -F ~/.config/ssh/config $argv
+end
+complete -c ssh -w (command -s ssh)
 
 if test "$uname" = darwin
     alias mtr "sudo mtr"
