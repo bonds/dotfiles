@@ -11,7 +11,12 @@ alias reset_camera "sudo usb-reset 0fd9:008a"
 alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
 alias reset_mouse "sudo rmmod hid_magicmouse; sudo modprobe hid_magicmouse"
 alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
-alias ssh-clean "rm ~/.local/ssh/*.control"
+function ssh-clean --description "Kill lingering SSH ControlMaster processes and clean sockets"
+    for sock in ~/.local/ssh/*.control
+        kill (lsof -t "$sock" 2>/dev/null) 2>/dev/null
+        rm -f "$sock"
+    end
+end
 alias ssht "ssh -o RemoteCommand=none"
 alias width "tput cols"
 alias xclip "command xclip -selection c"
