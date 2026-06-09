@@ -12,7 +12,10 @@
     plugins = [
       {
         plugin = pkgs.tmuxPlugins.catppuccin;
-        extraConfig = "set -g @catppuccin_flavor 'frappe'";
+        extraConfig = ''
+          set -g @catppuccin_flavor 'frappe'
+          set -g @catppuccin_window_status_style 'rounded'
+        '';
       }
       pkgs.tmuxPlugins.cpu
       pkgs.tmuxPlugins.battery
@@ -22,9 +25,6 @@
       # Truecolor
       set -ag terminal-features "xterm-256color:truecolor"
       set -g default-terminal "tmux-256color"
-
-      # Catppuccin window style
-      set -g @catppuccin_window_status_style "rounded"
 
       # Status bar modules (catppuccin recommended layout)
       set -g status-right-length 100
