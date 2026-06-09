@@ -216,12 +216,22 @@ async def main():
     if not changes:
         if gen_newer_num is not None:
             import datetime
+            now = datetime.datetime.now()
             def fmt(ts):
-                return datetime.datetime.fromtimestamp(ts).strftime("%b %d %H:%M")
+                dt = datetime.datetime.fromtimestamp(ts)
+                diff = now - dt
+                if diff.days > 0:
+                    return f"{dt.strftime('%b %d')} ({diff.days}d ago)"
+                elif diff.seconds >= 3600:
+                    return f"{dt.strftime('%H:%M')} ({diff.seconds // 3600}h ago)"
+                else:
+                    return f"{dt.strftime('%H:%M')} ({diff.seconds // 60}m ago)"
             n = gen_newer_num
             o = gen_older_num
-            print(f"\n  Generation {n} ({fmt(gen_newer_ts)}) → Generation {o} ({fmt(gen_older_ts)})")
-            print("  ✓ No package changes between these generations.\n")
+            n_date = fmt(gen_newer_ts)
+            o_date = fmt(gen_older_ts)
+            print(f"\n  Generation {n} ({n_date}) → Generation {o} ({o_date})")
+            print(f"  ✓ No package changes between these generations.\n")
         return
 
     max_width = max(len(c.name) for c in changes) + 2
@@ -335,7 +345,11 @@ async def main():
 
 
 def entry():
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n  Interrupted.", file=__import__("sys").stderr)
+        __import__("sys").exit(130)
 
 
 if __name__ == "__main__":
