@@ -62,6 +62,7 @@
     docker-compose # define and run multi-container Docker apps
     dmidecode # read system DMI/BIOS info
     edac-utils # memory error detection and reporting tools
+    lm_sensors # read CPU/motherboard temp, voltage, and fan sensors
     # most common packages are in modules/packages/dev.nix and utils.nix
   ];
 
