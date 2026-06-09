@@ -13,7 +13,4 @@ if which fish 2>&1 >/dev/null; then
   exec fish
 fi
 
-# Added by LM Studio CLI (lms)
-export PATH="$PATH:/Users/scott/.lmstudio/bin"
-# End of LM Studio CLI section
 

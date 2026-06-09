@@ -1,0 +1,23 @@
+alias chatgpt "set -x OPENAI_API_KEY (security find-generic-password -w -a $LOGNAME -s \"openai api key\"); and command chatgpt"
+alias crawl "crawl -rc ~/.config/crawl/init.txt"
+alias day "date '+%Y%m%d'"
+alias ghci "ghci -ghci-script ~/.config/ghc/ghci.rio.conf -ghci-script ~/.config/ghc/ghci.conf"
+alias height "tput lines"
+alias idris "rlwrap --history-filename ~/.local/idris.history idris2 --package contrib"
+alias myip "mylocation | jq \".ip\" | sed 's/\\\"//g'"
+alias myweather "weather (mylocation | jq \".loc\" | sed 's/\\\"//g')"
+alias nix-shell "command nix-shell --command fish"
+alias reset_camera "sudo usb-reset 0fd9:008a"
+alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
+alias reset_mouse "sudo rmmod hid_magicmouse; sudo modprobe hid_magicmouse"
+alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
+alias ssh-clean "rm ~/.local/ssh/*.control"
+alias ssht "ssh -o RemoteCommand=none"
+alias width "tput cols"
+alias xclip "command xclip -selection c"
+alias ssh "command ssh -F ~/.config/ssh/config"
+
+if test "$uname" = darwin
+    alias mtr "sudo mtr"
+    alias battery "pmset -g batt"
+end

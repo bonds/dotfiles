@@ -14,7 +14,15 @@ All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git
 
 ### Shell
 - `.zshrc` — minimal zsh entry point (sources nix, execs fish)
-- `.config/fish/config.fish` — main interactive shell (fish) with aliases, functions, path setup, editor selection, starship/atuin integration
+- `.config/fish/config.fish` — entry point, delegates to `conf.d/`
+- `.config/fish/conf.d/` — organized fish config split by concern:
+  - `00-paths.fish` — env vars, PATH
+  - `05-editor.fish` — EDITOR selection
+  - `10-aliases.fish` — aliases
+  - `15-functions.fish` — custom functions (ls, e, tree, ping, nr, hr, age)
+  - `20-ssh.fish` — SSH_AUTH_SOCK (Secretive on macOS)
+  - `30-interactive.fish` — starship, atuin, auto-tmux, fzf opts
+  - `40-lm-studio.fish` — LM Studio CLI PATH (isolated from tracked files)
 - `.config/fish/fish_plugins` — fish plugin list
 - `.config/starship/` — prompt configs: `darwin.toml`, `linux.toml`, `openbsd.toml`, `plain.toml` (fallback when no UTF-8)
 - `.config/atuin/config.toml` — shell history database config
@@ -22,6 +30,7 @@ All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git
 ### Terminal
 - `.config/alacritty/alacritty.toml` — Alacritty terminal emulator (font, window size, clipboard)
 - `.config/ghostty/config` — Ghostty terminal emulator (font, window size)
+- `.tmux.conf` — tmux config with truecolor, mouse support, vim keys, C-a prefix
 
 ### Editor
 - `.config/helix/config.toml` — Helix editor (soft wrap)
@@ -74,7 +83,7 @@ All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git
 ### Scripts (`bin/`)
 Cross-platform utility scripts, organized by OS:
 - `bin/` root — general utilities: `bench`, `mylocation`, `rainbow`, `rdemo`, `repo2txt`, `sort_photos`, `wattage`, `wifi_qrcode`, `wol`, `youtube`, `is_ssh_interactive`
-- `bin/darwin/` — macOS-specific: `create_devbox_app_aliases`, `launch-ollama`
+- `bin/darwin/` — macOS-specific: `create_devbox_app_aliases`, `launch-ollama`, `macos-defaults` (system preference toggles)
 - `bin/linux/` — Linux-specific: `idletime`, `maximize_across_multiple_monitors`, `vu1server`, `wear`
 - `bin/openbsd/` — OpenBSD-specific: `packages`, `wipe`
 - Haskell/Idris source: `rainbow.hs`, `rainbow.idr`

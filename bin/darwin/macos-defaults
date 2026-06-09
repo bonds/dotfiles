@@ -1,0 +1,39 @@
+#!/usr/bin/env fish
+# macOS system defaults — run once to configure system preferences
+
+osascript -e 'tell application "System Preferences" to quit'
+
+sudo -v
+while true; sudo -n true; sleep 60; kill -0 "$$" or exit; end 2>/dev/null &
+
+# Dock
+defaults write com.apple.dock autohide -bool true
+defaults write com.apple.dock show-recents -bool false
+defaults write com.apple.dock mineffect -string "scale"
+defaults write com.apple.dock tilesize -int 36
+
+# Finder
+defaults write com.apple.finder AppleShowAllFiles -bool true
+defaults write com.apple.finder ShowPathbar -bool true
+defaults write com.apple.finder ShowStatusBar -bool true
+defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+defaults write com.apple.finder _FXSortFoldersFirst -bool true
+
+# Trackpad — tap to click, faster tracking
+defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
+defaults write NSGlobalDomain com.apple.trackpad.scaling -float 2.5
+
+# Keyboard — faster repeat
+defaults write NSGlobalDomain InitialKeyRepeat -int 15
+defaults write NSGlobalDomain KeyRepeat -int 2
+
+# Screenshots — PNG to desktop
+defaults write com.apple.screencapture location -string "~/Desktop"
+defaults write com.apple.screencapture type -string "png"
+
+# Disable press-and-hold for accented chars (enables key repeat)
+defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
+
+for app in "Dock" "Finder" "SystemUIServer"
+    killall "$app" 2>/dev/null
+end
