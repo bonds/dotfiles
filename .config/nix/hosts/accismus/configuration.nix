@@ -129,6 +129,9 @@ in {
     users.scott = {pkgs, ...}: {
       home.stateVersion = "24.11";
       home.homeDirectory = "/Users/scott";
+      imports = [
+        ../../modules/home/tmux.nix
+      ];
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
     };
   };

@@ -74,10 +74,11 @@ hosts/
     configuration.nix
     hardware-configuration.nix
 modules/           # Shared modules
-  home/            # Home-manager modules (metanoia)
-    gnome.nix      #   GNOME dconf, extensions, keybindings
-    firefox.nix    #   Firefox policies and extensions
-    misc.nix       #   WirePlumber, uBlock, fish plugins, ulauncher
+  home/            # Home-manager modules (all machines)
+    gnome.nix      #   GNOME dconf, extensions, keybindings (metanoia only)
+    firefox.nix    #   Firefox policies and extensions (metanoia only)
+    misc.nix       #   WirePlumber, uBlock, fish plugins, ulauncher (metanoia only)
+    tmux.nix       #   Catppuccin tmux theme, truecolor, cpu/ram/battery modules
   nixos-common.nix # Shared NixOS settings (locale, timezone, nix channels)
   packages/        # Per-machine package lists
     dev.nix        #   Dev tools (editors, languages, SCM)

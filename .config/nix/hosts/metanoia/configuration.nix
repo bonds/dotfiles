@@ -52,6 +52,7 @@
         ../../modules/home/gnome.nix
         ../../modules/home/firefox.nix
         ../../modules/home/misc.nix
+        ../../modules/home/tmux.nix
       ];
     };
   };

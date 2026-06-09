@@ -178,6 +178,19 @@
 
   programs.tmux.enable = true;
 
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+    backupFileExtension = "old";
+    users.scott = {pkgs, ...}: {
+      home.stateVersion = "24.11";
+      home.homeDirectory = "/home/scott";
+      imports = [
+        ../../modules/home/tmux.nix
+      ];
+    };
+  };
+
   security.polkit.extraConfig = ''
     polkit.addRule(function(action, subject) {
         if (action.id == "org.freedesktop.login1.suspend" ||

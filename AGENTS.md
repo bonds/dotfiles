@@ -30,7 +30,7 @@ All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git
 ### Terminal
 - `.config/alacritty/alacritty.toml` — Alacritty terminal emulator (font, window size, clipboard)
 - `.config/ghostty/config` — Ghostty terminal emulator (font, window size)
-- `.tmux.conf` — tmux config with truecolor, mouse support, vim keys, C-a prefix
+- tmux config managed via nix/home-manager (`modules/home/tmux.nix`) — catppuccin frappe theme, truecolor, cpu/ram/battery modules
 
 ### Editor
 - `.config/helix/config.toml` — Helix editor (soft wrap)
