@@ -94,6 +94,7 @@
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix
         ./modules/packages/utils.nix
+        {nixpkgs.overlays = [inputs.nix-index-database.overlays.nix-index];}
         ./hosts/sophrosyne/configuration.nix
         ./hosts/sophrosyne/hardware-configuration.nix
         arion.nixosModules.arion
@@ -115,6 +116,7 @@
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix
         ./modules/packages/utils.nix
+        {nixpkgs.overlays = [inputs.nix-index-database.overlays.nix-index];}
         ./hosts/metanoia/configuration.nix
         ./hosts/metanoia/hardware-configuration.nix
         vudials.nixosModules.default

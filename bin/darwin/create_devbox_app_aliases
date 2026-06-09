@@ -47,12 +47,12 @@ for link in (find $linksdir -maxdepth 1 -name '*.app')
     # echo $aliaspath
     if not test -e "$aliaspath"
         echo creating alias for $appname
-        makealias "$aliasdir" "$apppath"
+        makealias "$aliasesdir" "$apppath"
     else if test $apppath != (realpath $(readalias $aliaspath))
         echo updating alias for $appname
         rm "$aliaspath"
         sleep 1 # wait or we'll get an alias called '$appname alias'
-        makealias "$aliasdir" "$apppath"
+        makealias "$aliasesdir" "$apppath"
     end
 end
 

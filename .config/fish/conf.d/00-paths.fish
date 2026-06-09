@@ -1,10 +1,10 @@
-set uname (string lower (uname))
+set -g _os (string lower (uname))
 
-if command --query ionice
+if test "$_os" = linux; and command --query ionice
     alias nice "command nice ionice -c idle"
 end
 
-set --append fish_user_paths ~/bin/"$uname"
+set --append fish_user_paths ~/bin/"$_os"
 set --append fish_user_paths ~/bin
 set --append fish_user_paths ~/.local/bin
 set --append fish_user_paths ~/.cargo/bin

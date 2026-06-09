@@ -33,6 +33,8 @@ in {
     LC_TIME = "en_US.UTF-8";
   };
 
+  programs.command-not-found.enable = false;
+
   imports = [
     ./fish-command-not-found.nix
   ];

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+homemac="6c:ae:f6:30:43:12"
+
+gwip4=$(route -n get default | grep gateway | awk '{print $2}')
+gwmac=$(arp -a | grep \($gwip4\) | awk '{print $4}')
+
+if [ "$gwmac" = "$homemac" ]; then
+  echo "you are at home"
+  exit 0
+else
+  echo "you are NOT at home"
+  exit 1
+fi

@@ -4,13 +4,14 @@ function ls
     else if command --query colorls
         colorls -G $argv
     else
-        command ls $argv
+        command ls -G $argv
     end
 end
 
 function e --description "shortcut to the default editor"
-    if command --query fzf; and test -z "$argv"
-        $EDITOR (fzf)
+    if command --query fzf; and test (count $argv) -eq 0
+        set -l file (fzf)
+        test -n "$file"; and $EDITOR "$file"
     else
         $EDITOR $argv
     end
@@ -34,7 +35,7 @@ function angband --description "ASCII dungeon crawl game"
         $argv -- -n1
 end
 
-function ping
+function tping
     if command --query ts
         command ping $argv | ts '%Y-%m-%d %H:%M'
     else
@@ -45,24 +46,32 @@ function ping
 end
 
 function nr
-    set -l _nr_old_system (command readlink /run/current-system)
+    if test "$_os" = darwin
+        set -l _nr_old_system (command readlink /nix/var/nix/profiles/system 2>/dev/null)
+    else
+        set -l _nr_old_system (command readlink /run/current-system 2>/dev/null)
+    end
     if contains -- --update $argv
-        and test "$uname" = darwin
+        and test "$_os" = darwin
         update-ollama --no-rebuild
     end
-    if test "$uname" = darwin
+    if test "$_os" = darwin
         nh darwin switch $HOME/.config/nix $argv
     else
         nh os switch $HOME/.config/nix $argv
     end
-    set -l _nr_new_system (command readlink /run/current-system)
+    if test "$_os" = darwin
+        set -l _nr_new_system (command readlink /nix/var/nix/profiles/system 2>/dev/null)
+    else
+        set -l _nr_new_system (command readlink /run/current-system 2>/dev/null)
+    end
     if test "$_nr_old_system" != "$_nr_new_system"
         what-changed "$_nr_old_system" "$_nr_new_system"
     end
 end
 
 function hr
-    nice home-manager $argv switch --flake ~/.config/nix
+    nice home-manager switch --flake ~/.config/nix $argv
 end
 
 function age

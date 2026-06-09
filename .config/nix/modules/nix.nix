@@ -2,9 +2,7 @@
   lib,
   pkgs,
   ...
-}: let
-  pruneGenerations = import ./prune-generations.nix {inherit pkgs;};
-in {
+}: {
   nix.package = lib.mkDefault pkgs.lix;
   nix.settings.nix-path = lib.mkDefault "";
   nix.settings.flake-registry = lib.mkDefault "";
@@ -19,5 +17,4 @@ in {
   };
   nix.channel.enable = lib.mkDefault false;
   nixpkgs.config.allowUnfree = lib.mkDefault true;
-  environment.systemPackages = [pruneGenerations];
 }

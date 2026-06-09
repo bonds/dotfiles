@@ -36,12 +36,12 @@ else
     PWD=$(pwd)
 #    cd ~/Downloads
     if [ -z $audio ]; then
-        while ! youtube-dl --default-search ytsearch --external-downloader aria2c --external-downloader-args '-c -j 3 -x 3 -s 3 -k 1M' "$*"
+        while ! yt-dlp --default-search ytsearch --external-downloader aria2c --external-downloader-args '-c -j 3 -x 3 -s 3 -k 1M' "$*"
         do
             sleep 60
         done
     else
-        youtube-dl --format bestaudio --default-search ytsearch "$*"
+        yt-dlp --format bestaudio --default-search ytsearch "$*"
     fi
 #    cd $PWD
 fi

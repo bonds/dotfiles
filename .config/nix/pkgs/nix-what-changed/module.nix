@@ -25,7 +25,7 @@ in {
           };
           model = mkOption {
             type = types.str;
-            default = "gemma3:1b-it-qat";
+            default = "qwen2.5:1.5b";
             description = "LLM model name";
           };
           timeout = mkOption {

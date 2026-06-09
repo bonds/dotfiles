@@ -19,7 +19,7 @@ if test -c /dev/r$1c; then
     # dd if=/dev/random | pv -s $bytes | dd of=/dev/r$1c bs=1m
 
     # got this line from the 'man pv' examples
-    pv -s $bytes < /dev/random > /dev/rsd2c
+    pv -s $bytes < /dev/random > /dev/r$1c
 
 else
     echo could not find the drive '$1'

@@ -6,4 +6,4 @@ read nwid
 echo "What is the password?"
 read wpakey
 
-qrencode -t utf8 "WIFI:T:WPA;S:snowcrash;P:$wpakey;"
+qrencode -t utf8 "WIFI:T:WPA;S:$nwid;P:$wpakey;"

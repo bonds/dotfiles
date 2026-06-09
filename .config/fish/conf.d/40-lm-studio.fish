@@ -1,1 +1,3 @@
-set -gx PATH $PATH /Users/scott/.lmstudio/bin
+if test "$_os" = darwin
+    fish_add_path "$HOME/.lmstudio/bin"
+end

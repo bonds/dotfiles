@@ -16,7 +16,7 @@ else
 end
 set common --num-threads=$cores --max-requests=100000000
 
-nice hyperfine \
+command nice hyperfine \
     --warmup 1 \
     --export-json ~/(date "+%Y%m%d%H%M")-(string replace ".local" "" (hostname)).txt \
     "sysbench --test=cpu    $common run" \

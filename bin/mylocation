@@ -1,3 +1,15 @@
 #!/bin/sh
 
-curl --silent ipinfo.io | jq
+data=$(curl -sf --max-time 5 https://ipinfo.io 2>/dev/null)
+if [ -n "$data" ]; then
+  echo "$data" | jq
+  exit 0
+fi
+
+data=$(curl -sf --max-time 5 http://ip-api.com/json 2>/dev/null)
+if [ -n "$data" ]; then
+  echo "$data" | jq '{ip: .query, city: .city, region: .regionName, country: .country, loc: (.lat | tostring) + "," + (.lon | tostring), org: .isp, timezone: .timezone}'
+  exit 0
+fi
+
+exit 1
