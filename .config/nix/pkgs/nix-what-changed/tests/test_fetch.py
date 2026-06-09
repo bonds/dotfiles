@@ -55,9 +55,9 @@ def test_html_extractor_skip_counter():
     parser.handle_starttag("header", [])
     parser.handle_starttag("nav", [])
     assert parser.skip == 2
-    parser.handle_endtag("nav", [])
+    parser.handle_endtag("nav")
     assert parser.skip == 1
-    parser.handle_endtag("header", [])
+    parser.handle_endtag("header")
     assert parser.skip == 0
 
 
@@ -65,6 +65,6 @@ def test_html_extractor_newlines():
     parser = _HTMLTextExtractor()
     parser.handle_starttag("p", [])
     parser.handle_data("text")
-    parser.handle_endtag("p", [])
+    parser.handle_endtag("p")
     result = "".join(parser.text)
     assert "text" in result

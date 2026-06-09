@@ -8,7 +8,7 @@ def test_defaults():
     cfg = Config()
     assert cfg.backend == "ollama"
     assert cfg.model == "qwen2.5:1.5b"
-    assert cfg.timeout == 40
+    assert cfg.timeout == 180
     assert cfg.max_bullets == 5
 
 
