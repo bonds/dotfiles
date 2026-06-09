@@ -15,13 +15,30 @@ Personal dotfiles and Nix flake for macOS (nix-darwin) and NixOS machines.
 
 `what-changed` diffs two nix system closures, finds which packages changed, fetches their changelogs, and summarizes each using a local LLM (via ollama).
 
-It runs automatically after `nr` (the rebuild wrapper), or manually:
+Run it manually after a rebuild:
 
 ```fish
-what-changed -1                        # current vs 1 generation ago
-what-changed 2026-05-01                # current vs gen after May 1
-what-changed /nix/store/xxx /nix/store/yyy   # explicit store paths
-what-changed --benchmark               # test model performance
+sudo nixos-rebuild switch          # or: darwin-rebuild switch
+what-changed -1                     # compare current vs 1 generation ago
+```
+
+Or with explicit store paths:
+
+```fish
+what-changed /nix/store/xxx-darwin-system-26.05 /nix/store/yyy-darwin-system-26.11
+```
+
+Other usage:
+
+```fish
+what-changed -1                      # current vs 1 generation ago
+what-changed -1 -50                  # 1 gen ago vs 50 gens ago
+what-changed 2026-05-01              # current vs gen after May 1
+what-changed 2026-01-01 2025-06-01  # gen after Jan 1 vs gen after Jun 1
+what-changed /nix/store/xxx /nix/store/yyy  # explicit store paths
+what-changed --benchmark             # test model performance
+what-changed --brief                 # compact output, no bullets
+what-changed --json                  # machine-readable output
 ```
 
 ### Features
