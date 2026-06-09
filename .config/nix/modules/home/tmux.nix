@@ -11,6 +11,8 @@
 
     plugins = [
       {
+        # CAUTION: @catppuccin_* opts MUST go in plugin.extraConfig (runs before
+        # run-shell), NOT in programs.tmux.extraConfig (runs after plugin loads).
         plugin = pkgs.tmuxPlugins.catppuccin;
         extraConfig = ''
           set -g @catppuccin_flavor 'frappe'
