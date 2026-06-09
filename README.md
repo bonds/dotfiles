@@ -101,4 +101,4 @@ max_bullets = 5
 
 ## License
 
-MIT
+CC0 1.0 Universal — see [LICENSE](LICENSE).
