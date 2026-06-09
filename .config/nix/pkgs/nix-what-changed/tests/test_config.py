@@ -7,7 +7,7 @@ from what_changed.config import Config, load
 def test_defaults():
     cfg = Config()
     assert cfg.backend == "ollama"
-    assert cfg.model == "gemma3:1b-it-qat"
+    assert cfg.model == "qwen2.5:1.5b"
     assert cfg.timeout == 40
     assert cfg.max_bullets == 5
 
