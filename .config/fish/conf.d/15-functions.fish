@@ -74,14 +74,6 @@ function hr
     nice home-manager switch --flake ~/.config/nix $argv
 end
 
-function sudo
-    if command --query reattach-to-session-namespace
-        command reattach-to-session-namespace -- /usr/bin/sudo $argv
-    else
-        command sudo $argv
-    end
-end
-
 function age
     if command --query rage
         rage $argv
