@@ -62,6 +62,7 @@ in {
   nix.settings.experimental-features = "nix-command flakes";
 
   security.pam.services.sudo_local.touchIdAuth = true;
+  security.pam.services.sudo_local.reattach = true;
 
   # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
   system.activationScripts.sshAuthorizedKeys = {
