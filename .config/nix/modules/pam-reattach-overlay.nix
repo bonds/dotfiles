@@ -1,5 +1,8 @@
 final: prev: {
   pam-reattach = prev.pam-reattach.overrideAttrs (old: {
+    buildInputs = old.buildInputs or [ ];  # Keep original (nix's openpam for compilation)
+    cmakeFlags = old.cmakeFlags or [ ];    # Keep original cmake flags
+
     postInstall =
       (old.postInstall or "")
       + ''

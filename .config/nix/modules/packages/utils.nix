@@ -29,6 +29,7 @@
       unzip # extract ZIP archives
       watch # execute a command periodically
       weather # command-line weather forecast
+      pam-reattach # reattach-to-session-namespace CLI for sudo+TouchID in terminals
     ])
     ++ [
       (pkgs.callPackage ../../pkgs/nix-what-changed {})
