@@ -14,7 +14,7 @@ in {
   # Common packages shared with all machines are in modules/packages/dev.nix and utils.nix
   environment.systemPackages = with pkgs; [
     xclip # for copying from terminal to clipboard
-    opencode # like claude code but open source
+    opencode # AI coding agent
     openssh # macos ssh doesn't come with resident ssh support
     ollama # run LLMs locally
     jan # local AI chat desktop app

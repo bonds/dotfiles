@@ -105,6 +105,7 @@ Three machines managed from this repo:
 - Shell history: atuin (synced database)
 - Password management: passage (age-encrypted, not GPG)
 - Nix formatting: alejandra (`nix fmt` — unreliable, prefer `alejandra <file>` directly)
+- Before committing any changes, run a code review using the `code-review-skill` (loaded on-demand via OpenCode's skill tool) and ask the user how to proceed
 - After each batch of changes, commit and push to all remotes (`git push origin && git push sophrosyne`)
 - Code repos I'm actively working on live in `~/Documents/undated/repos/`
 -

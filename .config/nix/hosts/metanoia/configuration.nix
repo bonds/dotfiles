@@ -97,7 +97,6 @@
     }
   ];
 
-  programs.mtr.enable = true;
   programs.tmux.enable = true;
   programs.steam = {
     enable = true;

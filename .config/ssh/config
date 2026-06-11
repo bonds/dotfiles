@@ -38,7 +38,7 @@ Host *.ggr.com *.local sophrosyne
     # forward syncthing web ui ports so I can manage them locally
     LocalForward 8385 127.0.0.1:8384
 
-Host sophrosyne.local sophrosyne sophrosyne.ggr.com home.ggr.com
+Host sophrosyne
     # sophrosyne doesn't know about xterm-ghostty
     SetEnv TERM=xterm-256color
     # forward immich port

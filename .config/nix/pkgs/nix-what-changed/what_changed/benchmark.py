@@ -93,8 +93,6 @@ def score_bullets(bullets: list[str], expected: int) -> float:
         return max(0.0, 1.0 + diff * 0.5)
     # Extra bullets (hallucinations): +1 → 0.3, +2+ → 0.0
     return max(0.0, 0.8 - diff * 0.5)
-    # Poor: way off
-    return 0.2
 
 
 def _model_size(model: str) -> str:

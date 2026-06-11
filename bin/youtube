@@ -25,23 +25,19 @@ if [ -z "$*" ]; then
     exit 3
 fi
 
-if [ -z $download ]; then
-    if [ -z $audio ]; then
-        mpv --fs --really-quiet --cache=yes --demuxer-max-bytes=200M --demuxer-readahead-secs=60 --ytdl-raw-options="default-search=ytsearch,format=bestvideo[height<=?1080]+bestaudio/best" ytdl://"$*"
-        #mpv --fs --really-quiet --audio-delay=-0.300 --cache=yes --demuxer-max-bytes=200M --demuxer-readahead-secs=60 --ytdl-raw-options="default-search=ytsearch,format=bestvideo[height<=?1080]+bestaudio/best" ytdl://"$*"
+if [ "${download:-}" = yes ]; then
+    if [ "${audio:-}" = yes ]; then
+        yt-dlp --format bestaudio --default-search ytsearch "$*"
     else
-        mpv --fs --ytdl-raw-options=default-search=ytsearch,format=bestaudio ytdl://"$*"
-    fi
-else
-    PWD=$(pwd)
-#    cd ~/Downloads
-    if [ -z $audio ]; then
         while ! yt-dlp --default-search ytsearch --external-downloader aria2c --external-downloader-args '-c -j 3 -x 3 -s 3 -k 1M' "$*"
         do
             sleep 60
         done
-    else
-        yt-dlp --format bestaudio --default-search ytsearch "$*"
     fi
-#    cd $PWD
+else
+    if [ "${audio:-}" = yes ]; then
+        mpv --fs --ytdl-raw-options=default-search=ytsearch,format=bestaudio ytdl://"$*"
+    else
+        mpv --fs --really-quiet --cache=yes --demuxer-max-bytes=200M --demuxer-readahead-secs=60 --ytdl-raw-options="default-search=ytsearch,format=bestvideo[height<=?1080]+bestaudio/best" ytdl://"$*"
+    fi
 fi

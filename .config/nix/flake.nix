@@ -27,11 +27,6 @@
   }: let
     systems = ["aarch64-darwin" "x86_64-linux"];
     forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
-    mkPkgs = importNixpkgs: system:
-      import importNixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-      };
     mkCheck = pkgs: name: buildInputs: script:
       pkgs.runCommand name {inherit buildInputs;} ''
         cd ${self}
@@ -65,11 +60,17 @@
       specialArgs = {
         inherit self inputs;
         isDarwin = true; # required by vudials module
-        vuserver = (mkPkgs nixpkgs "aarch64-darwin").callPackage "${vudials}/pkgs/vuserver" {};
-        vuclient = (mkPkgs nixpkgs "aarch64-darwin").callPackage "${vudials}/pkgs/vuclient" {};
+        vuserver = (import nixpkgs {
+          system = "aarch64-darwin";
+          config.allowUnfree = true;
+        }).callPackage "${vudials}/pkgs/vuserver" {};
+        vuclient = (import nixpkgs {
+          system = "aarch64-darwin";
+          config.allowUnfree = true;
+        }).callPackage "${vudials}/pkgs/vuclient" {};
       };
       modules = [
-        {nixpkgs.overlays = [inputs.nix-index-database.overlays.nix-index (import ./modules/ollama-overlay.nix) (import ./modules/pam-reattach-overlay.nix)];}
+        {nixpkgs.overlays = [(import ./modules/ollama-overlay.nix) (import ./modules/pam-reattach-overlay.nix)];}
         nix-index-database.darwinModules.nix-index
         ./modules/nix.nix
         ./modules/secrets-check.nix
@@ -87,14 +88,16 @@
       system = "x86_64-linux";
       specialArgs = {
         inherit self inputs;
-        pkgs-unstable = mkPkgs nixpkgs "x86_64-linux";
+        pkgs-unstable = import nixpkgs {
+          system = "x86_64-linux";
+          config.allowUnfree = true;
+        };
       };
       modules = [
         ./modules/nix.nix
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix
         ./modules/packages/utils.nix
-        {nixpkgs.overlays = [inputs.nix-index-database.overlays.nix-index];}
         ./hosts/sophrosyne/configuration.nix
         ./hosts/sophrosyne/hardware-configuration.nix
         arion.nixosModules.arion
@@ -107,16 +110,24 @@
       specialArgs = {
         inherit self inputs;
         isDarwin = false; # required by vudials module
-        vuserver = (mkPkgs nixpkgs-stable "x86_64-linux").callPackage "${vudials}/pkgs/vuserver" {};
-        vuclient = (mkPkgs nixpkgs-stable "x86_64-linux").callPackage "${vudials}/pkgs/vuclient" {};
-        pkgs-unstable = mkPkgs nixpkgs "x86_64-linux";
+        vuserver = (import nixpkgs-stable {
+          system = "x86_64-linux";
+          config.allowUnfree = true;
+        }).callPackage "${vudials}/pkgs/vuserver" {};
+        vuclient = (import nixpkgs-stable {
+          system = "x86_64-linux";
+          config.allowUnfree = true;
+        }).callPackage "${vudials}/pkgs/vuclient" {};
+        pkgs-unstable = import nixpkgs {
+          system = "x86_64-linux";
+          config.allowUnfree = true;
+        };
       };
       modules = [
         ./modules/nix.nix
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix
         ./modules/packages/utils.nix
-        {nixpkgs.overlays = [inputs.nix-index-database.overlays.nix-index];}
         ./hosts/metanoia/configuration.nix
         ./hosts/metanoia/hardware-configuration.nix
         vudials.nixosModules.default
