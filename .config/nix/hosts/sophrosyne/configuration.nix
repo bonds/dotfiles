@@ -261,83 +261,105 @@
         command = "--voice en_US-lessac-medium";
       };
 
-      scrypted.settings.services = {
-        # REMINDER: When adding a secret here, also add a warn_missing check
-        # in system.activationScripts.checkSecrets above.
-        eufy-ws.service = {
-          image = "bropat/eufy-security-ws:latest";
-          restart = "unless-stopped";
-          network_mode = "host";
-          environment = {
-            USERNAME = "scott+homebridge@ggr.com";
-            COUNTRY = "US";
-            TRUSTED_DEVICE_NAME = "sophrosyne";
-            PORT = "3000";
-          };
-          env_file = [
-            "/dragon/docker/eufy-security-ws/.env"
-          ];
-          volumes = [
-            "/dragon/docker/eufy-security-ws/data:/data"
-          ];
-        };
-        scrypted.service = {
-          image = "ghcr.io/koush/scrypted";
-          restart = "unless-stopped";
-          network_mode = "host";
-          privileged = true;
-          environment = {
-            SCRYPTED_DOCKER_AVAHI = "true";
-          };
-          volumes = [
-            "/dragon/docker/scrypted/volume:/server/volume"
-            "/dragon/docker/scrypted/avahi:/etc/avahi"
-          ];
-          dns = ["1.1.1.1" "8.8.8.8"];
-        };
-        watchtower.service = {
-          image = "nickfedor/watchtower";
-          container_name = "scrypted-watchtower";
-          restart = "unless-stopped";
-          volumes = [
-            "/var/run/docker.sock:/var/run/docker.sock"
-          ];
-          ports = [
-            "10444:8080"
-          ];
-          command = "--interval 3600 --cleanup --scope scrypted";
-          dns = ["1.1.1.1" "8.8.8.8"];
-        };
-      };
+      # ──────────────────────────────────────────────────────────────────
+      # Scrypted project — DISABLED. Not currently in use.
+      # Security audit (2026-06-11) flagged `privileged: true` on the
+      # scrypted container + `network_mode: "host"` on all three services.
+      # Before re-enabling, choose one of these approaches:
+      #
+      # Option 1 (keep as-was): `privileged: true` + `SCRYPTED_DOCKER_AVAHI`
+      #   Pro: HomeKit auto-discovery works. No config changes.
+      #   Con: Full container privilege escalation if compromised.
+      #   Risk is limited since sophrosyne is LAN-only.
+      #
+      # Option 2 (narrow caps): Drop `privileged`, add specific capabilities:
+      #   capabilities = ["NET_ADMIN" "NET_RAW" "SYS_ADMIN"]
+      #   Pro: Much narrower attack surface than privileged.
+      #   Con: Exact capability set not well-documented; may break on upgrades.
+      #
+      # Option 3 (most secure): Drop `privileged` AND `SCRYPTED_DOCKER_AVAHI`.
+      #   Use host Avahi (`services.avahi.enable = true`) instead.
+      #   Pro: No elevated privileges needed at all.
+      #   Con: HomeKit pairing via manual PIN entry instead of auto-discovery.
+      #
+      # See .config/nix/hosts/sophrosyne/configuration.nix for context.
+      # ──────────────────────────────────────────────────────────────────
+      # scrypted.settings.services = {
+      #   eufy-ws.service = {
+      #     image = "bropat/eufy-security-ws:latest";
+      #     restart = "unless-stopped";
+      #     network_mode = "host";
+      #     environment = {
+      #       USERNAME = "scott+homebridge@ggr.com";
+      #       COUNTRY = "US";
+      #       TRUSTED_DEVICE_NAME = "sophrosyne";
+      #       PORT = "3000";
+      #     };
+      #     env_file = [
+      #       "/dragon/docker/eufy-security-ws/.env"
+      #     ];
+      #     volumes = [
+      #       "/dragon/docker/eufy-security-ws/data:/data"
+      #     ];
+      #   };
+      #   scrypted.service = {
+      #     image = "ghcr.io/koush/scrypted";
+      #     restart = "unless-stopped";
+      #     network_mode = "host";
+      #     # Security: `privileged` required for Avahi mDNS inside the
+      #     # container (HomeKit discovery). See options above.
+      #     # privileged = true;
+      #     environment = {
+      #       SCRYPTED_DOCKER_AVAHI = "true";
+      #     };
+      #     volumes = [
+      #       "/dragon/docker/scrypted/volume:/server/volume"
+      #       "/dragon/docker/scrypted/avahi:/etc/avahi"
+      #     ];
+      #     dns = ["1.1.1.1" "8.8.8.8"];
+      #   };
+      #   watchtower.service = {
+      #     image = "nickfedor/watchtower";
+      #     container_name = "scrypted-watchtower";
+      #     restart = "unless-stopped";
+      #     volumes = [
+      #       "/var/run/docker.sock:/var/run/docker.sock"
+      #     ];
+      #     ports = [
+      #       "10444:8080"
+      #     ];
+      #     command = "--interval 3600 --cleanup --scope scrypted";
+      #     dns = ["1.1.1.1" "8.8.8.8"];
+      #   };
+      # };
     };
   };
 
-  # Patch scrypted homekit plugin to handle cameras without direct tcp:// URLs
-  # (e.g., Eufy battery cameras). Fixes: TypeError: Cannot read properties of undefined (reading 'startsWith')
-  systemd.services.scrypted-homekit-patch = {
-    description = "Patch Scrypted HomeKit plugin for Eufy battery cameras";
-    after = ["arion-scrypted.service"];
-    wants = ["arion-scrypted.service"];
-    wantedBy = ["multi-user.target"];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      PLUGIN_JS="/dragon/docker/scrypted/volume/plugins/@scrypted/homekit/zip/unzipped/main.nodejs.js"
-      if [ -f "$PLUGIN_JS" ]; then
-        if grep -q '!p.url.startsWith("tcp://")' "$PLUGIN_JS"; then
-          echo "Patching HomeKit plugin for battery camera compatibility..."
-          ${pkgs.gnused}/bin/sed -i 's/!p.url.startsWith("tcp:\/\/")/!p.url?.startsWith("tcp:\/\/")/g' "$PLUGIN_JS"
-          ${pkgs.docker}/bin/docker restart scrypted-scrypted-1 || true
-        else
-          echo "HomeKit plugin already patched or not patchable."
-        fi
-      else
-        echo "HomeKit plugin not found yet, will patch on next run."
-      fi
-    '';
-  };
+  # Disabled alongside Scrypted project above.
+  # systemd.services.scrypted-homekit-patch = {
+  #   description = "Patch Scrypted HomeKit plugin for Eufy battery cameras";
+  #   after = ["arion-scrypted.service"];
+  #   wants = ["arion-scrypted.service"];
+  #   wantedBy = ["multi-user.target"];
+  #   serviceConfig = {
+  #     Type = "oneshot";
+  #     RemainAfterExit = true;
+  #   };
+  #   script = ''
+  #     PLUGIN_JS="/dragon/docker/scrypted/volume/plugins/@scrypted/homekit/zip/unzipped/main.nodejs.js"
+  #     if [ -f "$PLUGIN_JS" ]; then
+  #       if grep -q '!p.url.startsWith("tcp://")' "$PLUGIN_JS"; then
+  #         echo "Patching HomeKit plugin for battery camera compatibility..."
+  #         ${pkgs.gnused}/bin/sed -i 's/!p.url.startsWith("tcp:\/\/")/!p.url?.startsWith("tcp:\/\/")/g' "$PLUGIN_JS"
+  #         ${pkgs.docker}/bin/docker restart scrypted-scrypted-1 || true
+  #       else
+  #         echo "HomeKit plugin already patched or not patchable."
+  #       fi
+  #     else
+  #       echo "HomeKit plugin not found yet, will patch on next run."
+  #     fi
+  #   '';
+  # };
 
   # REMINDER: When adding a secret here, also add a warn_missing check
   # in system.activationScripts.checkSecrets above.
