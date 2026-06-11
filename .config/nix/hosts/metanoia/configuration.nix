@@ -184,9 +184,6 @@
   services.ollama = {
     package = pkgs-unstable.ollama;
     enable = true;
-    environmentVariables = {
-      OLLAMA_ORIGINS = "*";
-    };
   };
 
   systemd.services.ollama.serviceConfig.Restart = lib.mkForce "always";
