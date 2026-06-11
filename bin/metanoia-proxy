@@ -10,9 +10,9 @@ set -l at_home $status
 
 function is_reachable
     if test $at_home -eq 0
-        nc -z -w 1 -G 1 $ip $port >/dev/null 2>&1
+        nc -z -w 1 -G 1 "$ip" "$port" >/dev/null 2>&1
     else
-        ssh -o RemoteCommand=none home.ggr.com nc -z -w 1 $ip $port >/dev/null 2>&1
+        ssh -o RemoteCommand=none home.ggr.com nc -z -w 1 "$ip" "$port" >/dev/null 2>&1
     end
 end
 
@@ -35,7 +35,7 @@ if not is_reachable
 end
 
 if test $at_home -eq 0
-    exec nc $ip $port
+    exec nc "$ip" "$port"
 else
-    exec ssh -W $ip:$port home.ggr.com
+    exec ssh -W "$ip:$port" home.ggr.com
 end
