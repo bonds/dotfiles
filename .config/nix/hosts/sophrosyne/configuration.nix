@@ -44,12 +44,18 @@
     deps = [];
   };
 
+  # NOPASSWD scoped to rebuild commands only (for remote nix deploys).
+  # Everything else prompts for scott's password via the wheel default.
   security.sudo.extraRules = [
     {
       users = ["scott"];
       commands = [
         {
-          command = "ALL";
+          command = "/run/current-system/sw/bin/nixos-rebuild";
+          options = ["NOPASSWD"];
+        }
+        {
+          command = "/run/current-system/sw/bin/nh";
           options = ["NOPASSWD"];
         }
       ];
