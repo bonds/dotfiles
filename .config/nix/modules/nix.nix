@@ -3,7 +3,7 @@
   pkgs,
   ...
 }: {
-  nix.package = lib.mkDefault pkgs.lix;
+  nix.package = lib.mkDefault pkgs.lixPackageSets.latest.lix;
   nix.settings.nix-path = lib.mkDefault "";
   nix.settings.flake-registry = lib.mkDefault "";
   nix.settings.warn-dirty = lib.mkDefault false;
