@@ -1,11 +1,11 @@
 final: prev: {
   ollama = prev.stdenvNoCC.mkDerivation {
     pname = "ollama";
-    version = "0.30.7";
+    version = "0.30.8";
 
     src = prev.fetchurl {
-      url = "https://github.com/ollama/ollama/releases/download/v0.30.7/ollama-darwin.tgz";
-      hash = "sha256-+js4LkuQxZXh9HPG3yzR7K0nDE0EIl9rBp5bhqEPPTM=";
+      url = "https://github.com/ollama/ollama/releases/download/v0.30.8/ollama-darwin.tgz";
+      hash = "sha256-Uqy8pOicU9uavFhqIrVjP9EB2ykxdyZLmg/l1kpCoGQ=";
     };
 
     sourceRoot = ".";
