@@ -129,8 +129,8 @@
         fi
         log "Found device: $DEVICE"
         log "Checking filesystem..."
-        ${pkgs.e2fsprogs}/bin/e2fsck -p "$DEVICE" 2>&1 | tee -a "$LOG_FILE" || log "fsck exit code $? (continuing)"
-        mount "$DEVICE" "$MOUNT_POINT" || abort "Failed to mount $DEVICE at $MOUNT_POINT"
+        timeout 30 ${pkgs.e2fsprogs}/bin/e2fsck -p "$DEVICE" 2>&1 | tee -a "$LOG_FILE" || log "fsck exit code $? (continuing)"
+        timeout 30 mount "$DEVICE" "$MOUNT_POINT" || abort "Failed to mount $DEVICE at $MOUNT_POINT"
         log "Mounted $DEVICE at $MOUNT_POINT"
       fi
 
