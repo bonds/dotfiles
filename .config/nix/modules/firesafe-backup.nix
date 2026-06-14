@@ -205,118 +205,297 @@
       log "Free space remaining: $((FREE_BYTES / 1024 / 1024 / 1024))GB"
   '';
 
-  statusScript = pkgs.writeShellScriptBin "firesafe-status" ''
-    set -uo pipefail
+  statusScript =
+    pkgs.writers.writePython3Bin "firesafe-status" {
+      libraries = [pkgs.python3Packages.rich];
+      flakeIgnore = ["E501"];
+    } ''
+      import os, sys, time, subprocess, re
+      from pathlib import Path
+      from datetime import datetime, timezone
+      from typing import Optional
 
-    WATCH=false
-    for arg in "$@"; do
-      case "$arg" in -w|--watch) WATCH=true;; esac
-    done
+      from rich.console import Console, Group
+      from rich.text import Text
+      from rich.table import Table
+      from rich.progress_bar import ProgressBar
+      from rich.rule import Rule
+      from rich.live import Live
 
-    fmt_time() {
-      local s=$1
-      local h=$(( s / 3600 ))
-      local m=$(( (s % 3600) / 60 ))
-      [ "$h" -gt 0 ] && printf "%dh %dm" "$h" "$m" || printf "%dm" "$m"
-    }
+      console = Console()
 
-    show_status() {
-      MOUNT_POINT="${cfg.mountPoint}"
-      LOG_FILE="/var/log/firesafe-backup.log"
-      TOTAL_SOURCES=${toString (builtins.length (builtins.attrNames cfg.sources))}
+      MOUNT_POINT = "${cfg.mountPoint}"
+      LOG_FILE = "/var/log/firesafe-backup.log"
+      TOTAL_SOURCES = ${toString (builtins.length (builtins.attrNames cfg.sources))}
 
-      echo "=== Firesafe Backup Status ==="
-      if ! mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
-        # Check if backup is in progress (e.g. fsck or mounting)
-        SERVICE_STATE=$(systemctl is-active firesafe-backup.service 2>/dev/null || true)
-        if [ "$SERVICE_STATE" = "activating" ] || [ "$SERVICE_STATE" = "active" ]; then
-          FSCK=$(ps aux | grep e2fsck | grep -v grep | head -1)
-          if [ -n "$FSCK" ]; then
-            FSCK_PID=$(echo "$FSCK" | awk '{print $2}')
-            FSCK_ELAPSED=$(ps -p "$FSCK_PID" -o etime= 2>/dev/null | tr -d ' ' || echo "?")
-            FSCK_DEV=$(echo "$FSCK" | awk '{print $NF}')
-            DEV_NAME=$(basename "$FSCK_DEV" | sed 's/[0-9]//g')
-            STAT_FILE="/sys/block/$DEV_NAME/stat"
-            if [ -r "$STAT_FILE" ]; then
-              read -r _ _ SECT_RD _ _ _ _ _ _ _ _ < "$STAT_FILE" 2>/dev/null || SECT_RD=0
-              MB_READ=$(( SECT_RD * 512 / 1048576 ))
-              case "$FSCK_ELAPSED" in
-                *-*:*:*) d=''${FSCK_ELAPSED%%-*}; t=''${FSCK_ELAPSED#*-}; FSCK_SECS=$((d * 86400 + 10#''${t%%:*} * 3600 + 10#''${t#*:} / 60 * 60 + 10#''${t##*:})) ;;
-                *:*:*)    FSCK_SECS=$((10#''${FSCK_ELAPSED%%:*} * 3600 + 10#''${FSCK_ELAPSED#*:} / 60 * 60 + 10#''${FSCK_ELAPSED##*:})) ;;
-                *:*)      FSCK_SECS=$((10#''${FSCK_ELAPSED%%:*} * 60 + 10#''${FSCK_ELAPSED#*:})) ;;
-                *)        FSCK_SECS=0 ;;
-              esac
-              [ "$FSCK_SECS" -gt 0 ] && RATE_MB=$(( MB_READ / FSCK_SECS )) || RATE_MB=0
-              if [ "$RATE_MB" -ge 1 ]; then
-                printf "Status: Checking filesystem — %d MB read (%d MB/s, running %s)\n" "$MB_READ" "$RATE_MB" "$FSCK_ELAPSED"
-              else
-                KB_READ=$(( SECT_RD * 512 / 1024 ))
-                [ "$FSCK_SECS" -gt 0 ] && RATE_KB=$(( KB_READ / FSCK_SECS )) || RATE_KB=0
-                printf "Status: Checking filesystem — %d KB read (%d KB/s, running %s)\n" "$KB_READ" "$RATE_KB" "$FSCK_ELAPSED"
-              fi
-            else
-              echo "Status: Checking filesystem (e2fsck running for $FSCK_ELAPSED)"
-            fi
-            echo
-            echo "--- Last backup log ---"
-            tail -5 "$LOG_FILE" 2>/dev/null || true
-          else
-            echo "Status: Starting backup..."
-            tail -3 "$LOG_FILE" 2>/dev/null || true
-          fi
-        else
-          echo "Not mounted"
-        fi
-        return
-      fi
 
-      df -h "$MOUNT_POINT" | tail -1 | awk '{print "Status: MOUNTED | Size: "$2" | Avail: "$4}'
-      [ -f "$MOUNT_POINT/.firesafe-id" ] && echo "Drive: $(cat $MOUNT_POINT/.firesafe-id)"
-      echo
+      def fmt_time(seconds: int) -> str:
+          h, m = divmod(seconds // 60, 60)
+          return f"{h}h {m}m" if h > 0 else f"{m}m"
 
-      if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
-        echo "Backup completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
-      elif [ -f "$MOUNT_POINT/.firesafe-backup-start" ]; then
-        START_TIME=$(cat "$MOUNT_POINT/.firesafe-backup-start")
-        NOW=$(date -Iseconds)
-        ELAPSED=$(( $(date -d "$NOW" +%s) - $(date -d "$START_TIME" +%s) ))
-        [ "$ELAPSED" -lt 0 ] && ELAPSED=0
-        printf "Backup started: %s  |  Elapsed: %s\n" "$START_TIME" "$(fmt_time $ELAPSED)"
 
-        # ETA based on completed sources
-        DONE=$(grep -cE ":( SUCCESS|FAILED)" "$LOG_FILE" 2>/dev/null || true)
-        if [ "$DONE" -gt 0 ] && [ "$ELAPSED" -gt 30 ]; then
-          AVG=$(( ELAPSED / DONE ))
-          REMAINING=$(( TOTAL_SOURCES - DONE - 1 ))
-          [ "$REMAINING" -lt 0 ] && REMAINING=0
-          EST=$(( AVG * REMAINING ))
-          [ "$EST" -gt 0 ] && echo "Remaining: ~$(fmt_time $EST)  (based on $DONE completed sources)"
-        fi
-      else
-        echo "No backup markers found."
-      fi
-      echo
+      def fmt_bytes(n: int) -> str:
+          for unit in ("B", "KB", "MB", "GB", "TB"):
+              if abs(n) < 1024:
+                  return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+              n //= 1024
+          return f"{n:.1f} PB"
 
-      echo "--- Deleted file backups ---"
-      if [ -d "$MOUNT_POINT/.deleted" ]; then
-        du -sh "$MOUNT_POINT/.deleted/" 2>/dev/null || echo "  (none)"
-        echo "Oldest: $(ls -1 "$MOUNT_POINT/.deleted/" 2>/dev/null | sort | head -1)"
-        echo "Newest: $(ls -1 "$MOUNT_POINT/.deleted/" 2>/dev/null | sort | tail -1)"
-      else
-        echo "  No .deleted/ directory found"
-      fi
 
-      echo
-      echo "--- Last backup log (last 20 lines) ---"
-      [ -f "$LOG_FILE" ] && tail -20 "$LOG_FILE" || echo "  No log file found"
-    }
+      def is_mounted(path: str) -> bool:
+          try:
+              return subprocess.run(["mountpoint", "-q", path], timeout=5).returncode == 0
+          except (FileNotFoundError, subprocess.TimeoutExpired):
+              return False
 
-    if [ "$WATCH" = true ]; then
-      while sleep 2; do clear && show_status; done
-    else
-      show_status
-    fi
-  '';
+
+      def get_service_state() -> str:
+          try:
+              r = subprocess.run(
+                  ["systemctl", "is-active", "firesafe-backup.service"],
+                  capture_output=True, text=True, timeout=5,
+              )
+              return r.stdout.strip()
+          except (FileNotFoundError, subprocess.TimeoutExpired):
+              return "unknown"
+
+
+      def parse_etime(etime: str) -> int:
+          if not etime or etime == "?":
+              return 0
+          if "-" in etime:
+              ds, rest = etime.split("-", 1)
+              parts = rest.split(":")
+              if len(parts) == 3:
+                  return int(ds) * 86400 + int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+              return int(ds) * 86400
+          parts = etime.split(":")
+          if len(parts) == 3:
+              return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+          elif len(parts) == 2:
+              return int(parts[0]) * 60 + int(parts[1])
+          return int(parts[0]) if parts[0].isdigit() else 0
+
+
+      def get_fsck_info() -> Optional[dict]:
+          try:
+              ps = subprocess.run(["ps", "aux"], capture_output=True, text=True, timeout=5)
+          except (FileNotFoundError, subprocess.TimeoutExpired):
+              return None
+          for line in ps.stdout.splitlines():
+              if "e2fsck" in line and "grep" not in line:
+                  fields = line.split()
+                  if len(fields) < 11:
+                      continue
+                  pid, dev = fields[1], fields[-1]
+                  dev_name = re.sub(r"\d+$", "", os.path.basename(dev))
+                  etime = subprocess.run(
+                      ["ps", "-p", pid, "-o", "etime="],
+                      capture_output=True, text=True, timeout=5,
+                  ).stdout.strip()
+                  elapsed = parse_etime(etime)
+                  sectors = 0
+                  stat = f"/sys/block/{dev_name}/stat"
+                  if os.access(stat, os.R_OK):
+                      with open(stat) as f:
+                          parts = f.read().split()
+                      if len(parts) >= 3 and parts[2].isdigit():
+                          sectors = int(parts[2])
+                  return {"elapsed": etime, "elapsed_secs": elapsed, "sectors": sectors, "dev": dev}
+          return None
+
+
+      def read_markers(mp: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
+          p = Path(mp)
+          did = (p / ".firesafe-id").read_text().strip() if (p / ".firesafe-id").exists() else None
+          comp = (p / ".firesafe-backup-complete").read_text().strip() if (p / ".firesafe-backup-complete").exists() else None
+          start = (p / ".firesafe-backup-start").read_text().strip() if (p / ".firesafe-backup-start").exists() else None
+          return did, comp, start
+
+
+      def count_completed_sources(logpath: str) -> int:
+          if not os.path.isfile(logpath):
+              return 0
+          with open(logpath) as f:
+              return len(re.findall(r": (?:SUCCESS|FAILED)", f.read()))
+
+
+      def get_disk_info(path: str) -> tuple[str, str, str, int]:
+          try:
+              r = subprocess.run(["df", "-h", path], capture_output=True, text=True, timeout=5)
+          except (FileNotFoundError, subprocess.TimeoutExpired):
+              return "?", "?", "?", 0
+          lines = r.stdout.strip().splitlines()
+          if len(lines) >= 2:
+              parts = lines[-1].split()
+              if len(parts) >= 5:
+                  pct = int(parts[4].rstrip("%"))
+                  return parts[1], parts[2], parts[3], pct
+          return "?", "?", "?", 0
+
+
+      def get_deleted_summary(dd: Path) -> dict:
+          if not dd.is_dir():
+              return {"size": "?", "oldest": None, "newest": None, "count": 0}
+          du = subprocess.run(["du", "-sh", str(dd)], capture_output=True, text=True, timeout=5)
+          size = du.stdout.split()[0] if du.stdout else "?"
+          entries = sorted([d.name for d in dd.iterdir() if d.is_dir()])
+          return {"size": size, "count": len(entries), "oldest": entries[0] if entries else None, "newest": entries[-1] if entries else None}
+
+
+      def log_tail(logpath: str, n: int = 20) -> list[str]:
+          if not os.path.isfile(logpath):
+              return []
+          with open(logpath) as f:
+              return f.read().splitlines()[-n:]
+
+
+      def build_status() -> Group:
+          parts = []
+
+          parts.append(Rule(title="[bold cyan]Firesafe Backup[/bold cyan]", style="cyan"))
+          parts.append("")
+
+          if not is_mounted(MOUNT_POINT):
+              if get_service_state() in ("activating", "active"):
+                  fsck = get_fsck_info()
+                  if fsck:
+                      bb = fsck["sectors"] * 512
+                      t = Text()
+                      t.append("⚠  Checking filesystem", style="bold yellow")
+                      t.append(f"  ·  {fmt_bytes(bb)} read", style="bold")
+                      parts.append(t)
+                      if fsck["elapsed_secs"]:
+                          parts.append(Text(
+                              f"  {fmt_bytes(bb // fsck['elapsed_secs'])}/s  ·  running {fsck['elapsed']}",
+                              style="dim",
+                          ))
+                      else:
+                          parts.append(Text(f"  running {fsck['elapsed']}", style="dim"))
+                      parts.append("")
+                      parts.append(Rule(style="dim"))
+                      parts.append(Text("Last backup log:", style="bold"))
+                      for l in log_tail(LOG_FILE, 5):
+                          parts.append(Text(f"  {l}", style="dim"))
+                  else:
+                      parts.append(Text("⏳  Starting backup...", style="bold yellow"))
+                      parts.append("")
+                      parts.append(Rule(style="dim"))
+                      parts.append(Text("Last backup log:", style="bold"))
+                      for l in log_tail(LOG_FILE, 3):
+                          parts.append(Text(f"  {l}", style="dim"))
+              else:
+                  parts.append(Text("✗  Not mounted", style="bold red"))
+                  parts.append("")
+                  parts.append(Rule(style="dim"))
+                  parts.append(Text("Last backup log:", style="bold"))
+                  for l in log_tail(LOG_FILE, 20):
+                      parts.append(Text(f"  {l}", style="dim"))
+              return Group(*parts)
+
+          did, comp, start = read_markers(MOUNT_POINT)
+          total, used, avail, pct = get_disk_info(MOUNT_POINT)
+
+          t = Text()
+          t.append("✓  Mounted", style="bold green")
+          if did:
+              t.append(f"  ·  Drive {did}", style="bold")
+          parts.append(t)
+          parts.append("")
+
+          g = Table.grid(padding=(0, 2))
+          g.add_column(style="dim")
+          g.add_column()
+          g.add_row("Disk:", f"{total} total  ·  {used} used  ·  {avail} free")
+          parts.append(g)
+
+          barrow = Table.grid(padding=(0, 1))
+          barrow.add_column()
+          barrow.add_column()
+          barrow.add_row(
+              ProgressBar(total=100, completed=pct, width=40),
+              Text(f"{pct}%", style="bold"),
+          )
+          parts.append(barrow)
+          parts.append("")
+
+          if comp:
+              t2 = Text()
+              t2.append("✓  Backup complete", style="green")
+              t2.append(f"  {comp}", style="dim")
+              parts.append(t2)
+          elif start:
+              try:
+                  sd = datetime.fromisoformat(start)
+                  elapsed = max(0, int((datetime.now(timezone.utc) - sd).total_seconds()))
+              except Exception:
+                  elapsed = 0
+              t2 = Text()
+              t2.append("⏳  In progress", style="bold yellow")
+              t2.append(f"  ·  {fmt_time(elapsed)} elapsed", style="dim")
+              parts.append(t2)
+
+              done = count_completed_sources(LOG_FILE)
+              if done > 0 and elapsed > 30:
+                  rem = max(0, TOTAL_SOURCES - done)
+                  est = (elapsed // done) * rem
+                  srow = Table.grid(padding=(0, 1))
+                  srow.add_column()
+                  srow.add_column()
+                  srow.add_row(
+                      ProgressBar(total=TOTAL_SOURCES, completed=done, width=40),
+                      Text(f"{done}/{TOTAL_SOURCES} sources", style="bold"),
+                  )
+                  parts.append(srow)
+                  if est > 0:
+                      parts.append(Text(f"  ~{fmt_time(est)} remaining  ({done} done)", style="dim"))
+          else:
+              parts.append(Text("No backup markers found", style="dim"))
+
+          parts.append("")
+          parts.append(Rule(title="[bold]Deleted Backups[/bold]", style="dim"))
+          parts.append("")
+
+          d = Path(MOUNT_POINT) / ".deleted"
+          de = get_deleted_summary(d)
+          if de["count"]:
+              dg = Table.grid(padding=(0, 2))
+              dg.add_column(style="dim")
+              dg.add_column(style="bold")
+              dg.add_row("Size:", de["size"])
+              dg.add_row("Snapshots:", str(de["count"]))
+              if de["oldest"]:
+                  dg.add_row("Oldest:", de["oldest"])
+              if de["newest"]:
+                  dg.add_row("Newest:", de["newest"])
+              parts.append(dg)
+          else:
+              parts.append(Text("No .deleted/ directory found", style="dim"))
+
+          parts.append("")
+          parts.append(Rule(title="[bold]Last Backup Log[/bold]", style="dim"))
+          for l in log_tail(LOG_FILE, 20):
+              parts.append(Text(f"  {l}", style="dim"))
+
+          return Group(*parts)
+
+
+      def main():
+          try:
+              if "-w" in sys.argv or "--watch" in sys.argv:
+                  with Live(console=console, refresh_per_second=0.5, screen=False) as live:
+                      while True:
+                          live.update(build_status())
+                          time.sleep(2)
+              else:
+                  console.print(build_status())
+          except KeyboardInterrupt:
+              pass
+
+
+      if __name__ == "__main__":
+          main()
+    '';
 
   reclaimScript = pkgs.writeShellScriptBin "firesafe-reclaim" ''
     set -uo pipefail
