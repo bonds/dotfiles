@@ -183,7 +183,18 @@
       BACKUP_DATE=$(date +%Y-%m-%d)
       ${lib.concatStringsSep "\n" mkRsyncCmds}
 
-      # 9. Write completion marker
+      # 9. Record deleted files in permanent changelog
+      CHANGELOG="/dragon/logs/firesafe-backup-changelog.log"
+      if [ -d "$MOUNT_POINT/.deleted/$BACKUP_DATE" ]; then
+        touch "$CHANGELOG"
+        ${pkgs.findutils}/bin/find "$MOUNT_POINT/.deleted/$BACKUP_DATE" -type f 2>/dev/null | while read -r f; do
+          rel="''${f#$MOUNT_POINT/.deleted/$BACKUP_DATE/}"
+          printf "%s\t%s\n" "$BACKUP_DATE" "$rel" >> "$CHANGELOG"
+        done
+        log "Recorded deleted files in '/dragon/logs/firesafe-backup-changelog.log'"
+      fi
+
+      # 10. Write completion marker
       if [ "$FAILURE_COUNT" -eq 0 ]; then
         date -Iseconds > "$MOUNT_POINT/.firesafe-backup-complete"
         log "=== Backup Complete ==="

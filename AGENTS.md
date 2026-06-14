@@ -98,7 +98,8 @@ Three machines managed from this repo:
     - **How it works:** A udev rule matches drives labeled `firesafe` and triggers `firesafe-backup.service`, which mounts at `/mnt/firesafe`, reads `.firesafe-id` (A or B), then rsyncs configured sources (Archive, Backups, Documents, Media) from `/dragon/`.
     - **Deleted file preservation:** Rsync uses `--backup --backup-dir=.deleted/DATE/`. When drive free space drops below 50GB, the oldest `.deleted/` dirs are pruned (one at a time) until the threshold is met.
     - **A/B rotation:** Each drive has a `.firesafe-id` file (A or B). Rotate weekly by swapping drives to always have an off-site copy.
-    - **Commands:** `firesafe-status` (check mount, last backup, log tail), `firesafe-reclaim` (manually prune `.deleted/` dirs, supports `--dry-run`).
+    - **Commands:** `firesafe-status` (check mount, elapsed, ETA, log tail), `firesafe-reclaim` (manually prune `.deleted/` dirs, supports `--dry-run`), `firesafe-deleted [date]` (browse `.deleted/` contents by date).
+    - **Deleted file changelog:** A permanent record of all deleted files (not pruned) is appended to `/dragon/logs/firesafe-backup-changelog.log` on each backup run. The log survives drive rotation and `.deleted/` cleanup. Format: `DATE<tab>SOURCE_PATH`. View with `tail /dragon/logs/firesafe-backup-changelog.log`.
     - **Email notifications:** Results sent via msmtp to scott@ggr.com on completion/failure.
     - **First-time setup:** Label ext4 drive `firesafe` (`e2label`), create `.firesafe-id`, plug in to trigger backup.
 
