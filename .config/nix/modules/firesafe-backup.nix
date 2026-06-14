@@ -198,8 +198,21 @@
       [ -f "$MOUNT_POINT/.firesafe-id" ] && echo "Drive ID: $(cat $MOUNT_POINT/.firesafe-id)"
       if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
         echo "Last backup completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
-      elif [ -f "$MOUNT_POINT/.firesafe-backup-start" ]; then
-        echo "Backup started: $(cat $MOUNT_POINT/.firesafe-backup-start) -- IN PROGRESS or INTERRUPTED"
+      el      if [ -f "$MOUNT_POINT/.firesafe-backup-start" ]; then
+        START_TIME=$(cat "$MOUNT_POINT/.firesafe-backup-start")
+        NOW=$(date -Iseconds)
+        ELAPSED=$(( $(date -d "$NOW" +%s) - $(date -d "$START_TIME" +%s) ))
+        ELAPSED_H=$(( ELAPSED / 3600 ))
+        ELAPSED_M=$(( (ELAPSED % 3600) / 60 ))
+        echo "Backup started: $START_TIME"
+        printf "Elapsed: %dh %dm\n" "$ELAPSED_H" "$ELAPSED_M"
+        CURRENT=$(grep "^--- " "$LOG_FILE" 2>/dev/null | tail -1 | sed 's/^--- //;s/ ---$//')
+        [ -n "$CURRENT" ] && echo "Current: $CURRENT"
+        LAST_PROGRESS=$(grep -E '[0-9]+\.[0-9]+(MB|GB|KB)/s' "$LOG_FILE" 2>/dev/null | tail -1)
+        [ -n "$LAST_PROGRESS" ] && echo "Progress: $LAST_PROGRESS"
+        echo "Status: IN PROGRESS"
+      elif [ -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
+        echo "Last backup completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
       else
         echo "No backup markers found."
       fi
