@@ -242,7 +242,8 @@
       echo "=== Firesafe Backup Status ==="
       if ! mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
         # Check if backup is in progress (e.g. fsck or mounting)
-        if systemctl is-active --quiet firesafe-backup.service 2>/dev/null; then
+        SERVICE_STATE=$(systemctl is-active firesafe-backup.service 2>/dev/null || true)
+        if [ "$SERVICE_STATE" = "activating" ] || [ "$SERVICE_STATE" = "active" ]; then
           FSCK=$(ps aux | grep e2fsck | grep -v grep | head -1)
           if [ -n "$FSCK" ]; then
             FSCK_PID=$(echo "$FSCK" | awk '{print $2}')
