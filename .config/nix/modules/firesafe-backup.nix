@@ -1084,6 +1084,7 @@ in {
       description = "Firesafe USB backup";
       after = ["dev-disk-by\\x2dlabel-${cfg.driveLabel}.device"];
       wantedBy = [];
+      restartIfChanged = false;
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${backupScript}";
