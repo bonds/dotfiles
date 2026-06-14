@@ -94,6 +94,13 @@ Three machines managed from this repo:
 - **metanoia** — NixOS workstation (x86_64-linux)
 - **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
   - **Temperature logging:** NVMe/CPU temps and fan speeds are logged every minute to `/dragon/logs/temps.log` via `log-temps.timer`. After a crash or lockup, check the last entries in this file to see if temps spiked before the failure. The log survives reboots since it's on the ZFS pool.
+  - **Firesafe USB backup:** Automated off-site backup via an A/B USB drive rotation. Defined in `modules/firesafe-backup.nix` (NixOS module: `programs.firesafe-backup`).
+    - **How it works:** A udev rule matches drives labeled `firesafe` and triggers `firesafe-backup.service`, which mounts at `/mnt/firesafe`, reads `.firesafe-id` (A or B), then rsyncs configured sources (Archive, Backups, Documents, Media) from `/dragon/`.
+    - **Deleted file preservation:** Rsync uses `--backup --backup-dir=.deleted/DATE/`. When drive free space drops below 50GB, the oldest `.deleted/` dirs are pruned (one at a time) until the threshold is met.
+    - **A/B rotation:** Each drive has a `.firesafe-id` file (A or B). Rotate weekly by swapping drives to always have an off-site copy.
+    - **Commands:** `firesafe-status` (check mount, last backup, log tail), `firesafe-reclaim` (manually prune `.deleted/` dirs, supports `--dry-run`).
+    - **Email notifications:** Results sent via msmtp to scott@ggr.com on completion/failure.
+    - **First-time setup:** Label ext4 drive `firesafe` (`e2label`), create `.firesafe-id`, plug in to trigger backup.
 
 ## Conventions
 

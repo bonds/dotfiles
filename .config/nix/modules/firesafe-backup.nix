@@ -321,7 +321,6 @@ in {
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${backupScript}";
-        RuntimeMaxSec = "48h";
         StandardOutput = "journal+console";
         StandardError = "journal+console";
         Environment = "PATH=${pkgs.coreutils}/bin:${pkgs.util-linux}/bin:${pkgs.gnused}/bin:${pkgs.gnugrep}/bin";
