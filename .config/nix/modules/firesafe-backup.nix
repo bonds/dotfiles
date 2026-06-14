@@ -221,8 +221,11 @@
             [ "$REMAINING" -gt 0 ] && printf " (+$REMAINING remaining)"
             echo
           fi
-          LAST_PROGRESS=$(grep -oE '[0-9]+\.[0-9]+(MB|GB|KB)/s.*' "$LOG_FILE" 2>/dev/null | tail -1)
-          [ -n "$LAST_PROGRESS" ] && echo "ETA (current): $LAST_PROGRESS"
+          LAST_PROGRESS=$(grep -E '[0-9]+\.[0-9]+(MB|GB|KB)/s' "$LOG_FILE" 2>/dev/null | tail -1)
+          if [ -n "$LAST_PROGRESS" ]; then
+            ETA=$(echo "$LAST_PROGRESS" | awk '{for(i=NF;i>0;i--){if($i~/^[0-9]+:[0-9]+:[0-9]+$/){print $i;break}}}')
+            [ -n "$ETA" ] && echo "ETA for $CURRENT: $ETA"
+          fi
           echo "Status: IN PROGRESS"
         else
           echo "No backup markers found."
