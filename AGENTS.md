@@ -107,7 +107,7 @@ Three machines managed from this repo:
     - **Deleted file changelog:** A permanent record of all deleted files (not pruned) is appended to `/dragon/logs/firesafe-backup-changelog.log` on each backup run. The log survives drive rotation and `.deleted/` cleanup. Format: `DATE<tab>SOURCE_PATH`. View with `tail /dragon/logs/firesafe-backup-changelog.log`.
     - **Email notifications:** Results sent via msmtp to scott@ggr.com on completion/failure.
     - **First-time setup:** Label ext4 drive `firesafe` (`e2label`), create `.firesafe-id`, plug in to trigger backup. Drive must be 4.5TB+ to hold Archive + Backups + Documents + selected Media subdirs.
-    - **Drive I/O note:** The WD Game Drive USB bridge has queue depth 1, making random I/O (e.g. `e2fsck` journal replay) extremely slow (~1 MB/s). Sequential rsync performance is fine (200+ MB/s). Avoid unclean unmounts — use `firesafe-eject` — to prevent journal replay delays.
+    - **Drive I/O note:** The WD Game Drive USB bridge (1058:262f) is BOT-only, QD=1, no UASP — USB-native PCB, cannot shuck. Random I/O ~1 MB/s; sequential ~40-90 MB/s ext4. ext4 journal vs exFAT speed tradeoffs, dirty page flush hang on umount. See `firesafe-backup.nix` header comment for full details.
 
 ## Conventions
 
