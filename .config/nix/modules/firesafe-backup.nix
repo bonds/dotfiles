@@ -8,39 +8,45 @@
 
   mkRsyncCmds =
     lib.mapAttrsToList (name: path: ''
-      START_TS=$(date +%s)
-      log "--- ${name} ---"
-      ${pkgs.rsync}/bin/rsync \
-        --archive \
-        --delete \
-        --backup \
-        --backup-dir="${cfg.mountPoint}/.deleted/$BACKUP_DATE" \
-        --partial \
-        --partial-dir=.rsync-partial \
-        --info=progress2 \
-        --stats \
-        ${lib.concatStringsSep " " (map (p: "--exclude='${p}'") cfg.excludes)} \
-        "${path}/" \
-        "${cfg.mountPoint}/${name}/" \
-        >> "$LOG_FILE" 2>&1
-      RC=$?
-      END_TS=$(date +%s)
-      ELAPSED=$(( END_TS - START_TS ))
-      ELAPSED_STR=""
-      if [ "$ELAPSED" -ge 3600 ]; then
-        ELAPSED_STR="$((ELAPSED / 3600))h $(( (ELAPSED % 3600) / 60 ))m"
-      elif [ "$ELAPSED" -ge 60 ]; then
-        ELAPSED_STR="$((ELAPSED / 60))m $((ELAPSED % 60))s"
-      else
-        ELAPSED_STR="''${ELAPSED}s"
-      fi
-      if [ $RC -eq 0 ] || [ $RC -eq 24 ]; then
-        log "${name}: SUCCESS (''${ELAPSED_STR})"
+      if echo "$SKIP_SOURCES" | grep -qw "${name}"; then
+        log "Skipping ${name} (already completed)"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
       else
-        log "${name}: FAILED (exit code $RC, ''${ELAPSED_STR})"
-        FAILURE_COUNT=$((FAILURE_COUNT + 1))
-        FAILURE_NAMES="$FAILURE_NAMES ${name}"
+        START_TS=$(date +%s)
+        log "--- ${name} ---"
+        ${pkgs.rsync}/bin/rsync \
+          --archive \
+          --delete \
+          --backup \
+          --backup-dir="${cfg.mountPoint}/.deleted/$BACKUP_DATE" \
+          --partial \
+          --partial-dir=.rsync-partial \
+          --info=progress2 \
+          --stats \
+          ${lib.concatStringsSep " " (map (p: "--exclude='${p}'") cfg.excludes)} \
+          "${path}/" \
+          "${cfg.mountPoint}/${name}/" \
+          >> "$LOG_FILE" 2>&1
+        RC=$?
+        END_TS=$(date +%s)
+        ELAPSED=$(( END_TS - START_TS ))
+        ELAPSED_STR=""
+        if [ "$ELAPSED" -ge 3600 ]; then
+          ELAPSED_STR="$((ELAPSED / 3600))h $(( (ELAPSED % 3600) / 60 ))m"
+        elif [ "$ELAPSED" -ge 60 ]; then
+          ELAPSED_STR="$((ELAPSED / 60))m $((ELAPSED % 60))s"
+        else
+          ELAPSED_STR="''${ELAPSED}s"
+        fi
+        if [ $RC -eq 0 ] || [ $RC -eq 24 ]; then
+          log "${name}: SUCCESS (''${ELAPSED_STR})"
+          SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+          echo "${name}" >> "$PROGRESS_FILE"
+        else
+          log "${name}: FAILED (exit code $RC, ''${ELAPSED_STR})"
+          FAILURE_COUNT=$((FAILURE_COUNT + 1))
+          FAILURE_NAMES="$FAILURE_NAMES ${name}"
+        fi
       fi
     '')
     cfg.sources;
@@ -83,6 +89,8 @@
       FAILURE_COUNT=0
       SUCCESS_COUNT=0
       FAILURE_NAMES=""
+      PROGRESS_FILE="$MOUNT_POINT/.firesafe-progress"
+      SKIP_SOURCES=""
 
       log() {
         echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG_FILE"
@@ -123,7 +131,7 @@
         local reason="$1"
         FAILURE_NAMES="$reason"
         FAILURE_COUNT=1
-        rm -f "$MOUNT_POINT/.firesafe-backup-scanning" "$MOUNT_POINT/.firesafe-scan"
+        rm -f "$MOUNT_POINT/.firesafe-backup-scanning" "$MOUNT_POINT/.firesafe-scan" "$MOUNT_POINT/.firesafe-backup-interrupted" "$MOUNT_POINT/.firesafe-progress"
         log "ERROR: $reason"
         notify "failed"
         exit 1
@@ -131,13 +139,24 @@
 
       cleanup() {
         local rc=$?
-        log "Backup interrupted"
+        log "Backup interrupted — stopping"
         rm -f "$MOUNT_POINT/.firesafe-backup-scanning" "$MOUNT_POINT/.firesafe-scan"
         date -Iseconds > "$MOUNT_POINT/.firesafe-backup-interrupted" 2>/dev/null || true
-        umount "$MOUNT_POINT" 2>/dev/null || true
-        exit $rc
+        # DON'T umount — mount stays live for fast resume via timer
+        exit 0
       }
       trap cleanup TERM INT
+
+      # 0a. Resume guard: if timer-triggered and backup already complete, skip
+      if [ -f /run/firesafe-resume ]; then
+        rm -f /run/firesafe-resume
+        if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+          if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ] && [ ! -f "$MOUNT_POINT/.firesafe-backup-interrupted" ]; then
+            log "Backup already completed. Nothing to resume."
+            exit 0
+          fi
+        fi
+      fi
 
       log "=== Firesafe Backup Starting ==="
 
@@ -166,8 +185,14 @@
       fi
       log "Drive ID: $DRIVE_ID"
 
-      # 3. Check previous backup state
-      if [ -f "$MOUNT_POINT/.firesafe-backup-start" ] && [ ! -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
+      # 3. Check previous backup state and resume markers
+      if [ -f "$MOUNT_POINT/.firesafe-backup-interrupted" ]; then
+        log "Previous backup was interrupted — resuming"
+        if [ -f "$MOUNT_POINT/.firesafe-progress" ]; then
+          SKIP_SOURCES=$(cat "$MOUNT_POINT/.firesafe-progress")
+          log "Skipping completed sources: $(echo "$SKIP_SOURCES" | tr '\n' ' ')"
+        fi
+      elif [ -f "$MOUNT_POINT/.firesafe-backup-start" ] && [ ! -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
         PREV_START=$(cat "$MOUNT_POINT/.firesafe-backup-start")
         log "WARNING: Previous backup was interrupted (started: $PREV_START)"
       fi
@@ -238,10 +263,12 @@
       # 9. Write completion marker
       if [ "$FAILURE_COUNT" -eq 0 ]; then
         date -Iseconds > "$MOUNT_POINT/.firesafe-backup-complete"
+        rm -f "$MOUNT_POINT/.firesafe-backup-interrupted" "$MOUNT_POINT/.firesafe-progress"
         log "=== Backup Complete ==="
         notify "completed"
       else
         log "=== Backup Partial ($FAILURE_COUNT failures) ==="
+        # Keep progress and interrupted markers so auto-resume retries failed sources
         notify "partial"
       fi
       log "Summary: $SUCCESS_COUNT succeeded, $FAILURE_COUNT failed"
@@ -714,6 +741,41 @@
           return Group(*parts)
 
 
+      def build_interrupted(
+          lines: list[str], did: Optional[str],
+      ) -> Group:
+          parts = []
+          parts.append(Rule(title="[bold cyan]Firesafe Backup[/bold cyan]", style="cyan"))
+
+          total, used, avail, pct = get_disk_info(MOUNT_POINT)
+          t = Text()
+          t.append("✓  Mounted", style="bold green")
+          if did:
+              t.append(f"  ·  Drive {did}", style="bold")
+          t.append(f"  ·  {total} total  ·  {avail} free", style="dim")
+          parts.append(t)
+          parts.append(ProgressBar(total=100, completed=pct, width=30))
+
+          t2 = Text()
+          t2.append("⏳  Interrupted — will resume within 2min", style="bold yellow")
+          parts.append(t2)
+
+          parts.append(Rule(style="dim"))
+          de = get_deleted_summary(Path(MOUNT_POINT) / ".deleted")
+          if de["count"]:
+              dt = Text()
+              dt.append(f"  {de['size']}  ·  ", style="dim")
+              dt.append(f"{de['count']} snapshots", style="bold")
+              if de["oldest"] and de["newest"]:
+                  dt.append(f"  ·  {de['oldest']} → {de['newest']}", style="dim")
+              parts.append(dt)
+
+          parts.append(Rule(style="dim"))
+          for line in lines[-(log_lines_available()):]:
+              parts.append(Text(f"  {line}", style="dim"))
+          return Group(*parts)
+
+
       def build_no_markers(lines: list[str], did: Optional[str]) -> Group:
           parts = []
           parts.append(Rule(title="[bold cyan]Firesafe Backup[/bold cyan]", style="cyan"))
@@ -754,12 +816,16 @@
 
           did, comp, start = read_markers(MOUNT_POINT)
           scanning_marker = Path(MOUNT_POINT) / ".firesafe-backup-scanning"
+          interrupted_marker = Path(MOUNT_POINT) / ".firesafe-backup-interrupted"
 
           if scanning_marker.exists() or (start_idx >= 0 and "Scanning:" in lines[start_idx]):
               return build_scanning(lines, start_idx, did)
 
           if comp:
               return build_complete(lines, comp, did)
+
+          if interrupted_marker.exists() and get_service_state() not in ("activating", "active"):
+              return build_interrupted(lines, did)
 
           if start:
               try:
@@ -999,9 +1065,39 @@ in {
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${backupScript}";
+        TimeoutStopSec = 30;
         StandardOutput = "journal+console";
         StandardError = "journal+console";
         Environment = "PATH=${pkgs.coreutils}/bin:${pkgs.util-linux}/bin:${pkgs.gnused}/bin:${pkgs.gnugrep}/bin";
+      };
+    };
+
+    # Auto-resume: if the backup was interrupted (e.g. by `nr` rebuild), restart it.
+    systemd.timers.firesafe-backup-resume = {
+      wantedBy = ["timers.target"];
+      timerConfig = {
+        OnBootSec = "1min";
+        OnUnitActiveSec = "2min";
+      };
+    };
+
+    systemd.services.firesafe-backup-resume = {
+      description = "Resume firesafe backup if interrupted";
+      after = ["firesafe-backup.service"];
+      wants = ["firesafe-backup.service"];
+      script = ''
+        set -e
+        if mountpoint -q "${cfg.mountPoint}" 2>/dev/null &&
+           [ -f "${cfg.mountPoint}/.firesafe-backup-interrupted" ] &&
+           ! systemctl is-active firesafe-backup.service >/dev/null 2>&1; then
+          touch /run/firesafe-resume
+          systemctl start firesafe-backup.service
+        fi
+      '';
+      serviceConfig = {
+        Type = "oneshot";
+        StandardOutput = "journal+console";
+        Environment = "PATH=${pkgs.coreutils}/bin:${pkgs.systemd}";
       };
     };
 
