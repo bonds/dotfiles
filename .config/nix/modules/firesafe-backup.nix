@@ -128,6 +128,8 @@
           abort "Cannot find drive with label '$DRIVE_LABEL'"
         fi
         log "Found device: $DEVICE"
+        log "Checking filesystem..."
+        ${pkgs.e2fsprogs}/bin/e2fsck -p "$DEVICE" || log "fsck exit code $? (continuing)"
         mount "$DEVICE" "$MOUNT_POINT" || abort "Failed to mount $DEVICE at $MOUNT_POINT"
         log "Mounted $DEVICE at $MOUNT_POINT"
       fi
