@@ -129,8 +129,8 @@
         fi
         log "Found device: $DEVICE"
         log "Checking filesystem..."
-        timeout 30 ${pkgs.e2fsprogs}/bin/e2fsck -p "$DEVICE" 2>&1 | tee -a "$LOG_FILE" || log "fsck exit code $? (continuing)"
-        timeout 30 mount "$DEVICE" "$MOUNT_POINT" || abort "Failed to mount $DEVICE at $MOUNT_POINT"
+        ${pkgs.e2fsprogs}/bin/e2fsck -p "$DEVICE" 2>&1 | tee -a "$LOG_FILE" || log "fsck exit code $? (continuing)"
+        mount "$DEVICE" "$MOUNT_POINT" || abort "Failed to mount $DEVICE at $MOUNT_POINT"
         log "Mounted $DEVICE at $MOUNT_POINT"
       fi
 
@@ -247,8 +247,24 @@
           FSCK=$(ps aux | grep e2fsck | grep -v grep | head -1)
           if [ -n "$FSCK" ]; then
             FSCK_PID=$(echo "$FSCK" | awk '{print $2}')
-            FSCK_ELAPSED=$(ps -p "$FSCK_PID" -o etime= 2>/dev/null || echo "?")
-            echo "Status: Checking filesystem (e2fsck running for $FSCK_ELAPSED)"
+            FSCK_ELAPSED=$(ps -p "$FSCK_PID" -o etime= 2>/dev/null | tr -d ' ' || echo "?")
+            FSCK_DEV=$(echo "$FSCK" | awk '{print $NF}')
+            DEV_NAME=$(basename "$FSCK_DEV" | sed 's/[0-9]//g')
+            STAT_FILE="/sys/block/$DEV_NAME/stat"
+            if [ -r "$STAT_FILE" ]; then
+              read -r _ _ SECT_RD _ _ _ _ _ _ _ _ < "$STAT_FILE" 2>/dev/null || SECT_RD=0
+              MB_READ=$(( SECT_RD * 512 / 1048576 ))
+              case "$FSCK_ELAPSED" in
+                *-*:*:*) d=''${FSCK_ELAPSED%%-*}; t=''${FSCK_ELAPSED#*-}; FSCK_SECS=$((d * 86400 + 10#''${t%%:*} * 3600 + 10#''${t#*:} / 60 * 60 + 10#''${t##*:})) ;;
+                *:*:*)    FSCK_SECS=$((10#''${FSCK_ELAPSED%%:*} * 3600 + 10#''${FSCK_ELAPSED#*:} / 60 * 60 + 10#''${FSCK_ELAPSED##*:})) ;;
+                *:*)      FSCK_SECS=$((10#''${FSCK_ELAPSED%%:*} * 60 + 10#''${FSCK_ELAPSED#*:})) ;;
+                *)        FSCK_SECS=0 ;;
+              esac
+              [ "$FSCK_SECS" -gt 0 ] && RATE=$(( MB_READ / FSCK_SECS )) || RATE=0
+              printf "Status: Checking filesystem — %d MB read (%d MB/s, running %s)\n" "$MB_READ" "$RATE" "$FSCK_ELAPSED"
+            else
+              echo "Status: Checking filesystem (e2fsck running for $FSCK_ELAPSED)"
+            fi
             echo
             echo "--- Last backup log ---"
             tail -5 "$LOG_FILE" 2>/dev/null || true
