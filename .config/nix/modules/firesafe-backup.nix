@@ -210,7 +210,11 @@
       libraries = [pkgs.python3Packages.rich];
       flakeIgnore = ["E501"];
     } ''
-      import os, sys, time, subprocess, re
+      import os
+      import sys
+      import time
+      import subprocess
+      import re
       from pathlib import Path
       from datetime import datetime, timezone
       from typing import Optional
@@ -375,22 +379,22 @@
                       parts.append("")
                       parts.append(Rule(style="dim"))
                       parts.append(Text("Last backup log:", style="bold"))
-                      for l in log_tail(LOG_FILE, 5):
-                          parts.append(Text(f"  {l}", style="dim"))
+                      for line in log_tail(LOG_FILE, 5):
+                          parts.append(Text(f"  {line}", style="dim"))
                   else:
                       parts.append(Text("⏳  Starting backup...", style="bold yellow"))
                       parts.append("")
                       parts.append(Rule(style="dim"))
                       parts.append(Text("Last backup log:", style="bold"))
-                      for l in log_tail(LOG_FILE, 3):
-                          parts.append(Text(f"  {l}", style="dim"))
+                      for line in log_tail(LOG_FILE, 3):
+                          parts.append(Text(f"  {line}", style="dim"))
               else:
                   parts.append(Text("✗  Not mounted", style="bold red"))
                   parts.append("")
                   parts.append(Rule(style="dim"))
                   parts.append(Text("Last backup log:", style="bold"))
-                  for l in log_tail(LOG_FILE, 20):
-                      parts.append(Text(f"  {l}", style="dim"))
+                  for line in log_tail(LOG_FILE, 20):
+                      parts.append(Text(f"  {line}", style="dim"))
               return Group(*parts)
 
           did, comp, start = read_markers(MOUNT_POINT)
@@ -474,8 +478,8 @@
 
           parts.append("")
           parts.append(Rule(title="[bold]Last Backup Log[/bold]", style="dim"))
-          for l in log_tail(LOG_FILE, 20):
-              parts.append(Text(f"  {l}", style="dim"))
+          for line in log_tail(LOG_FILE, 20):
+              parts.append(Text(f"  {line}", style="dim"))
 
           return Group(*parts)
 
