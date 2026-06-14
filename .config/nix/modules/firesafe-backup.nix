@@ -198,7 +198,7 @@
       [ -f "$MOUNT_POINT/.firesafe-id" ] && echo "Drive ID: $(cat $MOUNT_POINT/.firesafe-id)"
       if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
         echo "Last backup completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
-      el      if [ -f "$MOUNT_POINT/.firesafe-backup-start" ]; then
+      elif [ -f "$MOUNT_POINT/.firesafe-backup-start" ]; then
         START_TIME=$(cat "$MOUNT_POINT/.firesafe-backup-start")
         NOW=$(date -Iseconds)
         ELAPSED=$(( $(date -d "$NOW" +%s) - $(date -d "$START_TIME" +%s) ))
@@ -211,8 +211,6 @@
         LAST_PROGRESS=$(grep -E '[0-9]+\.[0-9]+(MB|GB|KB)/s' "$LOG_FILE" 2>/dev/null | tail -1)
         [ -n "$LAST_PROGRESS" ] && echo "Progress: $LAST_PROGRESS"
         echo "Status: IN PROGRESS"
-      elif [ -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
-        echo "Last backup completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
       else
         echo "No backup markers found."
       fi
