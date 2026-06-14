@@ -435,6 +435,17 @@
     };
   };
 
+  programs.firesafe-backup = {
+    enable = true;
+    sources = {
+      Archive = "/dragon/archive";
+      Backups = "/dragon/backups";
+      Documents = "/dragon/documents";
+      Media = "/dragon/media";
+    };
+    emailRecipient = "root";
+  };
+
   services.zfs.zed = {
     enableMail = false;
     settings = {

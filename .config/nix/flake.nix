@@ -98,6 +98,7 @@
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix
         ./modules/packages/utils.nix
+        ./modules/firesafe-backup.nix
         ./hosts/sophrosyne/configuration.nix
         ./hosts/sophrosyne/hardware-configuration.nix
         arion.nixosModules.arion
