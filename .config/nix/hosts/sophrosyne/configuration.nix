@@ -111,12 +111,9 @@
 
   boot.zfs.forceImportRoot = false;
   networking.hostId = "bf6ff4c5";
-  services.zfs.autoScrub.enable = true;
-  systemd.services.zfs-scrub-dragon = {
-    wantedBy = ["multi-user.target"];
-    after = ["zfs-import-dragon.service" "zfs-mount.service"];
-    serviceConfig.Type = "oneshot";
-    script = "${pkgs.zfs}/bin/zpool scrub dragon || ${pkgs.zfs}/bin/zpool status dragon | grep -q 'scrub in progress'";
+  services.zfs.autoScrub = {
+    enable = true;
+    interval = "*-*-01 03:00:00";
   };
   programs.bash = {
     interactiveShellInit = ''
