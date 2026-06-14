@@ -186,51 +186,64 @@
   statusScript = pkgs.writeShellScriptBin "firesafe-status" ''
     set -uo pipefail
 
-    MOUNT_POINT="${cfg.mountPoint}"
-    LOG_FILE="/var/log/firesafe-backup.log"
+    WATCH=false
+    for arg in "$@"; do
+      case "$arg" in -w|--watch) WATCH=true;; esac
+    done
 
-    echo "=== Firesafe Backup Status ==="
-    echo
-    echo "Mount point: $MOUNT_POINT"
-    if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
-      echo "Status: MOUNTED"
-      df -h "$MOUNT_POINT" | tail -1 | awk '{print "Size: "$2"  Used: "$3"  Avail: "$4}'
-      [ -f "$MOUNT_POINT/.firesafe-id" ] && echo "Drive ID: $(cat $MOUNT_POINT/.firesafe-id)"
-      if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
-        echo "Last backup completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
-      elif [ -f "$MOUNT_POINT/.firesafe-backup-start" ]; then
-        START_TIME=$(cat "$MOUNT_POINT/.firesafe-backup-start")
-        NOW=$(date -Iseconds)
-        ELAPSED=$(( $(date -d "$NOW" +%s) - $(date -d "$START_TIME" +%s) ))
-        ELAPSED_H=$(( ELAPSED / 3600 ))
-        ELAPSED_M=$(( (ELAPSED % 3600) / 60 ))
-        echo "Backup started: $START_TIME"
-        printf "Elapsed: %dh %dm\n" "$ELAPSED_H" "$ELAPSED_M"
-        CURRENT=$(grep "^--- " "$LOG_FILE" 2>/dev/null | tail -1 | sed 's/^--- //;s/ ---$//')
-        [ -n "$CURRENT" ] && echo "Current: $CURRENT"
-        LAST_PROGRESS=$(grep -E '[0-9]+\.[0-9]+(MB|GB|KB)/s' "$LOG_FILE" 2>/dev/null | tail -1)
-        [ -n "$LAST_PROGRESS" ] && echo "Progress: $LAST_PROGRESS"
-        echo "Status: IN PROGRESS"
+    show_status() {
+      MOUNT_POINT="${cfg.mountPoint}"
+      LOG_FILE="/var/log/firesafe-backup.log"
+
+      echo "=== Firesafe Backup Status ==="
+      echo
+      echo "Mount point: $MOUNT_POINT"
+      if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+        echo "Status: MOUNTED"
+        df -h "$MOUNT_POINT" | tail -1 | awk '{print "Size: "$2"  Used: "$3"  Avail: "$4}'
+        [ -f "$MOUNT_POINT/.firesafe-id" ] && echo "Drive ID: $(cat $MOUNT_POINT/.firesafe-id)"
+        if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
+          echo "Last backup completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
+        elif [ -f "$MOUNT_POINT/.firesafe-backup-start" ]; then
+          START_TIME=$(cat "$MOUNT_POINT/.firesafe-backup-start")
+          NOW=$(date -Iseconds)
+          ELAPSED=$(( $(date -d "$NOW" +%s) - $(date -d "$START_TIME" +%s) ))
+          ELAPSED_H=$(( ELAPSED / 3600 ))
+          ELAPSED_M=$(( (ELAPSED % 3600) / 60 ))
+          echo "Backup started: $START_TIME"
+          printf "Elapsed: %dh %dm\n" "$ELAPSED_H" "$ELAPSED_M"
+          CURRENT=$(grep "^--- " "$LOG_FILE" 2>/dev/null | tail -1 | sed 's/^--- //;s/ ---$//')
+          [ -n "$CURRENT" ] && echo "Current: $CURRENT"
+          LAST_PROGRESS=$(grep -E '[0-9]+\.[0-9]+(MB|GB|KB)/s' "$LOG_FILE" 2>/dev/null | tail -1)
+          [ -n "$LAST_PROGRESS" ] && echo "Progress: $LAST_PROGRESS"
+          echo "Status: IN PROGRESS"
+        else
+          echo "No backup markers found."
+        fi
       else
-        echo "No backup markers found."
+        echo "Status: NOT MOUNTED"
       fi
-    else
-      echo "Status: NOT MOUNTED"
-    fi
 
-    echo
-    echo "--- Deleted file backups ---"
-    if [ -d "$MOUNT_POINT/.deleted" ]; then
-      du -sh "$MOUNT_POINT/.deleted/" 2>/dev/null || echo "  (none)"
-      echo "Oldest: $(ls -1 "$MOUNT_POINT/.deleted/" 2>/dev/null | sort | head -1)"
-      echo "Newest: $(ls -1 "$MOUNT_POINT/.deleted/" 2>/dev/null | sort | tail -1)"
-    else
-      echo "  No .deleted/ directory found"
-    fi
+      echo
+      echo "--- Deleted file backups ---"
+      if [ -d "$MOUNT_POINT/.deleted" ]; then
+        du -sh "$MOUNT_POINT/.deleted/" 2>/dev/null || echo "  (none)"
+        echo "Oldest: $(ls -1 "$MOUNT_POINT/.deleted/" 2>/dev/null | sort | head -1)"
+        echo "Newest: $(ls -1 "$MOUNT_POINT/.deleted/" 2>/dev/null | sort | tail -1)"
+      else
+        echo "  No .deleted/ directory found"
+      fi
 
-    echo
-    echo "--- Last backup log (last 20 lines) ---"
-    [ -f "$LOG_FILE" ] && tail -20 "$LOG_FILE" || echo "  No log file found"
+      echo
+      echo "--- Last backup log (last 20 lines) ---"
+      [ -f "$LOG_FILE" ] && tail -20 "$LOG_FILE" || echo "  No log file found"
+    }
+
+    if [ "$WATCH" = true ]; then
+      while sleep 2; do clear && show_status; done
+    else
+      show_status
+    fi
   '';
 
   reclaimScript = pkgs.writeShellScriptBin "firesafe-reclaim" ''
