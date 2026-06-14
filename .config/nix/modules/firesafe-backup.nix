@@ -33,13 +33,6 @@
     '')
     cfg.sources;
 
-  mkTotalSizeCmds =
-    lib.mapAttrsToList (name: path: ''
-      SIZE=$(${pkgs.coreutils}/bin/du -sb "${path}" 2>/dev/null | cut -f1)
-      TOTAL_SIZE=$((TOTAL_SIZE + SIZE))
-    '')
-    cfg.sources;
-
   mkSourceChecks =
     lib.mapAttrsToList (name: path: ''
       if [ ! -d "${path}" ]; then
@@ -181,20 +174,12 @@
         fi
       fi
 
-      # 7. Compute total source size for ETA estimation (one-time per backup)
-      log "--- Computing total source size ---"
-      TOTAL_SIZE=0
-      ${lib.concatStringsSep "\n" mkTotalSizeCmds}
-      echo "$TOTAL_SIZE" > "$MOUNT_POINT/.firesafe-backup-total"
-      ${pkgs.coreutils}/bin/df --output=used -B1 "$MOUNT_POINT" 2>/dev/null | tail -1 > "$MOUNT_POINT/.firesafe-df-start"
-      log "Total source size: $((TOTAL_SIZE / 1024 / 1024 / 1024))GB"
-
-      # 8. Run rsync for each source
+      # 7. Run rsync for each source
       log "--- Running backups ---"
       BACKUP_DATE=$(date +%Y-%m-%d)
       ${lib.concatStringsSep "\n" mkRsyncCmds}
 
-      # 9. Record deleted files in permanent changelog
+      # 8. Record deleted files in permanent changelog
       CHANGELOG="/dragon/logs/firesafe-backup-changelog.log"
       if [ -d "$MOUNT_POINT/.deleted/$BACKUP_DATE" ]; then
         touch "$CHANGELOG"
@@ -205,7 +190,7 @@
         log "Recorded deleted files in '/dragon/logs/firesafe-backup-changelog.log'"
       fi
 
-      # 10. Write completion marker
+      # 9. Write completion marker
       if [ "$FAILURE_COUNT" -eq 0 ]; then
         date -Iseconds > "$MOUNT_POINT/.firesafe-backup-complete"
         log "=== Backup Complete ==="
@@ -238,6 +223,7 @@
     show_status() {
       MOUNT_POINT="${cfg.mountPoint}"
       LOG_FILE="/var/log/firesafe-backup.log"
+      TOTAL_SOURCES=${toString (builtins.length (builtins.attrNames cfg.sources))}
 
       echo "=== Firesafe Backup Status ==="
       if ! mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
@@ -297,18 +283,14 @@
         [ "$ELAPSED" -lt 0 ] && ELAPSED=0
         printf "Backup started: %s  |  Elapsed: %s\n" "$START_TIME" "$(fmt_time $ELAPSED)"
 
-        TOTAL_BYTES=$(cat "$MOUNT_POINT/.firesafe-backup-total" 2>/dev/null || echo 0)
-        if [ "$TOTAL_BYTES" -gt 0 ]; then
-          DF_START=$(cat "$MOUNT_POINT/.firesafe-df-start" 2>/dev/null || echo 0)
-          DF_NOW=$(df --output=used -B1 "$MOUNT_POINT" 2>/dev/null | tail -1)
-          BYTES_SENT=$((DF_NOW - DF_START))
-          [ "$BYTES_SENT" -lt 1 ] && BYTES_SENT=1
-          SPEED=$(( BYTES_SENT / ELAPSED ))
-          [ "$SPEED" -lt 1 ] && SPEED=1
-          REMAINING_BYTES=$(( TOTAL_BYTES - BYTES_SENT ))
-          [ "$REMAINING_BYTES" -lt 0 ] && REMAINING_BYTES=0
-          REMAINING_SECS=$(( REMAINING_BYTES / SPEED ))
-          echo "Remaining: ~$(fmt_time $REMAINING_SECS)"
+        # ETA based on completed sources
+        DONE=$(grep -cE ":( SUCCESS|FAILED)" "$LOG_FILE" 2>/dev/null || true)
+        if [ "$DONE" -gt 0 ] && [ "$ELAPSED" -gt 30 ]; then
+          AVG=$(( ELAPSED / DONE ))
+          REMAINING=$(( TOTAL_SOURCES - DONE - 1 ))
+          [ "$REMAINING" -lt 0 ] && REMAINING=0
+          EST=$(( AVG * REMAINING ))
+          [ "$EST" -gt 0 ] && echo "Remaining: ~$(fmt_time $EST)  (based on $DONE completed sources)"
         fi
       else
         echo "No backup markers found."
