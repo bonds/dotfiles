@@ -466,11 +466,14 @@
       exit 0
     fi
 
-    # 1. Gracefully stop the backup
-    if systemctl is-active --quiet firesafe-backup.service 2>/dev/null; then
-      echo "Stopping backup..."
-      sudo systemctl kill firesafe-backup.service 2>/dev/null || true
+    # 1. Kill all backup and rsync processes
+    PIDS=$(pgrep -f "firesafe-backup|rsync.*$MOUNT_POINT" 2>/dev/null || true)
+    if [ -n "$PIDS" ]; then
+      echo "Stopping backup processes..."
+      echo "$PIDS" | sudo xargs kill 2>/dev/null || true
       sleep 2
+      # Force kill any remaining
+      echo "$PIDS" | sudo xargs kill -9 2>/dev/null || true
     fi
 
     # 2. Flush filesystem writes
@@ -482,8 +485,9 @@
     if sudo umount "$MOUNT_POINT"; then
       echo "Drive unmounted — safe to unplug."
     else
-      echo "Failed to unmount. Check if something is using the drive:"
-      echo "  lsof $MOUNT_POINT"
+      # Try lazy unmount if regular unmount fails
+      echo "Trying lazy unmount..."
+      sudo umount -l "$MOUNT_POINT" 2>/dev/null && echo "Drive unmounted (lazy) — safe to unplug." || echo "Failed to unmount."
     fi
   '';
 in {
