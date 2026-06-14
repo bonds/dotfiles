@@ -183,7 +183,7 @@
       log "Free space remaining: $((FREE_BYTES / 1024 / 1024 / 1024))GB"
   '';
 
-  statusScript = pkgs.writeShellScript "firesafe-status" ''
+  statusScript = pkgs.writeShellScriptBin "firesafe-status" ''
     set -uo pipefail
 
     MOUNT_POINT="${cfg.mountPoint}"
@@ -222,7 +222,7 @@
     [ -f "$LOG_FILE" ] && tail -20 "$LOG_FILE" || echo "  No log file found"
   '';
 
-  reclaimScript = pkgs.writeShellScript "firesafe-reclaim" ''
+  reclaimScript = pkgs.writeShellScriptBin "firesafe-reclaim" ''
     set -uo pipefail
 
     MOUNT_POINT="${cfg.mountPoint}"
