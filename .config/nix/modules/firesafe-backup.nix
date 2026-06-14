@@ -194,6 +194,7 @@
     show_status() {
       MOUNT_POINT="${cfg.mountPoint}"
       LOG_FILE="/var/log/firesafe-backup.log"
+      TOTAL_SOURCES=${toString (builtins.length (builtins.attrNames cfg.sources))}
 
       echo "=== Firesafe Backup Status ==="
       echo
@@ -213,9 +214,15 @@
           echo "Backup started: $START_TIME"
           printf "Elapsed: %dh %dm\n" "$ELAPSED_H" "$ELAPSED_M"
           CURRENT=$(grep "^--- " "$LOG_FILE" 2>/dev/null | tail -1 | sed 's/^--- //;s/ ---$//')
-          [ -n "$CURRENT" ] && echo "Current: $CURRENT"
-          LAST_PROGRESS=$(grep -E '[0-9]+\.[0-9]+(MB|GB|KB)/s' "$LOG_FILE" 2>/dev/null | tail -1)
-          [ -n "$LAST_PROGRESS" ] && echo "Progress: $LAST_PROGRESS"
+          DONE=$(grep -cE ":( SUCCESS|FAILED)" "$LOG_FILE" 2>/dev/null || true)
+          if [ -n "$CURRENT" ]; then
+            printf "Source: $CURRENT ($((DONE + 1))/$TOTAL_SOURCES)"
+            REMAINING=$((TOTAL_SOURCES - DONE - 1))
+            [ "$REMAINING" -gt 0 ] && printf " (+$REMAINING remaining)"
+            echo
+          fi
+          LAST_PROGRESS=$(grep -oE '[0-9]+\.[0-9]+(MB|GB|KB)/s.*' "$LOG_FILE" 2>/dev/null | tail -1)
+          [ -n "$LAST_PROGRESS" ] && echo "ETA (current): $LAST_PROGRESS"
           echo "Status: IN PROGRESS"
         else
           echo "No backup markers found."
