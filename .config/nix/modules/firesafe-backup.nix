@@ -33,6 +33,13 @@
     '')
     cfg.sources;
 
+  mkTotalSizeCmds =
+    lib.mapAttrsToList (name: path: ''
+      SIZE=$(${pkgs.coreutils}/bin/du -sb "${path}" 2>/dev/null | cut -f1)
+      TOTAL_SIZE=$((TOTAL_SIZE + SIZE))
+    '')
+    cfg.sources;
+
   mkSourceChecks =
     lib.mapAttrsToList (name: path: ''
       if [ ! -d "${path}" ]; then
@@ -163,12 +170,20 @@
         fi
       fi
 
-      # 7. Run rsync for each source
+      # 7. Compute total source size for ETA estimation (one-time per backup)
+      log "--- Computing total source size ---"
+      TOTAL_SIZE=0
+      ${lib.concatStringsSep "\n" mkTotalSizeCmds}
+      echo "$TOTAL_SIZE" > "$MOUNT_POINT/.firesafe-backup-total"
+      ${pkgs.coreutils}/bin/df --output=used -B1 "$MOUNT_POINT" 2>/dev/null | tail -1 > "$MOUNT_POINT/.firesafe-df-start"
+      log "Total source size: $((TOTAL_SIZE / 1024 / 1024 / 1024))GB"
+
+      # 8. Run rsync for each source
       log "--- Running backups ---"
       BACKUP_DATE=$(date +%Y-%m-%d)
       ${lib.concatStringsSep "\n" mkRsyncCmds}
 
-      # 8. Write completion marker
+      # 9. Write completion marker
       if [ "$FAILURE_COUNT" -eq 0 ]; then
         date -Iseconds > "$MOUNT_POINT/.firesafe-backup-complete"
         log "=== Backup Complete ==="
@@ -191,80 +206,66 @@
       case "$arg" in -w|--watch) WATCH=true;; esac
     done
 
+    fmt_time() {
+      local s=$1
+      local h=$(( s / 3600 ))
+      local m=$(( (s % 3600) / 60 ))
+      [ "$h" -gt 0 ] && printf "%dh %dm" "$h" "$m" || printf "%dm" "$m"
+    }
+
     show_status() {
       MOUNT_POINT="${cfg.mountPoint}"
       LOG_FILE="/var/log/firesafe-backup.log"
-      TOTAL_SOURCES=${toString (builtins.length (builtins.attrNames cfg.sources))}
 
-      echo "=== Firesafe Backup Status ==="
-      if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
-        echo "Status: MOUNTED | Size: $(df -h "$MOUNT_POINT" | tail -1 | awk '{print $2}') | Avail: $(df -h "$MOUNT_POINT" | tail -1 | awk '{print $4}')"
-        [ -f "$MOUNT_POINT/.firesafe-id" ] && echo "Drive: $(cat $MOUNT_POINT/.firesafe-id)"
-        echo
-
-        if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
-          echo "Backup completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
-        elif [ -f "$MOUNT_POINT/.firesafe-backup-start" ]; then
-          # --- Compute time info ---
-          START_TIME=$(cat "$MOUNT_POINT/.firesafe-backup-start")
-          NOW=$(date -Iseconds)
-          ELAPSED=$(( $(date -d "$NOW" +%s) - $(date -d "$START_TIME" +%s) ))
-          ELAPSED_H=$(( ELAPSED / 3600 ))
-          ELAPSED_M=$(( (ELAPSED % 3600) / 60 ))
-          printf "Backup started: %s  |  Elapsed: %dh %dm\n" "$START_TIME" "$ELAPSED_H" "$ELAPSED_M"
-
-          # --- Overall progress ---
-          DONE=$(grep -cE ":( SUCCESS|FAILED)" "$LOG_FILE" 2>/dev/null || true)
-          ACTIVE=$((DONE + 1))
-          REMAINING=$((TOTAL_SOURCES - ACTIVE))
-          printf "Sources: %d/%d complete" "$DONE" "$TOTAL_SOURCES"
-          [ "$REMAINING" -gt 0 ] && printf "  (+%d remaining)" "$REMAINING"
-          echo
-
-          # Overall ETA based on completed source average
-          if [ "$DONE" -gt 0 ]; then
-            AVG=$(( ELAPSED / DONE ))
-            EST=$(( AVG * REMAINING ))
-            EST_H=$(( EST / 3600 ))
-            EST_M=$(( (EST % 3600) / 60 ))
-            echo "Estimated overall: ~''${EST_H}h ''${EST_M}m (based on $DONE completed sources)"
-          else
-            echo "Estimated overall: waiting for first source to complete..."
-          fi
-          echo
-
-          # --- Current task ---
-          CURRENT=$(grep -oE -- '--- [[:alpha:]]+ ---' "$LOG_FILE" 2>/dev/null | tail -1 | sed 's/--- //g; s/ ---//g')
-          if [ -n "$CURRENT" ]; then
-            printf "Current: %s" "$CURRENT"
-            [ -n "$ACTIVE" ] && printf " (%d/%d)" "$ACTIVE" "$TOTAL_SOURCES"
-            echo
-            LAST_PROGRESS=$(grep -E '[0-9]+\.[0-9]+(MB|GB|KB)/s' "$LOG_FILE" 2>/dev/null | tail -1)
-            if [ -n "$LAST_PROGRESS" ]; then
-              ETA=$(echo "$LAST_PROGRESS" | awk '{for(i=NF;i>0;i--){if($i~/^[0-9]+:[0-9]+:[0-9]+$/){print $i;break}}}')
-              [ -n "$ETA" ] && echo "Rsync ETA: $ETA"
-            fi
-          fi
-        else
-          echo "No backup markers found."
-        fi
-      else
-        echo "Status: NOT MOUNTED"
+      if ! mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+        echo "=== Firesafe Backup Status ==="
+        echo "Not mounted"
+        return
       fi
 
-      echo
-      echo "--- Deleted file backups ---"
-      if [ -d "$MOUNT_POINT/.deleted" ]; then
-        du -sh "$MOUNT_POINT/.deleted/" 2>/dev/null || echo "  (none)"
-        echo "Oldest: $(ls -1 "$MOUNT_POINT/.deleted/" 2>/dev/null | sort | head -1)"
-        echo "Newest: $(ls -1 "$MOUNT_POINT/.deleted/" 2>/dev/null | sort | tail -1)"
-      else
-        echo "  No .deleted/ directory found"
+      DRIVE_ID=$(cat "$MOUNT_POINT/.firesafe-id" 2>/dev/null || echo "?")
+      echo "=== Firesafe Backup Status (Drive $DRIVE_ID) ==="
+
+      if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
+        echo "Completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
+        df -h "$MOUNT_POINT" | tail -1 | awk '{print "Used: "$3"  Avail: "$4}'
+        return
       fi
 
+      START_TIME=$(cat "$MOUNT_POINT/.firesafe-backup-start" 2>/dev/null || true)
+      if [ -z "$START_TIME" ]; then
+        echo "No backup markers found"
+        df -h "$MOUNT_POINT" | tail -1 | awk '{print "Size: "$2"  Used: "$3"  Avail: "$4}'
+        return
+      fi
+
+      NOW=$(date -Iseconds)
+      ELAPSED=$(( $(date -d "$NOW" +%s) - $(date -d "$START_TIME" +%s) ))
+      [ "$ELAPSED" -lt 0 ] && ELAPSED=0
+      echo "Elapsed: $(fmt_time $ELAPSED)"
+
+      TOTAL_BYTES=$(cat "$MOUNT_POINT/.firesafe-backup-total" 2>/dev/null || echo 0)
+      if [ "$TOTAL_BYTES" -gt 0 ]; then
+        DF_START=$(cat "$MOUNT_POINT/.firesafe-df-start" 2>/dev/null || echo 0)
+        DF_NOW=$(df --output=used -B1 "$MOUNT_POINT" 2>/dev/null | tail -1)
+        BYTES_SENT=$((DF_NOW - DF_START))
+        [ "$BYTES_SENT" -lt 1 ] && BYTES_SENT=1
+        SPEED=$(( BYTES_SENT / ELAPSED ))
+        [ "$SPEED" -lt 1 ] && SPEED=1
+        REMAINING_BYTES=$(( TOTAL_BYTES - BYTES_SENT ))
+        [ "$REMAINING_BYTES" -lt 0 ] && REMAINING_BYTES=0
+        REMAINING_SECS=$(( REMAINING_BYTES / SPEED ))
+        echo "Remaining: ~$(fmt_time $REMAINING_SECS)"
+      fi
       echo
-      echo "--- Last backup log (last 20 lines) ---"
-      [ -f "$LOG_FILE" ] && tail -20 "$LOG_FILE" || echo "  No log file found"
+
+      CURRENT=$(grep -oE -- '--- [[:alpha:]]+ ---' "$LOG_FILE" 2>/dev/null | tail -1 | sed 's/--- //g; s/ ---//g')
+      [ -n "$CURRENT" ] && echo "Current: $CURRENT"
+      LAST_PROGRESS=$(grep -E '[0-9]+\.[0-9]+(MB|GB|KB)/s' "$LOG_FILE" 2>/dev/null | tail -1)
+      if [ -n "$LAST_PROGRESS" ]; then
+        ETA=$(echo "$LAST_PROGRESS" | awk '{for(i=NF;i>0;i--){if($i~/^[0-9]+:[0-9]+:[0-9]+$/){print $i;break}}}')
+        [ -n "$ETA" ] && echo "ETA for $CURRENT: $ETA"
+      fi
     }
 
     if [ "$WATCH" = true ]; then
