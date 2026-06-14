@@ -33,13 +33,6 @@
     '')
     cfg.sources;
 
-  mkTotalSizeCmds =
-    lib.mapAttrsToList (name: path: ''
-      SIZE=$(${pkgs.coreutils}/bin/du -sb "${path}" 2>/dev/null | cut -f1)
-      TOTAL_SIZE=$((TOTAL_SIZE + SIZE))
-    '')
-    cfg.sources;
-
   mkSourceChecks =
     lib.mapAttrsToList (name: path: ''
       if [ ! -d "${path}" ]; then
@@ -170,17 +163,7 @@
         fi
       fi
 
-      # 7. Compute total source size (one-time per backup)
-      log "--- Computing total source size ---"
-      TOTAL_SIZE=0
-      ${lib.concatStringsSep "\n" mkTotalSizeCmds}
-      echo "$TOTAL_SIZE" > "$MOUNT_POINT/.firesafe-backup-total"
-      log "Total source size: $((TOTAL_SIZE / 1024 / 1024 / 1024))GB"
-
-      # 8. Record starting used space for progress tracking
-      ${pkgs.coreutils}/bin/df --output=used -B1 "$MOUNT_POINT" 2>/dev/null | tail -1 > "$MOUNT_POINT/.firesafe-df-start"
-
-      # 9. Run rsync for each source
+      # 7. Run rsync for each source
       log "--- Running backups ---"
       BACKUP_DATE=$(date +%Y-%m-%d)
       ${lib.concatStringsSep "\n" mkRsyncCmds}
@@ -230,50 +213,36 @@
           ELAPSED_M=$(( (ELAPSED % 3600) / 60 ))
           printf "Backup started: %s  |  Elapsed: %dh %dm\n" "$START_TIME" "$ELAPSED_H" "$ELAPSED_M"
 
-          # --- Overall progress (no rsync detail) ---
-          TOTAL_BYTES=$(cat "$MOUNT_POINT/.firesafe-backup-total" 2>/dev/null || echo 0)
-          DF_START=$(cat "$MOUNT_POINT/.firesafe-df-start" 2>/dev/null || echo 0)
-          if [ "$TOTAL_BYTES" -gt 0 ] && [ "$DF_START" -gt 0 ]; then
-            DF_NOW=$(df --output=used -B1 "$MOUNT_POINT" 2>/dev/null | tail -1)
-            BYTES_SENT=$((DF_NOW - DF_START))
-            [ "$BYTES_SENT" -lt 0 ] && BYTES_SENT=0
-            PCT=$(( BYTES_SENT * 100 / TOTAL_BYTES ))
-            [ "$PCT" -gt 100 ] && PCT=100
-            echo "Progress: ${PCT}% ($((BYTES_SENT / 1024 / 1024 / 1024))GB / $((TOTAL_BYTES / 1024 / 1024 / 1024))GB)"
+          # --- Overall progress ---
+          DONE=$(grep -cE ":( SUCCESS|FAILED)" "$LOG_FILE" 2>/dev/null || true)
+          ACTIVE=$((DONE + 1))
+          REMAINING=$((TOTAL_SOURCES - ACTIVE))
+          printf "Sources: %d/%d complete" "$DONE" "$TOTAL_SOURCES"
+          [ "$REMAINING" -gt 0 ] && printf "  (+%d remaining)" "$REMAINING"
+          echo
 
-            if [ "$ELAPSED" -gt 0 ] && [ "$BYTES_SENT" -gt 0 ]; then
-              SPEED=$(( BYTES_SENT / ELAPSED ))
-              REMAINING=$(( TOTAL_BYTES - BYTES_SENT ))
-              [ "$REMAINING" -lt 0 ] && REMAINING=0
-              ETA_SEC=$(( REMAINING / (SPEED > 0 ? SPEED : 1) ))
-              ETA_H=$(( ETA_SEC / 3600 ))
-              ETA_M=$(( (ETA_SEC % 3600) / 60 ))
-              if [ "$SPEED" -ge 1073741824 ]; then
-                SPEED_STR="$((SPEED / 1073741824)).$(((SPEED % 1073741824) / 107374182)) GB/s"
-              elif [ "$SPEED" -ge 1048576 ]; then
-                SPEED_STR="$((SPEED / 1048576)).$(((SPEED % 1048576) / 104857)) MB/s"
-              else
-                SPEED_STR="$((SPEED / 1024)) KB/s"
-              fi
-              echo "Speed: $SPEED_STR  |  Estimated remaining: ~${ETA_H}h ${ETA_M}m"
-            fi
-          elif [ -f "$MOUNT_POINT/.firesafe-backup-total" ]; then
-            echo "Progress: computing..."
+          # Overall ETA based on completed source average
+          if [ "$DONE" -gt 0 ]; then
+            AVG=$(( ELAPSED / DONE ))
+            EST=$(( AVG * REMAINING ))
+            EST_H=$(( EST / 3600 ))
+            EST_M=$(( (EST % 3600) / 60 ))
+            echo "Estimated overall: ~''${EST_H}h ''${EST_M}m (based on $DONE completed sources)"
+          else
+            echo "Estimated overall: waiting for first source to complete..."
           fi
           echo
 
-          # --- Current task details (rsync detail ok) ---
+          # --- Current task ---
           CURRENT=$(grep -oE -- '--- [[:alpha:]]+ ---' "$LOG_FILE" 2>/dev/null | tail -1 | sed 's/--- //g; s/ ---//g')
-          DONE=$(grep -cE ":( SUCCESS|FAILED)" "$LOG_FILE" 2>/dev/null || true)
           if [ -n "$CURRENT" ]; then
-            printf "Current task: %s (%d/%d)" "$CURRENT" "$((DONE + 1))" "$TOTAL_SOURCES"
-            REMAINING=$((TOTAL_SOURCES - DONE - 1))
-            [ "$REMAINING" -gt 0 ] && printf "  (+%d remaining)" "$REMAINING"
+            printf "Current: %s" "$CURRENT"
+            [ -n "$ACTIVE" ] && printf " (%d/%d)" "$ACTIVE" "$TOTAL_SOURCES"
             echo
             LAST_PROGRESS=$(grep -E '[0-9]+\.[0-9]+(MB|GB|KB)/s' "$LOG_FILE" 2>/dev/null | tail -1)
             if [ -n "$LAST_PROGRESS" ]; then
               ETA=$(echo "$LAST_PROGRESS" | awk '{for(i=NF;i>0;i--){if($i~/^[0-9]+:[0-9]+:[0-9]+$/){print $i;break}}}')
-              [ -n "$ETA" ] && echo "Rsync ETA for $CURRENT: $ETA"
+              [ -n "$ETA" ] && echo "Rsync ETA: $ETA"
             fi
           fi
         else
