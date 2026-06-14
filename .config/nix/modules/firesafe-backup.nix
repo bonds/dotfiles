@@ -213,7 +213,7 @@
           ELAPSED_M=$(( (ELAPSED % 3600) / 60 ))
           echo "Backup started: $START_TIME"
           printf "Elapsed: %dh %dm\n" "$ELAPSED_H" "$ELAPSED_M"
-          CURRENT=$(grep -oE '--- [[:alpha:]]+ ---' "$LOG_FILE" 2>/dev/null | tail -1 | sed 's/--- //g; s/ ---//g')
+          CURRENT=$(grep -oE -- '--- [[:alpha:]]+ ---' "$LOG_FILE" 2>/dev/null | tail -1 | sed 's/--- //g; s/ ---//g')
           DONE=$(grep -cE ":( SUCCESS|FAILED)" "$LOG_FILE" 2>/dev/null || true)
           if [ -n "$CURRENT" ]; then
             printf "Source: $CURRENT ($((DONE + 1))/$TOTAL_SOURCES)"
