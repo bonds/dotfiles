@@ -331,7 +331,7 @@ in {
     environment.systemPackages = [statusScript reclaimScript];
 
     systemd.tmpfiles.rules = [
-      "f /var/log/firesafe-backup.log 0640 root root -"
+      "f /var/log/firesafe-backup.log 0640 root users -"
     ];
   };
 }
