@@ -43,6 +43,11 @@ in {
             default = 5;
             description = "Max bullet points per summary";
           };
+          promptStyle = mkOption {
+            type = types.str;
+            default = "curate";
+            description = "Summarization style (curate, strict, default, concise, no-hallucinate, numbered)";
+          };
         };
       };
       default = {};
@@ -61,6 +66,7 @@ in {
       timeout = ${toString s.timeout}
       max_input_bytes = ${toString s.maxInputBytes}
       max_bullets = ${toString s.maxBullets}
+      prompt_style = "${s.promptStyle}"
     '';
   };
 }

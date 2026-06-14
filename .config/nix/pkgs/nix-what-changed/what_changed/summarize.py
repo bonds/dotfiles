@@ -96,6 +96,26 @@ PROMPTS = {
     ),
 }
 
+CURATE_PROMPTS = {
+    "release": (
+        "Below are structured release notes. "
+        "Select the most important changes a user would notice — "
+        "new features, breaking changes, and important bug fixes. "
+    ),
+    "wiki": (
+        "Below is a wiki changelog. "
+        "Select the most relevant technical changes and improvements. "
+        "Ignore administrative notes, release schedules, and deprecation warnings. "
+    ),
+    "changelog": (
+        "Below is a raw changelog. "
+        "Select the most recent version's most important changes. "
+    ),
+    "generic": (
+        "Below is the changelog. "
+    ),
+}
+
 
 async def preflight(cfg: Config, status: callable = lambda **kw: None) -> bool:
     """Ensure the model is available. Shows download progress via *status*(desc=...).
@@ -209,14 +229,15 @@ def _parse_bullets(text: str) -> tuple[list[str], list[str]]:
 def _postprocess(bullets: list[str], cfg: Config) -> list[str]:
     result = []
     for b in bullets:
-        b = re.sub(r"(\w+)\s+\1", r"\1", b)
-        b = re.sub(r"([a-z])([A-Z])", r"\1 \2", b)
-        b = re.sub(r"\b(\w{4,})\s+(\1\w{1,3})\b", r"\2", b)
-        b = re.sub(r"\b(\w)\1(\w{2,})\b", r"\1\2", b)
         b = b.replace("`", "")
-        b = _spellfix(b)
-        for wrong, right in KNOWN_MERGES.items():
-            b = b.replace(wrong, right)
+        if cfg.prompt_style != "curate":
+            b = re.sub(r"(\w+)\s+\1", r"\1", b)
+            b = re.sub(r"([a-z])([A-Z])", r"\1 \2", b)
+            b = re.sub(r"\b(\w{4,})\s+(\1\w{1,3})\b", r"\2", b)
+            b = re.sub(r"\b(\w)\1(\w{2,})\b", r"\1\2", b)
+            b = _spellfix(b)
+            for wrong, right in KNOWN_MERGES.items():
+                b = b.replace(wrong, right)
         b = b.strip()
         if b:
             result.append(b)
@@ -271,6 +292,15 @@ PROMPT_STYLES = {
         "No preamble, no summary — just the bullets.\n\n"
         "{text}"
     ),
+    "curate": (
+        "{source_prompt}"
+        "Select EXACTLY {max} of the most important changes. "
+        "For each, quote the original text but trim to the essential detail — "
+        "keep the original wording, do not rephrase or rewrite. "
+        "Start each bullet with a dash followed by a space. "
+        "No preamble, no summary — just the bullets.\n\n"
+        "{text}"
+    ),
     "numbered": (
         "{source_prompt}"
         "Do NOT describe what {pkg} is or does. "
@@ -287,9 +317,10 @@ async def summarize(pkg_name: str, changelog_text: str, cfg: Config) -> list[str
         return None
     text = _smarter_truncate(changelog_text, cfg.max_input_bytes)
     stype = _detect_source_type(text)
+    prompts = CURATE_PROMPTS if cfg.prompt_style == "curate" else PROMPTS
     style = PROMPT_STYLES.get(cfg.prompt_style, PROMPT_STYLES["default"])
     prompt = style.format(
-        source_prompt=PROMPTS[stype],
+        source_prompt=prompts[stype],
         pkg=pkg_name,
         max=cfg.max_bullets,
         text=text,

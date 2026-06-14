@@ -150,7 +150,7 @@ async def main():
     parser.add_argument("--host", default="http://localhost:11434", help="LLM API host")
     parser.add_argument("--backend", default="ollama", choices=["ollama", "openai"])
     parser.add_argument("--json", action="store_true", help="Output JSON")
-    parser.add_argument("--prompt", default="default", help="Prompt style (default, strict, concise, no-hallucinate, numbered)")
+    parser.add_argument("--prompt", default="curate", help="Prompt style (curate, default, strict, concise, no-hallucinate, numbered)")
     parser.add_argument("--save", action="store_true", help="Save results to benchmarks/")
     args = parser.parse_args()
 

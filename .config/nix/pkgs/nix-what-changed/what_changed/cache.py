@@ -6,7 +6,7 @@ import os
 
 from what_changed.config import Config
 
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 
 
 def _dir(cfg: Config) -> str:
@@ -21,7 +21,7 @@ def _path(key: str, cfg: Config) -> str:
 
 
 def get_summary(pkg: str, old_ver: str, new_ver: str, cfg: Config) -> list[str] | None:
-    key = f"summary:{pkg}:{old_ver}->{new_ver}"
+    key = f"summary:{cfg.prompt_style}:{pkg}:{old_ver}->{new_ver}"
     fp = _path(key, cfg)
     if os.path.exists(fp):
         with open(fp) as f:
@@ -32,7 +32,7 @@ def get_summary(pkg: str, old_ver: str, new_ver: str, cfg: Config) -> list[str] 
 
 
 def set_summary(pkg: str, old_ver: str, new_ver: str, bullets: list[str] | None, cfg: Config):
-    key = f"summary:{pkg}:{old_ver}->{new_ver}"
+    key = f"summary:{cfg.prompt_style}:{pkg}:{old_ver}->{new_ver}"
     fp = _path(key, cfg)
     with open(fp, "w") as f:
         json.dump({

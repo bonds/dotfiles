@@ -16,6 +16,7 @@ from what_changed.differ import PackageChange
 from what_changed.fetch import _extract_text, _HTMLTextExtractor
 from what_changed.spellfix import fix
 from what_changed.summarize import (
+    CURATE_PROMPTS,
     KNOWN_MERGES,
     PROMPT_STYLES,
     _parse_bullets,
@@ -59,6 +60,8 @@ def test_config_default_prompt_is_valid():
     cfg = Config()
     assert cfg.prompt_style in PROMPT_STYLES, \
         f"Default prompt '{cfg.prompt_style}' not in PROMPT_STYLES"
+    assert cfg.prompt_style == "curate", \
+        f"Default prompt should be 'curate', got '{cfg.prompt_style}'"
 
 
 # ── Regression 3: missing parser.parse_args() call ───────────────────
@@ -136,6 +139,7 @@ def test_spellfix_doubled_letter():
 def test_known_merges_all_entries_applied():
     """Every KNOWN_MERGES entry should actually transform text."""
     cfg = Config()
+    cfg.prompt_style = "strict"
     for wrong, right in KNOWN_MERGES.items():
         result = _postprocess([wrong], cfg)
         assert len(result) > 0, f"KNOWN_MERGES produced empty result for '{wrong}'"
@@ -149,6 +153,7 @@ def test_known_merges_all_entries_applied():
 def test_known_merges_specific_cases():
     """Specific known merges that appeared in real LLM output."""
     cfg = Config()
+    cfg.prompt_style = "strict"
     cases = {
         "versionumber": "version number",
         "backendriver": "backend driver",
@@ -309,6 +314,7 @@ def test_postprocess_backtick_removal():
 def test_postprocess_dedup_repeated_words():
     """Repeated words due to LLM stuttering should be deduped."""
     cfg = Config()
+    cfg.prompt_style = "strict"
     result = _postprocess(["the the same word word repeat"], cfg)
     assert "the the" not in result[0]
     assert "word word" not in result[0]
@@ -317,6 +323,7 @@ def test_postprocess_dedup_repeated_words():
 def test_postprocess_doubled_first_letter():
     """LLM output artifacts like 'ssystemd' should be fixed."""
     cfg = Config()
+    cfg.prompt_style = "strict"
     result = _postprocess(["ssystemd configuration"], cfg)
     assert len(result) > 0
     assert "ssystemd" not in result[0]
@@ -375,6 +382,56 @@ def test_gen_link_parsing():
     m = re.search(r"system-(\d+)-link", "system-42-link")
     assert m is not None
     assert int(m.group(1)) == 42
+
+
+# ── Regression 18: curate postprocess preserves original text ─────────
+# Bug: If curate mode applied post-processing, it would alter verbatim
+#      changelog text, defeating the purpose of curation.
+# Fix: _postprocess skips spellfix/KNOWN_MERGES/dedup when style is curate.
+
+def test_curate_preserves_verbatim_text():
+    """Curate mode should not alter original changelog text."""
+    cfg = Config()
+    cfg.prompt_style = "curate"
+    text = "Fixed a bug in the parser (issue #123) by @author"
+    result = _postprocess([text], cfg)
+    assert result[0] == text
+
+
+# ── Regression 19: curate uses CURATE_PROMPTS not PROMPTS ────────────
+# Bug: If summarize() used PROMPTS instead of CURATE_PROMPTS for curate
+#      style, the source instructions would say "summarize" not "select".
+# Fix: summarize() checks prompt_style and uses CURATE_PROMPTS accordingly.
+
+def test_curate_source_prompts_differ():
+    """CURATE_PROMPTS should use different language from PROMPTS."""
+    assert "select" in CURATE_PROMPTS["release"].lower()
+    assert "summarize" not in CURATE_PROMPTS["release"].lower()
+    # Import PROMPTS for comparison
+    from what_changed.summarize import PROMPTS
+    assert "summarize" in PROMPTS["release"].lower()
+
+
+# ── Regression 20: cache key includes prompt_style ────────────────────
+# Bug: Without prompt_style in cache key, switching from "strict" to
+#      "curate" would serve stale composed summaries.
+# Fix: Cache key format is now "summary:{prompt_style}:{pkg}:..."
+
+def test_cache_key_isolates_prompt_style(tmp_path):
+    """Different prompt_styles should produce different cached summaries."""
+    from what_changed import cache
+    cfg1 = Config()
+    cfg1.cache_dir = str(tmp_path)
+    cfg1.prompt_style = "curate"
+    cfg2 = Config()
+    cfg2.cache_dir = str(tmp_path)
+    cfg2.prompt_style = "strict"
+
+    cache.set_summary("pkg", "1.0", "2.0", ["curate bullets"], cfg1)
+    cache.set_summary("pkg", "1.0", "2.0", ["strict bullets"], cfg2)
+
+    assert cache.get_summary("pkg", "1.0", "2.0", cfg1) == ["curate bullets"]
+    assert cache.get_summary("pkg", "1.0", "2.0", cfg2) == ["strict bullets"]
 
 
 # ── Regression 17: cache keys should be isolated by package + version ─
