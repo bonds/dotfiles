@@ -438,7 +438,12 @@
       Archive = "/dragon/archive";
       Backups = "/dragon/backups";
       Documents = "/dragon/documents";
-      Media = "/dragon/media";
+      "Media/audiobooks" = "/dragon/media/audiobooks";
+      "Media/books" = "/dragon/media/books";
+      "Media/iphone" = "/dragon/media/iphone";
+      "Media/manuals" = "/dragon/media/manuals";
+      "Media/music" = "/dragon/media/music";
+      "Media/software" = "/dragon/media/software";
     };
     emailRecipient = "root";
   };
