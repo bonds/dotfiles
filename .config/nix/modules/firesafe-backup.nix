@@ -184,7 +184,7 @@
   '';
 
   statusScript = pkgs.writeShellScript "firesafe-status" ''
-    set -euo pipefail
+    set -uo pipefail
 
     MOUNT_POINT="${cfg.mountPoint}"
     LOG_FILE="/var/log/firesafe-backup.log"
@@ -331,7 +331,7 @@ in {
     environment.systemPackages = [statusScript reclaimScript];
 
     systemd.tmpfiles.rules = [
-      "f /var/log/firesafe-backup.log 0644 root root -"
+      "f /var/log/firesafe-backup.log 0640 root root -"
     ];
   };
 }
