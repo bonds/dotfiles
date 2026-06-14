@@ -92,7 +92,7 @@
     ---
     To check status: firesafe-status
     To reclaim space: firesafe-reclaim
-    To eject: sudo umount $MOUNT_POINT
+    To eject safely: firesafe-eject
     EOM
       }
 
@@ -104,6 +104,15 @@
         notify "failed"
         exit 1
       }
+
+      cleanup() {
+        local rc=$?
+        log "Backup interrupted"
+        date -Iseconds > "$MOUNT_POINT/.firesafe-backup-interrupted" 2>/dev/null || true
+        umount "$MOUNT_POINT" 2>/dev/null || true
+        exit $rc
+      }
+      trap cleanup TERM INT
 
       log "=== Firesafe Backup Starting ==="
 
@@ -401,6 +410,41 @@
     echo
     echo "Total: $(fmt_size "$TOTAL_DELETED") across $(${pkgs.findutils}/bin/find "$DELETED_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l) backup dates"
   '';
+
+  ejectScript = pkgs.writeShellScriptBin "firesafe-eject" ''
+    set -uo pipefail
+
+    MOUNT_POINT="${cfg.mountPoint}"
+
+    echo "=== Firesafe Eject ==="
+    echo
+
+    if ! mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+      echo "$MOUNT_POINT is not mounted."
+      echo "Drive is safe to unplug."
+      exit 0
+    fi
+
+    # 1. Gracefully stop the backup
+    if systemctl is-active --quiet firesafe-backup.service 2>/dev/null; then
+      echo "Stopping backup..."
+      sudo systemctl kill firesafe-backup.service 2>/dev/null || true
+      sleep 2
+    fi
+
+    # 2. Flush filesystem writes
+    echo "Syncing filesystem..."
+    sync
+
+    # 3. Unmount
+    echo "Unmounting..."
+    if sudo umount "$MOUNT_POINT"; then
+      echo "Drive unmounted — safe to unplug."
+    else
+      echo "Failed to unmount. Check if something is using the drive:"
+      echo "  lsof $MOUNT_POINT"
+    fi
+  '';
 in {
   options.programs.firesafe-backup = {
     enable = lib.mkEnableOption "firesafe USB backup service";
@@ -464,7 +508,7 @@ in {
       };
     };
 
-    environment.systemPackages = [statusScript reclaimScript deletedScript];
+    environment.systemPackages = [statusScript reclaimScript deletedScript ejectScript];
 
     systemd.tmpfiles.rules = [
       "f /var/log/firesafe-backup.log 0640 root users -"
