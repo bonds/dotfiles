@@ -241,7 +241,23 @@
 
       echo "=== Firesafe Backup Status ==="
       if ! mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
-        echo "Not mounted"
+        # Check if backup is in progress (e.g. fsck or mounting)
+        if systemctl is-active --quiet firesafe-backup.service 2>/dev/null; then
+          FSCK=$(ps aux | grep e2fsck | grep -v grep | head -1)
+          if [ -n "$FSCK" ]; then
+            FSCK_PID=$(echo "$FSCK" | awk '{print $2}')
+            FSCK_ELAPSED=$(ps -p "$FSCK_PID" -o etime= 2>/dev/null || echo "?")
+            echo "Status: Checking filesystem (e2fsck running for $FSCK_ELAPSED)"
+            echo
+            echo "--- Last backup log ---"
+            tail -5 "$LOG_FILE" 2>/dev/null || true
+          else
+            echo "Status: Starting backup..."
+            tail -3 "$LOG_FILE" 2>/dev/null || true
+          fi
+        else
+          echo "Not mounted"
+        fi
         return
       fi
 
