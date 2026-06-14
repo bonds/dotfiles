@@ -95,13 +95,19 @@ Three machines managed from this repo:
 - **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
   - **Temperature logging:** NVMe/CPU temps and fan speeds are logged every minute to `/dragon/logs/temps.log` via `log-temps.timer`. After a crash or lockup, check the last entries in this file to see if temps spiked before the failure. The log survives reboots since it's on the ZFS pool.
   - **Firesafe USB backup:** Automated off-site backup via an A/B USB drive rotation. Defined in `modules/firesafe-backup.nix` (NixOS module: `programs.firesafe-backup`).
-    - **How it works:** A udev rule matches drives labeled `firesafe` and triggers `firesafe-backup.service`, which mounts at `/mnt/firesafe`, reads `.firesafe-id` (A or B), then rsyncs configured sources (Archive, Backups, Documents, Media) from `/dragon/`.
+    - **How it works:** A udev rule matches drives labeled `firesafe` and triggers `firesafe-backup.service`, which mounts at `/mnt/firesafe`, reads `.firesafe-id` (A or B), then rsyncs configured sources (Archive, Backups, Documents, Media/* subdirs) from `/dragon/`.
     - **Deleted file preservation:** Rsync uses `--backup --backup-dir=.deleted/DATE/`. When drive free space drops below 50GB, the oldest `.deleted/` dirs are pruned (one at a time) until the threshold is met.
     - **A/B rotation:** Each drive has a `.firesafe-id` file (A or B). Rotate weekly by swapping drives to always have an off-site copy.
-    - **Commands:** `firesafe-status` (check mount, elapsed, ETA, log tail), `firesafe-reclaim` (manually prune `.deleted/` dirs, supports `--dry-run`), `firesafe-deleted [date]` (browse `.deleted/` contents by date).
+    - **Commands:**
+      - `firesafe-status` — mount status, elapsed time, source-count ETA, log tail
+      - `firesafe-status -w` — live-updating every 2s
+      - `firesafe-eject` — kills backup, syncs, unmounts (uses sudo)
+      - `firesafe-reclaim [--dry-run]` — prune `.deleted/` dirs
+      - `firesafe-deleted [date]` — browse `.deleted/` contents
     - **Deleted file changelog:** A permanent record of all deleted files (not pruned) is appended to `/dragon/logs/firesafe-backup-changelog.log` on each backup run. The log survives drive rotation and `.deleted/` cleanup. Format: `DATE<tab>SOURCE_PATH`. View with `tail /dragon/logs/firesafe-backup-changelog.log`.
     - **Email notifications:** Results sent via msmtp to scott@ggr.com on completion/failure.
-    - **First-time setup:** Label ext4 drive `firesafe` (`e2label`), create `.firesafe-id`, plug in to trigger backup.
+    - **First-time setup:** Label ext4 drive `firesafe` (`e2label`), create `.firesafe-id`, plug in to trigger backup. Drive must be 4.5TB+ to hold Archive + Backups + Documents + selected Media subdirs.
+    - **Drive I/O note:** The WD Game Drive USB bridge has queue depth 1, making random I/O (e.g. `e2fsck` journal replay) extremely slow (~1 MB/s). Sequential rsync performance is fine (200+ MB/s). Avoid unclean unmounts — use `firesafe-eject` — to prevent journal replay delays.
 
 ## Conventions
 
