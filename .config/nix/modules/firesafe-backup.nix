@@ -217,55 +217,55 @@
       MOUNT_POINT="${cfg.mountPoint}"
       LOG_FILE="/var/log/firesafe-backup.log"
 
+      echo "=== Firesafe Backup Status ==="
       if ! mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
-        echo "=== Firesafe Backup Status ==="
         echo "Not mounted"
         return
       fi
 
-      DRIVE_ID=$(cat "$MOUNT_POINT/.firesafe-id" 2>/dev/null || echo "?")
-      echo "=== Firesafe Backup Status (Drive $DRIVE_ID) ==="
+      df -h "$MOUNT_POINT" | tail -1 | awk '{print "Status: MOUNTED | Size: "$2" | Avail: "$4}'
+      [ -f "$MOUNT_POINT/.firesafe-id" ] && echo "Drive: $(cat $MOUNT_POINT/.firesafe-id)"
+      echo
 
       if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ]; then
-        echo "Completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
-        df -h "$MOUNT_POINT" | tail -1 | awk '{print "Used: "$3"  Avail: "$4}'
-        return
-      fi
+        echo "Backup completed: $(cat $MOUNT_POINT/.firesafe-backup-complete)"
+      elif [ -f "$MOUNT_POINT/.firesafe-backup-start" ]; then
+        START_TIME=$(cat "$MOUNT_POINT/.firesafe-backup-start")
+        NOW=$(date -Iseconds)
+        ELAPSED=$(( $(date -d "$NOW" +%s) - $(date -d "$START_TIME" +%s) ))
+        [ "$ELAPSED" -lt 0 ] && ELAPSED=0
+        printf "Backup started: %s  |  Elapsed: %s\n" "$START_TIME" "$(fmt_time $ELAPSED)"
 
-      START_TIME=$(cat "$MOUNT_POINT/.firesafe-backup-start" 2>/dev/null || true)
-      if [ -z "$START_TIME" ]; then
-        echo "No backup markers found"
-        df -h "$MOUNT_POINT" | tail -1 | awk '{print "Size: "$2"  Used: "$3"  Avail: "$4}'
-        return
-      fi
-
-      NOW=$(date -Iseconds)
-      ELAPSED=$(( $(date -d "$NOW" +%s) - $(date -d "$START_TIME" +%s) ))
-      [ "$ELAPSED" -lt 0 ] && ELAPSED=0
-      echo "Elapsed: $(fmt_time $ELAPSED)"
-
-      TOTAL_BYTES=$(cat "$MOUNT_POINT/.firesafe-backup-total" 2>/dev/null || echo 0)
-      if [ "$TOTAL_BYTES" -gt 0 ]; then
-        DF_START=$(cat "$MOUNT_POINT/.firesafe-df-start" 2>/dev/null || echo 0)
-        DF_NOW=$(df --output=used -B1 "$MOUNT_POINT" 2>/dev/null | tail -1)
-        BYTES_SENT=$((DF_NOW - DF_START))
-        [ "$BYTES_SENT" -lt 1 ] && BYTES_SENT=1
-        SPEED=$(( BYTES_SENT / ELAPSED ))
-        [ "$SPEED" -lt 1 ] && SPEED=1
-        REMAINING_BYTES=$(( TOTAL_BYTES - BYTES_SENT ))
-        [ "$REMAINING_BYTES" -lt 0 ] && REMAINING_BYTES=0
-        REMAINING_SECS=$(( REMAINING_BYTES / SPEED ))
-        echo "Remaining: ~$(fmt_time $REMAINING_SECS)"
+        TOTAL_BYTES=$(cat "$MOUNT_POINT/.firesafe-backup-total" 2>/dev/null || echo 0)
+        if [ "$TOTAL_BYTES" -gt 0 ]; then
+          DF_START=$(cat "$MOUNT_POINT/.firesafe-df-start" 2>/dev/null || echo 0)
+          DF_NOW=$(df --output=used -B1 "$MOUNT_POINT" 2>/dev/null | tail -1)
+          BYTES_SENT=$((DF_NOW - DF_START))
+          [ "$BYTES_SENT" -lt 1 ] && BYTES_SENT=1
+          SPEED=$(( BYTES_SENT / ELAPSED ))
+          [ "$SPEED" -lt 1 ] && SPEED=1
+          REMAINING_BYTES=$(( TOTAL_BYTES - BYTES_SENT ))
+          [ "$REMAINING_BYTES" -lt 0 ] && REMAINING_BYTES=0
+          REMAINING_SECS=$(( REMAINING_BYTES / SPEED ))
+          echo "Remaining: ~$(fmt_time $REMAINING_SECS)"
+        fi
+      else
+        echo "No backup markers found."
       fi
       echo
 
-      CURRENT=$(grep -oE -- '--- [[:alpha:]]+ ---' "$LOG_FILE" 2>/dev/null | tail -1 | sed 's/--- //g; s/ ---//g')
-      [ -n "$CURRENT" ] && echo "Current: $CURRENT"
-      LAST_PROGRESS=$(grep -E '[0-9]+\.[0-9]+(MB|GB|KB)/s' "$LOG_FILE" 2>/dev/null | tail -1)
-      if [ -n "$LAST_PROGRESS" ]; then
-        ETA=$(echo "$LAST_PROGRESS" | awk '{for(i=NF;i>0;i--){if($i~/^[0-9]+:[0-9]+:[0-9]+$/){print $i;break}}}')
-        [ -n "$ETA" ] && echo "ETA for $CURRENT: $ETA"
+      echo "--- Deleted file backups ---"
+      if [ -d "$MOUNT_POINT/.deleted" ]; then
+        du -sh "$MOUNT_POINT/.deleted/" 2>/dev/null || echo "  (none)"
+        echo "Oldest: $(ls -1 "$MOUNT_POINT/.deleted/" 2>/dev/null | sort | head -1)"
+        echo "Newest: $(ls -1 "$MOUNT_POINT/.deleted/" 2>/dev/null | sort | tail -1)"
+      else
+        echo "  No .deleted/ directory found"
       fi
+
+      echo
+      echo "--- Last backup log (last 20 lines) ---"
+      [ -f "$LOG_FILE" ] && tail -20 "$LOG_FILE" || echo "  No log file found"
     }
 
     if [ "$WATCH" = true ]; then
