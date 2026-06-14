@@ -260,8 +260,14 @@
                 *:*)      FSCK_SECS=$((10#''${FSCK_ELAPSED%%:*} * 60 + 10#''${FSCK_ELAPSED#*:})) ;;
                 *)        FSCK_SECS=0 ;;
               esac
-              [ "$FSCK_SECS" -gt 0 ] && RATE=$(( MB_READ / FSCK_SECS )) || RATE=0
-              printf "Status: Checking filesystem — %d MB read (%d MB/s, running %s)\n" "$MB_READ" "$RATE" "$FSCK_ELAPSED"
+              [ "$FSCK_SECS" -gt 0 ] && RATE_MB=$(( MB_READ / FSCK_SECS )) || RATE_MB=0
+              if [ "$RATE_MB" -ge 1 ]; then
+                printf "Status: Checking filesystem — %d MB read (%d MB/s, running %s)\n" "$MB_READ" "$RATE_MB" "$FSCK_ELAPSED"
+              else
+                KB_READ=$(( SECT_RD * 512 / 1024 ))
+                [ "$FSCK_SECS" -gt 0 ] && RATE_KB=$(( KB_READ / FSCK_SECS )) || RATE_KB=0
+                printf "Status: Checking filesystem — %d KB read (%d KB/s, running %s)\n" "$KB_READ" "$RATE_KB" "$FSCK_ELAPSED"
+              fi
             else
               echo "Status: Checking filesystem (e2fsck running for $FSCK_ELAPSED)"
             fi
