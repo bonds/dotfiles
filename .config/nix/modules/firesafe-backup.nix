@@ -1091,7 +1091,7 @@ in {
         TimeoutStopSec = 30;
         StandardOutput = "journal+console";
         StandardError = "journal+console";
-        Environment = "PATH=${pkgs.coreutils}/bin:${pkgs.util-linux}/bin:${pkgs.gnused}/bin:${pkgs.gnugrep}/bin";
+        Environment = "PATH=${pkgs.coreutils}/bin:${pkgs.util-linux}/bin:${pkgs.gnused}/bin:${pkgs.gnugrep}/bin:${pkgs.gawk}/bin";
       };
     };
 
