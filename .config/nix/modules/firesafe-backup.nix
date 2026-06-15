@@ -169,16 +169,19 @@
       }
       trap cleanup TERM INT
 
-      # 0a. Resume guard: if timer-triggered and backup already complete, skip
-      if [ -f /run/firesafe-resume ]; then
-        rm -f /run/firesafe-resume
-        if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
-          if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ] && [ ! -f "$MOUNT_POINT/.firesafe-backup-interrupted" ]; then
-            log "Backup already completed. Nothing to resume."
-            exit 0
+      # 0a. Hard guard: if backup was completed successfully and not interrupted, skip
+      if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+        if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ] && [ ! -f "$MOUNT_POINT/.firesafe-backup-interrupted" ]; then
+          if [ -f /run/firesafe-resume ]; then
+            rm -f /run/firesafe-resume
           fi
+          log "Backup already completed. Nothing to do."
+          exit 0
         fi
       fi
+
+      # 0b. Resume guard: clean up timer marker
+      rm -f /run/firesafe-resume 2>/dev/null || true
 
       log "=== Firesafe Backup Starting ==="
 
@@ -423,9 +426,14 @@
 
       def read_markers(mp: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
           p = Path(mp)
-          did = (p / ".firesafe-id").read_text().strip() if (p / ".firesafe-id").exists() else None
-          comp = (p / ".firesafe-backup-complete").read_text().strip() if (p / ".firesafe-backup-complete").exists() else None
-          start = (p / ".firesafe-backup-start").read_text().strip() if (p / ".firesafe-backup-start").exists() else None
+          def safe_read(path: Path) -> Optional[str]:
+              try:
+                  return path.read_text().strip() if path.exists() else None
+              except OSError:
+                  return None
+          did = safe_read(p / ".firesafe-id")
+          comp = safe_read(p / ".firesafe-backup-complete")
+          start = safe_read(p / ".firesafe-backup-start")
           return did, comp, start
 
 
@@ -843,6 +851,12 @@
           start_idx = find_last_start(lines)
 
           if not is_mounted(MOUNT_POINT):
+              return build_not_mounted(lines)
+
+          # Check if mount is stale (device disconnected but mount entry lingers)
+          try:
+              Path(MOUNT_POINT).stat()
+          except OSError:
               return build_not_mounted(lines)
 
           did, comp, start = read_markers(MOUNT_POINT)
