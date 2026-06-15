@@ -193,6 +193,8 @@
 
       log "=== Firesafe Backup Starting ==="
 
+      WE_MOUNTED=false
+
       # 1. Ensure mount exists
       if ! mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
         log "Mount point $MOUNT_POINT not mounted, attempting to mount..."
@@ -209,6 +211,16 @@
         ${pkgs.e2fsprogs}/bin/e2fsck -p "$DEVICE" 2>&1 | tee -a "$LOG_FILE" || log "fsck exit code $? (continuing)"
         mount "$DEVICE" "$MOUNT_POINT" || abort "Failed to mount $DEVICE at $MOUNT_POINT"
         log "Mounted $DEVICE at $MOUNT_POINT"
+        WE_MOUNTED=true
+      fi
+
+      # 1b. Post-mount guard: if backup completed and not interrupted, nothing to do
+      if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ] && [ ! -f "$MOUNT_POINT/.firesafe-backup-interrupted" ]; then
+        log "Backup already completed. Nothing to do."
+        if [ "$WE_MOUNTED" = true ]; then
+          umount "$MOUNT_POINT" 2>/dev/null || true
+        fi
+        exit 0
       fi
 
       # 2. Read drive ID
@@ -1146,8 +1158,7 @@ in {
 
     systemd.services.firesafe-backup-resume = {
       description = "Resume firesafe backup if interrupted";
-      after = ["firesafe-backup.service"];
-      wants = ["firesafe-backup.service"];
+      # No after/wants — resume script conditionally starts backup via systemctl start
       script = ''
         set -e
         if ! mountpoint -q "${cfg.mountPoint}" 2>/dev/null; then
