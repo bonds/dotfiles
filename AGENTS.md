@@ -114,7 +114,7 @@ Three machines managed from this repo:
     - Mac (accismus): `osxphotos` exports originals daily at 2am to `~/Pictures/Syncthing-Photos/`
     - Syncthing: continuous sync to sophrosyne at `/dragon/photos` (send-only on Mac, receive-only on server)
     - Firesafe: `Photos` source picks up `/dragon/photos` during backup
-    - ZFS dataset: `dragon/photos` with `compression=lz4` and `atime=off`
+    - ZFS dataset: `dragon/photos` with `atime=off`
 
 ## Conventions
 

@@ -14,35 +14,13 @@
     <configuration version="51">
         <folder id="mz9zh-usrfi" label="Documents" path="/Users/scott/Documents" type="sendreceive" rescanIntervalS="3600" fsWatcherEnabled="true" fsWatcherDelayS="10">
             <filesystemType>basic</filesystemType>
-            <device id="PO67TVE-4DPKQ3W-A3TNX5K-5OFVKUQ-7GR4VCN-WMVSQ2U-MGOREMU-ZB4U4HAY"></device>
-            <device id="UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB"></device>
-            <device id="252R7DN-6HAEVP2-PXIAG6D-6JU2NCP-QEGULBE-I532CRV-4C6XA46-DKEUBAO"></device>
+            <device id="657I6FW-RYP54TY-656UKW2-GPPI4RE-S5EVPNW-I24PFP2-E33UUIW-OGGDRAT"></device>
         </folder>
         <folder id="photos" label="Photos" path="/Users/scott/Pictures/Syncthing-Photos" type="sendonly" rescanIntervalS="3600" fsWatcherEnabled="true" fsWatcherDelayS="10">
             <filesystemType>basic</filesystemType>
-            <device id="252R7DN-6HAEVP2-PXIAG6D-6JU2NCP-QEGULBE-I532CRV-4C6XA46-DKEUBAO"></device>
+            <device id="657I6FW-RYP54TY-656UKW2-GPPI4RE-S5EVPNW-I24PFP2-E33UUIW-OGGDRAT"></device>
         </folder>
-        <device id="PO67TVE-4DPKQ3W-A3TNX5K-5OFVKUQ-7GR4VCN-WMVSQ2U-MGOREMU-ZB4U4HAY" name="workstation" compression="metadata" introducer="false" skipIntroductionRemovals="false">
-            <address>dynamic</address>
-            <paused>false</paused>
-            <autoAcceptFolders>false</autoAcceptFolders>
-            <maxSendKbps>0</maxSendKbps>
-            <maxRecvKbps>0</maxRecvKbps>
-            <maxRequestKiB>0</maxRequestKiB>
-            <untrusted>false</untrusted>
-            <remoteGUIPort>0</remoteGUIPort>
-        </device>
-        <device id="UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB" name="Scotts-MacBook-Air.local" compression="metadata" introducer="false" skipIntroductionRemovals="false">
-            <address>dynamic</address>
-            <paused>false</paused>
-            <autoAcceptFolders>false</autoAcceptFolders>
-            <maxSendKbps>0</maxSendKbps>
-            <maxRecvKbps>0</maxRecvKbps>
-            <maxRequestKiB>0</maxRequestKiB>
-            <untrusted>false</untrusted>
-            <remoteGUIPort>0</remoteGUIPort>
-        </device>
-        <device id="252R7DN-6HAEVP2-PXIAG6D-6JU2NCP-QEGULBE-I532CRV-4C6XA46-DKEUBAO" name="server" compression="metadata" introducer="false" skipIntroductionRemovals="false">
+        <device id="657I6FW-RYP54TY-656UKW2-GPPI4RE-S5EVPNW-I24PFP2-E33UUIW-OGGDRAT" name="server" compression="metadata" introducer="false" skipIntroductionRemovals="false">
             <address>dynamic</address>
             <paused>false</paused>
             <autoAcceptFolders>false</autoAcceptFolders>
@@ -250,14 +228,14 @@ in {
   };
 
   # Deploy declarative syncthing config.xml (preserves key.pem, cert.pem, and index-v2/)
-  system.activationScripts.syncthing-config.text = ''
-    mkdir -p "${syncthingConfigDir}"
+  system.activationScripts.extraActivation.text = ''
+    echo "syncthing-config: deploying to ${syncthingConfigDir}" >&2
+    sudo -u scott mkdir -p "${syncthingConfigDir}"
     cp "${syncthingConfig}" "${syncthingConfigDir}/config.xml"
+    chown scott:staff "${syncthingConfigDir}/config.xml"
     chmod 644 "${syncthingConfigDir}/config.xml"
-    # Kill standalone Syncthing.app if still running so launchd agent takes over cleanly
     pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
   '';
-  system.activationScripts.syncthing-config.deps = [];
 
   # Set Git commit hash for darwin-version.
   system.configurationRevision = self.rev or self.dirtyRev or null;
@@ -306,7 +284,7 @@ in {
           };
         };
         syncthing = {
-          command = "${pkgs.syncthing}/bin/syncthing -no-browser -home='${syncthingConfigDir}'";
+          command = "${pkgs.syncthing}/bin/syncthing --no-browser --home='${syncthingConfigDir}'";
           serviceConfig = {
             KeepAlive = true;
             RunAtLoad = true;

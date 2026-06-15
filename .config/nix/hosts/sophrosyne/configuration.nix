@@ -397,13 +397,12 @@
     settings = {
       devices = {
         "laptop" = {id = "UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB";};
-        "workstation" = {id = "PO67TVE-4DPKQ3W-A3TNX5K-5OFVKUQ-7GR4VCN-WMVSQ2U-MGOREMU-ZB4U4HAY";};
       };
       folders = {
         "Documents" = {
           path = "/home/scott/Documents";
           id = "mz9zh-usrfi";
-          devices = ["laptop" "workstation"];
+          devices = ["laptop"];
         };
         "Photos" = {
           path = "/dragon/photos";
