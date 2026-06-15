@@ -183,6 +183,14 @@
       # 0b. Resume guard: clean up timer marker
       rm -f /run/firesafe-resume 2>/dev/null || true
 
+      # 0c. Check for stale mount (device removed but mount entry lingers)
+      if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+        if ! stat "$MOUNT_POINT/.firesafe-id" >/dev/null 2>&1; then
+          log "Stale mount detected — force-unmounting"
+          umount -l "$MOUNT_POINT" 2>/dev/null || true
+        fi
+      fi
+
       log "=== Firesafe Backup Starting ==="
 
       # 1. Ensure mount exists
