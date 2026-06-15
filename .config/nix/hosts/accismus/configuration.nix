@@ -30,7 +30,7 @@
             <untrusted>false</untrusted>
             <remoteGUIPort>0</remoteGUIPort>
         </device>
-        <device id="252R7DN-6HAEVP2-PXIAG6D-6JU2NCP-QEGULBE-I532CRV-4C6XA46-DKEUBAO" name="server" compression="metadata" introducer="false" skipIntroductionRemovals="false">
+        <device id="252R7DN-6HAEVP2-PXIAG6D-6JU2NCP-QEGULBE-I532CRV-4C6XA46-DKEUBAO" name="sophrosyne" compression="metadata" introducer="false" skipIntroductionRemovals="false">
             <address>dynamic</address>
             <paused>false</paused>
             <autoAcceptFolders>false</autoAcceptFolders>
