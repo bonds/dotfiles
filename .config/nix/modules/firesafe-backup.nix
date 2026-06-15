@@ -287,14 +287,15 @@
         date -Iseconds > "$MOUNT_POINT/.firesafe-backup-complete"
         rm -f "$MOUNT_POINT/.firesafe-backup-interrupted" "$MOUNT_POINT/.firesafe-progress"
         log "=== Backup Complete ==="
-        notify "completed"
         log "Unmounting drive..."
         # Try clean unmount first (5min timeout), fall back to lazy
         if timeout 300 umount "$MOUNT_POINT" 2>/dev/null; then
           log "Drive unmounted — safe to unplug"
+          notify "completed"
         else
           umount -l "$MOUNT_POINT" 2>/dev/null || true
-          log "Drive unmounted (lazy) — wait for kernel flush before unplugging"
+          log "Drive unmounted (lazy) — kernel still flushing, wait before unplugging"
+          notify "completed (lazy unmount)"
         fi
       else
         log "=== Backup Partial ($FAILURE_COUNT failures) ==="
