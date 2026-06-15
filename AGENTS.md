@@ -91,11 +91,13 @@ Cross-platform utility scripts, organized by OS:
 ### Machines
 Three machines managed from this repo:
 - **accismus** — macOS laptop (aarch64-darwin, nix-darwin)
+  - **Syncthing** managed via nix-darwin launchd agent (not standalone app). Declarative `config.xml` generated and deployed by activation script. Config dir at `~/Library/Application Support/Syncthing/`. Preserves `key.pem`, `cert.pem`, `index-v2/` across rebuilds.
+  - **Photos export** via `osxphotos` launchd agent (daily at 2am). Exports originals from Apple Photos Library to `~/Pictures/Syncthing-Photos/`, which Syncthing syncs to sophrosyne.
 - **metanoia** — NixOS workstation (x86_64-linux)
 - **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
   - **Temperature logging:** NVMe/CPU temps and fan speeds are logged every minute to `/dragon/logs/temps.log` via `log-temps.timer`. After a crash or lockup, check the last entries in this file to see if temps spiked before the failure. The log survives reboots since it's on the ZFS pool.
   - **Firesafe USB backup:** Automated off-site backup via an A/B USB drive rotation. Defined in `modules/firesafe-backup.nix` (NixOS module: `programs.firesafe-backup`).
-    - **How it works:** A udev rule matches drives labeled `firesafe` and triggers `firesafe-backup.service`, which mounts at `/mnt/firesafe`, reads `.firesafe-id` (A or B), then rsyncs configured sources (Archive, Backups, Documents, Media/* subdirs) from `/dragon/`.
+    - **How it works:** A udev rule matches drives labeled `firesafe` and triggers `firesafe-backup.service`, which mounts at `/mnt/firesafe`, reads `.firesafe-id` (A or B), then rsyncs configured sources (Archive, Backups, Documents, Media/* subdirs, Photos) from `/dragon/`.
     - **Deleted file preservation:** Rsync uses `--backup --backup-dir=.deleted/DATE/`. When drive free space drops below 50GB, the oldest `.deleted/` dirs are pruned (one at a time) until the threshold is met.
     - **A/B rotation:** Each drive has a `.firesafe-id` file (A or B). Rotate weekly by swapping drives to always have an off-site copy.
     - **Commands:**
@@ -108,6 +110,11 @@ Three machines managed from this repo:
     - **Email notifications:** Results sent via msmtp to scott@ggr.com on completion/failure.
     - **First-time setup:** Label ext4 drive `firesafe` (`e2label`), create `.firesafe-id`, plug in to trigger backup. Drive must be 4.5TB+ to hold Archive + Backups + Documents + selected Media subdirs.
     - **Drive I/O note:** The WD Game Drive USB bridge (1058:262f) is BOT-only, QD=1, no UASP — USB-native PCB, cannot shuck. Random I/O ~1 MB/s; sequential ~40-90 MB/s ext4. ext4 journal vs exFAT speed tradeoffs, dirty page flush hang on umount. See `firesafe-backup.nix` header comment for full details.
+  - **Photos pipeline:**
+    - Mac (accismus): `osxphotos` exports originals daily at 2am to `~/Pictures/Syncthing-Photos/`
+    - Syncthing: continuous sync to sophrosyne at `/dragon/photos` (send-only on Mac, receive-only on server)
+    - Firesafe: `Photos` source picks up `/dragon/photos` during backup
+    - ZFS dataset: `dragon/photos` with `compression=lz4` and `atime=off`
 
 ## Conventions
 

@@ -405,6 +405,12 @@
           id = "mz9zh-usrfi";
           devices = ["laptop" "workstation"];
         };
+        "Photos" = {
+          path = "/dragon/photos";
+          id = "photos";
+          type = "receiveonly";
+          devices = ["laptop"];
+        };
       };
     };
   };
@@ -444,6 +450,7 @@
       "Media/manuals" = "/dragon/media/manuals";
       "Media/music" = "/dragon/media/music";
       "Media/software" = "/dragon/media/software";
+      Photos = "/dragon/photos";
     };
     emailRecipient = "root";
   };
