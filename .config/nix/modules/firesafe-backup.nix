@@ -847,6 +847,12 @@
           return Group(*parts)
 
 
+      def marker_exists(path_str: str) -> bool:
+          try:
+              return Path(path_str).exists()
+          except OSError:
+              return False
+
       def build_status() -> Group:
           lines = read_log()
           start_idx = find_last_start(lines)
@@ -854,23 +860,24 @@
           if not is_mounted(MOUNT_POINT):
               return build_not_mounted(lines)
 
-          # Check if mount is stale (device disconnected but mount entry lingers)
+          # Check if mount is stale (I/O errors on any access → treat as not mounted)
+          mp = Path(MOUNT_POINT)
           try:
-              Path(MOUNT_POINT).stat()
+              next(mp.iterdir(), None)
           except OSError:
               return build_not_mounted(lines)
 
           did, comp, start = read_markers(MOUNT_POINT)
-          scanning_marker = Path(MOUNT_POINT) / ".firesafe-backup-scanning"
-          interrupted_marker = Path(MOUNT_POINT) / ".firesafe-backup-interrupted"
+          scanning_marker = mp / ".firesafe-backup-scanning"
+          interrupted_marker = mp / ".firesafe-backup-interrupted"
 
-          if scanning_marker.exists() or (start_idx >= 0 and "Scanning:" in lines[start_idx]):
+          if marker_exists(str(scanning_marker)) or (start_idx >= 0 and "Scanning:" in lines[start_idx]):
               return build_scanning(lines, start_idx, did)
 
           if comp:
               return build_complete(lines, comp, did)
 
-          if interrupted_marker.exists() and get_service_state() not in ("activating", "active"):
+          if marker_exists(str(interrupted_marker)) and get_service_state() not in ("activating", "active"):
               return build_interrupted(lines, did)
 
           if start:
