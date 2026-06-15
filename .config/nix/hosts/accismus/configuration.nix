@@ -14,11 +14,11 @@
     <configuration version="51">
         <folder id="mz9zh-usrfi" label="Documents" path="/Users/scott/Documents" type="sendreceive" rescanIntervalS="3600" fsWatcherEnabled="true" fsWatcherDelayS="10">
             <filesystemType>basic</filesystemType>
-            <device id="657I6FW-RYP54TY-656UKW2-GPPI4RE-S5EVPNW-I24PFP2-E33UUIW-OGGDRAT"></device>
+            <device id="252R7DN-6HAEVP2-PXIAG6D-6JU2NCP-QEGULBE-I532CRV-4C6XA46-DKEUBAO"></device>
         </folder>
         <folder id="photos" label="Photos" path="/Users/scott/Pictures/Syncthing-Photos" type="sendonly" rescanIntervalS="3600" fsWatcherEnabled="true" fsWatcherDelayS="10">
             <filesystemType>basic</filesystemType>
-            <device id="657I6FW-RYP54TY-656UKW2-GPPI4RE-S5EVPNW-I24PFP2-E33UUIW-OGGDRAT"></device>
+            <device id="252R7DN-6HAEVP2-PXIAG6D-6JU2NCP-QEGULBE-I532CRV-4C6XA46-DKEUBAO"></device>
         </folder>
         <device id="UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB" name="accismus" compression="metadata" introducer="false" skipIntroductionRemovals="false">
             <address>dynamic</address>
@@ -30,7 +30,7 @@
             <untrusted>false</untrusted>
             <remoteGUIPort>0</remoteGUIPort>
         </device>
-        <device id="657I6FW-RYP54TY-656UKW2-GPPI4RE-S5EVPNW-I24PFP2-E33UUIW-OGGDRAT" name="server" compression="metadata" introducer="false" skipIntroductionRemovals="false">
+        <device id="252R7DN-6HAEVP2-PXIAG6D-6JU2NCP-QEGULBE-I532CRV-4C6XA46-DKEUBAO" name="server" compression="metadata" introducer="false" skipIntroductionRemovals="false">
             <address>dynamic</address>
             <paused>false</paused>
             <autoAcceptFolders>false</autoAcceptFolders>
