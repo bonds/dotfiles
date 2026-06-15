@@ -20,7 +20,7 @@
             <filesystemType>basic</filesystemType>
             <device id="657I6FW-RYP54TY-656UKW2-GPPI4RE-S5EVPNW-I24PFP2-E33UUIW-OGGDRAT"></device>
         </folder>
-        <device id="UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB" name="Scotts-MacBook-Air" compression="metadata" introducer="false" skipIntroductionRemovals="false">
+        <device id="UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB" name="accismus" compression="metadata" introducer="false" skipIntroductionRemovals="false">
             <address>dynamic</address>
             <paused>false</paused>
             <autoAcceptFolders>false</autoAcceptFolders>

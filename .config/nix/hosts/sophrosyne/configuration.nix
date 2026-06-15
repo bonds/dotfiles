@@ -396,19 +396,19 @@
     configDir = "/home/scott/.config/syncthing";
     settings = {
       devices = {
-        "laptop" = {id = "UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB";};
+        "accismus" = {id = "UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB";};
       };
       folders = {
         "Documents" = {
           path = "/home/scott/Documents";
           id = "mz9zh-usrfi";
-          devices = ["laptop"];
+          devices = ["accismus"];
         };
         "Photos" = {
           path = "/dragon/photos";
           id = "photos";
           type = "receiveonly";
-          devices = ["laptop"];
+          devices = ["accismus"];
         };
       };
     };
