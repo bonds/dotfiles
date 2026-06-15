@@ -541,8 +541,10 @@
           return "  \u2713 " + "  ".join(parts_list)
 
 
-      def make_progress_bar(completed: int, total: int, width: int = 30) -> Text:
+      def make_progress_bar(completed: int, total: int) -> Text:
           frac = completed / total if total > 0 else 0
+          term_w = shutil.get_terminal_size((80, 25)).columns
+          width = max(10, term_w // 2)
           filled = min(int(width * frac), width)
           t = Text()
           t.append("█" * filled, style="green")
