@@ -426,6 +426,7 @@
 
       def read_markers(mp: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
           p = Path(mp)
+
           def safe_read(path: Path) -> Optional[str]:
               try:
                   return path.read_text().strip() if path.exists() else None
