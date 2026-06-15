@@ -121,7 +121,7 @@
       notify() {
         local status="$1"
         local summary
-        summary=$(tail -30 "$LOG_FILE" 2>/dev/null || echo "No log available")
+        summary=$(${pkgs.gnugrep}/bin/grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}" "$LOG_FILE" 2>/dev/null | tail -10 || echo "No log available")
         local drive_human
         drive_human=$(df -h "$MOUNT_POINT" 2>/dev/null | tail -1 | awk '{print $4}' || echo "unknown")
         ${pkgs.msmtp}/bin/msmtp -t <<EOM || log "WARNING: failed to send email notification"
