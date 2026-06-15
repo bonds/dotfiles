@@ -137,7 +137,7 @@
     Free space on drive: $drive_human
 
     Summary: $SUCCESS_COUNT succeeded, $FAILURE_COUNT failed
-    Failed: $FAILURE_NAMES
+    Failed: ''${FAILURE_NAMES:-none}
 
     Recent log output:
     $summary
@@ -288,14 +288,15 @@
         rm -f "$MOUNT_POINT/.firesafe-backup-interrupted" "$MOUNT_POINT/.firesafe-progress"
         log "=== Backup Complete ==="
         log "Unmounting drive..."
-        # Try clean unmount first (5min timeout), fall back to lazy
         if timeout 300 umount "$MOUNT_POINT" 2>/dev/null; then
           log "Drive unmounted — safe to unplug"
           notify "completed"
         else
           umount -l "$MOUNT_POINT" 2>/dev/null || true
-          log "Drive unmounted (lazy) — kernel still flushing, wait before unplugging"
-          notify "completed (lazy unmount)"
+          log "Flushing data to drive..."
+          sync
+          log "Data flushed — safe to unplug"
+          notify "completed"
         fi
       else
         log "=== Backup Partial ($FAILURE_COUNT failures) ==="
@@ -1213,7 +1214,7 @@ in {
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${backupScript}";
-        TimeoutStopSec = 30;
+        TimeoutStopSec = 7200;
         StandardOutput = "journal+console";
         StandardError = "journal+console";
         Environment = "PATH=${pkgs.coreutils}/bin:${pkgs.util-linux}/bin:${pkgs.gnused}/bin:${pkgs.gnugrep}/bin:${pkgs.gawk}/bin";
