@@ -325,7 +325,6 @@
 
       from rich.console import Console, Group
       from rich.text import Text
-      from rich.progress_bar import ProgressBar
       from rich.rule import Rule
       from rich.live import Live
 
@@ -542,6 +541,16 @@
           return "  \u2713 " + "  ".join(parts_list)
 
 
+      def make_progress_bar(completed: int, total: int, width: int = 30) -> Text:
+          frac = completed / total if total > 0 else 0
+          filled = min(int(width * frac), width)
+          t = Text()
+          t.append("█" * filled, style="green")
+          t.append("░" * (width - filled), style="dim")
+          t.append(f"  {int(frac * 100)}%", style="bold")
+          return t
+
+
       def parse_scan_file(path: str) -> Optional[dict]:
           if not os.path.isfile(path):
               return None
@@ -570,7 +579,7 @@
       def parse_last_progress(lines: list[str]) -> Optional[dict]:
           for line in reversed(lines):
               m = re.match(
-                  r"^\s*([\d,]+)\s+(\d+)%\s+([\d.]+)\s+([KMGT]?B/s)\s+",
+                  r"^\s*([\d,]+)\s+(\d+)%\s+([\d.]+)([KMGT]?B/s)\s+",
                   line,
               )
               if m:
@@ -620,7 +629,7 @@
               t.append(f"  ·  Drive {did}", style="bold")
           t.append(f"  ·  {total} total  ·  {avail} free", style="dim")
           parts.append(t)
-          parts.append(ProgressBar(total=100, completed=pct, width=30))
+          parts.append(make_progress_bar(pct, 100))
 
           scan_file = Path(mp) / ".firesafe-scan"
           scanned = 0
@@ -687,7 +696,7 @@
               t.append(f"  ·  Drive {did}", style="bold")
           t.append(f"  ·  {total} total  ·  {avail} free", style="dim")
           parts.append(t)
-          parts.append(ProgressBar(total=100, completed=pct, width=30))
+          parts.append(make_progress_bar(pct, 100))
 
           cur_source = get_current_source(lines, start_idx)
           done = count_cur_run_sources(lines, start_idx)
@@ -719,7 +728,7 @@
           if scan and scan["transfer_bytes"] > 0:
               total_xfer = scan["transfer_bytes"]
               xferred = completed_bytes + current_bytes
-              parts.append(ProgressBar(total=total_xfer, completed=xferred, width=30))
+              parts.append(make_progress_bar(xferred, total_xfer))
               parts.append(Text(f"  {fmt_bytes(xferred)} / {fmt_bytes(total_xfer)}", style="bold"))
 
               if current_speed:
@@ -733,7 +742,7 @@
               if done > 0 and elapsed > 30:
                   rem = max(0, TOTAL_SOURCES - done)
                   est = (elapsed // done) * rem
-                  parts.append(ProgressBar(total=TOTAL_SOURCES, completed=min(done, TOTAL_SOURCES), width=30))
+                  parts.append(make_progress_bar(min(done, TOTAL_SOURCES), TOTAL_SOURCES))
                   parts.append(Text(f"  {done}/{TOTAL_SOURCES} sources", style="bold"))
                   if est > 0:
                       parts.append(Text(f"  ~{fmt_time(est)} remaining", style="dim"))
@@ -771,7 +780,7 @@
               t.append(f"  ·  Drive {did}", style="bold")
           t.append(f"  ·  {total} total  ·  {avail} free", style="dim")
           parts.append(t)
-          parts.append(ProgressBar(total=100, completed=pct, width=30))
+          parts.append(make_progress_bar(pct, 100))
 
           start_idx = find_last_start(lines)
           completed = get_completed_sources(lines, start_idx) if start_idx >= 0 else []
@@ -835,7 +844,7 @@
               t.append(f"  ·  Drive {did}", style="bold")
           t.append(f"  ·  {total} total  ·  {avail} free", style="dim")
           parts.append(t)
-          parts.append(ProgressBar(total=100, completed=pct, width=30))
+          parts.append(make_progress_bar(pct, 100))
 
           t2 = Text()
           t2.append("⏳  Interrupted — will resume within 2min", style="bold yellow")
@@ -868,7 +877,7 @@
               t.append(f"  ·  Drive {did}", style="bold")
           t.append(f"  ·  {total} total  ·  {avail} free", style="dim")
           parts.append(t)
-          parts.append(ProgressBar(total=100, completed=pct, width=30))
+          parts.append(make_progress_bar(pct, 100))
 
           parts.append(Text("No backup in progress", style="dim"))
 
