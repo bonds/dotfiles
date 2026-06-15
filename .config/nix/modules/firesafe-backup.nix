@@ -576,17 +576,35 @@
           return data
 
 
+      def parse_rsync_eta(s: str) -> int:
+          parts = s.split(":")
+          if len(parts) == 3:
+              return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+          if len(parts) == 2:
+              return int(parts[0]) * 60 + int(parts[1])
+          return 0
+
+
       def parse_last_progress(lines: list[str]) -> Optional[dict]:
           for line in reversed(lines):
               m = re.match(
-                  r"^\s*([\d,]+)\s+(\d+)%\s+([\d.]+)([KMGT]?B/s)\s+",
+                  r"^\s*([\d,]+)\s+(\d+)%\s+([\d.]+)([KMGT]?B/s)\s+"
+                  r"([\d:]+)(?:\s+\(([^)]*)\))?",
                   line,
               )
               if m:
                   bytes_val = int(m.group(1).replace(",", ""))
                   pct = int(m.group(2))
                   speed_str = m.group(3) + " " + m.group(4)
-                  return {"bytes": bytes_val, "pct": pct, "speed_str": speed_str}
+                  eta_secs = parse_rsync_eta(m.group(5))
+                  remaining = m.group(6) or ""
+                  return {
+                      "bytes": bytes_val,
+                      "pct": pct,
+                      "speed_str": speed_str,
+                      "eta_secs": eta_secs,
+                      "remaining": remaining,
+                  }
           return None
 
 
@@ -738,6 +756,24 @@
                   ))
               elif xferred > 0 and elapsed > 30:
                   parts.append(Text(f"  ~{fmt_time((total_xfer - xferred) * elapsed // xferred)} remaining", style="dim"))
+          elif progress_info and progress_info["pct"] > 0:
+              pct = progress_info["pct"]
+              parts.append(make_progress_bar(pct, 100))
+              t_bytes = Text()
+              t_bytes.append(f"  {fmt_bytes(current_bytes)} transferred", style="bold")
+              remaining_str = progress_info.get("remaining", "")
+              if remaining_str:
+                  m_rem = re.search(r"(?:ir-chk|to-chk)=([\d,]+)/([\d,]+)", remaining_str)
+                  if m_rem:
+                      t_bytes.append(f"  ·  {m_rem.group(1)} / {m_rem.group(2)} files", style="dim")
+              parts.append(t_bytes)
+              eta = progress_info.get("eta_secs", 0)
+              if current_speed and eta > 0:
+                  parts.append(Text(f"  {current_speed}  ·  ~{fmt_time(eta)} remaining", style="dim"))
+              elif current_speed:
+                  parts.append(Text(f"  {current_speed}", style="dim"))
+              elif eta > 0:
+                  parts.append(Text(f"  ~{fmt_time(eta)} remaining", style="dim"))
           else:
               if done > 0 and elapsed > 30:
                   rem = max(0, TOTAL_SOURCES - done)
