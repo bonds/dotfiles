@@ -169,21 +169,10 @@
       }
       trap cleanup TERM INT
 
-      # 0a. Hard guard: if backup was completed successfully and not interrupted, skip
-      if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
-        if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ] && [ ! -f "$MOUNT_POINT/.firesafe-backup-interrupted" ]; then
-          if [ -f /run/firesafe-resume ]; then
-            rm -f /run/firesafe-resume
-          fi
-          log "Backup already completed. Nothing to do."
-          exit 0
-        fi
-      fi
-
-      # 0b. Resume guard: clean up timer marker
+      # 0a. Clean up timer resume marker (created by firesafe-backup-resume.service)
       rm -f /run/firesafe-resume 2>/dev/null || true
 
-      # 0c. Check for stale mount (device removed but mount entry lingers)
+      # 0b. Check for stale mount (device removed but mount entry lingers)
       if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
         if ! stat "$MOUNT_POINT/.firesafe-id" >/dev/null 2>&1; then
           log "Stale mount detected — force-unmounting"
@@ -192,8 +181,6 @@
       fi
 
       log "=== Firesafe Backup Starting ==="
-
-      WE_MOUNTED=false
 
       # 1. Ensure mount exists
       if ! mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
@@ -211,16 +198,6 @@
         ${pkgs.e2fsprogs}/bin/e2fsck -p "$DEVICE" 2>&1 | tee -a "$LOG_FILE" || log "fsck exit code $? (continuing)"
         mount "$DEVICE" "$MOUNT_POINT" || abort "Failed to mount $DEVICE at $MOUNT_POINT"
         log "Mounted $DEVICE at $MOUNT_POINT"
-        WE_MOUNTED=true
-      fi
-
-      # 1b. Post-mount guard: if backup completed and not interrupted, nothing to do
-      if [ -f "$MOUNT_POINT/.firesafe-backup-complete" ] && [ ! -f "$MOUNT_POINT/.firesafe-backup-interrupted" ]; then
-        log "Backup already completed. Nothing to do."
-        if [ "$WE_MOUNTED" = true ]; then
-          umount "$MOUNT_POINT" 2>/dev/null || true
-        fi
-        exit 0
       fi
 
       # 2. Read drive ID
