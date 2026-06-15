@@ -465,6 +465,12 @@
               return f.read().splitlines()
 
 
+      def log_tail(n: int) -> list[str]:
+          lines = read_log()
+          filtered = [line for line in lines if re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}", line)]
+          return filtered[-n:] if n > 0 else []
+
+
       def find_last_start(lines: list[str]) -> int:
           for i in range(len(lines) - 1, -1, -1):
               if "=== Firesafe Backup Starting ===" in lines[i]:
@@ -578,8 +584,7 @@
           else:
               parts.append(Text("✗  Not mounted", style="bold red"))
           parts.append(Rule(style="dim"))
-          tail = lines[-(log_lines_available()):] if lines else []
-          for line in tail:
+          for line in log_tail(log_lines_available()):
               parts.append(Text(f"  {line}", style="dim"))
           return Group(*parts)
 
@@ -644,7 +649,7 @@
               parts.append(dt)
 
           parts.append(Rule(style="dim"))
-          for line in lines[-(log_lines_available() - 1):]:
+          for line in log_tail(log_lines_available() - 1):
               parts.append(Text(f"  {line}", style="dim"))
           return Group(*parts)
 
@@ -681,6 +686,15 @@
           progress_info = parse_last_progress(lines)
           current_bytes = progress_info["bytes"] if progress_info else 0
           current_speed = progress_info["speed_str"] if progress_info else ""
+
+          if cur_source:
+              src = Text()
+              src.append("  ▸  ", style="bold")
+              src.append(cur_source, style="bold white")
+              if current_speed:
+                  src.append(f"  ({current_speed})", style="dim")
+              src.append(f"  [{min(done + 1, TOTAL_SOURCES)}/{TOTAL_SOURCES}]", style="dim")
+              parts.append(src)
 
           if scan and scan["transfer_bytes"] > 0:
               total_xfer = scan["transfer_bytes"]
@@ -725,7 +739,7 @@
           for line in recent[:n]:
               parts.append(Text(line, style="dim"))
           if remaining_log > 0:
-              for line in lines[-remaining_log:]:
+              for line in log_tail(remaining_log):
                   parts.append(Text(f"  {line}", style="dim"))
           return Group(*parts)
 
@@ -773,7 +787,7 @@
               parts.append(dt)
 
           parts.append(Rule(style="dim"))
-          for line in lines[-(log_lines_available()):]:
+          for line in log_tail(log_lines_available()):
               parts.append(Text(f"  {line}", style="dim"))
           return Group(*parts)
 
@@ -808,7 +822,7 @@
               parts.append(dt)
 
           parts.append(Rule(style="dim"))
-          for line in lines[-(log_lines_available()):]:
+          for line in log_tail(log_lines_available()):
               parts.append(Text(f"  {line}", style="dim"))
           return Group(*parts)
 
@@ -839,7 +853,7 @@
               parts.append(dt)
 
           parts.append(Rule(style="dim"))
-          for line in lines[-(log_lines_available()):]:
+          for line in log_tail(log_lines_available()):
               parts.append(Text(f"  {line}", style="dim"))
           return Group(*parts)
 
