@@ -861,6 +861,7 @@
           except OSError:
               return False
 
+
       def build_status() -> Group:
           lines = read_log()
           start_idx = find_last_start(lines)
