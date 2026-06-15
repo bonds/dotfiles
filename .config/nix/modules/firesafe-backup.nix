@@ -506,7 +506,7 @@
           for i in range(start_idx, len(lines)):
               m = re.match(r".*--- (.+) ---", lines[i])
               if m:
-                  results.append({"name": m.group(1), "duration": None, "bytes": None})
+                  results.append({"name": m.group(1), "duration": None, "bytes": None, "files": 0})
               sm = re.match(
                   r".*: (SUCCESS|FAILED)\s*(?:\((.+)\))?",
                   lines[i],
@@ -514,12 +514,32 @@
               if sm and results:
                   results[-1]["status"] = sm.group(1)
                   results[-1]["duration_str"] = sm.group(2)
+              fm = re.match(r"^\s*Number of regular files transferred:\s+([\d,]+)", lines[i])
+              if fm and results:
+                  results[-1]["files"] = int(fm.group(1).replace(",", ""))
+              tm = re.match(r"^\s*Total transferred file size:\s+([\d,]+)", lines[i])
+              if tm and results:
+                  results[-1]["bytes"] = int(tm.group(1).replace(",", ""))
               bm = re.match(r"^\s*Total bytes sent:\s+([\d,]+)", lines[i])
               if bm and results:
                   results[-1]["bytes"] = int(bm.group(1).replace(",", ""))
           if results and results[-1].get("status") is None:
               results.pop()
           return results
+
+
+      def fmt_source_line(c: dict) -> str:
+          parts_list = [c["name"]]
+          size = c.get("bytes")
+          if size is not None and size > 0:
+              parts_list.append(fmt_bytes(size))
+          files = c.get("files")
+          if files is not None and files > 0:
+              parts_list.append(f"{files:,} files")
+          dur = c.get("duration_str")
+          if dur:
+              parts_list.append(f"\u00b7  {dur}")
+          return "  \u2713 " + "  ".join(parts_list)
 
 
       def parse_scan_file(path: str) -> Optional[dict]:
@@ -730,14 +750,10 @@
 
           parts.append(Rule(style="dim"))
           n = log_lines_available()
-          recent = []
-          for c in reversed(completed[-5:]):
-              dur_str = c.get("duration_str") or ""
-              dur = f" ({dur_str})" if dur_str else ""
-              recent.append(f"  {c['name']}{dur}")
-          remaining_log = max(0, n - len(recent))
-          for line in recent[:n]:
-              parts.append(Text(line, style="dim"))
+          recent = min(len(completed), 5)
+          for c in reversed(completed[-recent:]):
+              parts.append(Text(fmt_source_line(c), style="dim"))
+          remaining_log = max(0, n - recent)
           if remaining_log > 0:
               for line in log_tail(remaining_log):
                   parts.append(Text(f"  {line}", style="dim"))
@@ -761,21 +777,34 @@
           completed = get_completed_sources(lines, start_idx) if start_idx >= 0 else []
           total_bytes = sum(c.get("bytes") or 0 for c in completed)
 
+          # total elapsed from start to completion marker
+          start_marker = Path(MOUNT_POINT) / ".firesafe-backup-start"
+          total_dur = ""
+          if start_marker.exists():
+              try:
+                  st = start_marker.read_text().strip()
+                  sd = datetime.fromisoformat(st)
+                  cd = datetime.fromisoformat(comp) if comp else None
+                  if cd:
+                      td = int((cd - sd).total_seconds())
+                      if td > 0:
+                          total_dur = f"  ·  {fmt_time(td)}"
+              except Exception:
+                  pass
+
           t2 = Text()
           t2.append("✓  Complete", style="green")
           t2.append(f"  {comp}", style="dim")
+          if total_dur:
+              t2.append(total_dur, style="dim")
           parts.append(t2)
 
           if total_bytes > 0:
-              dur = 0
-              for c in completed:
-                  if c.get("duration_str"):
-                      m = re.match(r"(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+)s)?", c["duration_str"])
-                      if m:
-                          dur += int(m.group(1) or 0) * 3600 + int(m.group(2) or 0) * 60 + int(m.group(3) or 0)
-              if dur > 0:
-                  parts.append(Text(f"  {fmt_bytes(total_bytes)}  ·  {fmt_time(dur)}", style="dim"))
+              parts.append(Text(f"  {fmt_bytes(total_bytes)} total", style="dim"))
 
+          parts.append(Rule(style="dim"))
+          for c in completed:
+              parts.append(Text(fmt_source_line(c), style="dim"))
           parts.append(Rule(style="dim"))
           de = get_deleted_summary(Path(MOUNT_POINT) / ".deleted")
           if de["count"]:
@@ -787,7 +816,8 @@
               parts.append(dt)
 
           parts.append(Rule(style="dim"))
-          for line in log_tail(log_lines_available()):
+          spare = max(3, log_lines_available() - len(completed))
+          for line in log_tail(spare):
               parts.append(Text(f"  {line}", style="dim"))
           return Group(*parts)
 
@@ -886,19 +916,24 @@
           if marker_exists(str(scanning_marker)) or (start_idx >= 0 and "Scanning:" in lines[start_idx]):
               return build_scanning(lines, start_idx, did)
 
+          service_active = get_service_state() in ("activating", "active")
+          in_progress = service_active or (start is not None and (comp is None or start >= comp))
+
+          if in_progress:
+              elapsed = 0
+              if start:
+                  try:
+                      sd = datetime.fromisoformat(start)
+                      elapsed = max(0, int((datetime.now(timezone.utc) - sd).total_seconds()))
+                  except Exception:
+                      elapsed = 0
+              return build_backup_in_progress(lines, start_idx, elapsed, did)
+
           if comp:
               return build_complete(lines, comp, did)
 
-          if marker_exists(str(interrupted_marker)) and get_service_state() not in ("activating", "active"):
+          if marker_exists(str(interrupted_marker)) and not service_active:
               return build_interrupted(lines, did)
-
-          if start:
-              try:
-                  sd = datetime.fromisoformat(start)
-                  elapsed = max(0, int((datetime.now(timezone.utc) - sd).total_seconds()))
-              except Exception:
-                  elapsed = 0
-              return build_backup_in_progress(lines, start_idx, elapsed, did)
 
           return build_no_markers(lines, did)
 
