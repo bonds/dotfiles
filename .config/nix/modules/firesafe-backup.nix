@@ -288,6 +288,14 @@
         rm -f "$MOUNT_POINT/.firesafe-backup-interrupted" "$MOUNT_POINT/.firesafe-progress"
         log "=== Backup Complete ==="
         notify "completed"
+        log "Unmounting drive..."
+        # Try clean unmount first (5min timeout), fall back to lazy
+        if timeout 300 umount "$MOUNT_POINT" 2>/dev/null; then
+          log "Drive unmounted — safe to unplug"
+        else
+          umount -l "$MOUNT_POINT" 2>/dev/null || true
+          log "Drive unmounted (lazy) — wait for kernel flush before unplugging"
+        fi
       else
         log "=== Backup Partial ($FAILURE_COUNT failures) ==="
         # Keep progress and interrupted markers so auto-resume retries failed sources
@@ -1110,12 +1118,22 @@ in {
       wants = ["firesafe-backup.service"];
       script = ''
         set -e
-        if mountpoint -q "${cfg.mountPoint}" 2>/dev/null &&
-           [ -f "${cfg.mountPoint}/.firesafe-backup-interrupted" ] &&
-           ! systemctl is-active firesafe-backup.service >/dev/null 2>&1; then
-          touch /run/firesafe-resume
-          systemctl start firesafe-backup.service
+        if ! mountpoint -q "${cfg.mountPoint}" 2>/dev/null; then
+          exit 0
         fi
+        if ! [ -f "${cfg.mountPoint}/.firesafe-backup-interrupted" ]; then
+          exit 0
+        fi
+        if systemctl is-active firesafe-backup.service >/dev/null 2>&1; then
+          exit 0
+        fi
+        # Also check: never resume if complete marker is newer than interrupted
+        if [ -f "${cfg.mountPoint}/.firesafe-backup-complete" ] &&
+           [ "${cfg.mountPoint}/.firesafe-backup-complete" -nt "${cfg.mountPoint}/.firesafe-backup-interrupted" ]; then
+          exit 0
+        fi
+        touch /run/firesafe-resume
+        systemctl start firesafe-backup.service
       '';
       serviceConfig = {
         Type = "oneshot";
