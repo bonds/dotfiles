@@ -13,18 +13,7 @@
   syncthingConfig = pkgs.writeText "syncthing-config.xml" (builtins.readFile ./syncthing-config.xml);
 
   photosExportScript = pkgs.writeShellScript "photos-export" ''
-    OSXPHOTOS=""
-    for p in "$HOME"/osxphotos-venv/bin/osxphotos "$HOME"/Library/Python/*/bin/osxphotos "$HOME"/.local/bin/osxphotos; do
-      if [ -x "$p" ]; then
-        OSXPHOTOS="$p"
-        break
-      fi
-    done
-    if [ -z "$OSXPHOTOS" ]; then
-      echo "$(date) osxphotos not found. Run: pip3 install --user osxphotos" >> /tmp/photos-export.err.log
-      exit 1
-    fi
-    exec "$OSXPHOTOS" export --skip-edited --skip-live --update --directory '{created.year}/{created.month:02d}' "$HOME/Pictures/Syncthing-Photos"
+    exec ${pkgs.osxphotos}/bin/osxphotos export --skip-edited --skip-live --update --directory '{created.year}/{created.month:02d}' "$HOME/Pictures/Syncthing-Photos"
   '';
 in {
   # https://github.com/nix-darwin/nix-darwin?tab=readme-ov-file#prerequisites
@@ -74,6 +63,7 @@ in {
     idris2Packages.idris2Lsp # language service provider for idris2
     idris2Packages.pack # packages manager for idris2
     pkgs.syncthing # peer-to-peer file synchronization
+    pkgs.osxphotos # export photos from Apple Photos app
     (python3.withPackages (p:
       with p; [
         python-kasa # control TP-Link smart home devices
