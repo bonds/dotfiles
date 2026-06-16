@@ -4,10 +4,10 @@ Personal dotfiles repo — this is `$HOME` on each machine, but only a curated s
 
 ## Git tracking strategy
 
-All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git/config`). Only files explicitly `git add`ed are tracked. The global gitignore (`.config/git/ignore`) additionally ignores `.DS_Store`, `.vscode`, `__pycache__/`, and `**/.claude/settings.local.json`.
+In this repo, untracked files are hidden (`status.showUntrackedFiles = no` set in the repo-local config — not global). Only files explicitly `git add`ed are tracked. The global gitignore (`.config/git/ignore`) additionally ignores `.DS_Store`, `.vscode`, `__pycache__/`, and `**/.claude/settings.local.json`.
 
 **To see tracked files:** `git ls-files`
-**To add new files to tracking:** `git add -f <path>` (normal `git add` works too since untracked files are shown as ignored)
+**To add new files to tracking:** `git add -f <path>` (normal `git add` works too since untracked files are shown as ignored in this repo)
 **To untrack a file:** `git rm --cached <path>` — the file stays on disk but is no longer managed. Do NOT add it to `.config/git/ignore`; the "hide all untracked" strategy makes that unnecessary.
 
 ## Tracked config layout
