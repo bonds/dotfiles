@@ -24,6 +24,7 @@ Host sophrosyne
 
 Host metanoia
     HostName 192.168.4.98
+    # WOL + wait-for-reachability proxy (see bin/metanoia-proxy)
     ProxyCommand /Users/scott/bin/metanoia-proxy %h %p
 
 # let me reconnect without asking me to reauthenticate again for a while

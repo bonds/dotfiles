@@ -82,11 +82,17 @@ All untracked files are hidden (`status.showUntrackedFiles = no` in `.config/git
 
 ### Scripts (`bin/`)
 Cross-platform utility scripts, organized by OS:
-- `bin/` root — general utilities: `bench`, `mylocation`, `rainbow`, `rdemo`, `repo2txt`, `sort_photos`, `wattage`, `wifi_qrcode`, `wol`, `youtube`, `is_ssh_interactive`
+- `bin/` root — general utilities: `bench`, `def`, `mylocation`, `rainbow`, `rdemo`, `repo2txt`, `sort_photos`, `wattage`, `wifi_qrcode`, `wol`, `youtube`
 - `bin/darwin/` — macOS-specific: `create_devbox_app_aliases`, `launch-ollama`, `macos-defaults` (system preference toggles)
 - `bin/linux/` — Linux-specific: `idletime`, `maximize_across_multiple_monitors`, `vu1server`, `wear`
 - `bin/openbsd/` — OpenBSD-specific: `packages`, `wipe`
 - Haskell/Idris source: `rainbow.hs`, `rainbow.idr`
+
+### Untracked scripts
+Useful scripts that live in `~/bin/` but are symlinked or copied from elsewhere (not tracked in git):
+- `kbdswitch` — macOS keyboard layout switcher (compiled Swift binary from `~/Documents/undated/repos/macos-cli-kbdswitch/`)
+- `pnpm` — symlink to `node_modules/pnpm/bin/pnpm.cjs`
+- `npx-wrapper.sh` — adds Nix profile paths to PATH before running npx
 
 ### Machines
 Three machines managed from this repo:

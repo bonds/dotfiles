@@ -5,3 +5,24 @@ if git diff --cached --name-only --diff-filter=A | grep -q '\.pyc$'; then
   git diff --cached --name-only --diff-filter=A | grep '\.pyc$' | sed 's/^/  /'
   exit 1
 fi
+
+# Fish style and syntax check
+fish_staged=$(git diff --cached --name-only --diff-filter=ACM | grep '\.fish$' || true)
+if [ -n "$fish_staged" ]; then
+  if echo "$fish_staged" | xargs fish_indent --check 2>/dev/null; then
+    : # all good
+  else
+    echo "ERROR: Fish files are not formatted correctly."
+    echo "Run: fish_indent -w <file>"
+    echo "$fish_staged" | xargs fish_indent --check 2>&1 | head -5
+    exit 1
+  fi
+
+  for f in $(echo "$fish_staged"); do
+    if ! fish --no-execute "$f" 2>/dev/null; then
+      echo "ERROR: Syntax error in $f"
+      fish --no-execute "$f"
+      exit 1
+    fi
+  done
+fi

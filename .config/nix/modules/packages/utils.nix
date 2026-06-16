@@ -29,6 +29,8 @@
       unzip # extract ZIP archives
       watch # execute a command periodically
       weather # command-line weather forecast
+      direnv # environment switcher (load/unload dir-specific env)
+      nix-direnv # nix integration for direnv
     ])
     ++ [
       (pkgs.callPackage ../../pkgs/nix-what-changed {})

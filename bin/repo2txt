@@ -8,8 +8,7 @@ set shortname (string lower (basename $gitroot))
 
 set pwd (pwd)
 if not test "$gitroot" = "$pwd"
-    echo "not at git root"
-    exit 2
+    echo "warning: not at git root, output may be misleading" >&2
 end
 
 set output "$pwd/../$shortname.txt"
@@ -22,12 +21,12 @@ echo "\$ git remote -v" >>$output
 git remote -v >>$output
 echo >>$output
 
-echo "\$ ls -R" >>$output
+echo "\$ git ls-files" >>$output
 echo >>$output
-ls -R >>$output
+git ls-files >>$output
 echo >>$output
 
-for file in (find . -type f -iname "*.md" -o -iname "*.py" -o -iname "*.txt" -o -iname "*.html")
+for file in (git ls-files | grep -iE '\.(md|py|txt|html|nix|toml|fish|conf|xml|json)$')
     echo "\$ cat $file" >>$output
     echo >>$output
     cat "$file" >>$output

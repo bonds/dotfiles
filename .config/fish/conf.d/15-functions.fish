@@ -83,3 +83,40 @@ function age
         command age $argv
     end
 end
+
+function myip
+    set -l ip (mylocation 2>/dev/null | jq -r '.ip // empty' 2>/dev/null)
+    if test -z "$ip"
+        set ip (curl -sf --max-time 5 https://icanhazip.com 2>/dev/null | string trim)
+    end
+    if test -z "$ip"
+        echo "Could not determine IP" >&2
+        return 1
+    end
+    echo "$ip"
+end
+
+function myweather
+    set -l json (mylocation 2>/dev/null)
+    set -l loc (echo "$json" | jq -r '.loc // empty' 2>/dev/null)
+    if test -z "$loc"
+        echo "Could not determine location (ipinfo.io rate limited?)" >&2
+        return 1
+    end
+    set -l city (echo "$json" | jq -r '.city // empty' 2>/dev/null)
+    set -l region (echo "$json" | jq -r '.region // empty' 2>/dev/null)
+    if test -n "$city"
+        echo
+        echo "Weather report: $city, $region"
+        echo
+    end
+    curl -s "wttr.in/~$loc?uQ0"
+end
+
+function nix-shell
+    if contains -- --command $argv; or contains -- --run $argv
+        command nix-shell $argv
+    else
+        command nix-shell --command fish $argv
+    end
+end
