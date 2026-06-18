@@ -6,13 +6,43 @@
   ...
 }: let
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
-  zenPolicies = import ../../modules/home/zen-policies.nix;
 
   # Syncthing config.xml generated declaratively
   syncthingConfigDir = "/Users/scott/Library/Application Support/Syncthing";
 
   syncthingConfig = pkgs.writeText "syncthing-config.xml" (builtins.readFile ./syncthing-config.xml);
-  zenPoliciesFile = pkgs.writeText "zen-policies.json" (builtins.toJSON zenPolicies);
+
+  # Zen browser config — deployed via activation script into each profile's extensions/ + user.js
+  # (Zen stripped Firefox's enterprise policy engine, so policies.json goes unread)
+  zenPolicies = import ../../modules/home/zen-policies.nix;
+
+  extractSlug = url:
+    builtins.elemAt (builtins.match ".*/downloads/latest/([^/]+)/latest\\.xpi" url) 0;
+
+  zenHasExt = id:
+    id != "*" && zenPolicies.ExtensionSettings.${id}.installation_mode != "removed";
+
+  zenExtIds = builtins.filter zenHasExt (builtins.attrNames zenPolicies.ExtensionSettings);
+
+  zenExtInstallCmds = builtins.concatStringsSep "\n" (map (id: ''
+      ext_id="${id}"
+      ext_slug="${extractSlug zenPolicies.ExtensionSettings.${id}.install_url}"
+      xpi_cache="$cache_dir/$ext_id.xpi"
+      if [ ! -f "$xpi_cache" ]; then
+        echo "  downloading $ext_slug..." >&2
+        curl -sL --connect-timeout 10 -o "$xpi_cache" \
+          "https://addons.mozilla.org/firefox/downloads/latest/$ext_slug/latest.xpi" 2>/dev/null || true
+      fi
+      sudo -u scott ln -sf "$xpi_cache" "$ext_dir/$ext_id.xpi"
+    '')
+    zenExtIds);
+
+  zenPrefNames = builtins.attrNames zenPolicies.Preferences;
+
+  zenUserJsLines = builtins.concatStringsSep "\n" (map (
+      name: "user_pref(\"${name}\", ${builtins.toJSON zenPolicies.Preferences.${name}.Value});"
+    )
+    zenPrefNames);
 
   photosExportScript = pkgs.writeShellScript "photos-export" ''
     exec ${pkgs.osxphotos}/bin/osxphotos export --skip-edited --skip-live --update --directory '{created.year}/{created.month:02d}' "$HOME/Pictures/Syncthing-Photos"
@@ -89,16 +119,24 @@ in {
 
   # Deploy declarative syncthing config.xml (preserves key.pem, cert.pem, and index-v2/)
   system.activationScripts.extraActivation.text = ''
-    echo "syncthing-config: deploying to ${syncthingConfigDir}" >&2
-    sudo -u scott mkdir -p "${syncthingConfigDir}"
-    cp "${syncthingConfig}" "${syncthingConfigDir}/config.xml"
-    chown scott:staff "${syncthingConfigDir}/config.xml"
-    chmod 644 "${syncthingConfigDir}/config.xml"
-    pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
+        echo "syncthing-config: deploying to ${syncthingConfigDir}" >&2
+        sudo -u scott mkdir -p "${syncthingConfigDir}"
+        cp "${syncthingConfig}" "${syncthingConfigDir}/config.xml"
+        chown scott:staff "${syncthingConfigDir}/config.xml"
+        chmod 644 "${syncthingConfigDir}/config.xml"
+        pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
 
-    echo "zen-policies: deploying to /Library/Application Support/Mozilla" >&2
-    mkdir -p /Library/Application\ Support/Mozilla
-    cp ${zenPoliciesFile} /Library/Application\ Support/Mozilla/policies.json
+        echo "zen-browser: deploying extensions + user.js to profiles..." >&2
+        cache_dir="/Users/scott/.cache/zen-extensions"
+        mkdir -p "$cache_dir"
+        for profile_dir in /Users/scott/Library/Application\ Support/zen/Profiles/*/; do
+          ext_dir="$profile_dir/extensions"
+          sudo -u scott mkdir -p "$ext_dir"
+          ${zenExtInstallCmds}
+          sudo -u scott tee "$profile_dir/user.js" > /dev/null << USERJS_EOF
+        ${zenUserJsLines}
+    USERJS_EOF
+        done
   '';
 
   # Set Git commit hash for darwin-version.
