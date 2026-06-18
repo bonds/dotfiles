@@ -132,9 +132,12 @@ in {
     nix_zen="/Applications/Nix Apps/Zen.app"
     app_zen="/Applications/Zen.app"
     if [ -d "$nix_zen" ] && [ ! -L "$app_zen" ]; then
-      echo "zen-browser: replacing DMG install at $app_zen with symlink to nix build" >&2
-      mv "$app_zen" "$app_zen.dmg-backup-$(date +%Y%m%d)"
+      if [ -d "$app_zen" ]; then
+        echo "zen-browser: moving DMG install to $app_zen.dmg-backup" >&2
+        mv "$app_zen" "$app_zen.dmg-backup-$(date +%Y%m%d)"
+      fi
       ln -s "$nix_zen" "$app_zen"
+      echo "zen-browser: symlinked $app_zen -> $nix_zen" >&2
     fi
   '';
 
