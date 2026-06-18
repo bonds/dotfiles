@@ -95,6 +95,10 @@ in {
     chown scott:staff "${syncthingConfigDir}/config.xml"
     chmod 644 "${syncthingConfigDir}/config.xml"
     pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
+
+    echo "zen-policies: deploying to /Library/Application Support/Mozilla" >&2
+    mkdir -p /Library/Application\ Support/Mozilla
+    cp ${zenPoliciesFile} /Library/Application\ Support/Mozilla/policies.json
   '';
 
   # Set Git commit hash for darwin-version.
@@ -127,13 +131,6 @@ in {
       echo "  3. Run: touch $containers_setup" >&2
       echo "  (this reminder won't show again)" >&2
     fi
-  '';
-
-  # Deploy Zen browser enterprise policies system-wide (avoids modifying .app bundle)
-  # Firefox/Zen reads from /Library/Application Support/Mozilla/policies.json on macOS
-  system.activationScripts.zenPolicies.text = ''
-    mkdir -p /Library/Application\ Support/Mozilla
-    cp ${zenPoliciesFile} /Library/Application\ Support/Mozilla/policies.json
   '';
 
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
