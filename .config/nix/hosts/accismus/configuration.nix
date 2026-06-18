@@ -127,20 +127,6 @@ in {
     fi
   '';
 
-  # Ensure /Applications/Zen.app points to the nix-built version (not DMG)
-  system.activationScripts.ensureZenSymlink.text = ''
-    nix_zen="/Applications/Nix Apps/Zen.app"
-    app_zen="/Applications/Zen.app"
-    if [ -d "$nix_zen" ] && [ ! -L "$app_zen" ]; then
-      if [ -d "$app_zen" ]; then
-        echo "zen-browser: moving DMG install to $app_zen.dmg-backup" >&2
-        mv "$app_zen" "$app_zen.dmg-backup-$(date +%Y%m%d)"
-      fi
-      ln -s "$nix_zen" "$app_zen"
-      echo "zen-browser: symlinked $app_zen -> $nix_zen" >&2
-    fi
-  '';
-
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
   launchd = {
     user = {
