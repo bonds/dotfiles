@@ -25,6 +25,9 @@ in
         ${builtins.toJSON zenPolicies}
         POLICIES_EOF
 
+        # Ad-hoc sign the modified bundle so macOS Gatekeeper doesn't reject it
+        /usr/bin/codesign --force --deep --sign - $out/Applications/Zen.app
+
         mkdir -p $out/bin
         ln -s $out/Applications/Zen.app/Contents/MacOS/zen $out/bin/zen
       '';
