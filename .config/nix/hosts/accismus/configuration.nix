@@ -6,6 +6,7 @@
   ...
 }: let
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
+  zenPolicies = import ../../modules/home/zen-policies.nix;
 
   # Syncthing config.xml generated declaratively
   syncthingConfigDir = "/Users/scott/Library/Application Support/Syncthing";
@@ -125,6 +126,14 @@ in {
       echo "  3. Run: touch $containers_setup" >&2
       echo "  (this reminder won't show again)" >&2
     fi
+  '';
+
+  # Deploy Zen browser enterprise policies system-wide (avoids modifying .app bundle)
+  system.activationScripts.zenPolicies.text = ''
+    mkdir -p /Library/Application\ Support/Zen
+    cat > /Library/Application\ Support/Zen/policies.json << POLICIES_EOF
+    ${builtins.toJSON zenPolicies}
+    POLICIES_EOF
   '';
 
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
