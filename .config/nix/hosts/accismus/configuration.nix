@@ -129,9 +129,10 @@ in {
   '';
 
   # Deploy Zen browser enterprise policies system-wide (avoids modifying .app bundle)
+  # Firefox/Zen reads from /Library/Application Support/Mozilla/policies.json on macOS
   system.activationScripts.zenPolicies.text = ''
-    mkdir -p /Library/Application\ Support/Zen
-    cat > /Library/Application\ Support/Zen/policies.json << POLICIES_EOF
+    mkdir -p /Library/Application\ Support/Mozilla
+    cat > /Library/Application\ Support/Mozilla/policies.json << POLICIES_EOF
     ${builtins.toJSON zenPolicies}
     POLICIES_EOF
   '';
