@@ -12,6 +12,7 @@
   syncthingConfigDir = "/Users/scott/Library/Application Support/Syncthing";
 
   syncthingConfig = pkgs.writeText "syncthing-config.xml" (builtins.readFile ./syncthing-config.xml);
+  zenPoliciesFile = pkgs.writeText "zen-policies.json" (builtins.toJSON zenPolicies);
 
   photosExportScript = pkgs.writeShellScript "photos-export" ''
     exec ${pkgs.osxphotos}/bin/osxphotos export --skip-edited --skip-live --update --directory '{created.year}/{created.month:02d}' "$HOME/Pictures/Syncthing-Photos"
@@ -132,9 +133,7 @@ in {
   # Firefox/Zen reads from /Library/Application Support/Mozilla/policies.json on macOS
   system.activationScripts.zenPolicies.text = ''
     mkdir -p /Library/Application\ Support/Mozilla
-    cat > /Library/Application\ Support/Mozilla/policies.json << POLICIES_EOF
-    ${builtins.toJSON zenPolicies}
-    POLICIES_EOF
+    cp ${zenPoliciesFile} /Library/Application\ Support/Mozilla/policies.json
   '';
 
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
