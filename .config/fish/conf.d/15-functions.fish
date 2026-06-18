@@ -56,6 +56,7 @@ function nr
     if contains -- --update $argv
         and test "$_os" = darwin
         update-ollama --no-rebuild
+        update-zen-browser --no-rebuild
     end
     if test "$_os" = darwin
         nh darwin switch $HOME/.config/nix $argv
