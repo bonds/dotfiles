@@ -98,6 +98,9 @@
   };
 
   ExtensionSettings = {
+    "*" = {
+      installation_mode = "blocked";
+    };
     "uBlock0@raymondhill.net" = {
       install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
       installation_mode = "force_installed";
@@ -141,10 +144,6 @@
     "redirector@einaregilsson.com" = {
       install_url = "https://addons.mozilla.org/firefox/downloads/latest/redirector/latest.xpi";
       installation_mode = "force_installed";
-    };
-    # Explicitly removed — was in the original Firefox config but not wanted
-    "search@kagi.com" = {
-      installation_mode = "removed";
     };
   };
 }
