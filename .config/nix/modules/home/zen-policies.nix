@@ -98,9 +98,6 @@
   };
 
   ExtensionSettings = {
-    "*" = {
-      installation_mode = "removed";
-    };
     "uBlock0@raymondhill.net" = {
       install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
       installation_mode = "force_installed";
@@ -144,10 +141,6 @@
     "redirector@einaregilsson.com" = {
       install_url = "https://addons.mozilla.org/firefox/downloads/latest/redirector/latest.xpi";
       installation_mode = "force_installed";
-    };
-    # Explicitly removed — wildcard wasn't catching this
-    "{dacb0589-7aaa-4d52-a0a7-62cf73f70e64}" = {
-      installation_mode = "removed";
     };
   };
 }
