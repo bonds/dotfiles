@@ -49,9 +49,9 @@ function nr
     set -l _nr_old_system
     set -l _nr_new_system
     if test "$_os" = darwin
-        set _nr_old_system (command readlink /nix/var/nix/profiles/system 2>/dev/null)
+        set _nr_old_system (command readlink -f /nix/var/nix/profiles/system 2>/dev/null)
     else
-        set _nr_old_system (command readlink /run/current-system 2>/dev/null)
+        set _nr_old_system (command readlink -f /run/current-system 2>/dev/null)
     end
     if contains -- --update $argv
         and test "$_os" = darwin
