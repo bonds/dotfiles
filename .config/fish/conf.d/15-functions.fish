@@ -64,9 +64,9 @@ function nr
         nh os switch $HOME/.config/nix $argv
     end
     if test "$_os" = darwin
-        set _nr_new_system (command readlink /nix/var/nix/profiles/system 2>/dev/null)
+        set _nr_new_system (command readlink -f /nix/var/nix/profiles/system 2>/dev/null)
     else
-        set _nr_new_system (command readlink /run/current-system 2>/dev/null)
+        set _nr_new_system (command readlink -f /run/current-system 2>/dev/null)
     end
     if test "$_nr_old_system" != "$_nr_new_system"
         what-changed "$_nr_old_system" "$_nr_new_system"
