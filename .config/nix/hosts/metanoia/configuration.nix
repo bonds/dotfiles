@@ -43,16 +43,26 @@
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "old";
-    users.scott = {pkgs, ...}: {
+    users.scott = {
+      pkgs,
+      inputs,
+      ...
+    }: let
+      zenPolicies = import ../../modules/home/zen-policies.nix;
+    in {
       home = {
         username = "scott";
         homeDirectory = "/home/scott";
         stateVersion = "24.05";
+        packages = [
+          (inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.zen-browser.override {
+            extraPolicies = zenPolicies;
+          })
+        ];
       };
 
       imports = [
         ../../modules/home/gnome.nix
-        ../../modules/home/firefox.nix
         ../../modules/home/misc.nix
         ../../modules/home/tmux.nix
       ];

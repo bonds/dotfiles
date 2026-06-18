@@ -29,6 +29,7 @@ in {
     jan # local AI chat desktop app
     utm # virtual machine manager for macOS
     flux # blue light filter for sleep
+    zen-browser # firefox fork with vertical tabs
     discord # voice and text chat
     daisydisk # disk usage visualizer
     coconutbattery # battery health monitor
@@ -112,6 +113,19 @@ in {
   users.users.scott.home = "/Users/scott";
   users.users.scott.shell = pkgs.fish;
   system.primaryUser = "scott";
+
+  # Remind about manual first-run setup for Zen browser containers
+  system.activationScripts.checkZenSetup.text = ''
+    containers_setup="$HOME/.config/zen/containers-setup"
+    if [ ! -f "$containers_setup" ]; then
+      echo "REMINDER: Set up Zen browser containers (one-time):" >&2
+      echo "  1. Launch Zen, open Settings > Containers" >&2
+      echo "  2. Create: Personal (fingerprint/blue), Work (briefcase/orange)," >&2
+      echo "     Banking (dollar/green), Shopping (cart/pink)" >&2
+      echo "  3. Run: touch $containers_setup" >&2
+      echo "  (this reminder won't show again)" >&2
+    fi
+  '';
 
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
   launchd = {

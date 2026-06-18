@@ -13,6 +13,10 @@
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
     arion.url = "github:hercules-ci/arion/v0.2.2.0";
     vudials.url = "github:bonds/nix-vudials";
+    zen-browser = {
+      url = "github:youwen5/zen-browser-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
   outputs = inputs @ {
     self,
@@ -24,6 +28,7 @@
     nix-index-database,
     arion,
     vudials,
+    zen-browser,
   }: let
     systems = ["aarch64-darwin" "x86_64-linux"];
     forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
@@ -70,7 +75,7 @@
         }).callPackage "${vudials}/pkgs/vuclient" {};
       };
       modules = [
-        {nixpkgs.overlays = [(import ./modules/ollama-overlay.nix) (import ./modules/osxphotos-overlay.nix)];}
+        {nixpkgs.overlays = [(import ./modules/ollama-overlay.nix) (import ./modules/osxphotos-overlay.nix) (import ./modules/zen-browser-overlay.nix)];}
         nix-index-database.darwinModules.nix-index
         ./modules/nix.nix
         ./modules/secrets-check.nix
