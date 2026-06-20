@@ -17,6 +17,7 @@
       url = "github:youwen5/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    polyptych.url = "github:bonds/polyptych";
   };
   outputs = inputs @ {
     self,

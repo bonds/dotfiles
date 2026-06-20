@@ -3,6 +3,7 @@
   pkgs,
   lib,
   self,
+  inputs,
   ...
 }: let
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
@@ -31,6 +32,7 @@ in {
     flux # blue light filter for sleep
     zen-browser # firefox fork with vertical tabs
     discord # voice and text chat
+    inputs.polyptych.packages.${pkgs.system}.default # spanned fullscreen video player
     daisydisk # disk usage visualizer
     coconutbattery # battery health monitor
     mpv # minimalist media player
@@ -58,6 +60,7 @@ in {
     element-desktop # matrix chat client
     docker # docker
     colima # docker for mac
+    lima # vms for mac
     mtr # better traceroute
     age-plugin-yubikey # age encryption with YubiKey support
     passage # age-based password manager
@@ -108,6 +111,7 @@ in {
   # add a font so libreoffice docs look the same across mac and linux
   fonts.packages = with pkgs; [
     helvetica-neue-lt-std
+    nerd-fonts.jetbrains-mono
   ];
 
   users.users.scott.home = "/Users/scott";
