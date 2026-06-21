@@ -221,11 +221,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1782078879,
-        "narHash": "sha256-gdl/k4DMxNHZ4yca0JWinCAV+uwABYCZtdFcYgxn24o=",
+        "lastModified": 1782079248,
+        "narHash": "sha256-i9exZgaa77vQZ33xcILZLl6s4tlFoS5yazIdl7fV29E=",
         "owner": "bonds",
         "repo": "polyptych",
-        "rev": "3bbf5b09c2b2395f068a9d0ce8cb175c2fb43e5f",
+        "rev": "1e82474414bbc95b2a662c177446cc4f0b9e1d0a",
         "type": "github"
       },
       "original": {
