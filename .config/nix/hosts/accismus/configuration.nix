@@ -16,6 +16,18 @@
   photosExportScript = pkgs.writeShellScript "photos-export" ''
     exec ${pkgs.osxphotos}/bin/osxphotos export --skip-edited --skip-live --update --directory '{created.year}/{created.month:02d}' "$HOME/Pictures/Syncthing-Photos"
   '';
+  # Custom icon for Zen.app — the DMG ships a Firefox icon packed in
+  # Assets.car which shadows the .icns file, so replacing firefox.icns alone
+  # doesn't work.  This AppleScript calls NSWorkspace.setIcon (same mechanism
+  # as pasting into Get Info) to set a custom icon that overrides everything.
+  zenIcon = ../../modules/zen-icon.icns;
+  setZenIconScript = pkgs.writeText "set-zen-icon.applescript" ''
+    use framework "Cocoa"
+    set appPath to "/Applications/Nix Apps/Zen.app"
+    set iconPath to "${builtins.unsafeDiscardStringContext (builtins.toString zenIcon)}"
+    set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
+    current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
+  '';
 in {
   # https://github.com/nix-darwin/nix-darwin?tab=readme-ov-file#prerequisites
 
@@ -23,6 +35,7 @@ in {
   # $ nix search nixpkgs wget
   # Common packages shared with all machines are in modules/packages/dev.nix and utils.nix
   environment.systemPackages = with pkgs; [
+    caffeine # don't go to sleep
     xclip # for copying from terminal to clipboard
     opencode # AI coding agent
     openssh # macos ssh doesn't come with resident ssh support
@@ -66,6 +79,7 @@ in {
     passage # age-based password manager
     idris2Packages.idris2Lsp # language service provider for idris2
     idris2Packages.pack # packages manager for idris2
+    duti # set default file handlers for macOS
     pkgs.syncthing # peer-to-peer file synchronization
     pkgs.osxphotos # export photos from Apple Photos app
     (python3.withPackages (p:
@@ -131,6 +145,15 @@ in {
     fi
   '';
 
+  # Custom icon for Zen.app — injected into the "applications" activation
+  # script so it runs right after rsync deploys the app (otherwise the
+  # freshly-rsynced bundle would lose the com.apple.FinderInfo xattr).
+  # See the setZenIconScript let-binding for how it works.
+  system.activationScripts.applications.text = lib.mkAfter ''
+    echo "zen-icon: setting custom icon on Zen.app" >&2
+    /usr/bin/osascript "${setZenIconScript}" 2>&1 || true
+  '';
+
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
   launchd = {
     user = {
@@ -194,6 +217,7 @@ in {
       imports = [
         ../../modules/home/tmux.nix
         ../../modules/home/direnv.nix
+        ../../modules/home/polyptych.nix
       ];
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
     };
