@@ -105,6 +105,13 @@ def _make_what_changed_url(new_ver: str) -> str | None:
 KNOWN_URLS["what-changed"] = _make_what_changed_url
 
 
+def _make_polyptych_url(new_ver: str) -> str | None:
+    return "https://api.github.com/repos/bonds/polyptych/commits?per_page=10"
+
+
+KNOWN_URLS["polyptych"] = _make_polyptych_url
+
+
 def _make_github_blob(owner: str, repo: str, path: str, ref: str = "master"):
     def make(new_ver: str) -> str:
         return f"https://github.com/{owner}/{repo}/blob/{ref}/{path}"
