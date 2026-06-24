@@ -94,6 +94,9 @@ modules/           # Shared modules
 - **`flake.lock` is tracked.** Commit it after `nix flake update`.
 - **`warn-dirty = false`** is set in `nix.conf` — builds work fine with uncommitted changes.
 - **Uses `pkgs.lix`** as the nix package on all machines, not the default `pkgs.nix`.
+- **Two temporary overrides on sophrosyne that should be removed when upstream fixes land:**
+  - **Lix override** (`flake.nix` input + `hosts/sophrosyne/configuration.nix`): Pins lix 2.95.3 because 2.95.2's test suite SIGILLs on the Skylake Xeon E3-1245 v5. Remove once nixpkgs-stable has lix ≥ 2.95.3.
+  - **huggingface-hub overlay** (`modules/huggingface-hub-overlay.nix` + `flake.nix` line 106): Bumps huggingface-hub to 1.20.0 and its deps (click 8.4.1, hf-xet 1.5.1) which nixpkgs-stable doesn't yet have. Also disables typer's installCheck (fails with click 8.4.1). Remove once nixpkgs-stable has click ≥ 8.4.0, hf-xet ≥ 1.5.1, and huggingface-hub ≥ 1.20.0.
 - **`allowUnfree = true`** — required for `helvetica-neue-lt-std` font on laptop.
 - **Server uses two nixpkgs:** `nixos-26.05` (stable) for most packages, `nixpkgs-unstable` for ollama + tailscale (passed via `pkgs-unstable` specialArg). Same pattern for metanoia.
 - **Server arion** comes from a flake input rather than `builtins.fetchTarball`.
