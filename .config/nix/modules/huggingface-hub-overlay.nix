@@ -14,8 +14,14 @@ final: prev: let
         src = prev.fetchFromGitHub {
           owner = "huggingface";
           repo = "xet-core";
-          rev = "v${version}";
+          tag = "v${version}";
           hash = "sha256-TqSErydAOaHzCN7qglO/aqMF8BWYXvEv09adhxTwny0=";
+        };
+        sourceRoot = "${src.name}/hf_xet";
+        cargoDeps = prev.rustPlatform.fetchCargoVendor {
+          pname = "hf-xet";
+          inherit version src sourceRoot;
+          hash = "sha256-pwHUIkx+Dk8fGOVxRJKLswLjQB+sKzpyOOeqV6+Xyxo=";
         };
       });
       huggingface-hub = super.huggingface-hub.overridePythonAttrs (old: rec {
