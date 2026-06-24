@@ -24,8 +24,9 @@ final: prev: let
           hash = "sha256-pwHUIkx+Dk8fGOVxRJKLswLjQB+sKzpyOOeqV6+Xyxo=";
         };
       });
-      typer = super.typer.overridePythonAttrs (old: {
+      typer = super.typer.overrideAttrs (old: {
         doInstallCheck = false;
+        installCheckPhase = "";
       });
       huggingface-hub = super.huggingface-hub.overridePythonAttrs (old: rec {
         version = "1.20.0";
