@@ -18,6 +18,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     polyptych.url = "github:bonds/polyptych";
+    lix.url = "github:lix-project/lix/2.95.3";
   };
   outputs = inputs @ {
     self,
@@ -31,6 +32,7 @@
     vudials,
     zen-browser,
     polyptych,
+    lix,
   }: let
     systems = ["aarch64-darwin" "x86_64-linux"];
     forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
@@ -101,6 +103,7 @@
         };
       };
       modules = [
+        {nixpkgs.overlays = [(import ./modules/huggingface-hub-overlay.nix)];}
         ./modules/nix.nix
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix

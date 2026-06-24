@@ -54,9 +54,12 @@ function nr
         set _nr_old_system (command readlink -f /run/current-system 2>/dev/null)
     end
     if contains -- --update $argv
-        and test "$_os" = darwin
-        update-ollama --no-rebuild
-        update-zen-browser --no-rebuild
+        if test "$_os" = darwin
+            update-ollama --no-rebuild
+            update-zen-browser --no-rebuild
+        else
+            update-huggingface-hub --no-rebuild
+        end
     end
     if test "$_os" = darwin
         nh darwin switch $HOME/.config/nix $argv

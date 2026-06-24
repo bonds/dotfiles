@@ -12,6 +12,8 @@
     ../../modules/nixos-common.nix
   ];
 
+  nix.package = inputs.lix.packages.x86_64-linux.default;
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
