@@ -103,7 +103,7 @@
         };
       };
       modules = [
-        {}
+        {nixpkgs.overlays = [(import ./modules/huggingface-hub-overlay.nix)];}
         ./modules/nix.nix
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix
