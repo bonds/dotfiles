@@ -6,7 +6,7 @@ final: prev: let
         src = prev.fetchPypi {
           pname = "click";
           inherit version;
-          hash = "sha256-e9t/54svThrPVVr8EWMUsfJbtbG8k0Ae9+9k2jr6Ts0=";
+          hash = "sha256-kYtWM+3fa0HDLU9FS/DegQBlx04/fb+O5UUvi+iNPpY=";
         };
       });
       hf-xet = super.hf-xet.overridePythonAttrs (old: rec {
