@@ -8,7 +8,7 @@ final: prev: {
           owner = "huggingface";
           repo = "huggingface_hub";
           rev = "v${version}";
-          hash = "sha256-wA1gvo5xrY+iXRAcAUQ6ulDAn+GeC6CzVKQMGUR46m8=";
+          hash = "sha256-aPOwQrmpiJdQpzH1+AD+gZysDO8FICEVCJ77mXN+Ebw=";
         };
       });
     };
