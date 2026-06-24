@@ -24,6 +24,9 @@ final: prev: let
           hash = "sha256-pwHUIkx+Dk8fGOVxRJKLswLjQB+sKzpyOOeqV6+Xyxo=";
         };
       });
+      typer = super.typer.overridePythonAttrs (old: {
+        doInstallCheck = false;
+      });
       huggingface-hub = super.huggingface-hub.overridePythonAttrs (old: rec {
         version = "1.20.0";
         src = prev.fetchFromGitHub {
