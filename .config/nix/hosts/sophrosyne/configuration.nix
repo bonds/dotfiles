@@ -63,6 +63,7 @@
   ];
 
   environment.systemPackages = with pkgs; [
+    python313Packages.huggingface-hub # for downloading models
     nvme-cli # manage NVMe devices from the command line
     util-linux # system utilities (lsblk, fdisk, etc.)
     docker-compose # define and run multi-container Docker apps
