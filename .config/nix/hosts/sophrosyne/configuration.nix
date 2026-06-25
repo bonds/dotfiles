@@ -485,6 +485,12 @@
     };
   };
 
+  services.tailscale = {
+    enable = true;
+    package = pkgs-unstable.tailscale;
+    extraUpFlags = ["--advertise-routes=192.168.4.0/24" "--advertise-exit-node"];
+  };
+
   services.ollama = {
     enable = true;
     package = pkgs-unstable.ollama;

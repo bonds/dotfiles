@@ -81,6 +81,7 @@ in {
     idris2Packages.pack # packages manager for idris2
     duti # set default file handlers for macOS
     pkgs.syncthing # peer-to-peer file synchronization
+    tailscale # tailnet CLI
     pkgs.osxphotos # export photos from Apple Photos app
     (python3.withPackages (p:
       with p; [
