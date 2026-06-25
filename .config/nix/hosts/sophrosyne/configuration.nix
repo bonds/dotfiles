@@ -24,6 +24,9 @@
 
   networking.networkmanager.enable = true;
 
+  boot.kernel.sysctl."net.ipv4.ip_forward" = 1;
+  boot.kernel.sysctl."net.ipv6.conf.all.forwarding" = 1;
+
   networking.firewall.allowedTCPPorts = [10443 11080];
   networking.firewall.extraCommands = ''
     iptables -I nixos-fw 1 -i enp0s31f6 -p tcp -j ACCEPT
