@@ -17,15 +17,12 @@
     done
 
     # Restart the watcher LaunchAgent so it picks up the new binary
-    WATCHER_LABEL="com.polyptych.watcher"
-    WATCHER_PLIST="$HOME/Library/LaunchAgents/${WATCHER_LABEL}.plist"
-    launchctl bootout "gui/$(id -u)/${WATCHER_LABEL}" 2>/dev/null || true
-    # Derive plist path from the .app bundle's store root
-    NEW_PLIST="$APP/../../lib/LaunchAgents/${WATCHER_LABEL}.plist"
+    launchctl bootout "gui/$(id -u)/com.polyptych.watcher" 2>/dev/null || true
+    NEW_PLIST="$APP/../../lib/LaunchAgents/com.polyptych.watcher.plist"
     if [ -f "$NEW_PLIST" ]; then
       mkdir -p "$HOME/Library/LaunchAgents"
-      cp "$NEW_PLIST" "$WATCHER_PLIST"
-      launchctl bootstrap "gui/$(id -u)" "$WATCHER_PLIST" 2>/dev/null || true
+      cp "$NEW_PLIST" "$HOME/Library/LaunchAgents/com.polyptych.watcher.plist"
+      launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.polyptych.watcher.plist" 2>/dev/null || true
     fi
   '';
 }
