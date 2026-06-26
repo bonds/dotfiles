@@ -24,5 +24,13 @@
       launchctl bootout "gui/$(id -u)/com.polyptych.watcher" 2>/dev/null || true
       launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.polyptych.watcher.plist" 2>/dev/null || true
     fi
+
+    # Update native messaging host symlink for Firefox/Zen Browser
+    NM_LINK="$HOME/Library/Application Support/Mozilla/NativeMessagingHosts/com.polyptych.youtube.json"
+    NM_SRC="$APP/../../lib/mozilla/native-messaging-hosts/com.polyptych.youtube.json"
+    if [ -f "$NM_SRC" ]; then
+      mkdir -p "$(dirname "$NM_LINK")"
+      ln -sf "$NM_SRC" "$NM_LINK"
+    fi
   '';
 }
