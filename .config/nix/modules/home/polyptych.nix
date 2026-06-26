@@ -6,7 +6,7 @@
 }: {
   home.activation.registerPolyptych = config.lib.dag.entryAfter ["writeBoundary"] ''
     # Find the .app bundle via Launch Services (works even during system switch)
-    APP=$(mdfind "kMDItemCFBundleIdentifier == 'com.bonds.polyptych'" | head -1)
+    APP=$(/usr/bin/mdfind "kMDItemCFBundleIdentifier == 'com.bonds.polyptych'" | head -1)
     [ -z "$APP" ] || [ ! -d "$APP" ] && exit 0
 
     # Register with Launch Services so Finder knows about polyptych.app
