@@ -20,13 +20,13 @@
       "${pkgs.duti}/bin/duti" -s com.bonds.polyptych ".$ext" all 2>/dev/null || true
     done
 
-    # Restart the watcher LaunchAgent so it picks up the new binary
+    # Restart the watcher LaunchAgent — copy plist FIRST, then bootout
+    # (KeepAlive restarts with the already-updated plist → new binary)
     NEW_PLIST="$STORE/lib/LaunchAgents/com.polyptych.watcher.plist"
     if [ -f "$NEW_PLIST" ]; then
       mkdir -p "$HOME/Library/LaunchAgents"
       cp "$NEW_PLIST" "$HOME/Library/LaunchAgents/com.polyptych.watcher.plist"
       launchctl bootout "gui/$(id -u)/com.polyptych.watcher" 2>/dev/null || true
-      launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.polyptych.watcher.plist" 2>/dev/null || true
     fi
 
     # Update native messaging host symlink for Firefox/Zen Browser
