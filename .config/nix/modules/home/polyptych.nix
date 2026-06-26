@@ -9,7 +9,7 @@
     APP=$(/usr/bin/mdfind "kMDItemCFBundleIdentifier == 'com.bonds.polyptych'" | head -1)
     [ -z "$APP" ] || [ ! -d "$APP" ] && exit 0
     # Resolve symlinks so derived paths point to the nix store, not /Applications/Nix Apps
-    APP=$(python3 -c "import os; print(os.path.realpath('$APP'))")
+    APP=$(/usr/bin/python3 -c "import os; print(os.path.realpath('$APP'))")
 
     # Register with Launch Services so Finder knows about polyptych.app
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP" 2>/dev/null || true
