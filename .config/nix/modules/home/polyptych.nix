@@ -20,15 +20,15 @@
       "${pkgs.duti}/bin/duti" -s com.bonds.polyptych ".$ext" all 2>&1 || LOG "duti .$ext failed (exit $?)"
     done
 
-    # Restart the watcher LaunchAgent so it picks up the new binary
-    NEW_PLIST="$STORE/lib/LaunchAgents/com.polyptych.watcher.plist"
-    if [ -f "$NEW_PLIST" ]; then
-      mkdir -p "$HOME/Library/LaunchAgents"
-      cp "$NEW_PLIST" "$HOME/Library/LaunchAgents/com.polyptych.watcher.plist"
-      launchctl disable "gui/$(id -u)/com.polyptych.watcher" 2>&1 || LOG "disable failed (exit $?)"
-      launchctl bootout "gui/$(id -u)/com.polyptych.watcher" 2>&1 || LOG "bootout failed (exit $?)"
-      launchctl enable "gui/$(id -u)/com.polyptych.watcher" 2>&1 || LOG "enable failed (exit $?)"
-      launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.polyptych.watcher.plist" 2>&1 || LOG "bootstrap failed (exit $?)"
+    # Start the watcher directly (launchctl bootstrap is broken on this macOS version)
+    WATCHER_BIN="$STORE/bin/polyptych-yt-watcher"
+    if [ -f "$WATCHER_BIN" ]; then
+      # Kill previous watcher if any
+      if [ -f /tmp/polyptych-watcher.pid ]; then
+        kill "$(cat /tmp/polyptych-watcher.pid)" 2>/dev/null || true
+      fi
+      nohup "$WATCHER_BIN" >/dev/null 2>&1 &
+      echo $! > /tmp/polyptych-watcher.pid
     fi
 
     # Update native messaging host symlink for Firefox/Zen Browser
