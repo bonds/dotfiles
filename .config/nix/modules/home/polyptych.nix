@@ -24,7 +24,9 @@
     if [ -f "$NEW_PLIST" ]; then
       mkdir -p "$HOME/Library/LaunchAgents"
       cp "$NEW_PLIST" "$HOME/Library/LaunchAgents/com.polyptych.watcher.plist"
+      launchctl disable "gui/$(id -u)/com.polyptych.watcher" 2>/dev/null || true
       launchctl bootout "gui/$(id -u)/com.polyptych.watcher" 2>/dev/null || true
+      launchctl enable "gui/$(id -u)/com.polyptych.watcher" 2>/dev/null || true
       launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.polyptych.watcher.plist" 2>/dev/null || true
     fi
 
