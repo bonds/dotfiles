@@ -211,6 +211,7 @@ in {
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
+    extraSpecialArgs = {inherit inputs;};
     backupFileExtension = "old";
     users.scott = {pkgs, ...}: {
       home.stateVersion = "24.11";
