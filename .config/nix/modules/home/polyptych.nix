@@ -6,7 +6,7 @@
   ...
 }: {
   home.activation.registerPolyptych = config.lib.dag.entryAfter ["writeBoundary"] ''
-    STORE="${inputs.polyptych.packages.${pkgs.system}.default}"
+    STORE="${inputs.polyptych.packages.${pkgs.stdenv.hostPlatform.system}.default}"
     APP="$STORE/Applications/polyptych.app"
     LOG() { echo "[polyptych] $*" >&2; }
 

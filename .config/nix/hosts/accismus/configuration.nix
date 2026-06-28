@@ -45,7 +45,7 @@ in {
     flux # blue light filter for sleep
     zen-browser # firefox fork with vertical tabs
     discord # voice and text chat
-    inputs.polyptych.packages.${pkgs.system}.default # spanned fullscreen video player
+    inputs.polyptych.packages.${pkgs.stdenv.hostPlatform.system}.default # spanned fullscreen video player
     daisydisk # disk usage visualizer
     coconutbattery # battery health monitor
     mpv # minimalist media player
