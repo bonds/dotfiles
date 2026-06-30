@@ -1,14 +1,15 @@
 let
   zenPolicies = import ./home/zen-policies.nix;
+  zenIcon = ./zen-icon.icns;
 in
   final: prev: {
     zen-browser = prev.stdenvNoCC.mkDerivation {
       pname = "zen-browser";
-      version = "1.21.2b";
+      version = "1.21.4b";
 
       src = prev.fetchurl {
-        url = "https://github.com/zen-browser/desktop/releases/download/1.21.2b/zen.macos-universal.dmg";
-        hash = "sha256-sZAWRngIkVuS9ONNIsiKsxnozYDd5CfkmwxRTw7I86Y=";
+        url = "https://github.com/zen-browser/desktop/releases/download/1.21.4b/zen.macos-universal.dmg";
+        hash = "sha256-QKcId26PJRhZpPpz7Uhfhi614bl741a/4BS0FFBP20o=";
       };
 
       sourceRoot = ".";
@@ -20,6 +21,10 @@ in
 
         cp -r Zen.app $out/Applications/
         rm -f $out/Applications/Zen.app/.DS_Store
+
+        # Back-up: replaces firefox.icns, though Assets.car normally shadows it.
+        # The real icon is set by the activation script (see accismus/config).
+        cp ${zenIcon} $out/Applications/Zen.app/Contents/Resources/firefox.icns
 
         cat > $out/Applications/Zen.app/Contents/Resources/distribution/policies.json << POLICIES_EOF
         ${builtins.toJSON zenPolicies}
