@@ -33,17 +33,25 @@ else
     set scrabble "❌ not a Scrabble word"
 end
 
-echo
-echo "$word"
-echo "$scrabble"
-echo "────────────────────────────────────────"
+set response (curl -sL --connect-timeout 5 \
+    "https://api.dictionaryapi.dev/api/v2/entries/en/$word" 2>/dev/null)
+set -l api_ok $status
+
+set ipa (echo "$response" | jq -r '
+    [.[0].phonetics[]? | select(.text != null and .text != "") | .text][0] // empty
+' 2>/dev/null)
 
 set found false
 
-set response (curl -sL --connect-timeout 5 \
-    "https://api.dictionaryapi.dev/api/v2/entries/en/$word" 2>/dev/null)
+echo
+echo "$word"
+if test -n "$ipa"
+    echo (printf '\033[2m%s\033[0m' "$ipa")
+end
+echo "$scrabble"
+echo "────────────────────────────────────────"
 
-if test $status -eq 0
+if test $api_ok -eq 0
     set -l grouped (echo "$response" | jq -c '
         if type == "array" then
           [.[0].meanings[]? | {pos: .partOfSpeech, defs: [.definitions[].definition]}]
