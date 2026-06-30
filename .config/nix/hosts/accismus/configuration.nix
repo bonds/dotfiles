@@ -34,60 +34,64 @@ in {
   # List packages installed in system profile. To search by name, run:
   # $ nix search nixpkgs wget
   # Common packages shared with all machines are in modules/packages/dev.nix and utils.nix
-  environment.systemPackages = with pkgs; [
-    caffeine # don't go to sleep
-    xclip # for copying from terminal to clipboard
-    opencode # AI coding agent
-    openssh # macos ssh doesn't come with resident ssh support
-    ollama # run LLMs locally
-    jan # local AI chat desktop app
-    utm # virtual machine manager for macOS
-    flux # blue light filter for sleep
-    zen-browser # firefox fork with vertical tabs
-    discord # voice and text chat
-    inputs.polyptych.packages.${pkgs.stdenv.hostPlatform.system}.default # spanned fullscreen video player
-    daisydisk # disk usage visualizer
-    coconutbattery # battery health monitor
-    mpv # minimalist media player
-    yt-dlp # download videos from YouTube and more
-    bun # javascript runtime
-    typescript # javascript dialect
-    google-cloud-sdk # google cloud CLI and friends
-    jujutsu # git alternative
-    cloc # count lines of code
-    nodejs # needed for hihello development
-    whisper-cpp # cli tool for converting audio to text
-    angband # best cli game ever
-    rustup # rust installer
-    autokbisw # switch layout based on which keyboard is plugged in
-    ice-bar # menu bar organizer
-    clamav # antivirus
-    cowsay # cli to print stuff with a pic of a cow saying it
-    fortune # random quotes
-    delta # git delta syntax highlighter
-    the-powder-toy # physics simulation game
-    coreutils # for timeout for athome script
-    hugo # blog engine
-    libreoffice-bin # office suite
-    rage # encryption tool (age alternative)
-    element-desktop # matrix chat client
-    docker # docker
-    colima # docker for mac
-    lima # vms for mac
-    mtr # better traceroute
-    age-plugin-yubikey # age encryption with YubiKey support
-    passage # age-based password manager
-    idris2Packages.idris2Lsp # language service provider for idris2
-    idris2Packages.pack # packages manager for idris2
-    duti # set default file handlers for macOS
-    pkgs.syncthing # peer-to-peer file synchronization
-    tailscale # tailnet CLI
-    pkgs.osxphotos # export photos from Apple Photos app
-    (python3.withPackages (p:
-      with p; [
-        python-kasa # control TP-Link smart home devices
-      ]))
-  ];
+  environment.systemPackages = with pkgs;
+    [
+      caffeine # don't go to sleep
+      xclip # for copying from terminal to clipboard
+      opencode # AI coding agent
+      openssh # macos ssh doesn't come with resident ssh support
+      ollama # run LLMs locally
+      jan # local AI chat desktop app
+      utm # virtual machine manager for macOS
+      flux # blue light filter for sleep
+      zen-browser # firefox fork with vertical tabs
+      discord # voice and text chat
+      inputs.polyptych.packages.${pkgs.stdenv.hostPlatform.system}.default # spanned fullscreen video player
+      daisydisk # disk usage visualizer
+      coconutbattery # battery health monitor
+      mpv # minimalist media player
+      yt-dlp # download videos from YouTube and more
+      bun # javascript runtime
+      typescript # javascript dialect
+      google-cloud-sdk # google cloud CLI and friends
+      jujutsu # git alternative
+      cloc # count lines of code
+      nodejs # needed for hihello development
+      whisper-cpp # cli tool for converting audio to text
+      angband # best cli game ever
+      rustup # rust installer
+      autokbisw # switch layout based on which keyboard is plugged in
+      ice-bar # menu bar organizer
+      clamav # antivirus
+      cowsay # cli to print stuff with a pic of a cow saying it
+      fortune # random quotes
+      delta # git delta syntax highlighter
+      the-powder-toy # physics simulation game
+      coreutils # for timeout for athome script
+      hugo # blog engine
+      libreoffice-bin # office suite
+      rage # encryption tool (age alternative)
+      element-desktop # matrix chat client
+      docker # docker
+      colima # docker for mac
+      lima # vms for mac
+      mtr # better traceroute
+      age-plugin-yubikey # age encryption with YubiKey support
+      passage # age-based password manager
+      idris2Packages.idris2Lsp # language service provider for idris2
+      idris2Packages.pack # packages manager for idris2
+      duti # set default file handlers for macOS
+      pkgs.syncthing # peer-to-peer file synchronization
+      tailscale # tailnet CLI
+      pkgs.osxphotos # export photos from Apple Photos app
+      (python3.withPackages (p:
+        with p; [
+          python-kasa # control TP-Link smart home devices
+        ]))
+    ]
+    ++ [
+      (pkgs.callPackage ../../pkgs/ghosttile {})
+    ];
 
   nix.settings.experimental-features = "nix-command flakes";
 
