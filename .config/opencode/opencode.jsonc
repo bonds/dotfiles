@@ -1,11 +1,18 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "autoupdate": false,
   "default_agent": "plan",
-  "plugin": ["opencode-deepseek-thinking-fix"],
   "snapshot": false,
+  "command": {
+    "auto-plan": {
+      "description": "Toggle auto-switch to plan mode after build",
+      "template": "Toggle auto-plan mode"
+    }
+  },
   "agent": {
     "plan": {
-      "model": "opencode-go/glm-5.1"
+      "model": "opencode-go/glm-5.2"
+      // "model": "opencode-go/deepseek-v4-flash"
     },
     "build": {
       "model": "opencode-go/deepseek-v4-flash"

@@ -37,7 +37,7 @@ end
 
 function tping
     if command --query ts
-        command ping $argv | ts '%Y-%m-%d %H:%M'
+        command ping $argv | ts '%Y-%m-%d %H:%M:%S'
     else
         command ping $argv | while read pong
             echo (date "+%Y-%m-%d %H:%M"): $pong
@@ -57,6 +57,7 @@ function nr
         if test "$_os" = darwin
             update-ollama --no-rebuild
             update-zen-browser --no-rebuild
+            update-opencode --no-rebuild
         else
             update-huggingface-hub --no-rebuild
         end

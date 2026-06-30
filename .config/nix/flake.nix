@@ -83,7 +83,7 @@
         }).callPackage "${vudials}/pkgs/vuclient" {};
       };
       modules = [
-        {nixpkgs.overlays = [(import ./modules/ollama-overlay.nix) (import ./modules/osxphotos-overlay.nix) (import ./modules/zen-browser-overlay.nix)];}
+        {nixpkgs.overlays = [(import ./modules/ollama-overlay.nix) (import ./modules/osxphotos-overlay.nix) (import ./modules/zen-browser-overlay.nix) (import ./modules/opencode-overlay.nix)];}
         nix-index-database.darwinModules.nix-index
         ./modules/nix.nix
         ./modules/secrets-check.nix

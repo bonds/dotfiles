@@ -119,3 +119,5 @@ modules/           # Shared modules
 - **VU dials require the FTDI VCP driver (dext)** installed once manually from [ftdichip.com/drivers/vcp-drivers/](https://ftdichip.com/drivers/vcp-drivers/). On darwin the device path is `/dev/cu.usbserial-DQ0164KM`; on NixOS it's `/dev/vuserver-DQ0164KM` (managed by udev rules in the vudials module).
 
 - **The ollama overlay on accismus (`modules/ollama-overlay.nix`) is intentionally pinned.** Upstream nixpkgs ollama lags behind upstream releases. This overlay fetches the latest macOS binary directly. The pinned version is updated via the `nr` command's update capability. Do not replace this with `pkgs.ollama` or `pkgs-unstable.ollama` — it's pinned on purpose.
+
+- **The opencode overlay on accismus (`modules/opencode-overlay.nix`) is intentionally pinned.** Same rationale as ollama — nixpkgs-unstable lags behind upstream opencode releases. The overlay fetches the darwin arm64 binary directly from `anomalyco/opencode/releases`. Updated via `nr --update`. Do not replace with `pkgs.opencode` — it's pinned on purpose.
