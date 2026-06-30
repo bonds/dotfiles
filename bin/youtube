@@ -1,9 +1,11 @@
 #!/bin/sh
 
-args=`getopt ad $* 2>/dev/null`
+usage="Usage: youtube [-adp] <search terms>"
+
+args=`getopt adp $* 2>/dev/null`
 
 if [ $? -ne 0 ]; then
-    echo 'Usage: youtube [-d] <search terms>' 
+    echo "$usage"
     exit 2
 fi
 
@@ -15,13 +17,15 @@ in
         audio="yes"; shift;;
     -d)
         download="yes"; shift;;
+    -p)
+        polyptych="yes"; shift;;
     --)
         shift; break;;
 esac
 done
 
 if [ -z "$*" ]; then
-    echo 'Usage: youtube [-ad] <search terms>' 
+    echo "$usage"
     exit 3
 fi
 
@@ -34,6 +38,8 @@ if [ "${download:-}" = yes ]; then
             sleep 60
         done
     fi
+elif [ "${polyptych:-}" = yes ]; then
+    ~/Documents/undated/repos/polyptych/polyptych.app/Contents/MacOS/polyptych ytdl://"$*"
 else
     if [ "${audio:-}" = yes ]; then
         mpv --fs --ytdl-raw-options=default-search=ytsearch,format=bestaudio ytdl://"$*"
