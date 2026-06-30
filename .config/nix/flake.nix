@@ -40,6 +40,12 @@
   }: let
     systems = ["aarch64-darwin" "x86_64-linux"];
     forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+    darwinOverlays = [
+      (import ./modules/ollama-overlay.nix)
+      (import ./modules/osxphotos-overlay.nix)
+      (import ./modules/zen-browser-overlay.nix)
+      (import ./modules/opencode-overlay.nix)
+    ];
     mkCheck = pkgs: name: buildInputs: script:
       pkgs.runCommand name {inherit buildInputs;} ''
         cd ${self}
@@ -65,9 +71,19 @@
 
     devShells = forAllSystems (pkgs: {
       default = pkgs.mkShell {
-        packages = [pkgs.alejandra] ++ nixpkgs.lib.optionals (pkgs.stdenv.isLinux) [pkgs.nh];
+        packages = [pkgs.alejandra pkgs.nix-update] ++ nixpkgs.lib.optionals (pkgs.stdenv.isLinux) [pkgs.nh];
       };
     });
+
+    packages.aarch64-darwin = let
+      pkgs = import nixpkgs {
+        system = "aarch64-darwin";
+        config.allowUnfree = true;
+        overlays = darwinOverlays;
+      };
+    in {
+      inherit (pkgs) ollama zen-browser opencode;
+    };
 
     darwinConfigurations.accismus = nix-darwin.lib.darwinSystem {
       specialArgs = {
@@ -83,7 +99,7 @@
         }).callPackage "${vudials}/pkgs/vuclient" {};
       };
       modules = [
-        {nixpkgs.overlays = [(import ./modules/ollama-overlay.nix) (import ./modules/osxphotos-overlay.nix) (import ./modules/zen-browser-overlay.nix) (import ./modules/opencode-overlay.nix)];}
+        {nixpkgs.overlays = darwinOverlays;}
         nix-index-database.darwinModules.nix-index
         ./modules/nix.nix
         ./modules/secrets-check.nix

@@ -55,9 +55,18 @@ function nr
     end
     if contains -- --update $argv
         if test "$_os" = darwin
-            update-ollama --no-rebuild
-            update-zen-browser --no-rebuild
-            update-opencode --no-rebuild
+            set -l _pwd $PWD
+            cd $HOME/.config/nix
+            set -l gh_token (gh auth token 2>/dev/null)
+            for pkg in ollama zen-browser opencode
+                if test -n "$gh_token"
+                    env GITHUB_TOKEN=$gh_token nix run nixpkgs#nix-update -- -F --system aarch64-darwin --use-github-releases $pkg
+                else
+                    nix run nixpkgs#nix-update -- -F --system aarch64-darwin --use-github-releases $pkg
+                end
+            end
+            alejandra modules/ollama-overlay.nix modules/zen-browser-overlay.nix modules/opencode-overlay.nix
+            cd $_pwd
         else
             update-huggingface-hub --no-rebuild
         end
