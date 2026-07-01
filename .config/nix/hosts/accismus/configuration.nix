@@ -56,6 +56,7 @@ in {
       google-cloud-sdk # google cloud CLI and friends
       jujutsu # git alternative
       cloc # count lines of code
+      cmux # native macOS terminal for AI coding agents
       nodejs # needed for hihello development
       whisper-cpp # cli tool for converting audio to text
       angband # best cli game ever
@@ -157,6 +158,12 @@ in {
   system.activationScripts.applications.text = lib.mkAfter ''
     echo "zen-icon: setting custom icon on Zen.app" >&2
     /usr/bin/osascript "${setZenIconScript}" 2>&1 || true
+  '';
+
+  # Disable cmux's built-in Sparkle auto-updater so `nr --update` is the
+  # only update path (matches ollama/opencode pinned-overlay discipline).
+  system.activationScripts.disableCmuxSparkle.text = ''
+    sudo -u scott defaults write com.cmuxterm.app SUEnableAutomaticUpdates -bool false 2>/dev/null || true
   '';
 
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
