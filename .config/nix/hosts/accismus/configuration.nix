@@ -82,9 +82,9 @@ in {
       idris2Packages.idris2Lsp # language service provider for idris2
       idris2Packages.pack # packages manager for idris2
       duti # set default file handlers for macOS
-      pkgs.syncthing # peer-to-peer file synchronization
+      syncthing # peer-to-peer file synchronization
       tailscale # tailnet CLI
-      pkgs.osxphotos # export photos from Apple Photos app
+      osxphotos # export photos from Apple Photos app
       (python3.withPackages (p:
         with p; [
           python-kasa # control TP-Link smart home devices
@@ -93,8 +93,6 @@ in {
     ++ [
       (pkgs.callPackage ../../pkgs/ghosttile {})
     ];
-
-  nix.settings.experimental-features = "nix-command flakes";
 
   security.pam.services.sudo_local.touchIdAuth = true;
   security.pam.services.sudo_local.reattach = false;
@@ -220,10 +218,7 @@ in {
   };
 
   home-manager = {
-    useGlobalPkgs = true;
-    useUserPackages = true;
     extraSpecialArgs = {inherit inputs;};
-    backupFileExtension = "old";
     users.scott = {pkgs, ...}: {
       home.stateVersion = "24.11";
       home.homeDirectory = "/Users/scott";

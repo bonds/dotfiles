@@ -54,19 +54,18 @@
 
   # NOPASSWD scoped to rebuild commands only (for remote nix deploys).
   # Everything else prompts for scott's password via the wheel default.
-  security.sudo.extraRules = [
+  security.sudo.enable = false;
+  security.doas.enable = true;
+  security.doas.extraRules = [
     {
       users = ["scott"];
-      commands = [
-        {
-          command = "/run/current-system/sw/bin/nixos-rebuild";
-          options = ["NOPASSWD"];
-        }
-        {
-          command = "/run/current-system/sw/bin/nh";
-          options = ["NOPASSWD"];
-        }
-      ];
+      cmd = "/run/current-system/sw/bin/nixos-rebuild";
+      noPass = true;
+    }
+    {
+      users = ["scott"];
+      cmd = "/run/current-system/sw/bin/nh";
+      noPass = true;
     }
   ];
 
@@ -192,9 +191,6 @@
   programs.tmux.enable = true;
 
   home-manager = {
-    useGlobalPkgs = true;
-    useUserPackages = true;
-    backupFileExtension = "old";
     users.scott = {pkgs, ...}: {
       home.stateVersion = "24.11";
       home.homeDirectory = "/home/scott";

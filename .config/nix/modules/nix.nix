@@ -3,6 +3,11 @@
   pkgs,
   ...
 }: {
+  nix.settings.experimental-features = let
+    base = "nix-command flakes";
+    linuxExtras = " auto-allocate-uids cgroups";
+  in
+    lib.mkDefault (base + lib.optionalString pkgs.stdenv.isLinux linuxExtras);
   nix.package = lib.mkDefault pkgs.lixPackageSets.latest.lix;
   nix.settings.nix-path = lib.mkDefault "";
   nix.settings.flake-registry = lib.mkDefault "";
@@ -12,7 +17,7 @@
   nix.optimise.automatic = lib.mkDefault true;
   nix.gc = {
     automatic = lib.mkDefault true;
-    options = lib.mkDefault "";
+    options = lib.mkDefault "--delete-older-than 7d";
   };
   nix.channel.enable = lib.mkDefault false;
   nixpkgs.config.allowUnfree = lib.mkDefault true;

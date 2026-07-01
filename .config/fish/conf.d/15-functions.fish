@@ -74,7 +74,7 @@ function nr
     if test "$_os" = darwin
         nh darwin switch $HOME/.config/nix $argv
     else
-        nh os switch $HOME/.config/nix $argv
+        nh os switch $HOME/.config/nix $argv -e auto
     end
     if test "$_os" = darwin
         set _nr_new_system (command readlink -f /nix/var/nix/profiles/system 2>/dev/null)

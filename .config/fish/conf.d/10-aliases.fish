@@ -5,9 +5,6 @@ alias ghci "ghci -ghci-script ~/.config/ghc/ghci.rio.conf -ghci-script ~/.config
 alias height "tput lines"
 alias idris "rlwrap --history-filename ~/.local/idris.history idris2 --package contrib"
 
-alias reset_camera "sudo usb-reset 0fd9:008a"
-alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
-alias reset_mouse "sudo rmmod hid_magicmouse; sudo modprobe hid_magicmouse"
 alias sshc "ssh -o RequestTTY=no -o RemoteCommand=none"
 function ssh-clean --description "Kill lingering SSH ControlMaster processes and clean sockets"
     for sock in ~/.local/ssh/*.control
@@ -26,6 +23,14 @@ end
 complete -c ssh -w (command -s ssh)
 
 if test "$_os" = darwin
+    alias reset_camera "sudo usb-reset 0fd9:008a"
+    alias reset_usb "sudo rmmod xhci_pci; sudo modprobe xhci_pci"
+    alias reset_mouse "sudo rmmod hid_magicmouse; sudo modprobe hid_magicmouse"
     alias mtr "sudo mtr"
     alias battery "pmset -g batt"
+else
+    alias reset_camera "doas usb-reset 0fd9:008a"
+    alias reset_usb "doas rmmod xhci_pci; doas modprobe xhci_pci"
+    alias reset_mouse "doas rmmod hid_magicmouse; doas modprobe hid_magicmouse"
+    alias mtr "doas mtr"
 end

@@ -106,6 +106,7 @@
         ./modules/packages/dev.nix
         ./modules/packages/utils.nix
         ./hosts/accismus/configuration.nix
+        ./modules/home/common.nix
         home-manager.darwinModules.home-manager
         vudials.darwinModules.default
         ./modules/vudials-uids.nix
@@ -133,6 +134,7 @@
         ./hosts/sophrosyne/hardware-configuration.nix
         arion.nixosModules.arion
         nix-index-database.nixosModules.nix-index
+        ./modules/home/common.nix
         home-manager-stable.nixosModules.home-manager
       ];
     };
@@ -164,6 +166,7 @@
         vudials.nixosModules.default
         ./modules/vudials-uids.nix
         nix-index-database.nixosModules.nix-index
+        ./modules/home/common.nix
         home-manager-stable.nixosModules.home-manager
       ];
     };
