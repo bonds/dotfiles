@@ -1,12 +1,11 @@
-# TEMPORARY: bump huggingface-hub to 1.21.0 and its dependencies.
+# TEMPORARY: bump huggingface-hub and its dependencies.
 #
-# Remove this file (and its `nixpkgs.overlays` reference in flake.nix) once
-# nixpkgs-stable provides:
+# Remove once nixpkgs-stable provides:
 #   - huggingface-hub >= 1.21.0
 #   - click     >= 8.4.0   (nixpkgs-stable has 8.3.1)
 #   - hf-xet    >= 1.5.1   (nixpkgs-stable has 1.4.3)
 #
-# Also remove the typer installCheck disable once typer supports click 8.4.x.
+# Source fetched by commit SHA (dereferenced tag) for stability.
 final: prev: let
   python = prev.python313.override {
     packageOverrides = self: super: {
@@ -34,7 +33,6 @@ final: prev: let
         };
       });
       # TEMPORARY: typer's installCheck fails with click 8.4.1 error message format.
-      # Remove once typer upstream supports click >= 8.4.0.
       typer = super.typer.overrideAttrs (old: {
         doInstallCheck = false;
         installCheckPhase = "";
@@ -44,8 +42,8 @@ final: prev: let
         src = prev.fetchFromGitHub {
           owner = "huggingface";
           repo = "huggingface_hub";
-          rev = "616ae9e4ea941bff9425ca7e62ebfd98cc9ca1c0";
-          hash = "sha256-XgjvlFNEyF8yp0vfjiOyf5DVBy0qk4vTZC0GKu02ePI=";
+          rev = "aea9b9de1284f54862df99820f963d6030803860";
+          hash = "sha256-xjImbt+oeVk3XpqmR1CVllBurNgYRwcYN69NdFmj13I=";
         };
       });
     };

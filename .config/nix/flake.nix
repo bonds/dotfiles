@@ -135,6 +135,7 @@
         arion.nixosModules.arion
         nix-index-database.nixosModules.nix-index
         ./modules/home/common.nix
+        {nixpkgs.overlays = [(import ./modules/huggingface-hub-overlay.nix)];}
         home-manager-stable.nixosModules.home-manager
       ];
     };

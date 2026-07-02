@@ -18,7 +18,7 @@ echo "Latest version: $VERSION"
 
 # Get the commit SHA for the tag (deterministic — tags are unstable)
 echo "Resolving commit SHA for v${VERSION}..."
-SHA=$(git ls-remote https://github.com/huggingface/huggingface_hub "refs/tags/v${VERSION}" | awk '{print $1}')
+SHA=$(git ls-remote https://github.com/huggingface/huggingface_hub "refs/tags/v${VERSION}}^{}" | awk '{print $1}')
 
 if [ -z "$SHA" ]; then
     echo "Error: could not resolve tag v${VERSION} to a commit SHA" >&2
@@ -28,7 +28,7 @@ fi
 echo "Commit SHA: $SHA"
 
 echo "Prefetching source tarball (by SHA — stable)..."
-BASE32_HASH=$(nix-prefetch-url --type sha256 "https://github.com/huggingface/huggingface_hub/archive/${SHA}.tar.gz" 2>/dev/null)
+BASE32_HASH=$(nix-prefetch-url --unpack --type sha256 "https://github.com/huggingface/huggingface_hub/archive/${SHA}.tar.gz" 2>/dev/null)
 SRI_HASH=$(nix hash to-sri --type sha256 "$BASE32_HASH" 2>/dev/null)
 echo "Hash: $SRI_HASH"
 
