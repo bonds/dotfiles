@@ -1,8 +1,8 @@
-# TEMPORARY: bump huggingface-hub to 1.20.0 and its dependencies.
+# TEMPORARY: bump huggingface-hub to 1.21.0 and its dependencies.
 #
 # Remove this file (and its `nixpkgs.overlays` reference in flake.nix) once
 # nixpkgs-stable provides:
-#   - huggingface-hub >= 1.20.0
+#   - huggingface-hub >= 1.21.0
 #   - click     >= 8.4.0   (nixpkgs-stable has 8.3.1)
 #   - hf-xet    >= 1.5.1   (nixpkgs-stable has 1.4.3)
 #
@@ -40,12 +40,12 @@ final: prev: let
         installCheckPhase = "";
       });
       huggingface-hub = super.huggingface-hub.overridePythonAttrs (old: rec {
-        version = "1.20.0";
+        version = "1.21.0";
         src = prev.fetchFromGitHub {
           owner = "huggingface";
           repo = "huggingface_hub";
           rev = "v${version}";
-          hash = "sha256-aPOwQrmpiJdQpzH1+AD+gZysDO8FICEVCJ77mXN+Ebw=";
+          hash = "sha256-xjImbt+oeVk3XpqmR1CVllBurNgYRwcYN69NdFmj13I=";
         };
       });
     };
