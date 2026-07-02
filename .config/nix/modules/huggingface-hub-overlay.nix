@@ -44,8 +44,8 @@ final: prev: let
         src = prev.fetchFromGitHub {
           owner = "huggingface";
           repo = "huggingface_hub";
-          rev = "v${version}";
-          hash = "sha256-2zdlY40zatah4Ef/CBmt3GnBC2DrO3X3EZRMYEkkQEg=";
+          rev = "616ae9e4ea941bff9425ca7e62ebfd98cc9ca1c0";
+          hash = "sha256-XgjvlFNEyF8yp0vfjiOyf5DVBy0qk4vTZC0GKu02ePI=";
         };
       });
     };

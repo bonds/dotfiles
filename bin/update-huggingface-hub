@@ -16,22 +16,34 @@ fi
 
 echo "Latest version: $VERSION"
 
-echo "Prefetching source tarball..."
-BASE32_HASH=$(nix-prefetch-url --type sha256 "https://github.com/huggingface/huggingface_hub/archive/v${VERSION}.tar.gz" 2>/dev/null)
+# Get the commit SHA for the tag (deterministic — tags are unstable)
+echo "Resolving commit SHA for v${VERSION}..."
+SHA=$(git ls-remote https://github.com/huggingface/huggingface_hub "refs/tags/v${VERSION}" | awk '{print $1}')
+
+if [ -z "$SHA" ]; then
+    echo "Error: could not resolve tag v${VERSION} to a commit SHA" >&2
+    exit 1
+fi
+
+echo "Commit SHA: $SHA"
+
+echo "Prefetching source tarball (by SHA — stable)..."
+BASE32_HASH=$(nix-prefetch-url --type sha256 "https://github.com/huggingface/huggingface_hub/archive/${SHA}.tar.gz" 2>/dev/null)
 SRI_HASH=$(nix hash to-sri --type sha256 "$BASE32_HASH" 2>/dev/null)
 echo "Hash: $SRI_HASH"
 
-# Extract current version and hash from the overlay (huggingface-hub stanza only)
+# Extract current values from the overlay (huggingface-hub stanza only)
 CURRENT_VERSION=$(grep -A1 'huggingface-hub = super' "$OVERLAY" | grep 'version = ' | sed 's/.*"\(.*\)".*/\1/')
+CURRENT_SHA=$(grep -A1 'huggingface-hub = super' "$OVERLAY" | grep 'rev = ' | sed 's/.*"\(.*\)".*/\1/')
 CURRENT_HASH=$(grep -A1 'huggingface-hub = super' "$OVERLAY" | grep 'hash = ' | sed 's/.*"\(.*\)".*/\1/')
 
-if [ "$VERSION" = "$CURRENT_VERSION" ] && [ "$SRI_HASH" = "$CURRENT_HASH" ]; then
-    echo "Already up to date (version $CURRENT_VERSION, hash matches). Nothing to do."
+if [ "$VERSION" = "$CURRENT_VERSION" ] && [ "$SHA" = "$CURRENT_SHA" ] && [ "$SRI_HASH" = "$CURRENT_HASH" ]; then
+    echo "Already up to date (version $CURRENT_VERSION, SHA/hash match). Nothing to do."
     exit 0
 fi
 
 if [ "$1" = "--dry-run" ]; then
-    echo "Dry run: would update overlay to version $VERSION with hash $SRI_HASH"
+    echo "Dry run: would update overlay to version $VERSION, SHA $SHA, hash $SRI_HASH"
     exit 0
 fi
 
@@ -41,10 +53,11 @@ fi
 
 # Update only the huggingface-hub stanza.
 # Scoped so hf-xet/click/typer version/hash aren't corrupted.
-awk -v ver="$VERSION" -v hash="$SRI_HASH" '
+awk -v ver="$VERSION" -v sha="$SHA" -v hash="$SRI_HASH" '
   /huggingface-hub/ && /overridePythonAttrs/ { in_hub = 1 }
   in_hub && /^      };$/                      { in_hub = 0 }
   in_hub && /version = /                      { sub(/"[^"]*"/, "\"" ver "\""); print; next }
+  in_hub && /rev = /                          { sub(/"[^"]*"/, "\"" sha "\""); print; next }
   in_hub && /hash = /                         { sub(/"[^"]*"/, "\"" hash "\""); print; next }
   { print }
 ' "$OVERLAY" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
@@ -53,7 +66,7 @@ echo "Formatting overlay..."
 alejandra "$OVERLAY"
 
 if [ -n "$NO_REBUILD" ]; then
-    echo "Done. huggingface-hub overlay updated to $VERSION (skipped rebuild)."
+    echo "Done. huggingface-hub overlay updated to $VERSION (SHA $SHA)."
 else
     echo "Rebuilding..."
     cd "$HOME/.config/nix"
