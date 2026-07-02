@@ -59,6 +59,10 @@
   security.doas.extraRules = [
     {
       users = ["scott"];
+      persist = true;
+    }
+    {
+      users = ["scott"];
       cmd = "/run/current-system/sw/bin/nixos-rebuild";
       noPass = true;
     }
