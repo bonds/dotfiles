@@ -1,10 +1,10 @@
 final: prev: {
-  ollama = prev.stdenvNoCC.mkDerivation {
+  ollama = prev.stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "ollama";
     version = "0.30.11";
 
     src = prev.fetchurl {
-      url = "https://github.com/ollama/ollama/releases/download/v0.30.11/ollama-darwin.tgz";
+      url = "https://github.com/ollama/ollama/releases/download/v${finalAttrs.version}/ollama-darwin.tgz";
       hash = "sha256-RiAnIBiql0+xRnQeUfpp2+zRQZIhQzVNRkOkU4H68uY=";
     };
 
@@ -29,5 +29,5 @@ final: prev: {
       platforms = ["aarch64-darwin" "x86_64-darwin"];
       mainProgram = "ollama";
     };
-  };
+  });
 }

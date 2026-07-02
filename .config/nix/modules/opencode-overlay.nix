@@ -1,10 +1,10 @@
 final: prev: {
-  opencode = prev.stdenvNoCC.mkDerivation {
+  opencode = prev.stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "opencode";
     version = "1.17.11";
 
     src = prev.fetchurl {
-      url = "https://github.com/anomalyco/opencode/releases/download/v1.17.11/opencode-darwin-arm64.zip";
+      url = "https://github.com/anomalyco/opencode/releases/download/v${finalAttrs.version}/opencode-darwin-arm64.zip";
       hash = "sha256-QHI0RgE96oJS7qTxgNcH916AWvVO6FoU/XwSZRO6g0I=";
     };
 
@@ -26,5 +26,5 @@ final: prev: {
       platforms = ["aarch64-darwin"];
       mainProgram = "opencode";
     };
-  };
+  });
 }

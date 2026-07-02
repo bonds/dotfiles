@@ -3,12 +3,12 @@ let
   zenIcon = ./zen-icon.icns;
 in
   final: prev: {
-    zen-browser = prev.stdenvNoCC.mkDerivation {
+    zen-browser = prev.stdenvNoCC.mkDerivation (finalAttrs: {
       pname = "zen-browser";
       version = "1.21.4b";
 
       src = prev.fetchurl {
-        url = "https://github.com/zen-browser/desktop/releases/download/1.21.4b/zen.macos-universal.dmg";
+        url = "https://github.com/zen-browser/desktop/releases/download/${finalAttrs.version}/zen.macos-universal.dmg";
         hash = "sha256-QKcId26PJRhZpPpz7Uhfhi614bl741a/4BS0FFBP20o=";
       };
 
@@ -43,5 +43,5 @@ in
         platforms = ["aarch64-darwin" "x86_64-darwin"];
         mainProgram = "zen";
       };
-    };
+    });
   }
