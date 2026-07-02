@@ -16,17 +16,19 @@ fi
 
 echo "Latest version: $VERSION"
 
-CURRENT_VERSION=$(grep 'version = ' "$OVERLAY" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-if [ "$VERSION" = "$CURRENT_VERSION" ]; then
-    echo "Already up to date ($CURRENT_VERSION). Nothing to do."
-    exit 0
-fi
-
 echo "Prefetching source tarball..."
 BASE32_HASH=$(nix-prefetch-url --type sha256 "https://github.com/huggingface/huggingface_hub/archive/v${VERSION}.tar.gz" 2>/dev/null)
 SRI_HASH=$(nix hash to-sri --type sha256 "$BASE32_HASH" 2>/dev/null)
-
 echo "Hash: $SRI_HASH"
+
+# Extract current version and hash from the overlay (huggingface-hub stanza only)
+CURRENT_VERSION=$(grep -A1 'huggingface-hub = super' "$OVERLAY" | grep 'version = ' | sed 's/.*"\(.*\)".*/\1/')
+CURRENT_HASH=$(grep -A1 'huggingface-hub = super' "$OVERLAY" | grep 'hash = ' | sed 's/.*"\(.*\)".*/\1/')
+
+if [ "$VERSION" = "$CURRENT_VERSION" ] && [ "$SRI_HASH" = "$CURRENT_HASH" ]; then
+    echo "Already up to date (version $CURRENT_VERSION, hash matches). Nothing to do."
+    exit 0
+fi
 
 if [ "$1" = "--dry-run" ]; then
     echo "Dry run: would update overlay to version $VERSION with hash $SRI_HASH"
