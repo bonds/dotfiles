@@ -124,7 +124,8 @@
         };
       };
       modules = [
-        {nixpkgs.overlays = [(import ./modules/huggingface-hub-overlay.nix)];}
+        # Huggingface-hub overlay removed — nixpkgs-stable now provides
+        # working versions (huggingface-hub 1.10.2, hf-xet 1.4.3, click 8.3.1).
         ./modules/nix.nix
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix

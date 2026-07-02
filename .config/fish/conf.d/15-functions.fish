@@ -67,8 +67,6 @@ function nr
             end
             alejandra modules/ollama-overlay.nix modules/zen-browser-overlay.nix modules/opencode-overlay.nix
             cd $_pwd
-        else
-            update-huggingface-hub --no-rebuild
         end
     end
     if test "$_os" = darwin
