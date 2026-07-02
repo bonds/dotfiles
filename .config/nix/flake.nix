@@ -124,7 +124,6 @@
         };
       };
       modules = [
-        {nixpkgs.overlays = [(import ./modules/huggingface-hub-overlay.nix)];}
         ./modules/nix.nix
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix
@@ -135,7 +134,6 @@
         arion.nixosModules.arion
         nix-index-database.nixosModules.nix-index
         ./modules/home/common.nix
-        {nixpkgs.overlays = [(import ./modules/huggingface-hub-overlay.nix)];}
         home-manager-stable.nixosModules.home-manager
       ];
     };
