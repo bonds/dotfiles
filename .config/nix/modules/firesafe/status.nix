@@ -713,7 +713,7 @@ pkgs.writers.writePython3Bin "firesafe-status" {
           elapsed = 0
           try:
               sd = datetime.fromisoformat(start)
-              elapsed = int((datetime.now() - sd).total_seconds())
+              elapsed = max(0, int((datetime.now(timezone.utc) - sd).total_seconds()))
           except Exception:
               pass
 
@@ -727,7 +727,7 @@ pkgs.writers.writePython3Bin "firesafe-status" {
                       if start:
                           try:
                               sd = datetime.fromisoformat(start)
-                              elapsed = int((datetime.now() - sd).total_seconds())
+                              elapsed = max(0, int((datetime.now(timezone.utc) - sd).total_seconds()))
                           except Exception:
                               pass
                       start_idx = find_last_start(lines)
