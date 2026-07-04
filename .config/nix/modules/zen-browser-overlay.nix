@@ -5,11 +5,11 @@ in
   final: prev: {
     zen-browser = prev.stdenvNoCC.mkDerivation (finalAttrs: {
       pname = "zen-browser";
-      version = "1.21.4b";
+      version = "1.21.5b";
 
       src = prev.fetchurl {
         url = "https://github.com/zen-browser/desktop/releases/download/${finalAttrs.version}/zen.macos-universal.dmg";
-        hash = "sha256-QKcId26PJRhZpPpz7Uhfhi614bl741a/4BS0FFBP20o=";
+        hash = "sha256-5qs1bt5B1pc/LzwWXt+XTdBNlLSXqtATL4DRqiXUpWY=";
       };
 
       sourceRoot = ".";
@@ -27,7 +27,7 @@ in
         cp ${zenIcon} $out/Applications/Zen.app/Contents/Resources/firefox.icns
 
         cat > $out/Applications/Zen.app/Contents/Resources/distribution/policies.json << POLICIES_EOF
-        ${builtins.toJSON zenPolicies}
+        ${builtins.toJSON {policies = zenPolicies;}}
         POLICIES_EOF
 
         mkdir -p $out/bin
