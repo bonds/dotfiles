@@ -6,6 +6,20 @@
 }:
 with lib; let
   cfg = config.services.minecraft-bedrock;
+  startScript = pkgs.writeShellScript "bedrock-server-start" ''
+    fifo=/run/minecraft-bedrock/stdin
+    mkdir -p "$(dirname "$fifo")"
+    rm -f "$fifo"
+    mkfifo -m 0660 "$fifo"
+    chown minecraft:minecraft "$fifo"
+    # Hold write end open so BDS never reads EOF on stdin
+    exec 3>"$fifo"
+    cd "${cfg.dataDir}"
+    exec "${cfg.package}/lib/minecraft/bedrock_server" <"$fifo"
+  '';
+  stopScript = pkgs.writeShellScript "bedrock-server-stop" ''
+    echo stop > /run/minecraft-bedrock/stdin 2>/dev/null || true
+  '';
 in {
   options.services.minecraft-bedrock = {
     enable = mkEnableOption "Minecraft Bedrock Dedicated Server";
@@ -70,18 +84,23 @@ in {
         WorkingDirectory = cfg.dataDir;
         StandardOutput = "journal";
         StandardError = "journal";
-        ExecStart = "${cfg.package}/lib/minecraft/bedrock_server";
+        RuntimeDirectory = "minecraft-bedrock";
+        ExecStart = startScript;
         ExecStartPre = [
           "${pkgs.coreutils}/bin/mkdir -p '${cfg.dataDir}'"
           "${pkgs.rsync}/bin/rsync -a --ignore-existing '${cfg.package}/share/minecraft/' '${cfg.dataDir}/'"
         ];
+        ExecStop = stopScript;
         Restart = "on-failure";
         RestartSec = 10;
         TimeoutStopSec = 90;
         NoNewPrivileges = true;
         ProtectSystem = "strict";
         ProtectHome = true;
-        ReadWritePaths = [cfg.dataDir];
+        ReadWritePaths = [
+          cfg.dataDir
+          "/run/minecraft-bedrock"
+        ];
         PrivateTmp = true;
         AmbientCapabilities = "";
         CapabilityBoundingSet = "";
