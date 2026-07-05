@@ -275,7 +275,7 @@
           devices = ["accismus"];
         };
         "Photos" = {
-          path = "/dragon/photos";
+          path = "/dragon/media/photos";
           id = "photos";
           type = "receiveonly";
           devices = ["accismus"];
@@ -319,7 +319,7 @@
       "Media/manuals" = "/dragon/media/manuals";
       "Media/music" = "/dragon/media/music";
       "Media/software" = "/dragon/media/software";
-      Photos = "/dragon/photos";
+      Photos = "/dragon/media/photos";
       "Servers/Dontstarve" = "/dragon/servers/dontstarve/data";
       "Servers/Minecraft" = "/dragon/servers/minecraft";
     };

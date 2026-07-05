@@ -101,6 +101,7 @@ Three machines managed from this repo:
   - **Photos export** via `osxphotos` launchd agent (daily at 2am). Exports originals from Apple Photos Library to `~/Pictures/Syncthing-Photos/`, which Syncthing syncs to sophrosyne.
 - **metanoia** — NixOS workstation (x86_64-linux)
 - **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
+  - **ZFS pool:** The `dragon` pool is intentionally degraded (raidz2, 1 device kept offline) — running on 1-disk redundancy by design.
   - **Temperature logging:** NVMe/CPU temps and fan speeds are logged every minute to `/dragon/logs/temps.log` via `log-temps.timer`. After a crash or lockup, check the last entries in this file to see if temps spiked before the failure. The log survives reboots since it's on the ZFS pool.
   - **Firesafe USB backup:** Automated off-site backup via an A/B USB drive rotation. Defined in `modules/firesafe-backup.nix` (NixOS module: `programs.firesafe-backup`).
     - **How it works:** A udev rule matches drives labeled `firesafe` and triggers `firesafe-backup.service`, which mounts at `/mnt/firesafe`, reads `.firesafe-id` (A or B), then rsyncs configured sources (Archive, Backups, Documents, Media/* subdirs, Photos) from `/dragon/`.
@@ -118,10 +119,11 @@ Three machines managed from this repo:
     - **Drive I/O note:** The WD Game Drive USB bridge (1058:262f) is BOT-only, QD=1, no UASP — USB-native PCB, cannot shuck. Random I/O ~1 MB/s; sequential ~40-90 MB/s ext4. ext4 journal vs exFAT speed tradeoffs, dirty page flush hang on umount. See `firesafe-backup.nix` header comment for full details.
   - **Photos pipeline:**
     - Mac (accismus): `osxphotos` exports originals daily at 2am to `~/Pictures/Syncthing-Photos/`
-    - Syncthing: continuous sync to sophrosyne at `/dragon/photos` (send-only on Mac, receive-only on server)
-    - Firesafe: `Photos` source picks up `/dragon/photos` during backup
-    - ZFS dataset: `dragon/photos` with `atime=off`
-  - **Minecraft Bedrock server:** Native (no container) via `modules/minecraft-bedrock.nix`.
+    - Syncthing: continuous sync to sophrosyne at `/dragon/media/photos` (send-only on Mac, receive-only on server)
+    - Firesafe: `Photos` source picks up `/dragon/media/photos` during backup
+    - ZFS dataset: `dragon/photos` mounted at `/dragon/media/photos`, `atime=off`
+    - **Archived plan:** A larger restructure (promoting `/dragon/media` itself to a dataset) was researched but deferred — see `.config/nix/media-dataset-restructure-plan.md` for context.
+  - **Minecraft Bedrock server: Native (no container) via `modules/minecraft-bedrock.nix`.
     - Binary packaged at `pkgs/bedrock-server/` — `fetchurl` from Mojang, `autoPatchelfHook` for glibc compat.
     - Data dir: `/dragon/servers/minecraft` (migrated from old `/dragon/containers/minecraft`, kept as backup until `/dragon/containers` dataset was removed).
     - Runs as `minecraft` user, systemd service with FIFO console socket for graceful stop.
