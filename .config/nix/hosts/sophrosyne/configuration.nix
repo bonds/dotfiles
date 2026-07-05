@@ -12,11 +12,6 @@
     ../../modules/nixos-common.nix
   ];
 
-  # TEMPORARY: lix 2.95.2 checkPhase crashes with SIGILL on Skylake CPU.
-  # Remove this once nixpkgs-stable provides lix >= 2.95.3 (which fixes the test).
-  # Then nix.nix's `lib.mkDefault pkgs.lixPackageSets.latest.lix` takes over again.
-  nix.package = inputs.lix.packages.x86_64-linux.default;
-
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 

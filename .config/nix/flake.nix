@@ -17,11 +17,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     polyptych.url = "github:bonds/polyptych";
-    # TEMPORARY: sophrosyne uses this pinned lix (2.95.3) because 2.95.2
-    # checkPhase crashes with SIGILL on the Skylake Xeon E3-1245 v5.
-    # Remove input + hosts/sophrosyne/configuration.nix nix.package override
-    # once nixpkgs-stable provides lix >= 2.95.3.
-    lix.url = "github:lix-project/lix/2.95.3";
   };
   outputs = inputs @ {
     self,
@@ -34,7 +29,6 @@
     vudials,
     zen-browser,
     polyptych,
-    lix,
   }: let
     systems = ["aarch64-darwin" "x86_64-linux"];
     forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
