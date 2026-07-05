@@ -11,6 +11,7 @@
     ./hardware-configuration.nix
     ../../modules/nixos-common.nix
     ../../modules/minecraft-bedrock.nix
+    ../../modules/dst-server.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -37,20 +38,6 @@
     extraGroups = ["networkmanager" "wheel"];
     shell = pkgs.fish;
     packages = with pkgs; [];
-    # DST server runs as uid 1000 (dst) internally. Rootless podman needs
-    # subuid mapping: container uid 1000 → host uid 101000 (100000 + 1000).
-    subUidRanges = [
-      {
-        startUid = 100000;
-        count = 65536;
-      }
-    ];
-    subGidRanges = [
-      {
-        startGid = 100000;
-        count = 65536;
-      }
-    ];
   };
 
   # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
@@ -119,15 +106,16 @@
           "Bitwarden vault entry: \"server email account\""
       fi
 
+      if [ ! -f /var/lib/dst-server/cluster_token.txt ]; then
+        warn_missing \
+          /var/lib/dst-server/cluster_token.txt \
+          "Klei cluster token for Don't Starve Together server" \
+          "Copy from /dragon/containers/dontstarve/DoNotStarveTogether/Cluster_1/cluster_token.txt"
+      fi
+
 
     '';
   };
-
-  # Enable lingering for scott so rootless podman user services start at boot
-  system.activationScripts.enablePodmanLinger = ''
-    mkdir -p /var/lib/systemd/linger
-    touch /var/lib/systemd/linger/scott
-  '';
 
   system.stateVersion = "24.11";
 
@@ -235,24 +223,17 @@
     openFirewall = true;
   };
 
-  systemd.user.services.dontstarve = {
-    description = "Don't Starve Together Server";
-    wantedBy = ["default.target"];
-
-    unitConfig = {
-      StartLimitBurst = "5";
-    };
-
-    serviceConfig = {
-      Type = "simple";
-      ExecStartPre = "-${pkgs.podman}/bin/podman rm -f dontstarve";
-      ExecStart = "${pkgs.podman}/bin/podman run --name dontstarve -v /dragon/containers/dontstarve:/data -p 10999-11000:10999-11000/udp -p 12346-12347:12346-12347/udp jamesits/dst-server:nightly";
-      ExecStop = "${pkgs.podman}/bin/podman stop -t 30 dontstarve";
-      TimeoutStopSec = "60";
-      Restart = "on-failure";
-      RestartSec = "10s";
-    };
+  # DST cluster token. Run nr on the server to generate:
+  #   doas cp /dragon/containers/dontstarve/DoNotStarveTogether/Cluster_1/cluster_token.txt /var/lib/dst-server/cluster_token.txt
+  #   doas chmod 600 /var/lib/dst-server/cluster_token.txt
+  services.dst-server = {
+    enable = true;
+    clusterTokenFile = "/var/lib/dst-server/cluster_token.txt";
+    openFirewall = true;
   };
+
+  programs.nix-ld.enable = true;
+
   # REMINDER: When adding a secret here, also add a warn_missing check
   # in system.activationScripts.checkSecrets above.
   systemd.services.ddns = {

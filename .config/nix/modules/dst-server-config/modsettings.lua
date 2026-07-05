@@ -1,0 +1,3 @@
+--ForceEnableMod("kioskmode_dst")
+--EnableModDebugPrint()
+--EnableModError()
