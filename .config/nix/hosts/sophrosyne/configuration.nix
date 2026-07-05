@@ -38,9 +38,21 @@
   users.users.scott = {
     isNormalUser = true;
     description = "Scott Bonds";
-    extraGroups = ["networkmanager" "wheel" "docker"];
+    extraGroups = ["networkmanager" "wheel"];
     shell = pkgs.fish;
     packages = with pkgs; [];
+    subUidRanges = [
+      {
+        startUid = 100000;
+        count = 65536;
+      }
+    ];
+    subGidRanges = [
+      {
+        startGid = 100000;
+        count = 65536;
+      }
+    ];
   };
 
   # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
@@ -77,7 +89,6 @@
     pkgs-unstable.python313Packages.huggingface-hub # for downloading models
     nvme-cli # manage NVMe devices from the command line
     util-linux # system utilities (lsblk, fdisk, etc.)
-    docker-compose # define and run multi-container Docker apps
     dmidecode # read system DMI/BIOS info
     edac-utils # memory error detection and reporting tools
     lm_sensors # read CPU/motherboard temp, voltage, and fan sensors
@@ -118,6 +129,11 @@
       fi
     '';
   };
+
+  # Enable lingering for scott so rootless podman user services start at boot
+  system.activationScripts.enablePodmanLinger = ''
+    loginctl enable-linger scott 2>/dev/null || true
+  '';
 
   system.stateVersion = "24.11";
 
@@ -216,163 +232,44 @@
     });
   '';
 
-  virtualisation.arion = {
-    backend = "docker";
-    projects = {
-      minecraft.settings.services.minecraft.service = {
-        image = "itzg/minecraft-bedrock-server";
-        restart = "on-failure:5";
-        environment = {
-          EULA = "TRUE";
-        };
-        user = "1000:100";
-        volumes = [
-          "/dragon/docker/minecraft:/data"
-        ];
-        ports = [
-          "19132:19132/udp"
-        ];
-      };
+  virtualisation.podman.enable = true;
 
-      dontstarve.settings.services.dontstarve.service = {
-        image = "jamesits/dst-server:nightly";
-        restart = "on-failure:5";
-        stop_grace_period = "6m";
-        volumes = [
-          "/dragon/docker/dontstarve:/data"
-        ];
-        ports = [
-          "10999-11000:10999-11000/udp"
-          "12346-12347:12346-12347/udp"
-        ];
-      };
+  systemd.user.services.minecraft = {
+    description = "Minecraft Bedrock Server";
+    wantedBy = ["default.target"];
 
-      whisper.settings.services.whisper.service = {
-        image = "rhasspy/wyoming-whisper";
-        restart = "on-failure:5";
-        stop_grace_period = "6m";
-        volumes = [
-          "/dragon/docker/whisper:/data"
-        ];
-        ports = [
-          "10300:10300/tcp"
-        ];
-        command = "--model tiny-int8 --language en";
-      };
+    unitConfig = {
+      StartLimitBurst = "5";
+    };
 
-      piper.settings.services.piper.service = {
-        image = "rhasspy/wyoming-piper";
-        restart = "on-failure:5";
-        stop_grace_period = "6m";
-        volumes = [
-          "/dragon/docker/piper:/data"
-        ];
-        ports = [
-          "10200:10200/tcp"
-        ];
-        command = "--voice en_US-lessac-medium";
-      };
-
-      # ──────────────────────────────────────────────────────────────────
-      # Scrypted project — DISABLED. Not currently in use.
-      # Security audit (2026-06-11) flagged `privileged: true` on the
-      # scrypted container + `network_mode: "host"` on all three services.
-      # Before re-enabling, choose one of these approaches:
-      #
-      # Option 1 (keep as-was): `privileged: true` + `SCRYPTED_DOCKER_AVAHI`
-      #   Pro: HomeKit auto-discovery works. No config changes.
-      #   Con: Full container privilege escalation if compromised.
-      #   Risk is limited since sophrosyne is LAN-only.
-      #
-      # Option 2 (narrow caps): Drop `privileged`, add specific capabilities:
-      #   capabilities = ["NET_ADMIN" "NET_RAW" "SYS_ADMIN"]
-      #   Pro: Much narrower attack surface than privileged.
-      #   Con: Exact capability set not well-documented; may break on upgrades.
-      #
-      # Option 3 (most secure): Drop `privileged` AND `SCRYPTED_DOCKER_AVAHI`.
-      #   Use host Avahi (`services.avahi.enable = true`) instead.
-      #   Pro: No elevated privileges needed at all.
-      #   Con: HomeKit pairing via manual PIN entry instead of auto-discovery.
-      #
-      # See .config/nix/hosts/sophrosyne/configuration.nix for context.
-      # ──────────────────────────────────────────────────────────────────
-      # scrypted.settings.services = {
-      #   eufy-ws.service = {
-      #     image = "bropat/eufy-security-ws:latest";
-      #     restart = "unless-stopped";
-      #     network_mode = "host";
-      #     environment = {
-      #       USERNAME = "scott+homebridge@ggr.com";
-      #       COUNTRY = "US";
-      #       TRUSTED_DEVICE_NAME = "sophrosyne";
-      #       PORT = "3000";
-      #     };
-      #     env_file = [
-      #       "/dragon/docker/eufy-security-ws/.env"
-      #     ];
-      #     volumes = [
-      #       "/dragon/docker/eufy-security-ws/data:/data"
-      #     ];
-      #   };
-      #   scrypted.service = {
-      #     image = "ghcr.io/koush/scrypted";
-      #     restart = "unless-stopped";
-      #     network_mode = "host";
-      #     # Security: `privileged` required for Avahi mDNS inside the
-      #     # container (HomeKit discovery). See options above.
-      #     # privileged = true;
-      #     environment = {
-      #       SCRYPTED_DOCKER_AVAHI = "true";
-      #     };
-      #     volumes = [
-      #       "/dragon/docker/scrypted/volume:/server/volume"
-      #       "/dragon/docker/scrypted/avahi:/etc/avahi"
-      #     ];
-      #     dns = ["1.1.1.1" "8.8.8.8"];
-      #   };
-      #   watchtower.service = {
-      #     image = "nickfedor/watchtower";
-      #     container_name = "scrypted-watchtower";
-      #     restart = "unless-stopped";
-      #     volumes = [
-      #       "/var/run/docker.sock:/var/run/docker.sock"
-      #     ];
-      #     ports = [
-      #       "10444:8080"
-      #     ];
-      #     command = "--interval 3600 --cleanup --scope scrypted";
-      #     dns = ["1.1.1.1" "8.8.8.8"];
-      #   };
-      # };
+    serviceConfig = {
+      Type = "simple";
+      ExecStartPre = "-${pkgs.podman}/bin/podman rm -f minecraft";
+      ExecStart = "${pkgs.podman}/bin/podman run --name minecraft -e EULA=TRUE -v /dragon/docker/minecraft:/data -p 19132:19132/udp itzg/minecraft-bedrock-server";
+      ExecStop = "${pkgs.podman}/bin/podman stop -t 60 minecraft";
+      Restart = "on-failure";
+      RestartSec = "10s";
     };
   };
 
-  # Disabled alongside Scrypted project above.
-  # systemd.services.scrypted-homekit-patch = {
-  #   description = "Patch Scrypted HomeKit plugin for Eufy battery cameras";
-  #   after = ["arion-scrypted.service"];
-  #   wants = ["arion-scrypted.service"];
-  #   wantedBy = ["multi-user.target"];
-  #   serviceConfig = {
-  #     Type = "oneshot";
-  #     RemainAfterExit = true;
-  #   };
-  #   script = ''
-  #     PLUGIN_JS="/dragon/docker/scrypted/volume/plugins/@scrypted/homekit/zip/unzipped/main.nodejs.js"
-  #     if [ -f "$PLUGIN_JS" ]; then
-  #       if grep -q '!p.url.startsWith("tcp://")' "$PLUGIN_JS"; then
-  #         echo "Patching HomeKit plugin for battery camera compatibility..."
-  #         ${pkgs.gnused}/bin/sed -i 's/!p.url.startsWith("tcp:\/\/")/!p.url?.startsWith("tcp:\/\/")/g' "$PLUGIN_JS"
-  #         ${pkgs.docker}/bin/docker restart scrypted-scrypted-1 || true
-  #       else
-  #         echo "HomeKit plugin already patched or not patchable."
-  #       fi
-  #     else
-  #       echo "HomeKit plugin not found yet, will patch on next run."
-  #     fi
-  #   '';
-  # };
+  systemd.user.services.dontstarve = {
+    description = "Don't Starve Together Server";
+    wantedBy = ["default.target"];
 
+    unitConfig = {
+      StartLimitBurst = "5";
+    };
+
+    serviceConfig = {
+      Type = "simple";
+      ExecStartPre = "-${pkgs.podman}/bin/podman rm -f dontstarve";
+      ExecStart = "${pkgs.podman}/bin/podman run --name dontstarve -v /dragon/docker/dontstarve:/data -p 10999-11000:10999-11000/udp -p 12346-12347:12346-12347/udp jamesits/dst-server:nightly";
+      ExecStop = "${pkgs.podman}/bin/podman stop -t 360 dontstarve";
+      TimeoutStopSec = "420";
+      Restart = "on-failure";
+      RestartSec = "10s";
+    };
+  };
   # REMINDER: When adding a secret here, also add a warn_missing check
   # in system.activationScripts.checkSecrets above.
   systemd.services.ddns = {

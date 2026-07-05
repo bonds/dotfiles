@@ -11,7 +11,6 @@
     home-manager-stable.inputs.nixpkgs.follows = "nixpkgs-stable";
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
-    arion.url = "github:hercules-ci/arion/v0.2.2.0";
     vudials.url = "github:bonds/nix-vudials";
     zen-browser = {
       url = "github:youwen5/zen-browser-flake";
@@ -32,7 +31,6 @@
     home-manager,
     home-manager-stable,
     nix-index-database,
-    arion,
     vudials,
     zen-browser,
     polyptych,
@@ -131,7 +129,6 @@
         ./modules/firesafe-backup.nix
         ./hosts/sophrosyne/configuration.nix
         ./hosts/sophrosyne/hardware-configuration.nix
-        arion.nixosModules.arion
         nix-index-database.nixosModules.nix-index
         ./modules/home/common.nix
         home-manager-stable.nixosModules.home-manager
