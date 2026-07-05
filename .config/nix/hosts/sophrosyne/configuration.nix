@@ -132,7 +132,8 @@
 
   # Enable lingering for scott so rootless podman user services start at boot
   system.activationScripts.enablePodmanLinger = ''
-    loginctl enable-linger scott 2>/dev/null || true
+    mkdir -p /var/lib/systemd/linger
+    touch /var/lib/systemd/linger/scott
   '';
 
   system.stateVersion = "24.11";
