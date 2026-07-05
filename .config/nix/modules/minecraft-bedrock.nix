@@ -58,42 +58,23 @@ in {
 
     users.groups.minecraft = {};
 
-    systemd.sockets.minecraft-bedrock = {
-      description = "Minecraft Bedrock Server Console Socket";
-      wantedBy = ["sockets.target"];
-      socketConfig = {
-        ListenFIFO = "/run/minecraft-bedrock.stdin";
-        SocketUser = "minecraft";
-        SocketGroup = "minecraft";
-        SocketMode = "0660";
-      };
-    };
-
     systemd.services.minecraft-bedrock = {
       description = "Minecraft Bedrock Dedicated Server";
-      after = [
-        "network-online.target"
-        "minecraft-bedrock.socket"
-      ];
+      after = ["network-online.target"];
       wants = ["network-online.target"];
-      requires = ["minecraft-bedrock.socket"];
 
       serviceConfig = {
         User = "minecraft";
         Group = "minecraft";
         Type = "simple";
         WorkingDirectory = cfg.dataDir;
-        Sockets = ["minecraft-bedrock.socket"];
-        StandardInput = "socket";
+        StandardOutput = "journal";
         StandardError = "journal";
         ExecStart = "${cfg.package}/lib/minecraft/bedrock_server";
         ExecStartPre = [
           "${pkgs.coreutils}/bin/mkdir -p '${cfg.dataDir}'"
           "${pkgs.rsync}/bin/rsync -a --ignore-existing '${cfg.package}/share/minecraft/' '${cfg.dataDir}/'"
         ];
-        ExecStop = pkgs.writeShellScript "bedrock-stop" ''
-          echo stop > /run/minecraft-bedrock.stdin
-        '';
         Restart = "on-failure";
         RestartSec = 10;
         TimeoutStopSec = 90;
