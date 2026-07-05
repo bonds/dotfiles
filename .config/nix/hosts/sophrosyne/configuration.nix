@@ -6,13 +6,7 @@
   inputs,
   self,
   ...
-}: let
-  wrappers-bin = pkgs.runCommand "wrappers-bin" {} ''
-    mkdir -p $out/bin
-    ln -s /run/wrappers/bin/newuidmap $out/bin/newuidmap
-    ln -s /run/wrappers/bin/newgidmap $out/bin/newgidmap
-  '';
-in {
+}: {
   imports = [
     ./hardware-configuration.nix
     ../../modules/nixos-common.nix
@@ -42,18 +36,9 @@ in {
     extraGroups = ["networkmanager" "wheel"];
     shell = pkgs.fish;
     packages = with pkgs; [];
-    subUidRanges = [
-      {
-        startUid = 100000;
-        count = 65536;
-      }
-    ];
-    subGidRanges = [
-      {
-        startGid = 100000;
-        count = 65536;
-      }
-    ];
+    # subUidRanges/subGidRanges intentionally omitted — both containers use
+    # --userns=keep-id which ignores subuid ranges and maps container uid 0
+    # directly to the host user (scott).
   };
 
   # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
@@ -239,8 +224,6 @@ in {
       StartLimitBurst = "5";
     };
 
-    path = [wrappers-bin];
-
     serviceConfig = {
       Type = "simple";
       ExecStartPre = "-${pkgs.podman}/bin/podman rm -f minecraft";
@@ -259,12 +242,10 @@ in {
       StartLimitBurst = "5";
     };
 
-    path = [wrappers-bin];
-
     serviceConfig = {
       Type = "simple";
       ExecStartPre = "-${pkgs.podman}/bin/podman rm -f dontstarve";
-      ExecStart = "${pkgs.podman}/bin/podman run --userns=keep-id -e DST_USER=root -e DST_GROUP=root --name dontstarve -v /dragon/containers/dontstarve:/data -p 10999-11000:10999-11000/udp -p 12346-12347:12346-12347/udp jamesits/dst-server:nightly";
+      ExecStart = "${pkgs.podman}/bin/podman run --user 0:0 --userns=keep-id -e DST_USER=root -e DST_GROUP=root --name dontstarve -v /dragon/containers/dontstarve:/data -p 10999-11000:10999-11000/udp -p 12346-12347:12346-12347/udp jamesits/dst-server:nightly";
       ExecStop = "${pkgs.podman}/bin/podman stop -t 30 dontstarve";
       TimeoutStopSec = "60";
       Restart = "on-failure";
