@@ -8,14 +8,15 @@ with lib; let
   cfg = config.services.minecraft-bedrock;
   startScript = pkgs.writeShellScript "bedrock-server-start" ''
     fifo=/run/minecraft-bedrock/stdin
-    mkdir -p "$(dirname "$fifo")"
+    dir=$(dirname "$fifo")
+    mkdir -p "$dir"
     rm -f "$fifo"
-    mkfifo -m 0660 "$fifo"
-    chown minecraft:minecraft "$fifo"
-    # Hold write end open so BDS never reads EOF on stdin
-    exec 3>"$fifo"
+    mkfifo -m 0666 "$fifo"
+    # Open read-write so the open doesn't block (no writer yet).
+    # This single fd counts as both reader and writer, preventing EOF.
+    exec <>"$fifo"
     cd "${cfg.dataDir}"
-    exec "${cfg.package}/lib/minecraft/bedrock_server" <"$fifo"
+    exec "${cfg.package}/lib/minecraft/bedrock_server"
   '';
   stopScript = pkgs.writeShellScript "bedrock-server-stop" ''
     echo stop > /run/minecraft-bedrock/stdin 2>/dev/null || true
