@@ -155,5 +155,18 @@ Three machines managed from this repo:
   1. `ssh sophrosyne "cd ~ && git stash"`
   2. `ssh sophrosyne "cd ~ && git pull origin main"`
   3. `ssh sophrosyne "cd ~ && git stash pop"`
-  4. If `flake.lock` conflicts: `ssh sophrosyne "cd ~/.config/nix && nix flake lock"` to regenerate, then `git add flake.lock && git commit`
-  5. Push the merged result back: `ssh sophrosyne "cd ~ && git push origin main"`
+4. If `flake.lock` conflicts: `ssh sophrosyne "cd ~/.config/nix && nix flake lock"` to regenerate, then `git add flake.lock && git commit`
+5. Push the merged result back: `ssh sophrosyne "cd ~ && git push origin main"`
+
+### doas privilege escalation
+
+doas is configured with layered privilege:
+- **noPass commands** — `systemctl`, `journalctl`, `nixos-rebuild`, `nh` — skip PAM entirely, no TouchID prompt.
+- **Everything else** — authenticates via `pam_ssh_agent_auth`, which challenges the forwarded SSH agent (Secretive on accismus). Expect a TouchID prompt per operation.
+
+Key constraints:
+- **doas does NOT resolve bare command names via PATH for rule matching.** Always use the full path: `doas /run/current-system/sw/bin/systemctl restart syncthing`, NOT `doas systemctl restart syncthing`. The existing `nixos-rebuild`/`nh` noPass rules follow the same convention (full path).
+- **`args` in doas.conf is an exact match** on the full argument list, not a prefix match. `args restart` only matches `doas cmd restart` (no additional args). All current noPass rules are scoped to `cmd`-level only (no `args`) for this reason.
+- **Agent forwarding is required** for TouchID-for-doas. SSH config sets `ForwardAgent yes` for sophrosyne. If for some reason the agent isn't forwarded, doas falls back to password prompt (works interactively only).
+
+The keys file for `pam_ssh_agent_auth` is at `/etc/ssh/authorized_keys.d/scott` (root-owned, outside the nix store — an activation script copies it on each switch to avoid group-writable /nix/store directory rejections).
