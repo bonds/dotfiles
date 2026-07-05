@@ -6,7 +6,13 @@
   inputs,
   self,
   ...
-}: {
+}: let
+  wrappers-bin = pkgs.runCommand "wrappers-bin" {} ''
+    mkdir -p $out/bin
+    ln -s /run/wrappers/bin/newuidmap $out/bin/newuidmap
+    ln -s /run/wrappers/bin/newgidmap $out/bin/newgidmap
+  '';
+in {
   imports = [
     ./hardware-configuration.nix
     ../../modules/nixos-common.nix
@@ -36,9 +42,18 @@
     extraGroups = ["networkmanager" "wheel"];
     shell = pkgs.fish;
     packages = with pkgs; [];
-    # No subUidRanges/subGidRanges needed — these containers only map
-    # container root (uid 0) → scott, which podman handles without the
-    # setuid newuidmap/newgidmap helpers.
+    subUidRanges = [
+      {
+        startUid = 100000;
+        count = 65536;
+      }
+    ];
+    subGidRanges = [
+      {
+        startGid = 100000;
+        count = 65536;
+      }
+    ];
   };
 
   # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
@@ -224,6 +239,8 @@
       StartLimitBurst = "5";
     };
 
+    path = [wrappers-bin];
+
     serviceConfig = {
       Type = "simple";
       ExecStartPre = "-${pkgs.podman}/bin/podman rm -f minecraft";
@@ -241,6 +258,8 @@
     unitConfig = {
       StartLimitBurst = "5";
     };
+
+    path = [wrappers-bin];
 
     serviceConfig = {
       Type = "simple";
