@@ -36,9 +36,20 @@
     extraGroups = ["networkmanager" "wheel"];
     shell = pkgs.fish;
     packages = with pkgs; [];
-    # subUidRanges/subGidRanges intentionally omitted — both containers use
-    # --userns=keep-id which ignores subuid ranges and maps container uid 0
-    # directly to the host user (scott).
+    # DST server runs as uid 1000 (dst) internally. Rootless podman needs
+    # subuid mapping: container uid 1000 → host uid 101000 (100000 + 1000).
+    subUidRanges = [
+      {
+        startUid = 100000;
+        count = 65536;
+      }
+    ];
+    subGidRanges = [
+      {
+        startGid = 100000;
+        count = 65536;
+      }
+    ];
   };
 
   # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
@@ -245,7 +256,7 @@
     serviceConfig = {
       Type = "simple";
       ExecStartPre = "-${pkgs.podman}/bin/podman rm -f dontstarve";
-      ExecStart = "${pkgs.podman}/bin/podman run --user 0:0 --userns=keep-id -e DST_USER=root -e DST_GROUP=root --name dontstarve -v /dragon/containers/dontstarve:/data -p 10999-11000:10999-11000/udp -p 12346-12347:12346-12347/udp jamesits/dst-server:nightly";
+      ExecStart = "${pkgs.podman}/bin/podman run --name dontstarve -v /dragon/containers/dontstarve:/data -p 10999-11000:10999-11000/udp -p 12346-12347:12346-12347/udp jamesits/dst-server:nightly";
       ExecStop = "${pkgs.podman}/bin/podman stop -t 30 dontstarve";
       TimeoutStopSec = "60";
       Restart = "on-failure";
