@@ -10,6 +10,7 @@
   imports = [
     ./hardware-configuration.nix
     ../../modules/nixos-common.nix
+    ../../modules/minecraft-bedrock.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -227,22 +228,11 @@
 
   virtualisation.podman.enable = true;
 
-  systemd.user.services.minecraft = {
-    description = "Minecraft Bedrock Server";
-    wantedBy = ["default.target"];
-
-    unitConfig = {
-      StartLimitBurst = "5";
-    };
-
-    serviceConfig = {
-      Type = "simple";
-      ExecStartPre = "-${pkgs.podman}/bin/podman rm -f minecraft";
-      ExecStart = "${pkgs.podman}/bin/podman run --name minecraft -e EULA=TRUE -v /dragon/containers/minecraft:/data -p 19132:19132/udp itzg/minecraft-bedrock-server";
-      ExecStop = "${pkgs.podman}/bin/podman stop -t 60 minecraft";
-      Restart = "on-failure";
-      RestartSec = "10s";
-    };
+  services.minecraft-bedrock = {
+    enable = true;
+    eula = true;
+    dataDir = "/dragon/minecraft";
+    openFirewall = true;
   };
 
   systemd.user.services.dontstarve = {

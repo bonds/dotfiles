@@ -121,6 +121,11 @@ Three machines managed from this repo:
     - Syncthing: continuous sync to sophrosyne at `/dragon/photos` (send-only on Mac, receive-only on server)
     - Firesafe: `Photos` source picks up `/dragon/photos` during backup
     - ZFS dataset: `dragon/photos` with `atime=off`
+  - **Minecraft Bedrock server:** Native (no container) via `modules/minecraft-bedrock.nix`.
+    - Binary packaged at `pkgs/bedrock-server/` — `fetchurl` from Mojang, `autoPatchelfHook` for glibc compat.
+    - Data dir: `/dragon/minecraft` (migrated from old `/dragon/containers/minecraft`, kept as backup).
+    - Runs as `minecraft` user, systemd service with FIFO console socket for graceful stop.
+    - **Updates:** `nr --update` on Linux auto-bumps via `pkgs/bedrock-server/update.sh` (queries kittizz tracker, downloads zip, computes sha256, rewrites `default.nix`).
 
 ## Conventions
 

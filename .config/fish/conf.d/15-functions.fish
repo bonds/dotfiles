@@ -68,6 +68,11 @@ function nr
             alejandra modules/ollama-overlay.nix modules/zen-browser-overlay.nix modules/opencode-overlay.nix
             cd $_pwd
         else
+            set -l _pwd $PWD
+            cd $HOME/.config/nix
+            bash pkgs/bedrock-server/update.sh
+            alejandra pkgs/bedrock-server/default.nix
+            cd $_pwd
         end
     end
     if test "$_os" = darwin
