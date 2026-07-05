@@ -68,7 +68,51 @@
       cmd = "/run/current-system/sw/bin/nh";
       noPass = true;
     }
+    {
+      users = ["scott"];
+      cmd = "/run/current-system/sw/bin/systemctl";
+      args = ["start"];
+      noPass = true;
+    }
+    {
+      users = ["scott"];
+      cmd = "/run/current-system/sw/bin/systemctl";
+      args = ["stop"];
+      noPass = true;
+    }
+    {
+      users = ["scott"];
+      cmd = "/run/current-system/sw/bin/systemctl";
+      args = ["restart"];
+      noPass = true;
+    }
+    {
+      users = ["scott"];
+      cmd = "/run/current-system/sw/bin/systemctl";
+      args = ["reload"];
+      noPass = true;
+    }
+    {
+      users = ["scott"];
+      cmd = "/run/current-system/sw/bin/systemctl";
+      args = ["status"];
+      noPass = true;
+    }
+    {
+      users = ["scott"];
+      cmd = "/run/current-system/sw/bin/journalctl";
+      noPass = true;
+    }
   ];
+
+  # TouchID-for-doas: authenticate privileged ops via the forwarded
+  # Secretive SSH agent (TouchID on accismus). Root-owned keys file per
+  # nixpkgs#31611 — do NOT use ~/.ssh/authorized_keys (user-writeable =
+  # privilege escalation).
+  security.pam.sshAgentAuth.enable = true;
+  environment.etc."ssh/authorized_keys.d/scott".text = ''
+    ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBI9RFRQQRMvQ3/Mv+pg6bVxmH8HnGx9uMNh7oZv7fAYGIvr98Wr03820w9B8SxH1XiIox+IPEJsSlhBeAfzNPm0= scott@ggr.com.macbookair.touchid
+  '';
 
   environment.systemPackages = with pkgs; [
     pkgs-unstable.python313Packages.huggingface-hub # for downloading models
