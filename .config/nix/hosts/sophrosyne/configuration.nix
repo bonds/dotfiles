@@ -264,7 +264,7 @@ in {
     serviceConfig = {
       Type = "simple";
       ExecStartPre = "-${pkgs.podman}/bin/podman rm -f dontstarve";
-      ExecStart = "${pkgs.podman}/bin/podman run --name dontstarve -v /dragon/containers/dontstarve:/data -p 10999-11000:10999-11000/udp -p 12346-12347:12346-12347/udp jamesits/dst-server:nightly";
+      ExecStart = "${pkgs.podman}/bin/podman run --userns=keep-id --name dontstarve -v /dragon/containers/dontstarve:/data -p 10999-11000:10999-11000/udp -p 12346-12347:12346-12347/udp jamesits/dst-server:nightly";
       ExecStop = "${pkgs.podman}/bin/podman stop -t 30 dontstarve";
       TimeoutStopSec = "60";
       Restart = "on-failure";
