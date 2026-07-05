@@ -110,7 +110,10 @@
   # nixpkgs#31611 — do NOT use ~/.ssh/authorized_keys (user-writeable =
   # privilege escalation).
   security.pam.sshAgentAuth.enable = true;
-  environment.etc."ssh/authorized_keys.d/scott".text = ''
+  # doas sets PAM_USER to the TARGET user (root), not the invoking user.
+  # So %u in the default authorizedKeysFiles expands to "root" — put the
+  # TouchID pubkey in root's file.
+  environment.etc."ssh/authorized_keys.d/root".text = ''
     ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBI9RFRQQRMvQ3/Mv+pg6bVxmH8HnGx9uMNh7oZv7fAYGIvr98Wr03820w9B8SxH1XiIox+IPEJsSlhBeAfzNPm0= scott@ggr.com.macbookair.touchid
   '';
 
