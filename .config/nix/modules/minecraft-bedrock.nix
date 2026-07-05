@@ -85,6 +85,7 @@ in {
         WorkingDirectory = cfg.dataDir;
         StandardOutput = "journal";
         StandardError = "journal";
+        Environment = "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt";
         RuntimeDirectory = "minecraft-bedrock";
         ExecStart = startScript;
         ExecStartPre = [
