@@ -41,18 +41,9 @@
     extraGroups = ["networkmanager" "wheel"];
     shell = pkgs.fish;
     packages = with pkgs; [];
-    subUidRanges = [
-      {
-        startUid = 100000;
-        count = 65536;
-      }
-    ];
-    subGidRanges = [
-      {
-        startGid = 100000;
-        count = 65536;
-      }
-    ];
+    # No subUidRanges/subGidRanges needed — these containers only map
+    # container root (uid 0) → scott, which podman handles without the
+    # setuid newuidmap/newgidmap helpers.
   };
 
   # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
