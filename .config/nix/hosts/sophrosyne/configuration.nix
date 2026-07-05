@@ -71,31 +71,6 @@
     {
       users = ["scott"];
       cmd = "/run/current-system/sw/bin/systemctl";
-      args = ["start"];
-      noPass = true;
-    }
-    {
-      users = ["scott"];
-      cmd = "/run/current-system/sw/bin/systemctl";
-      args = ["stop"];
-      noPass = true;
-    }
-    {
-      users = ["scott"];
-      cmd = "/run/current-system/sw/bin/systemctl";
-      args = ["restart"];
-      noPass = true;
-    }
-    {
-      users = ["scott"];
-      cmd = "/run/current-system/sw/bin/systemctl";
-      args = ["reload"];
-      noPass = true;
-    }
-    {
-      users = ["scott"];
-      cmd = "/run/current-system/sw/bin/systemctl";
-      args = ["status"];
       noPass = true;
     }
     {
@@ -115,8 +90,15 @@
   security.pam.sshAgentAuth.authorizedKeysFiles = [
     "/etc/ssh/authorized_keys.d/scott"
   ];
-  environment.etc."ssh/authorized_keys.d/scott".text = ''
-    ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBI9RFRQQRMvQ3/Mv+pg6bVxmH8HnGx9uMNh7oZv7fAYGIvr98Wr03820w9B8SxH1XiIox+IPEJsSlhBeAfzNPm0= scott@ggr.com.macbookair.touchid
+  # /nix/store has group-write permissions (nixbld group), which
+  # pam_ssh_agent_auth rejects when traversing the symlink chain.
+  # So copy the key file to a path outside the store.
+  system.activationScripts.doasPamAuthKeys.text = ''
+    install -D -m 0444 -o root -g root \
+      ${pkgs.writeText "doas-ssh-agent-authorized_keys" ''
+      ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBI9RFRQQRMvQ3/Mv+pg6bVxmH8HnGx9uMNh7oZv7fAYGIvr98Wr03820w9B8SxH1XiIox+IPEJsSlhBeAfzNPm0= scott@ggr.com.macbookair.touchid
+    ''} \
+      /etc/ssh/authorized_keys.d/scott
   '';
 
   environment.systemPackages = with pkgs; [
