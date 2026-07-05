@@ -33,7 +33,7 @@ in {
 
     dataDir = mkOption {
       type = types.path;
-      default = "/dragon/minecraft";
+      default = "/dragon/servers/minecraft";
       description = "Directory to store server data (worlds, config, logs).";
     };
 

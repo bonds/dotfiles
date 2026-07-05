@@ -309,13 +309,13 @@ in {
 
     dataDir = mkOption {
       type = types.path;
-      default = "/dragon/dontstarve";
+      default = "/dragon/servers/dontstarve/data";
       description = "Directory for server data, saves, and configuration.";
     };
 
     serverInstallDir = mkOption {
       type = types.path;
-      default = "/dragon/dontstarve-install";
+      default = "/dragon/servers/dontstarve/install";
       description = "Directory where the DST server binaries are installed by SteamCMD.";
     };
 

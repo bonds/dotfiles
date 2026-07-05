@@ -219,11 +219,11 @@
   services.minecraft-bedrock = {
     enable = true;
     eula = true;
-    dataDir = "/dragon/minecraft";
+    dataDir = "/dragon/servers/minecraft";
     openFirewall = true;
   };
 
-  # DST cluster token. Run nr on the server to generate:
+  # DST cluster token:
   #   doas cp /dragon/containers/dontstarve/DoNotStarveTogether/Cluster_1/cluster_token.txt /var/lib/dst-server/cluster_token.txt
   #   doas chmod 600 /var/lib/dst-server/cluster_token.txt
   services.dst-server = {
@@ -320,6 +320,8 @@
       "Media/music" = "/dragon/media/music";
       "Media/software" = "/dragon/media/software";
       Photos = "/dragon/photos";
+      "Servers/Dontstarve" = "/dragon/servers/dontstarve/data";
+      "Servers/Minecraft" = "/dragon/servers/minecraft";
     };
     emailRecipient = "root";
   };
@@ -358,7 +360,7 @@
   services.ollama = {
     enable = true;
     package = pkgs-unstable.ollama;
-    models = "/dragon/ollama";
+    models = "/dragon/servers/ollama";
     host = "127.0.0.1";
   };
 

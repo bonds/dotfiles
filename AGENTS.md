@@ -123,11 +123,11 @@ Three machines managed from this repo:
     - ZFS dataset: `dragon/photos` with `atime=off`
   - **Minecraft Bedrock server:** Native (no container) via `modules/minecraft-bedrock.nix`.
     - Binary packaged at `pkgs/bedrock-server/` — `fetchurl` from Mojang, `autoPatchelfHook` for glibc compat.
-    - Data dir: `/dragon/minecraft` (migrated from old `/dragon/containers/minecraft`, kept as backup).
+    - Data dir: `/dragon/servers/minecraft` (migrated from old `/dragon/containers/minecraft`, kept as backup until `/dragon/containers` dataset was removed).
     - Runs as `minecraft` user, systemd service with FIFO console socket for graceful stop.
     - **Updates:** `nr --update` on Linux auto-bumps via `pkgs/bedrock-server/update.sh` (queries kittizz tracker, downloads zip, computes sha256, rewrites `default.nix`).
   - **Don't Starve Together server:** Native (no container) via `modules/dst-server.nix`.
-    - Binary installed via SteamCMD at `/dragon/dontstarve-install/` (app ID 343050, auto-updates on start).
+    - Binary installed via SteamCMD at `/dragon/servers/dontstarve/install/` (app ID 343050, auto-updates on start).
     - Old Debian library shims (`libcurl-gnutls`, `libnettle6`, `libldap-2.4`, `libsasl2`) extracted from Debian snapshots for ABI compatibility.
     - Dual-shard setup (Master + Caves) as two systemd services.
     - Config templates + non-destructive config generation in `modules/dst-server-config/`.
