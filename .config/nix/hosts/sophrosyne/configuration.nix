@@ -107,12 +107,7 @@
           "Bitwarden vault entry: \"server email account\""
       fi
 
-      if [ ! -f /dragon/docker/eufy-security-ws/.env ]; then
-        warn_missing \
-          /dragon/docker/eufy-security-ws/.env \
-          "Eufy password for scrypted homebridge plugin (eufy-security-ws)" \
-          "Bitwarden vault entry: \"eufy homebridge\""
-      fi
+
     '';
   };
 
@@ -232,7 +227,7 @@
     serviceConfig = {
       Type = "simple";
       ExecStartPre = "-${pkgs.podman}/bin/podman rm -f minecraft";
-      ExecStart = "${pkgs.podman}/bin/podman run --name minecraft -e EULA=TRUE -v /dragon/docker/minecraft:/data -p 19132:19132/udp itzg/minecraft-bedrock-server";
+      ExecStart = "${pkgs.podman}/bin/podman run --name minecraft -e EULA=TRUE -v /dragon/containers/minecraft:/data -p 19132:19132/udp itzg/minecraft-bedrock-server";
       ExecStop = "${pkgs.podman}/bin/podman stop -t 60 minecraft";
       Restart = "on-failure";
       RestartSec = "10s";
@@ -250,7 +245,7 @@
     serviceConfig = {
       Type = "simple";
       ExecStartPre = "-${pkgs.podman}/bin/podman rm -f dontstarve";
-      ExecStart = "${pkgs.podman}/bin/podman run --name dontstarve -v /dragon/docker/dontstarve:/data -p 10999-11000:10999-11000/udp -p 12346-12347:12346-12347/udp jamesits/dst-server:nightly";
+      ExecStart = "${pkgs.podman}/bin/podman run --name dontstarve -v /dragon/containers/dontstarve:/data -p 10999-11000:10999-11000/udp -p 12346-12347:12346-12347/udp jamesits/dst-server:nightly";
       ExecStop = "${pkgs.podman}/bin/podman stop -t 30 dontstarve";
       TimeoutStopSec = "60";
       Restart = "on-failure";
