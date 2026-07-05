@@ -12,6 +12,7 @@ stdenv.mkDerivation rec {
   src = fetchurl {
     url = "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-${version}.zip";
     hash = "sha256-d4iEPnHSt6+Kk+4wGDAB6c0jupad6Mnu96oG00pNvKs=";
+    curlOpts = "-A itzg/minecraft-bedrock-server";
   };
 
   sourceRoot = ".";
