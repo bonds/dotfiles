@@ -111,7 +111,15 @@
     # most common packages are in modules/packages/dev.nix and utils.nix
   ];
 
-  services.openssh.enable = true;
+  services.openssh = {
+    enable = true;
+    settings = {
+      PermitRootLogin = "no";
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
+      AllowAgentForwarding = true;
+    };
+  };
 
   # REMINDER: When adding a new local-only secret file consumed by this
   # configuration, add a corresponding warn_missing check here.
@@ -269,7 +277,14 @@
   # in system.activationScripts.checkSecrets above.
   systemd.services.ddns = {
     startAt = "*:0/15";
-    serviceConfig.Type = "oneshot";
+    serviceConfig = {
+      Type = "oneshot";
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      PrivateTmp = true;
+      ProtectHome = true;
+      RestrictNamespaces = true;
+    };
     path = [
       pkgs.curl
     ];
@@ -429,6 +444,12 @@
     serviceConfig = {
       Type = "oneshot";
       ExecStart = logScript;
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      PrivateTmp = true;
+      ProtectHome = true;
+      ReadWritePaths = ["/dragon/logs"];
+      ReadOnlyPaths = ["/sys" "/dev"];
     };
   };
   systemd.timers.log-temps = {
@@ -463,6 +484,11 @@
       Type = "oneshot";
       ExecStart = fanScript;
       RemainAfterExit = true;
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      PrivateTmp = true;
+      ProtectHome = true;
+      ReadWritePaths = ["/sys/devices/platform/dell_smm_hwmon"];
     };
   };
 

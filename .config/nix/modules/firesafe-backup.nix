@@ -95,6 +95,27 @@ in {
         StandardOutput = "journal+console";
         StandardError = "journal+console";
         Environment = "PATH=${pkgs.coreutils}/bin:${pkgs.util-linux}/bin:${pkgs.gnused}/bin:${pkgs.gnugrep}/bin:${pkgs.gawk}/bin";
+        NoNewPrivileges = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        PrivateTmp = true;
+        ProtectKernelTunables = true;
+        ProtectKernelModules = true;
+        ProtectClock = true;
+        ProtectHostname = true;
+        ProtectControlGroups = true;
+        ProtectProc = "invisible";
+        RestrictNamespaces = true;
+        RestrictRealtime = true;
+        RestrictSUIDSGID = true;
+        LockPersonality = true;
+        CapabilityBoundingSet = ["CAP_SYS_ADMIN"];
+        AmbientCapabilities = ["CAP_SYS_ADMIN"];
+        ReadWritePaths = [
+          cfg.mountPoint
+          "/dragon"
+          "/run"
+        ];
       };
     };
 
@@ -133,6 +154,10 @@ in {
         Type = "oneshot";
         StandardOutput = "journal+console";
         Environment = "PATH=${pkgs.coreutils}/bin:${pkgs.systemd}";
+        NoNewPrivileges = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        PrivateTmp = true;
       };
     };
 
