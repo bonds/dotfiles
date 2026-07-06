@@ -17,6 +17,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     polyptych.url = "github:bonds/polyptych";
+    flake-parts.url = "github:hercules-ci/flake-parts";
   };
   outputs = inputs @ {
     self,
@@ -29,6 +30,7 @@
     vudials,
     zen-browser,
     polyptych,
+    flake-parts,
   }: let
     systems = ["aarch64-darwin" "x86_64-linux"];
     forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
