@@ -80,7 +80,7 @@
   # So copy the key file to a path outside the store.
   system.activationScripts.doasPamAuthKeys.text = ''
     install -D -m 0444 -o root -g root \
-      ${self}/../.config/ssh/keys \
+      ${self}/../../.config/ssh/keys \
       /etc/ssh/authorized_keys.d/scott
   '';
 
