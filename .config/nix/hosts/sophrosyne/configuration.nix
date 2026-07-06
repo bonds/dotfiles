@@ -38,8 +38,6 @@
 
   # NOPASSWD scoped to rebuild commands only (for remote nix deploys).
   # Everything else prompts for scott's password via the wheel default.
-  security.sudo.enable = false;
-  security.doas.enable = true;
   security.doas.extraRules = [
     {
       users = ["scott"];
@@ -82,9 +80,7 @@
   # So copy the key file to a path outside the store.
   system.activationScripts.doasPamAuthKeys.text = ''
     install -D -m 0444 -o root -g root \
-      ${pkgs.writeText "doas-ssh-agent-authorized_keys" ''
-      ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBI9RFRQQRMvQ3/Mv+pg6bVxmH8HnGx9uMNh7oZv7fAYGIvr98Wr03820w9B8SxH1XiIox+IPEJsSlhBeAfzNPm0= scott@ggr.com.macbookair.touchid
-    ''} \
+      ${self}/.config/ssh/keys \
       /etc/ssh/authorized_keys.d/scott
   '';
 
@@ -98,15 +94,7 @@
     # most common packages are in modules/packages/dev.nix and utils.nix
   ];
 
-  services.openssh = {
-    enable = true;
-    settings = {
-      PermitRootLogin = "no";
-      PasswordAuthentication = false;
-      KbdInteractiveAuthentication = false;
-      AllowAgentForwarding = true;
-    };
-  };
+  services.openssh.settings.KbdInteractiveAuthentication = false;
 
   # REMINDER: When adding a new local-only secret file consumed by this
   # configuration, add a corresponding warn_missing check here.
@@ -152,17 +140,7 @@
     interval = "*-*-01 03:00:00";
   };
 
-  services.avahi = {
-    enable = false;
-    openFirewall = false;
-    nssmdns4 = false;
-    nssmdns6 = false;
-    publish = {
-      enable = false;
-      addresses = false;
-      hinfo = false;
-    };
-  };
+  services.avahi.enable = false;
 
   services.samba = {
     enable = true;
@@ -207,8 +185,6 @@
     openFirewall = true;
   };
 
-  programs.tmux.enable = true;
-
   home-manager = {
     users.scott = {pkgs, ...}: {
       home.stateVersion = "24.11";
@@ -232,8 +208,6 @@
         }
     });
   '';
-
-  virtualisation.podman.enable = true;
 
   services.minecraft-bedrock = {
     enable = true;
@@ -308,11 +282,6 @@
         };
       };
     };
-  };
-
-  programs.nh = {
-    enable = true;
-    flake = "/home/scott/.config/nix";
   };
 
   programs.msmtp = {
@@ -395,19 +364,9 @@
     host = "127.0.0.1";
   };
 
-  # services.matter-server.enable = true;
-
-  # services.immich = {
-  #   enable = true;
-  #   port = 2283;
-  #   mediaLocation = "/dragon/immich";
-  # };
-
   hardware.bluetooth.enable = true;
 
   hardware.rasdaemon.enable = true;
-
-  services.fstrim.enable = true;
 
   # Log NVMe/CPU temps and fan speeds every minute for thermal diagnostics
   systemd.services.log-temps = let
