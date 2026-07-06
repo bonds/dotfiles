@@ -11,7 +11,6 @@
     ghc # Glasgow Haskell Compiler
     helix # modal text editor (vim-like)
     idris2 # functional language with dependent types
-    nh # nix helper for rebuilds and garbage collection
     ripgrep # fast grep for searching code
     rlwrap # readline wrapper for interactive programs
     starship # customizable cross-shell prompt

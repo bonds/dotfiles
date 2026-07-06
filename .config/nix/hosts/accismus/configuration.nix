@@ -92,6 +92,7 @@ in {
     ]
     ++ [
       (pkgs.callPackage ../../pkgs/ghosttile {})
+      nh # nix helper for rebuilds and garbage collection (darwin, no programs.nh module)
     ];
 
   security.pam.services.sudo_local.touchIdAuth = true;

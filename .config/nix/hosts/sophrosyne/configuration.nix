@@ -330,6 +330,11 @@
     };
   };
 
+  programs.nh = {
+    enable = true;
+    flake = "/home/scott/.config/nix";
+  };
+
   programs.msmtp = {
     enable = true;
     setSendmail = true;
