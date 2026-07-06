@@ -1,0 +1,120 @@
+{
+  "timestamp": "2026-06-08 14:09",
+  "system": {
+    "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "machine": "arm64"
+  },
+  "prompt_style": "strict",
+  "reference_samples": [
+    "capstone",
+    "hugo",
+    "ollama",
+    "nixpkgs-2605"
+  ],
+  "config": {
+    "model": "qwen2.5:1.5b",
+    "timeout": 180,
+    "prompt_style": "strict"
+  },
+  "results": [
+    {
+      "sample": "capstone",
+      "model": "qwen2.5:1.5b",
+      "time_s": 1.91,
+      "raw_bullets": 4,
+      "post_bullets": 4,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 0.0,
+      "expected": 2,
+      "raw_text": [
+        "Set correct version number to v5.0.9 in CS_VERSION_EXTRA.",
+        "Backported CVE fixes and PR #2935 by @Rot127 from https://github.com/capstone-engine/capstone/pull/2937.",
+        "This change includes updates for the latest known security vulnerabilities and improvements based on user feedback.",
+        "New usershould verify their version is 5.0.9 to ensure all critical issues are addressed."
+      ],
+      "post_text": [
+        "Set correct version number to v5.0.9 in CS_VERSION_EXTRA.",
+        "Backported CVE fixes and PR #2935 by @Rot127 from https://github.com/capstone-engine/capstone/pull/2937.",
+        "This change includes updates for the latest known security vulnerabilities and improvements based on user feedback.",
+        "New usershould verify their version is 5.0.9 to ensure all critical issues are addressed."
+      ]
+    },
+    {
+      "sample": "hugo",
+      "model": "qwen2.5:1.5b",
+      "time_s": 4.18,
+      "raw_bullets": 8,
+      "post_bullets": 8,
+      "raw_merges": 2,
+      "post_merges": 2,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [
+        "Modules/NPM: Fixed false stale warning related to npm pack commit hash: 59f35cd9.",
+        "Collections/Dicts: Reverted a change that would make dictionaries return nil when no values are provided, reverted by pull request c2709750 from @bep.",
+        "Time/Locale: Fixed locale-sspecific month abbreviations in the tpl/time package. This was addressed by commit hash: 481b5c5.",
+        "Improved support for building andistributing modules in Qiankun Angular Apps using Hugo, focusing on stability and functionality improvements.",
+        "PRs that contributed to these changes include:",
+        "[Improving Qiankun Angular Module Building via Hugo](https://github.com/qiankun-angular/qa-ng/pull/102)",
+        "[Reverting previous change related to dict behavior](https://github.com/qiankun-angular/qa-ng/pull/97)",
+        "Minor changes and optimizations made for better compatibility with various versions of Angular templates, ensuring smoother integration across different environments."
+      ],
+      "post_text": [
+        "Modules/NPM: Fixed false stale warning related to npm pack commit hash: 59f35cd9.",
+        "Collections/Dicts: Reverted a change that would make dictionaries return nil when no values are provided, reverted by pull request c2709750 from @bep.",
+        "Time/Locale: Fixed locale-sspecific month abbreviations in the tpl/time package. This was addressed by commit hash: 481b5c5.",
+        "Improved support for building andistributing modules in Qiankun Angular Apps using Hugo, focusing on stability and functionality improvements.",
+        "PRs that contributed to these changes include:",
+        "[Improving Qiankun Angular Module Building via Hugo](https://github.com/qiankun-angular/qa-ng/pull/102)",
+        "[Reverting previous change related to dict behavior](https://github.com/qiankun-angular/qa-ng/pull/97)",
+        "Minor changes and optimizations made for better compatibility with various versions of Angular templates, ensuring smoother integration across different environments."
+      ]
+    },
+    {
+      "sample": "ollama",
+      "model": "qwen2.5:1.5b",
+      "time_s": 1.66,
+      "raw_bullets": 4,
+      "post_bullets": 4,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 1.0,
+      "expected": 4,
+      "raw_text": [
+        "Fixed floating point exception x86, CUDA, Linux, and Windowssystems for gemma4:12b.",
+        "Updated ollama launchermes-desktop to allow skipping of app rebuilds with packaged apps already installed.",
+        "Added native support for installing Hermes Desktop via the Hermes Power Shell installer on Windows.",
+        "Enhanced CLI integration documentation."
+      ],
+      "post_text": [
+        "Fixed floating point exception x86, CUDA, Linux, and Windowsssystems for gemma4:12b.",
+        "Updated ollama launchermes-desktop to allow skipping of app rebuilds with packaged apps already installed.",
+        "Added native support for installing Hermes Desktop via the Hermes Power Shell installer on Windows.",
+        "Enhanced CLI integration documentation."
+      ]
+    },
+    {
+      "sample": "nixpkgs-2605",
+      "model": "qwen2.5:1.5b",
+      "time_s": 1.39,
+      "raw_bullets": 3,
+      "post_bullets": 3,
+      "raw_merges": 4,
+      "post_merges": 4,
+      "quality": 1.0,
+      "expected": 3,
+      "raw_text": [
+        "Stage 1, or initrd, is updated to use ssystemd as its base ssystem.",
+        "The deprecated script-based initial stage of the boot process has been removed from nixpkgs.",
+        "tranquil and flap, new modules designed for secure communication and network monitoring respectively, have been added."
+      ],
+      "post_text": [
+        "Stage 1, or initrd, is updated to use ssystemd as its base ssystem.",
+        "The deprecated script-based initial stage of the boot process has been removed from nixpkgs.",
+        "tranquil and flap, new modules designed for secure communication and network monitoring respectively, have been added."
+      ]
+    }
+  ]
+}

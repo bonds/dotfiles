@@ -4,7 +4,7 @@
   ...
 }: let
   mkDarwin = import ./../lib/mkDarwin.nix {
-    inherit self;
+    inherit self inputs;
     inherit
       (inputs)
       nix-darwin

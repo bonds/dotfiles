@@ -4,6 +4,7 @@
   nixpkgs,
   home-manager,
   nix-index-database,
+  inputs,
 }: let
   commonModules = import ./common-modules.nix self;
   darwinOverlays = import ./darwin-overlays.nix;
@@ -15,7 +16,7 @@ in
     nix-darwin.lib.darwinSystem {
       specialArgs =
         {
-          inherit self;
+          inherit self inputs;
           isDarwin = true;
         }
         // specialArgs;

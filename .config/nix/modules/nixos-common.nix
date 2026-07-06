@@ -27,14 +27,7 @@ in {
     LC_TIME = "en_US.UTF-8";
   };
 
-  # NOTE: fish-command-not-found.nix and nix-registry.nix imports are kept
-  # here during Task 4 because common-modules.nix (which provides them) is
-  # not wired in until Task 5. They will be dropped in Task 5.
-
-  imports = [
-    ./fish-command-not-found.nix
-    ./nix-registry.nix
-  ];
+  # Provided by lib/common-modules.nix (wired via mkNixos).
 
   programs.command-not-found.enable = false;
 

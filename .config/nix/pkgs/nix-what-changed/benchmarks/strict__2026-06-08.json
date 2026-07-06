@@ -1,0 +1,388 @@
+{
+  "timestamp": "2026-06-08 14:10",
+  "system": {
+    "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "machine": "arm64"
+  },
+  "prompt_style": "strict",
+  "reference_samples": [
+    "capstone",
+    "hugo",
+    "ollama",
+    "nixpkgs-2605"
+  ],
+  "config": {
+    "model": "cajina/gemma4_e2b-q2_k_xl:v01",
+    "timeout": 180,
+    "prompt_style": "strict"
+  },
+  "results": [
+    {
+      "sample": "capstone",
+      "model": "qwen2.5:1.5b",
+      "time_s": 5.56,
+      "raw_bullets": 3,
+      "post_bullets": 3,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 0.3,
+      "expected": 2,
+      "raw_text": [
+        "Updated version number to 5.0.9 in CS_VERSION_EXTRA.",
+        "Applied cave fixes and backported changes from #2935 by @Rot127 via PR #2937.",
+        "Full changeling for v5.0.9 avaavailable at https://github.com/capstone-engine/capstone/compare/v5.0.7...v5.0.9"
+      ],
+      "post_text": [
+        "Updated version number to 5.0.9 in CS_VERSION_EXTRA.",
+        "Applied cave fixes and backported changes from #2935 by @Rot127 via PR #2937.",
+        "Full changeling for v5.0.9 avaavaavailable at https://github.com/capstone-engine/capstone/compare/v5.0.7...v5.0.9"
+      ]
+    },
+    {
+      "sample": "hugo",
+      "model": "qwen2.5:1.5b",
+      "time_s": 1.25,
+      "raw_bullets": 3,
+      "post_bullets": 3,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 1.0,
+      "expected": 3,
+      "raw_text": [
+        "Fixed false stale warning related to nam package packing",
+        "Reverted a change that made dictionaries return without values being provided",
+        "Updated template for collections to correctly handle situations where no values are given"
+      ],
+      "post_text": [
+        "Fixed false stale warning related to nam package packing",
+        "Reverted a change that made dictionaries return without values being provided",
+        "Updated template for collections to correctly handle situations where no values are given"
+      ]
+    },
+    {
+      "sample": "ollama",
+      "model": "qwen2.5:1.5b",
+      "time_s": 5.33,
+      "raw_bullets": 4,
+      "post_bullets": 4,
+      "raw_merges": 2,
+      "post_merges": 1,
+      "quality": 1.0,
+      "expected": 4,
+      "raw_text": [
+        "Fixed floating point exception crash in Gemma 4 on x86, cedar linux and Windowssystems.",
+        "Updated llama launchermes-desktop to allow skipping ape installation when a packaged ape is already present",
+        "Added support for installing Hermes Desktop using the Windows Power Shell in smaller",
+        "Documentation for clip integration has been updated"
+      ],
+      "post_text": [
+        "Fixed floating point exception crash in Gemma 4 on x86, cedar linux and Windowsssystems.",
+        "Updated lama launchermes-desktop to allow skipping ape installation when a packaged ape is already present",
+        "Added support for installing Hermes Desktop using the Windows Power Shell in smaller",
+        "Documentation for clip integration has been updated"
+      ]
+    },
+    {
+      "sample": "nixpkgs-2605",
+      "model": "qwen2.5:1.5b",
+      "time_s": 1.73,
+      "raw_bullets": 4,
+      "post_bullets": 4,
+      "raw_merges": 2,
+      "post_merges": 2,
+      "quality": 0.3,
+      "expected": 3,
+      "raw_text": [
+        "Stage 1 (initrd) based on ssystem by default deprecated scripted in it'd",
+        "boot package removed use resolve for Python 2 interpreter in steady",
+        "tranquil AT photo ads implementation added",
+        "flap bop flapping event detection implemented"
+      ],
+      "post_text": [
+        "Stage 1 (initrd) based on ssystem by default deprecated scripted in it'd",
+        "boot package removed use resolve for Python 2 interpreter in steady",
+        "tranquil AT photo ads implementation added",
+        "flap bop flapping event detection implemented"
+      ]
+    },
+    {
+      "sample": "capstone",
+      "model": "qwen2.5-coder:1.5b",
+      "time_s": 7.38,
+      "raw_bullets": 3,
+      "post_bullets": 3,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 0.3,
+      "expected": 2,
+      "raw_text": [
+        "Set correct version number in CS_VERSION_EXTRA in csch",
+        "Backported cave fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937.",
+        "Full Changelog: https://github.com/capstone-engine/capstone/compare/v5.0.7...v5.0.9"
+      ],
+      "post_text": [
+        "Set correct version number in CS_VERSION_EXTRA in csch",
+        "Backported cave fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937.",
+        "Full Changelog: https://github.com/capstone-engine/capstone/compare/v5.0.7...v5.0.9"
+      ]
+    },
+    {
+      "sample": "hugo",
+      "model": "qwen2.5-coder:1.5b",
+      "time_s": 7.91,
+      "raw_bullets": 3,
+      "post_bullets": 3,
+      "raw_merges": 2,
+      "post_merges": 2,
+      "quality": 1.0,
+      "expected": 3,
+      "raw_text": [
+        "modules/npm: Addressed a false stale warning related to nam pack commit 59f35cd9 by fixing the check for stale packages",
+        "Reverted a modification to the collection template function tpl/collections: Make dick return when values are provided due to an issue that caused errors during development The change was reverted with PR number c2709750.",
+        "Improved time formatting in the tpl/time module by ensuring correct locale-sspecific month abbreviations addressing commit 481b5c5 by @jmooring."
+      ],
+      "post_text": [
+        "modules/npm: Addressed a false stale warning related to nam pack commit 59f35cd9 by fixing the check for stale packages",
+        "Reverted a modification to the collection template function tpl/collections: Make dick return when values are provided to an issue that caused errors during development The change was reverted with PR number c2709750.",
+        "Improved time formatting in the tpl/time module by ensuring correct locale-sspecific month abbreviations addressing commit 481b5c5 by @jmooring."
+      ]
+    },
+    {
+      "sample": "ollama",
+      "model": "qwen2.5-coder:1.5b",
+      "time_s": 7.36,
+      "raw_bullets": 4,
+      "post_bullets": 4,
+      "raw_merges": 2,
+      "post_merges": 1,
+      "quality": 1.0,
+      "expected": 4,
+      "raw_text": [
+        "Fixed floating point exception crash in gemma4:12b",
+        "Improved performance for llama launchermes-desktop",
+        "Added support for installing Hermes Desktop on alive Windowssystems with Hermes Power Shell installer",
+        "Updated Cline clip integration guide"
+      ],
+      "post_text": [
+        "Fixed floating point exception crash in gemma4:12b",
+        "Improved performance for lama launchermes-desktop",
+        "Added support for installing Hermes Desktop on alive Windowsssystems with Hermes Power Shell installer",
+        "Updated Cline clip integration guide"
+      ]
+    },
+    {
+      "sample": "nixpkgs-2605",
+      "model": "qwen2.5-coder:1.5b",
+      "time_s": 21.39,
+      "raw_bullets": 9,
+      "post_bullets": 9,
+      "raw_merges": 4,
+      "post_merges": 4,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [
+        "New features",
+        "The stage 1 (initrd) has been updated to use ssystem as the default bootloader.",
+        "Added a new module tranquil for implementing the AT photo past",
+        "Introduced a new module flap for detecting bop flapping events",
+        "Breaking changes",
+        "The boot package has been removed from nixpkgs.",
+        "Python 2 interpreter is now exclusively within the resolve package",
+        "Important Bug fixes",
+        "Addressed issues related to ssystemd-based in it'd updates"
+      ],
+      "post_text": [
+        "New features",
+        "The stage 1 (initrd) has been updated to use ssystem as the default bootloader.",
+        "Added a new module tranquil for implementing the AT photo past",
+        "Introduced a new module flap for detecting bop flapping events",
+        "Breaking changes",
+        "The boot package has been removed from nixpkgs.",
+        "Python 2 interpreter is now exclusively within the resolve package",
+        "Important Bug fixes",
+        "Addressed issues related to ssystemd-based in it'd updates"
+      ]
+    },
+    {
+      "sample": "capstone",
+      "model": "gemma3:1b-it-qat",
+      "time_s": 10.05,
+      "raw_bullets": 5,
+      "post_bullets": 5,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 0.0,
+      "expected": 2,
+      "raw_text": [
+        "New version number is now correctly set in CS_VERSION_EXTRA.",
+        "jackpots of cave fixes and #2935 by @Rot127 are applied",
+        "Corrected minor bug related to data parsing",
+        "No breaking changes or major feature additions",
+        "Updatedocumentation to reflect latest version"
+      ],
+      "post_text": [
+        "New version number is now correctly set in CS_VERSION_EXTRA.",
+        "jackpots of cave fixes and #2935 by @Rot127 are applied",
+        "Corrected minor bug related to data parsing",
+        "No breaking changes or major feature additions",
+        "Updatedocumentation to reflect latest version"
+      ]
+    },
+    {
+      "sample": "hugo",
+      "model": "gemma3:1b-it-qat",
+      "time_s": 6.62,
+      "raw_bullets": 5,
+      "post_bullets": 5,
+      "raw_merges": 4,
+      "post_merges": 4,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [
+        "New feature Added support for locale-sspecific month abbreviations",
+        "Breaking change Removed the tpl/collections feature reverting to a default behavior",
+        "Bug fix Resolved an issue related to warning messages after nam pack",
+        "Bug fix Fixed a bug in the tpl/time module related to locale-sspecific month abbreviations",
+        "pro 4218755 be"
+      ],
+      "post_text": [
+        "New feature Added support for locale-sspecific month abbreviations",
+        "Breaking change Removed the tpl/collections featureverting to a default behavior",
+        "Bug fix Resolved an issue related to warning messages after nam pack",
+        "Bug fix Fixed a bug in the tpl/time module related to locale-sspecific month abbreviations",
+        "pro 4218755 be"
+      ]
+    },
+    {
+      "sample": "ollama",
+      "model": "gemma3:1b-it-qat",
+      "time_s": 5.47,
+      "raw_bullets": 5,
+      "post_bullets": 5,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 0.3,
+      "expected": 4,
+      "raw_text": [
+        "- - - - -",
+        "Hermes Desktop launch now skips building apes after existing installations",
+        "Native Windows installation support for Hermes Power Shell has been integrated",
+        "gemma4:12b floating point exception crash fix on x86, cedar linux and Windowssystems.",
+        "Cline clip integration documentation added"
+      ],
+      "post_text": [
+        "- - - - -",
+        "Hermes Desktop launch now skips building apes after existing installations",
+        "Native Windows installation support for Hermes Power Shell has been integrated",
+        "gemma4:12b floating point exception crash fix on x86, cedar linux and Windowsssystems.",
+        "Cline clip integration documentation added"
+      ]
+    },
+    {
+      "sample": "nixpkgs-2605",
+      "model": "gemma3:1b-it-qat",
+      "time_s": 4.69,
+      "raw_bullets": 5,
+      "post_bullets": 5,
+      "raw_merges": 2,
+      "post_merges": 2,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [
+        "- Stage 1 (a.k.a. in it'd now utilizessystemd as the primary in it method",
+        "- The legacy scripted in it'd implementation is no longer supported",
+        "- Python 2 is exclusively avaavailable within the resolve package",
+        "- tranquil A new AT photo ads implementation has been added",
+        "- flap A new bop flapping event detection module has been implemented"
+      ],
+      "post_text": [
+        "- Stage 1 (a.k.a. in it'd now utilizesssystemd as the primary in it method",
+        "- The legacy scripted in it'd implementation is no longer supported",
+        "- Python 2 is exclusively avaavaavailable within the resolve package",
+        "- tranquil A new AT photo ads implementation has been added",
+        "- flap A new bop flapping event detection module has been implemented"
+      ]
+    },
+    {
+      "sample": "capstone",
+      "model": "cajina/gemma4_e2b-q2_k_xl:v01",
+      "time_s": 5.8,
+      "raw_bullets": 2,
+      "post_bullets": 2,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 1.0,
+      "expected": 2,
+      "raw_text": [
+        "Set correct version number in CS_VERSION_EXTRA.",
+        "jackpots of cave fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937"
+      ],
+      "post_text": [
+        "Set correct version number in CS_VERSION_EXTRA.",
+        "jackpots of cave fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937"
+      ]
+    },
+    {
+      "sample": "hugo",
+      "model": "cajina/gemma4_e2b-q2_k_xl:v01",
+      "time_s": 26.25,
+      "raw_bullets": 2,
+      "post_bullets": 2,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 0.5,
+      "expected": 3,
+      "raw_text": [
+        "Fix false stale warning after nam pack 59f35cd9 mooring",
+        "Revert \""
+      ],
+      "post_text": [
+        "Fix false stale warning after nam pack 59f35cd9 mooring",
+        "Revert \""
+      ]
+    },
+    {
+      "sample": "ollama",
+      "model": "cajina/gemma4_e2b-q2_k_xl:v01",
+      "time_s": 8.5,
+      "raw_bullets": 4,
+      "post_bullets": 4,
+      "raw_merges": 2,
+      "post_merges": 1,
+      "quality": 1.0,
+      "expected": 4,
+      "raw_text": [
+        "Fixed the gemma4:12b floating point exception crash on x86, cedar linux and Windowssystems.",
+        "llama launchermes-desktop now launches Hermes Desktop and can skip rebuilding when a packaged ape is already in stalled",
+        "Native Windows installation support via Hermes Power Shell installer added",
+        "Cline clip integration docs were added"
+      ],
+      "post_text": [
+        "Fixed the gemma4:12b floating point exception crash on x86, cedar linux and Windowsssystems.",
+        "lama launchermes-desktop now launches Hermes Desktop and can skip rebuilding when a packaged ape is already in stalled",
+        "Native Windows installation support via Hermes Power Shell installer added",
+        "Cline clip integration docs were added"
+      ]
+    },
+    {
+      "sample": "nixpkgs-2605",
+      "model": "cajina/gemma4_e2b-q2_k_xl:v01",
+      "time_s": 25.21,
+      "raw_bullets": 2,
+      "post_bullets": 2,
+      "raw_merges": 2,
+      "post_merges": 2,
+      "quality": 0.5,
+      "expected": 3,
+      "raw_text": [
+        "Stage 1 (initrd) is now based on ssystem by default",
+        "The old scripted in it'd implementation is deprecated"
+      ],
+      "post_text": [
+        "Stage 1 (initrd) is now based on ssystem by default",
+        "The old scripted in it'd implementation is deprecated"
+      ]
+    }
+  ]
+}

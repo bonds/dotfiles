@@ -4,7 +4,7 @@
   ...
 }: let
   mkNixos = import ./../lib/mkNixos.nix {
-    inherit self;
+    inherit self inputs;
     inherit
       (inputs)
       nixpkgs

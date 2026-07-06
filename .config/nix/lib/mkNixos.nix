@@ -4,6 +4,7 @@
   nixpkgs-stable,
   home-manager-stable,
   nix-index-database,
+  inputs,
 }: let
   commonModules = import ./common-modules.nix self;
 in
@@ -15,7 +16,7 @@ in
       system = "x86_64-linux";
       specialArgs =
         {
-          inherit self;
+          inherit self inputs;
           pkgs-unstable = import nixpkgs {
             system = "x86_64-linux";
             config.allowUnfree = true;
