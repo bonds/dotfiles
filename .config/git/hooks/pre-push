@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Pre-push hook for the dotfiles repo (~/.config/nix subdir).
+# Pre-push hook — tracked in .githooks/pre-push (not .git/hooks/).
+# Activated by core.hooksPath = ~/.githooks in git config.
 # Runs nix flake check (format + secrets) before pushing.
 # Bypass with: git push --no-verify
 set -euo pipefail

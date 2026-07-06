@@ -5,7 +5,7 @@
 	logallrefupdates = true
 	ignorecase = true
 	precomposeunicode = true
-	hooksPath = ~/.githooks
+	hooksPath = .config/git/hooks
 [user]
 	name = Scott Bonds
 	email = scott@ggr.com
