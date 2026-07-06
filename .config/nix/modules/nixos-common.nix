@@ -8,7 +8,6 @@
 }: let
   pruneGenerations = import ./prune-generations.nix {inherit pkgs;};
 in {
-  # NixOS-specific nix settings
   nix.settings.auto-allocate-uids = lib.mkDefault true;
   nix.settings.use-cgroups = lib.mkDefault true;
 
@@ -27,31 +26,12 @@ in {
     LC_TIME = "en_US.UTF-8";
   };
 
-  # NOTE: nix-registry.nix and fish-command-not-found.nix are no longer
-  # imported directly here — they are provided by the shared common-modules
-  # list in lib/common-modules.nix, which is added by mkNixos/mkDarwin.
+  imports = [
+    ./nix-registry.nix
+    ./fish-command-not-found.nix
+  ];
 
   programs.command-not-found.enable = false;
-
-  # Absorbed from per-host duplication (all with lib.mkDefault):
-  programs.tmux.enable = lib.mkDefault true;
-  programs.nh = {
-    enable = lib.mkDefault true;
-    flake = lib.mkDefault "/home/scott/.config/nix";
-  };
-  services.fstrim.enable = lib.mkDefault true;
-
-  security.sudo.enable = lib.mkDefault false;
-  security.doas.enable = lib.mkDefault true;
-
-  services.openssh = {
-    enable = lib.mkDefault true;
-    settings = {
-      PermitRootLogin = lib.mkDefault "no";
-      PasswordAuthentication = lib.mkDefault false;
-      AllowAgentForwarding = lib.mkDefault true;
-    };
-  };
 
   systemd.services.prune-generations = {
     description = "Prune old nix system profile generations";
