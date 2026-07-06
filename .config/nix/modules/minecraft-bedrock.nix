@@ -3,8 +3,8 @@
   lib,
   pkgs,
   ...
-}:
-with lib; let
+}: let
+  inherit (lib) mkOption mkIf mkEnableOption types literalExpression;
   cfg = config.services.minecraft-bedrock;
   startScript = pkgs.writeShellScript "bedrock-server-start" ''
     fifo=/run/minecraft-bedrock/stdin

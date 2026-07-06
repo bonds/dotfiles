@@ -14,6 +14,7 @@
   nix.settings.warn-dirty = lib.mkDefault false;
   nix.settings.trusted-users = lib.mkDefault ["scott"];
   nix.settings.max-jobs = lib.mkDefault "auto";
+  nix.settings.auto-optimise-store = lib.mkDefault true;
   nix.optimise.automatic = lib.mkDefault true;
   nix.gc = {
     automatic = lib.mkDefault true;

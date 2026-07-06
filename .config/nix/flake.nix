@@ -94,6 +94,9 @@
         {nixpkgs.overlays = darwinOverlays;}
         nix-index-database.darwinModules.nix-index
         ./modules/nix.nix
+        ./modules/darwin-common.nix
+        ./modules/configuration-revision.nix
+        ./modules/ssh-authorized-keys.nix
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix
         ./modules/packages/utils.nix
@@ -117,6 +120,12 @@
       };
       modules = [
         ./modules/nix.nix
+        ./modules/configuration-revision.nix
+        ./modules/ssh-authorized-keys.nix
+        ./modules/bash-to-fish.nix
+        {modules.bash-to-fish.enable = true;}
+        ./modules/minecraft-bedrock.nix
+        ./modules/dst-server.nix
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix
         ./modules/packages/utils.nix
@@ -148,6 +157,14 @@
       };
       modules = [
         ./modules/nix.nix
+        ./modules/configuration-revision.nix
+        ./modules/bash-to-fish.nix
+        {
+          modules.bash-to-fish = {
+            enable = true;
+            gnome-inhibit.enable = true;
+          };
+        }
         ./modules/secrets-check.nix
         ./modules/packages/dev.nix
         ./modules/packages/utils.nix

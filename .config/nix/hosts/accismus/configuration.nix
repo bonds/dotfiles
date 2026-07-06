@@ -98,15 +98,6 @@ in {
   security.pam.services.sudo_local.touchIdAuth = true;
   security.pam.services.sudo_local.reattach = false;
 
-  # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
-  system.activationScripts.sshAuthorizedKeys = {
-    text = ''
-      mkdir -p /Users/scott/.ssh
-      ln -sf /Users/scott/.config/ssh/keys /Users/scott/.ssh/authorized_keys
-    '';
-    deps = [];
-  };
-
   # Deploy declarative syncthing config.xml (preserves key.pem, cert.pem, and index-v2/)
   system.activationScripts.extraActivation.text = ''
     echo "syncthing-config: deploying to ${syncthingConfigDir}" >&2
@@ -116,9 +107,6 @@ in {
     chmod 644 "${syncthingConfigDir}/config.xml"
     pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
   '';
-
-  # Set Git commit hash for darwin-version.
-  system.configurationRevision = self.rev or self.dirtyRev or null;
 
   # Used for backwards compatibility, please read the changelog before changing.
   # $ darwin-rebuild changelog

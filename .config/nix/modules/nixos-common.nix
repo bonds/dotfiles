@@ -8,14 +8,8 @@
 }: let
   pruneGenerations = import ./prune-generations.nix {inherit pkgs;};
 in {
-  nix = let
-    flakeInputs = lib.filterAttrs (_: lib.isType "flake") inputs;
-  in {
-    registry = lib.mapAttrs (_: flake: lib.mkDefault {inherit flake;}) flakeInputs;
-    nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") flakeInputs;
-    settings.auto-allocate-uids = lib.mkDefault true;
-    settings.use-cgroups = lib.mkDefault true;
-  };
+  nix.settings.auto-allocate-uids = lib.mkDefault true;
+  nix.settings.use-cgroups = lib.mkDefault true;
 
   time.timeZone = "America/Los_Angeles";
 
@@ -32,11 +26,12 @@ in {
     LC_TIME = "en_US.UTF-8";
   };
 
-  programs.command-not-found.enable = false;
-
   imports = [
+    ./nix-registry.nix
     ./fish-command-not-found.nix
   ];
+
+  programs.command-not-found.enable = false;
 
   systemd.services.prune-generations = {
     description = "Prune old nix system profile generations";

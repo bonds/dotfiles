@@ -1,10 +1,10 @@
 final: prev: {
-  osxphotos = prev.stdenvNoCC.mkDerivation {
+  osxphotos = prev.stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "osxphotos";
     version = "0.76.1";
 
     src = prev.fetchurl {
-      url = "https://github.com/RhetTbull/osxphotos/releases/download/v0.76.1/osxphotos_MacOS_exe_darwin_arm64_v0.76.1.zip";
+      url = "https://github.com/RhetTbull/osxphotos/releases/download/v${finalAttrs.version}/osxphotos_MacOS_exe_darwin_arm64_v${finalAttrs.version}.zip";
       hash = "sha256-SDYhKc37BLzlsLuuDiWl6wcSDW996YEtv9ZqILG6YJc=";
     };
 
@@ -27,5 +27,5 @@ final: prev: {
       platforms = ["aarch64-darwin"];
       mainProgram = "osxphotos";
     };
-  };
+  });
 }

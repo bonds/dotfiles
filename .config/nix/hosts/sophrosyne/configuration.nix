@@ -10,11 +10,10 @@
   imports = [
     ./hardware-configuration.nix
     ../../modules/nixos-common.nix
-    ../../modules/minecraft-bedrock.nix
-    ../../modules/dst-server.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
+  boot.loader.systemd-boot.configurationLimit = 10;
   boot.loader.efi.canTouchEfiVariables = true;
 
   networking.hostName = "sophrosyne";
@@ -24,11 +23,8 @@
   boot.kernel.sysctl."net.ipv4.ip_forward" = 1;
   boot.kernel.sysctl."net.ipv6.conf.all.forwarding" = 1;
 
-  networking.firewall.allowedTCPPorts = [10443 11080];
-  networking.firewall.extraCommands = ''
-    iptables -I nixos-fw 1 -i enp0s31f6 -p tcp -j ACCEPT
-    iptables -I nixos-fw 2 -i enp0s31f6 -p udp -j ACCEPT
-  '';
+  networking.firewall.enable = true;
+  networking.nftables.enable = true;
 
   console.keyMap = "dvorak";
 
@@ -38,15 +34,6 @@
     extraGroups = ["networkmanager" "wheel"];
     shell = pkgs.fish;
     packages = with pkgs; [];
-  };
-
-  # Ensure ~/.ssh/authorized_keys points to the XDG-compliant key location
-  system.activationScripts.sshAuthorizedKeys = {
-    text = ''
-      mkdir -p /home/scott/.ssh
-      ln -sf /home/scott/.config/ssh/keys /home/scott/.ssh/authorized_keys
-    '';
-    deps = [];
   };
 
   # NOPASSWD scoped to rebuild commands only (for remote nix deploys).
@@ -164,15 +151,6 @@
     enable = true;
     interval = "*-*-01 03:00:00";
   };
-  programs.bash = {
-    interactiveShellInit = ''
-      if [[ $(${pkgs.procps}/bin/ps --no-header --pid=$PPID --format=comm) != "fish" && -z ''${BASH_EXECUTION_STRING} ]]
-      then
-        shopt -q login_shell && LOGIN_OPTION='--login' || LOGIN_OPTION=""
-        exec ${pkgs.fish}/bin/fish $LOGIN_OPTION
-      fi
-    '';
-  };
 
   services.avahi = {
     enable = false;
@@ -237,7 +215,9 @@
       home.homeDirectory = "/home/scott";
       imports = [
         ../../modules/home/tmux.nix
+        ../../modules/home/what-changed.nix
       ];
+      programs.what-changed.enable = true;
     };
   };
 
@@ -427,6 +407,8 @@
 
   hardware.rasdaemon.enable = true;
 
+  services.fstrim.enable = true;
+
   # Log NVMe/CPU temps and fan speeds every minute for thermal diagnostics
   systemd.services.log-temps = let
     logScript = pkgs.writeShellScript "log-temps" ''
@@ -496,6 +478,4 @@
       ReadWritePaths = ["/sys/devices/platform/dell_smm_hwmon"];
     };
   };
-
-  system.configurationRevision = self.rev or self.dirtyRev or null;
 }

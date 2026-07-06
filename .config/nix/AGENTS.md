@@ -75,21 +75,27 @@ hosts/
     hardware-configuration.nix
 modules/           # Shared modules
   home/            # Home-manager modules (all machines)
-    gnome.nix      #   GNOME dconf, extensions, keybindings (metanoia only)
-    firefox.nix    #   Firefox policies and extensions (metanoia only)
-    misc.nix       #   WirePlumber, uBlock, fish plugins, ulauncher (metanoia only)
-    tmux.nix       #   Catppuccin tmux theme, truecolor, cpu/ram/battery modules
-  nixos-common.nix # Shared NixOS settings (locale, timezone, nix channels)
-  packages/        # Per-machine package lists
-    dev.nix        #   Dev tools (editors, languages, SCM)
-    utils.nix      #   System utilities (file, network, system tools)
-  vudials-uids.nix # Scott's dial UID defaults (imported by both accismus + metanoia)
+    common.nix      #   Shared home-manager settings (useGlobalPkgs, useUserPackages)
+    direnv.nix      #   direnv configuration
+    gnome.nix       #   GNOME dconf, extensions, keybindings (metanoia only)
+    misc.nix        #   WirePlumber, uBlock, fish plugins, ulauncher (metanoia only)
+    polyptych.nix   #   Polyptych (spanned fullscreen video player)
+    tmux.nix        #   Catppuccin tmux theme, truecolor, cpu/ram/battery modules
+    what-changed.nix #  what-changed LLM changelog summaries
+    zen-policies.nix #  Zen browser policies (shared by accismus + metanoia)
+  darwin-common.nix # Shared darwin settings (nix registry pinning)
+  nix-registry.nix  # Shared nix registry/nixPath pinning (darwin + NixOS)
+  nixos-common.nix  # Shared NixOS settings (locale, timezone, nix channels, autouids, cgroups)
+  packages/         # Per-machine package lists
+    dev.nix         #   Dev tools (editors, languages, SCM)
+    utils.nix       #   System utilities (file, network, system tools)
+  vudials-uids.nix  # Scott's dial UID defaults (imported by both accismus + metanoia)
 ```
 
 ## Gotchas
 
 - **`inputs.nixpkgs.follows` can break things on stable channels.** Letting an input follow your nixpkgs can cause build failures if the input expects newer nixpkgs APIs than the stable channel provides. If an input fails to build on a stable channel, remove its follows so it uses its own pinned nixpkgs. This has happened with home-manager and arion in the past.
-- **`nix flake check` works on darwin** — NixOS configs evaluate fine cross-platform. Cannot cross-build x86_64 from aarch64 though; build directly on the target machine or deploy via `--target-host`.
+- **`nix flake check` works on darwin** — NixOS configs evaluate fine cross-platform. Cannot cross-build x86_64 from aarch64 though; build directly on the target machine or deploy via `--target-host`. Runs `format-check` (alejandra) and `secrets-check` (gitleaks). Does NOT run pytest on nix-what-changed (run that explicitly in the sub-flake).
 - **`nixos-rebuild switch` needs sudo.** Remote deploy from laptop uses `--target-host scott@host --use-remote-sudo`. Passwordless sudo (`NOPASSWD` in sudoers) is needed for automated deploys.
 - **`flake.lock` is tracked.** Commit it after `nix flake update`.
 - **`warn-dirty = false`** is set in `nix.conf` — builds work fine with uncommitted changes.
@@ -105,6 +111,7 @@ modules/           # Shared modules
 - **After every nix file change, always run the build step to catch errors before attempting a switch.** The switch step requires `sudo` which may fail remotely; the build step catches evaluation and compilation errors first. Do not commit and push changes to sophrosyne or metanoia without first building remotely to verify they compile clean.
 - **When changes require a reboot to take effect (kernel params, boot config), tell the user explicitly.** After a successful switch, check whether any changes need a reboot — `boot.kernelParams` changes always do, as do filesystem changes and some systemd settings. Say "reboot needed" rather than just "run nr".
 - **After each batch of changes, commit and push to all remotes** (`git push origin && git push sophrosyne`).
+- **A pre-push hook (`~/.git/hooks/pre-push`) runs `nix flake check --no-build` before each push.** It aborts the push if format or secrets checks fail. Bypass with `git push --no-verify` in emergencies. The hook only checks the nix config (cds into `~/.config/nix`). Install it on sophrosyne/metanoia by copying the script from accismus.
 - **Pushing to a checked-out branch on a remote** requires the remote repo to have `receive.denyCurrentBranch = updateInstead` (set on sophrosyne's `~/.git/config`). This auto-updates the work tree when pushed.
 - **Sophrosyne's dotfiles repo is a normal clone at `~`** (work tree is `$HOME`, git dir is `~/.git`). `core.bare` must stay `false`. Do NOT set `core.bare = true` — it breaks the working tree. If pushes fail with "unstaged changes": (1) inspect the changes with `ssh sophrosyne.local "cd ~ && git status --short && git diff"`, (2) summarize them for the user, (3) ask whether to commit+push, discard, or stash them. `.ssh/authorized_keys` is not tracked in git; each machine's nix activation script creates the symlink to `~/.config/ssh/keys` with the correct OS-specific path.
 - **When renaming a host**, keep old hostnames in SSH config during the transition. After the first rebuild with the new hostname, clean up old references in ssh config and known_hosts.

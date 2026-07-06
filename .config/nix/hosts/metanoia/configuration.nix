@@ -62,7 +62,9 @@
         ../../modules/home/gnome.nix
         ../../modules/home/misc.nix
         ../../modules/home/tmux.nix
+        ../../modules/home/what-changed.nix
       ];
+      programs.what-changed.enable = true;
     };
   };
 
@@ -77,8 +79,6 @@
   };
 
   system.stateVersion = "24.05";
-
-  system.configurationRevision = self.rev or self.dirtyRev or null;
 
   users.users.root.hashedPassword = "*";
 
@@ -115,33 +115,6 @@
         GDK_SCALE = 2;
       };
     };
-  };
-
-  programs.bash = {
-    interactiveShellInit = ''
-      if [[ $(${pkgs.procps}/bin/ps --no-header --pid=$PPID --format=comm) != "fish" && -z ''${BASH_EXECUTION_STRING} ]]
-      then
-
-        shopt -q login_shell && LOGIN_OPTION='--login' || LOGIN_OPTION=""
-        # exec ${pkgs.fish}/bin/fish $LOGIN_OPTION
-
-        # gnome-session... tells us that gdm is up and no user is logged
-        # in sitting at the machine, in which case gnome-session-inhibit will
-        # error out, effectively blocking incoming SSH connections
-
-        if test -z "$SSH_CONNECTION" || ! gnome-session-inhibit --list > /dev/null 2>&1; then
-          exec ${pkgs.fish}/bin/fish $LOGIN_OPTION
-        else
-          from=$(echo $SSH_CONNECTION | awk '{print $1}')
-          to=$(echo $SSH_CONNECTION | awk '{print $3}')
-          exec gnome-session-inhibit \
-              --app-id $USER@ggr.com \
-              --inhibit suspend \
-              --reason "SSHed into $(hostname) from $from at $(date '+%F %T')" \
-              ${pkgs.fish}/bin/fish $LOGIN_OPTION
-        fi
-      fi
-    '';
   };
 
   programs.nh = {
@@ -190,7 +163,7 @@
     enable = true;
   };
 
-  systemd.services.ollama.serviceConfig.Restart = lib.mkForce "always";
+  systemd.services.ollama.serviceConfig.Restart = lib.mkOverride 900 "always";
 
   services.fprintd.enable = true;
 
