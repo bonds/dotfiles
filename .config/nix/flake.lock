@@ -59,6 +59,26 @@
         "type": "github"
       }
     },
+    "neocode": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1783433605,
+        "narHash": "sha256-CRplqmmzpLDaiEG3T16KUmrFXis7wJgnyudo6H5hEMw=",
+        "owner": "bonds",
+        "repo": "NeoCode",
+        "rev": "f032670c453de13f3ba23872ac88288c63816dbe",
+        "type": "github"
+      },
+      "original": {
+        "owner": "bonds",
+        "repo": "NeoCode",
+        "type": "github"
+      }
+    },
     "nix-darwin": {
       "inputs": {
         "nixpkgs": [
@@ -198,6 +218,7 @@
         "flake-parts": "flake-parts",
         "home-manager": "home-manager",
         "home-manager-stable": "home-manager-stable",
+        "neocode": "neocode",
         "nix-darwin": "nix-darwin",
         "nix-index-database": "nix-index-database",
         "nixpkgs": "nixpkgs",

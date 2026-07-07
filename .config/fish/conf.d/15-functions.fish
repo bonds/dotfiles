@@ -58,14 +58,14 @@ function nr
             set -l _pwd $PWD
             cd $HOME/.config/nix
             set -l gh_token (gh auth token 2>/dev/null)
-            for pkg in ollama zen-browser opencode opencode-desktop neocode
+            for pkg in ollama zen-browser opencode opencode-desktop
                 if test -n "$gh_token"
                     env GITHUB_TOKEN=$gh_token nix run nixpkgs#nix-update -- -F --system aarch64-darwin --use-github-releases $pkg
                 else
                     nix run nixpkgs#nix-update -- -F --system aarch64-darwin --use-github-releases $pkg
                 end
             end
-            alejandra modules/ollama-overlay.nix modules/zen-browser-overlay.nix modules/opencode-overlay.nix modules/neocode-overlay.nix
+            alejandra modules/ollama-overlay.nix modules/zen-browser-overlay.nix modules/opencode-overlay.nix
             cd $_pwd
         else
             set -l _pwd $PWD

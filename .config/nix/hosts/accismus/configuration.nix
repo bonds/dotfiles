@@ -36,7 +36,7 @@ in {
       caffeine # don't go to sleep
       xclip # for copying from terminal to clipboard
       opencode # AI coding agent (CLI, binary overlay, nr --update)
-      neocode # Native macOS SwiftUI client for OpenCode (community, binary overlay, nr --update)
+      inputs.neocode.packages.${pkgs.stdenv.hostPlatform.system}.default # Native macOS SwiftUI client for OpenCode (community, flake, nr --update)
       opencode-desktop # OpenCode Electron desktop app (binary overlay, auto-updater disabled)
       openssh # macos ssh doesn't come with resident ssh support
       ollama # run LLMs locally
@@ -92,7 +92,7 @@ in {
     ++ [
       (pkgs.callPackage ../../pkgs/ghosttile {})
 
-      safari-web-app-slack # Safari web app wrapper (native WebKit, no Electron)
+      # safari-web-app-slack # Safari web app wrapper (native WebKit, no Electron) — disabled, higher mem than Electron Slack
       nh # nix helper for rebuilds and garbage collection (darwin, no programs.nh module)
     ];
 
@@ -150,15 +150,15 @@ in {
 
   # Symlink nix-built Safari web app (Slack) into ~/Applications/ so Spotlight
   # indexes it like Apple's own "Add to Dock" web apps.
-  system.activationScripts.safariWebApps.text = ''
-    SRC="${pkgs.safari-web-app-slack}/Applications/Slack.app"
-    DST="/Users/scott/Applications/Slack.app"
-    if [ -e "$DST" ]; then
-      rm -rf "$DST"
-    fi
-    ln -sf "$SRC" "$DST"
-    echo "safari-web-app: symlinked Slack.app to $DST"
-  '';
+  # system.activationScripts.safariWebApps.text = ''
+  #   SRC="${pkgs.safari-web-app-slack}/Applications/Slack.app"
+  #   DST="/Users/scott/Applications/Slack.app"
+  #   if [ -e "$DST" ]; then
+  #     rm -rf "$DST"
+  #   fi
+  #   ln -sf "$SRC" "$DST"
+  #   echo "safari-web-app: symlinked Slack.app to $DST"
+  # '';
 
   # Disable cmux's built-in Sparkle auto-updater so `nr --update` is the
   # only update path (matches ollama/opencode pinned-overlay discipline).

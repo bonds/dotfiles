@@ -17,6 +17,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     polyptych.url = "github:bonds/polyptych";
+    neocode = {
+      url = "github:bonds/NeoCode";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     flake-parts.url = "github:hercules-ci/flake-parts";
   };
   outputs = inputs:
