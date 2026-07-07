@@ -92,12 +92,7 @@ in {
     ++ [
       (pkgs.callPackage ../../pkgs/ghosttile {})
 
-      # Safari web app wrappers (native WebKit, no Electron)
-      (pkgs.callPackage ../../pkgs/safari-web-app {
-        name = "Slack";
-        url = "https://app.slack.com";
-      })
-
+      safari-web-app-slack # Safari web app wrapper (native WebKit, no Electron)
       nh # nix helper for rebuilds and garbage collection (darwin, no programs.nh module)
     ];
 
@@ -151,6 +146,18 @@ in {
   system.activationScripts.applications.text = lib.mkAfter ''
     echo "zen-icon: setting custom icon on Zen.app" >&2
     /usr/bin/osascript "${setZenIconScript}" 2>&1 || true
+  '';
+
+  # Symlink nix-built Safari web app (Slack) into ~/Applications/ so Spotlight
+  # indexes it like Apple's own "Add to Dock" web apps.
+  system.activationScripts.safariWebApps.text = ''
+    SRC="${pkgs.safari-web-app-slack}/Applications/Slack.app"
+    DST="/Users/scott/Applications/Slack.app"
+    if [ -e "$DST" ]; then
+      rm -rf "$DST"
+    fi
+    ln -sf "$SRC" "$DST"
+    echo "safari-web-app: symlinked Slack.app to $DST"
   '';
 
   # Disable cmux's built-in Sparkle auto-updater so `nr --update` is the

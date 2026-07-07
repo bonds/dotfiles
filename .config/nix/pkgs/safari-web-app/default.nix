@@ -1,7 +1,6 @@
 {
   stdenvNoCC,
   lib,
-}: {
   name,
   url,
   icon ? null,
@@ -9,7 +8,6 @@
   webAppRuntime = "/System/Volumes/Preboot/Cryptexes/App/System/Library/CoreServices/Web App.app/Contents/MacOS/Web App";
   sanitizedName = lib.replaceStrings ["/"] [""] name;
 
-  # Deterministic UUID from URL: sha256 → uppercase → UUID format
   hash = builtins.hashString "sha256" url;
   hexPart = builtins.substring 0 32 hash;
   uuid = lib.toUpper (
@@ -32,64 +30,69 @@ in
           APPDIR="$out/Applications/${sanitizedName}.app"
           mkdir -p "$APPDIR/Contents/MacOS" "$APPDIR/Contents/Resources"
 
-          # Wrapper script — unquoted heredoc allows build-time expansion of webAppRuntime
-          cat > "$APPDIR/Contents/MacOS/${sanitizedName}" << WRAPPER
+          # Wrapper script — unquoted heredoc, delimiter at column 0
+          cat > "$APPDIR/Contents/MacOS/${sanitizedName}" << WRAPPER_HERE
       #!/bin/bash
       MYDIR="\$(cd "\$(dirname "\$0")"/../.. && pwd -P)"
       BUNDLEID="\$(defaults read "\$MYDIR/Contents/Info.plist" CFBundleIdentifier 2>/dev/null)"
       exec '${webAppRuntime}' --bundlepath "\$MYDIR" --bundleidentifier "\$BUNDLEID"
-      WRAPPER
+      WRAPPER_HERE
           chmod +x "$APPDIR/Contents/MacOS/${sanitizedName}"
 
-          # Build Info.plist
-          P="$APPDIR/Contents/Info.plist"
-          PB="/usr/libexec/PlistBuddy"
+          # Info.plist as XML — delimiter at column 0
+          cat > "$APPDIR/Contents/Info.plist" << PLIST_HERE
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+        <key>CFBundleExecutable</key>
+        <string>${sanitizedName}</string>
+        <key>CFBundleIconFile</key>
+        <string>ApplicationIcon</string>
+        <key>CFBundleIdentifier</key>
+        <string>com.apple.Safari.WebApp.${uuid}</string>
+        <key>CFBundleInfoDictionaryVersion</key>
+        <string>6.0</string>
+        <key>CFBundleName</key>
+        <string>${name}</string>
+        <key>CFBundleDisplayName</key>
+        <string>${name}</string>
+        <key>CFBundlePackageType</key>
+        <string>APPL</string>
+        <key>CFBundleShortVersionString</key>
+        <string>1.0</string>
+        <key>CFBundleSupportedPlatforms</key>
+        <array>
+          <string>MacOSX</string>
+        </array>
+        <key>CFBundleVersion</key>
+        <string>1</string>
+        <key>LSMinimumSystemVersion</key>
+        <string>14.0</string>
+        <key>Manifest</key>
+        <dict>
+          <key>display</key>
+          <string>standalone</string>
+          <key>name</key>
+          <string>${name}</string>
+          <key>scope</key>
+          <string>/</string>
+          <key>short_name</key>
+          <string>${name}</string>
+          <key>start_url</key>
+          <string>${url}</string>
+        </dict>
+      </dict>
+      </plist>
+      PLIST_HERE
 
-          plutil -create xml1 "$P"
-
-          plutil -insert CFBundleExecutable -string "${sanitizedName}" "$P"
-          plutil -insert CFBundleIdentifier -string "com.apple.Safari.WebApp.${uuid}" "$P"
-          plutil -insert CFBundleName -string "${name}" "$P"
-          plutil -insert CFBundleDisplayName -string "${name}" "$P"
-          plutil -insert CFBundlePackageType -string "APPL" "$P"
-          plutil -insert CFBundleInfoDictionaryVersion -string "6.0" "$P"
-          plutil -insert CFBundleShortVersionString -string "1.0" "$P"
-          plutil -insert CFBundleVersion -string "1" "$P"
-          plutil -insert LSMinimumSystemVersion -string "14.0" "$P"
-          plutil -insert CFBundleSupportedPlatforms -json '["MacOSX"]' "$P"
-
-          # Manifest — PWA metadata consumed by Web App.app
-          "$PB" -c "Add :Manifest dict" "$P"
-          "$PB" -c "Add :Manifest:display string standalone" "$P"
-          "$PB" -c "Add :Manifest:name string ${name}" "$P"
-          "$PB" -c "Add :Manifest:short_name string ${name}" "$P"
-          "$PB" -c "Add :Manifest:start_url string ${url}" "$P"
-          "$PB" -c "Add :Manifest:scope string /" "$P"
-
-          # Optional icon
+          # Icon (pre-converted .icns file, optional)
           ${lib.optionalString (icon != null) ''
-        ICON_DST="$APPDIR/Contents/Resources/ApplicationIcon.icns"
-        case "$(file -b --mime-type ${builtins.toString icon})" in
-          image/png)
-            sips -s format icns ${builtins.toString icon} --out "$ICON_DST" >/dev/null 2>&1
-            echo "Converted icon to icns"
-            ;;
-          image/x-icns)
-            cp ${builtins.toString icon} "$ICON_DST"
-            echo "Copied icns icon"
-            ;;
-          *)
-            echo "Warning: Unsupported icon format for ${name}. Expected PNG or ICNS." >&2
-            rm -f "$ICON_DST"
-            ;;
-        esac
-        if [ -f "$ICON_DST" ]; then
-          plutil -insert CFBundleIconFile -string "ApplicationIcon" "$P"
-        fi
+        cp ${builtins.toString icon} "$APPDIR/Contents/Resources/ApplicationIcon.icns"
       ''}
 
-          # Ad-hoc sign
-          codesign -f -s - "$APPDIR" 2>&1
+          # Ad-hoc sign — macOS tool, only works on darwin
+          /usr/bin/codesign -f -s - "$APPDIR"
 
           mkdir -p "$out/bin"
     '';
