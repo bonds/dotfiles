@@ -13,9 +13,6 @@
 
   syncthingConfig = pkgs.writeText "syncthing-config.xml" (builtins.readFile ./syncthing-config.xml);
 
-  photosExportScript = pkgs.writeShellScript "photos-export" ''
-    exec ${pkgs.osxphotos}/bin/osxphotos export --skip-edited --skip-live --update --directory '{created.year}/{created.month:02d}' "$HOME/Pictures/Syncthing-Photos"
-  '';
   # Custom icon for Zen.app — the DMG ships a Firefox icon packed in
   # Assets.car which shadows the .icns file, so replacing firefox.icns alone
   # doesn't work.  This AppleScript calls NSWorkspace.setIcon (same mechanism
@@ -190,8 +187,17 @@ in {
           };
         };
         photos-export = {
-          command = "${photosExportScript}";
           serviceConfig = {
+            ProgramArguments = [
+              "/Applications/Nix Apps/OSXPhotos.app/Contents/MacOS/osxphotos"
+              "export"
+              "--skip-edited"
+              "--skip-live"
+              "--update"
+              "--directory"
+              "{created.year}/{created.month:02d}"
+              "/Users/scott/Pictures/Syncthing-Photos"
+            ];
             StartCalendarInterval = [
               {
                 Hour = 2;
@@ -215,7 +221,9 @@ in {
         ../../modules/home/tmux.nix
         ../../modules/home/direnv.nix
         ../../modules/home/polyptych.nix
+        ../../modules/home/what-changed.nix
       ];
+      programs.what-changed.enable = true;
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
     };
   };

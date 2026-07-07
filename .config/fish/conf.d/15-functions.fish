@@ -85,7 +85,7 @@ function nr
     else
         set _nr_new_system (command readlink -f /run/current-system 2>/dev/null)
     end
-    if test "$_nr_old_system" != "$_nr_new_system"
+    if test "$_nr_old_system" != "$_nr_new_system"; and command --query what-changed
         what-changed "$_nr_old_system" "$_nr_new_system"
     end
 end
