@@ -91,6 +91,13 @@ in {
     ]
     ++ [
       (pkgs.callPackage ../../pkgs/ghosttile {})
+
+      # Safari web app wrappers (native WebKit, no Electron)
+      (pkgs.callPackage ../../pkgs/safari-web-app {
+        name = "Slack";
+        url = "https://app.slack.com";
+      })
+
       nh # nix helper for rebuilds and garbage collection (darwin, no programs.nh module)
     ];
 

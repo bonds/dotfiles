@@ -1,11 +1,11 @@
 final: prev: {
   neocode = prev.stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "neocode";
-    version = "0.8.1";
+    version = "0.8.1-nix";
 
     src = prev.fetchurl {
-      url = "https://github.com/watzon/NeoCode/releases/download/v${finalAttrs.version}/NeoCode.dmg";
-      hash = "sha256-v4gLQRRCg1ie7gMbJrhrgSJahS2rBMTnU/bfiLNCNus=";
+      url = "https://github.com/bonds/NeoCode/releases/download/v${finalAttrs.version}/NeoCode.dmg";
+      hash = "sha256-PAF22bese1hcd4ZkeYYzGht9CQAZ/tcAtAxB+MJFtf0=";
     };
 
     sourceRoot = ".";
@@ -14,7 +14,7 @@ final: prev: {
 
     installPhase = ''
       mkdir -p $out/Applications $out/bin
-      cp -r NeoCode/NeoCode.app $out/Applications/
+      cp -r NeoCode.app $out/Applications/
 
       # Strip Sparkle auto-updater config so the app never checks for or
       # notifies about updates (nr --update is the only path). Matches the
