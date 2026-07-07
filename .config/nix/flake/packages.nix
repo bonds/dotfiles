@@ -12,6 +12,6 @@ in {
       overlays = darwinOverlays;
     };
   in {
-    inherit (pkgs) ollama zen-browser opencode neocode;
+    inherit (pkgs) ollama zen-browser opencode opencode-desktop neocode;
   };
 }

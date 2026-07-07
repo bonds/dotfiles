@@ -37,6 +37,7 @@ in {
       xclip # for copying from terminal to clipboard
       opencode # AI coding agent (CLI, binary overlay, nr --update)
       neocode # Native macOS SwiftUI client for OpenCode (community, binary overlay, nr --update)
+      opencode-desktop # OpenCode Electron desktop app (binary overlay, auto-updater disabled)
       openssh # macos ssh doesn't come with resident ssh support
       ollama # run LLMs locally
       jan # local AI chat desktop app

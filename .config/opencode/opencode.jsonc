@@ -3,7 +3,10 @@
   "autoupdate": false,
   "default_agent": "plan",
   "snapshot": false,
-  "command": {
+  "plugin": [
+    "superpowers@git+https://github.com/obra/superpowers.git"
+  ],
+   "command": {
     "auto-plan": {
       "description": "Toggle auto-switch to plan mode after build",
       "template": "Toggle auto-plan mode"
