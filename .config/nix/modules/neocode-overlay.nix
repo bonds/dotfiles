@@ -5,7 +5,7 @@ final: prev: {
 
     src = prev.fetchurl {
       url = "https://github.com/bonds/NeoCode/releases/download/v${finalAttrs.version}/NeoCode.dmg";
-      hash = "sha256-PAF22bese1hcd4ZkeYYzGht9CQAZ/tcAtAxB+MJFtf0=";
+      hash = "sha256-iRmBM+k1LvcDKRlmteBV1E/b8NJaH/IwIyL8KCmpcTA=";
     };
 
     sourceRoot = ".";
