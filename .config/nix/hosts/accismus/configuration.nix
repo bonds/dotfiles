@@ -35,7 +35,8 @@ in {
     [
       caffeine # don't go to sleep
       xclip # for copying from terminal to clipboard
-      opencode # AI coding agent
+      opencode # AI coding agent (CLI, binary overlay, nr --update)
+      neocode # Native macOS SwiftUI client for OpenCode (community, binary overlay, nr --update)
       openssh # macos ssh doesn't come with resident ssh support
       ollama # run LLMs locally
       jan # local AI chat desktop app
