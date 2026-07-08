@@ -32,9 +32,9 @@ def _preflight(cfg: Config):
         errors.append(f"ollama unreachable at {cfg.host}: {e}")
 
     try:
-        import faster_whisper  # noqa: F401
+        import whisper  # noqa: F401
     except ImportError:
-        errors.append("faster-whisper not available (should be installed by nix package)")
+        errors.append("whisper not available (should be installed by nix package)")
 
     if errors:
         for e in errors:

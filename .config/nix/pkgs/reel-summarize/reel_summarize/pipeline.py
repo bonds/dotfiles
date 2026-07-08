@@ -29,7 +29,7 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
         print("→ extracting frames...", file=sys.stderr)
         frames = extract_frames(video_path, work_dir, cfg)
 
-        print("→ transcribing audio (faster-whisper)...", file=sys.stderr)
+        print("→ transcribing audio (whisper)...", file=sys.stderr)
         segments = transcribe(audio_path, cfg)
         transcript = transcribe_text(segments)
 

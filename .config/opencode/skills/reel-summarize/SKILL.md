@@ -21,7 +21,7 @@ Reel link and wants to know what it's about without watching it.
 - Other exit codes: print the error from stderr
 
 **Notes:**
-- Runs entirely locally via Ollama + faster-whisper
+- Runs entirely locally via Ollama + whisper (openai-whisper)
 - Takes ~30-120s to complete depending on reel length
 - Must have ollama running with `llama3.2-vision:11b` and `qwen2.5:7b` pulled
 - The `reel-summarize` binary is on PATH after `nr`

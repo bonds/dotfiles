@@ -4,18 +4,18 @@ from reel_summarize.config import Config
 
 
 def transcribe(audio_path: str, cfg: Config) -> list[dict]:
-    from faster_whisper import WhisperModel
+    import whisper
 
-    model = WhisperModel(cfg.whisper_model, device="cpu", compute_type="int8")
-    segments, _info = model.transcribe(audio_path)
-    result = []
-    for seg in segments:
-        result.append({
-            "start": seg.start,
-            "end": seg.end,
-            "text": seg.text.strip(),
+    model = whisper.load_model(cfg.whisper_model)
+    result = model.transcribe(audio_path)
+    segments = []
+    for seg in result.get("segments", []):
+        segments.append({
+            "start": seg.get("start", 0),
+            "end": seg.get("end", 0),
+            "text": seg.get("text", "").strip(),
         })
-    return result
+    return segments
 
 
 def transcribe_text(segments: list[dict]) -> str:

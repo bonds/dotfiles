@@ -60,7 +60,7 @@ In this repo, untracked files are hidden (`status.showUntrackedFiles = no` set i
   - `nix flake check` runs alejandra format check, Python syntax check, and pytest suite.
   - Supports ollama + OpenAI-compatible backends. Caches results in `~/.cache/what-changed/`.
 - `.config/nix/pkgs/reel-summarize/` — **`reel-summarize` tool** (v0.1.0) — Local Instagram Reel summarizer.
-  - Pipeline: yt-dlp download → ffmpeg frames+audio → faster-whisper transcription → llama3.2-vision per-frame OCR → qwen2.5 summary.
+  - Pipeline: yt-dlp download → ffmpeg frames+audio → whisper transcription → llama3.2-vision per-frame OCR → qwen2.5 summary.
   - Nix-managed via home-manager: `programs.reel-summarize.enable` (enabled on accismus).
   - Runtime deps: `yt-dlp`+`ffmpeg` via nix, ollama with `llama3.2-vision:11b`+`qwen2.5:7b`.
   - CLI: `reel-summarize <url>` — concise prose summary to stdout.

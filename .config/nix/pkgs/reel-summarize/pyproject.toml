@@ -7,7 +7,7 @@ name = "reel-summarize"
 version = "0.1.0"
 description = "Summarize Instagram Reels using local models"
 requires-python = ">=3.10"
-dependencies = ["httpx", "faster-whisper"]
+dependencies = ["httpx", "openai-whisper"]
 
 [project.scripts]
 reel-summarize = "reel_summarize.cli:entry"
