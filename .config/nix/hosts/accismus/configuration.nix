@@ -55,7 +55,6 @@ in {
       google-cloud-sdk # google cloud CLI and friends
       jujutsu # git alternative
       cloc # count lines of code
-      cmux # native macOS terminal for AI coding agents
       nodejs # needed for hihello development
       whisper-cpp # cli tool for converting audio to text
       angband # best cli game ever
