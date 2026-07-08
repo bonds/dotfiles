@@ -16,13 +16,13 @@ can invoke it as a tool on accismus.
 | Decision | Choice | Rationale |
 |---|---|---|
 | LLM backend | Local-only (Ollama) | Zero API keys, private, already have Ollama |
-| Transcription | mlx-whisper (Apple Silicon) | Fastest on M-series Mac, laptop-only |
+| Transcription | faster-whisper (Python lib, nixpkgs) | Available in nixpkgs, cross-platform, no pip install |
 | OCR strategy | Per-frame vision (qwen2-vl) | Each frame individually via Ollama, best per-frame detail |
 | Input scope | Instagram Reels only | Tight scope, no photo/carousel/TikTok |
 | Output format | Concise prose to stdout (5-10 sentences) | Opencode skill just reads it directly |
 | Packaging | Nix-managed Python package (like what-changed) | Follow existing pattern in dotfiles repo |
 | Opencode wiring | Bin script + skill (SKILL.md) | Script standalone, skill tells LLM how to invoke it |
-| Non-Mac fallback | None (meta.broken on non-aarch64-darwin) | mlx-whisper Apple Silicon only; defer if needed |
+| Non-Mac fallback | Not needed (faster-whisper cross-platform) | Available in nixpkgs for all platforms |
 | Per-frame parallelism | Sequential (no async batch in v1) | Reels short (~15-90 frames), acceptable latency |
 | Disk caching | None in v1 | No retry cache; re-run re-downloads |
 
@@ -49,7 +49,7 @@ can invoke it as a tool on accismus.
         ├── download.py     # yt-dlp wrapper
         ├── audio_extract.py # ffmpeg 16kHz mono wav
         ├── frame_extract.py # ffmpeg 1fps frame sampling
-        ├── transcribe.py   # mlx-whisper
+        ├── transcribe.py   # faster-whisper
         ├── vision.py       # per-frame qwen2-vl via ollama HTTP API
         ├── caption.py      # yt-dlp --dump-json metadata
         └── summarize.py    # qwen2.5 final summary
@@ -57,7 +57,7 @@ can invoke it as a tool on accismus.
 
 ### Wiring in the dotfiles flake
 
-- `pkgs/reel-summarize/default.nix` — nix derivation, aarch64-darwin only
+- `pkgs/reel-summarize/default.nix` — nix derivation (platforms.all, faster-whisper is cross-platform)
 - `modules/home/reel-summarize.nix` — home-manager module (programs.reel-summarize.enable)
 - `flake.nix` — add to overlays or packages output
 - `hosts/accismus/configuration.nix` — enable `programs.reel-summarize.enable = true`
@@ -66,9 +66,9 @@ can invoke it as a tool on accismus.
 
 - `~/.config/opencode/skills/reel-summarize/SKILL.md` — markdown LLM instructions
 
-### Repo integration
+### Opencode wiring
 
-- `~/AGENTS.md` — add reel-summarize section alongside what-changed docs
+- `~/.config/opencode/skills/reel-summarize/SKILL.md` — markdown LLM instructions
 
 ## CLI surface
 
@@ -102,7 +102,7 @@ ENV overrides: `REEL_SUMMARIZE_OLLAMA_HOST`, `REEL_SUMMARIZE_VISION_MODEL`,
 1. yt-dlp <url>           → video.mp4 + metadata.json (caption, author, duration)
 2. ffmpeg video.mp4       → audio.wav (16kHz mono)
 3. ffmpeg video.mp4       → frames/*.jpg (1fps, capped at max_frames)
-4. mlx-whisper audio.wav  → transcript segments [{start, end, text}]
+4. faster-whisper audio.wav → transcript segments [{start, end, text}]
 5. per frame: qwen2-vl    → per-frame {text: [lines], scene: "..."} JSON
 6. qwen2.5(transcript + per-frame OCR + scene + caption)
                            → concise prose summary → stdout
@@ -142,7 +142,7 @@ Do not use headers or bullet points — just prose.
 → downloading video...
 → extracting audio...
 → extracting frames...
-→ transcribing audio (mlx-whisper)...
+→ transcribing audio (faster-whisper)...
 → scanning 45 frames (qwen2-vl)...   # updated as each frame completes
 → summarizing (qwen2.5)...
 ```
@@ -171,4 +171,4 @@ Do not use headers or bullet points — just prose.
 - `--save` markdown note to disk
 - Disk caching across runs
 - Async batched vision inference
-- Non-Mac fallback (faster-whisper)
+- Non-Mac support (faster-whisper is cross-platform, already available in nixpkgs; just a matter of enabling on other hosts)
