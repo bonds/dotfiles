@@ -238,8 +238,10 @@ in {
         ../../modules/home/direnv.nix
         ../../modules/home/polyptych.nix
         ../../modules/home/what-changed.nix
+        ../../modules/home/reel-summarize.nix
       ];
       programs.what-changed.enable = true;
+      programs.reel-summarize.enable = true;
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
     };
   };
