@@ -1,0 +1,75 @@
+from __future__ import annotations
+
+import argparse
+import sys
+
+from reel_summarize.config import Config, load as load_config
+from reel_summarize.pipeline import run
+
+
+def _preflight(cfg: Config):
+    import shutil
+    import subprocess
+
+    errors = []
+
+    if not shutil.which("yt-dlp"):
+        errors.append("yt-dlp not found on PATH (install via nix or pip)")
+
+    if not shutil.which("ffmpeg"):
+        errors.append("ffmpeg not found on PATH (install via nix or brew)")
+
+    try:
+        import httpx
+        resp = httpx.get(f"{cfg.host}/api/tags", timeout=5)
+        resp.raise_for_status()
+        models = {m["name"] for m in resp.json().get("models", [])}
+        if cfg.vision_model not in models:
+            errors.append(f"ollama model '{cfg.vision_model}' not pulled (run: ollama pull {cfg.vision_model})")
+        if cfg.summarize_model not in models:
+            errors.append(f"ollama model '{cfg.summarize_model}' not pulled (run: ollama pull {cfg.summarize_model})")
+    except Exception as e:
+        errors.append(f"ollama unreachable at {cfg.host}: {e}")
+
+    try:
+        import faster_whisper  # noqa: F401
+    except ImportError:
+        errors.append("faster-whisper not available (should be installed by nix package)")
+
+    if errors:
+        for e in errors:
+            print(f"  ✖ {e}", file=sys.stderr)
+        sys.exit(2)
+    else:
+        print("  ✓ all prerequisites met", file=sys.stderr)
+
+
+def entry():
+    parser = argparse.ArgumentParser(
+        description="Summarize an Instagram Reel using local models"
+    )
+    parser.add_argument("url", nargs="?", help="Instagram Reel URL")
+    parser.add_argument("--preflight", action="store_true", help="Check prerequisites")
+    parser.add_argument("--keep-artifacts", action="store_true",
+                        help="Keep intermediate files in /tmp/")
+    parser.add_argument("--frames-per-second", type=int, default=None,
+                        help="Override frame sampling rate")
+
+    args = parser.parse_args()
+
+    cfg = load_config()
+    if args.frames_per_second is not None:
+        cfg.frames_per_second = args.frames_per_second
+
+    if args.preflight:
+        _preflight(cfg)
+
+    if not args.url:
+        parser.print_help()
+        sys.exit(1)
+
+    run(args.url, cfg, keep_artifacts=args.keep_artifacts)
+
+
+if __name__ == "__main__":
+    entry()
