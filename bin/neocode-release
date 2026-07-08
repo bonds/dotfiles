@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Build and release a versioned NeoCode DMG, update flake.nix locally.
+#
+# Builds in /tmp/neocode-build (outside the dotfiles git repo) to avoid
+# Xcode's Source Control integration triggering runaway `git add -A`
+# processes when the build directory has embedded SPM git repos.
+
+REPO="/Users/scott/Documents/undated/repos/NeoCode"
+MARKETING_VERSION="0.8.1"
+
+cd "$REPO"
+
+# Ensure working tree is clean
+if ! git diff --quiet --exit-code; then
+    echo "error: working tree has uncommitted changes; commit or stash first" >&2
+    exit 1
+fi
+
+TIMESTAMP=$(date -u +%Y%m%d%H%M)
+SHORT_SHA=$(git rev-parse --short=7 HEAD)
+VERSION="${MARKETING_VERSION}-${TIMESTAMP}-${SHORT_SHA}"
+TAG="v${VERSION}"
+DMG="NeoCode.dmg"
+BUILD_DIR=/tmp/neocode-build
+
+echo "=== Building NeoCode $VERSION ==="
+
+# Build outside the dotfiles git repo to avoid Xcode SCM integration hanging
+# on the build directory's embedded SPM git repos (Sparkle, etc).
+rm -rf "$BUILD_DIR"
+XCS_HIDE_SCM=YES xcodebuild build -project NeoCode.xcodeproj \
+    -scheme NeoCode -configuration Release \
+    -derivedDataPath "$BUILD_DIR" CODE_SIGNING_ALLOWED=NO
+
+# Create DMG
+echo "=== Creating DMG ==="
+rm -f "$DMG"
+hdiutil create -volname NeoCode \
+    -srcfolder "$BUILD_DIR/Build/Products/Release/NeoCode.app" \
+    -ov -format UDZO "$DMG"
+
+# Release notes from git log since last tag
+PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+NOTES_FILE=$(mktemp)
+if [[ -n "$PREV_TAG" ]]; then
+    git log "${PREV_TAG}..HEAD" --oneline --no-decorate > "$NOTES_FILE"
+else
+    echo "Initial release." > "$NOTES_FILE"
+fi
+
+# Create GitHub release
+echo "=== Creating GitHub release $TAG ==="
+gh release create "$TAG" "$DMG" --repo bonds/NeoCode \
+    --title "NeoCode $VERSION" --notes-file "$NOTES_FILE"
+rm "$NOTES_FILE"
+
+# Prefetch hash
+echo "=== Computing nix hash ==="
+HASH=$(nix-prefetch-url --type sha256 \
+    "https://github.com/bonds/NeoCode/releases/download/${TAG}/NeoCode.dmg")
+SRI=$(nix hash to-sri --type sha256 "$HASH")
+
+# Update flake.nix: version + hash
+echo "=== Updating flake.nix ==="
+sed -i '' \
+    -e "s/version = \".*\";/version = \"${VERSION}\";/" \
+    -e "s|hash = \"sha256-.*\";|hash = \"${SRI}\";|" \
+    flake.nix
+
+# Commit
+git add flake.nix
+git commit -m "release: $VERSION"
+git push origin main
+
+echo ""
+echo "=== Released NeoCode $VERSION ==="
+echo "To deploy:"
+echo "  nix flake update neocode"
+echo "  nh darwin switch ~/.config/nix"
