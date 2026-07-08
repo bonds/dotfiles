@@ -10,8 +10,9 @@ python3.pkgs.buildPythonApplication {
   nativeBuildInputs = with python3.pkgs; [setuptools];
   propagatedBuildInputs = with python3.pkgs; [httpx whisper];
   doCheck = false;
+  dontUsePythonRuntimeDepsCheck = true;
   meta = with lib; {
-    description = "Summarize Instagram Reels using local models (Ollama + faster-whisper)";
+    description = "Summarize Instagram Reels using local models (Ollama + whisper)";
     homepage = "https://github.com/bonds/dotfiles";
     license = licenses.mit;
     platforms = platforms.all;
