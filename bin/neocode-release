@@ -6,7 +6,7 @@ set -euo pipefail
 # Xcode's Source Control integration triggering runaway `git add -A`
 # processes when the build directory has embedded SPM git repos.
 
-REPO="/Users/scott/Documents/undated/repos/NeoCode"
+REPO="/Users/scott/src/bonds/neocode"
 MARKETING_VERSION="0.8.1"
 
 cd "$REPO"
