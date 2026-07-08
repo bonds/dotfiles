@@ -35,7 +35,7 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
 
         vision_results = []
         if frames:
-            print(f"→ scanning {len(frames)} frames (qwen2-vl)...", file=sys.stderr)
+            print(f"→ scanning {len(frames)} frames (llama3.2-vision)...", file=sys.stderr)
             vision_results = analyze_frames(frames, cfg)
 
         vision_timeline = format_vision_timeline(

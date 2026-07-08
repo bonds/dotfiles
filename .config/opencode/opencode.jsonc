@@ -20,5 +20,25 @@
     "build": {
       "model": "opencode-go/deepseek-v4-flash"
     }
+  },
+  "disabled_providers": [
+    "opencodego2"
+  ],
+  "provider": {
+    "opencodego2": {
+      "name": "OpenCode Go #2",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "https://opencode.ai/zen/go/"
+      },
+      "models": {
+        "glm-5.2": {
+          "name": "GLM-5.2"
+        },
+        "deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash"
+        }
+      }
+    }
   }
 }

@@ -17,7 +17,7 @@ can invoke it as a tool on accismus.
 |---|---|---|
 | LLM backend | Local-only (Ollama) | Zero API keys, private, already have Ollama |
 | Transcription | faster-whisper (Python lib, nixpkgs) | Available in nixpkgs, cross-platform, no pip install |
-| OCR strategy | Per-frame vision (qwen2-vl) | Each frame individually via Ollama, best per-frame detail |
+| OCR strategy | Per-frame vision (llama3.2-vision) | Each frame individually via Ollama, best per-frame detail |
 | Input scope | Instagram Reels only | Tight scope, no photo/carousel/TikTok |
 | Output format | Concise prose to stdout (5-10 sentences) | Opencode skill just reads it directly |
 | Packaging | Nix-managed Python package (like what-changed) | Follow existing pattern in dotfiles repo |
@@ -50,7 +50,7 @@ can invoke it as a tool on accismus.
         ├── audio_extract.py # ffmpeg 16kHz mono wav
         ├── frame_extract.py # ffmpeg 1fps frame sampling
         ├── transcribe.py   # faster-whisper
-        ├── vision.py       # per-frame qwen2-vl via ollama HTTP API
+        ├── vision.py       # per-frame llama3.2-vision via ollama HTTP API
         ├── caption.py      # yt-dlp --dump-json metadata
         └── summarize.py    # qwen2.5 final summary
 ```
@@ -86,7 +86,7 @@ Exit codes: 0 success, 1 generic error, 2 missing prerequisite, 3 download error
 
 ```toml
 host = "http://localhost:11434"
-vision_model = "qwen2-vl:7b"
+vision_model = "llama3.2-vision:11b"
 summarize_model = "qwen2.5:7b"
 whisper_model = "small"
 frames_per_second = 1
@@ -103,7 +103,7 @@ ENV overrides: `REEL_SUMMARIZE_OLLAMA_HOST`, `REEL_SUMMARIZE_VISION_MODEL`,
 2. ffmpeg video.mp4       → audio.wav (16kHz mono)
 3. ffmpeg video.mp4       → frames/*.jpg (1fps, capped at max_frames)
 4. faster-whisper audio.wav → transcript segments [{start, end, text}]
-5. per frame: qwen2-vl    → per-frame {text: [lines], scene: "..."} JSON
+5. per frame: llama3.2-vision    → per-frame {text: [lines], scene: "..."} JSON
 6. qwen2.5(transcript + per-frame OCR + scene + caption)
                            → concise prose summary → stdout
 7. cleanup /tmp/reel-<id>/ (unless --keep-artifacts)
@@ -111,7 +111,7 @@ ENV overrides: `REEL_SUMMARIZE_OLLAMA_HOST`, `REEL_SUMMARIZE_VISION_MODEL`,
 
 ### Prompt design
 
-**Vision prompt** (per frame, sent to qwen2-vl as the `prompt` field):
+**Vision prompt** (per frame, sent to llama3.2-vision as the `prompt` field):
 
 ```
 Extract all visible on-screen text verbatim from this image,
@@ -143,7 +143,7 @@ Do not use headers or bullet points — just prose.
 → extracting audio...
 → extracting frames...
 → transcribing audio (faster-whisper)...
-→ scanning 45 frames (qwen2-vl)...   # updated as each frame completes
+→ scanning 45 frames (llama3.2-vision)...   # updated as each frame completes
 → summarizing (qwen2.5)...
 ```
 

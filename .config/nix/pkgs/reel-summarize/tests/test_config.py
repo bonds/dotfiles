@@ -8,7 +8,7 @@ class TestConfig(unittest.TestCase):
     def test_defaults(self):
         cfg = load("/nonexistent/path")
         self.assertEqual(cfg.host, "http://localhost:11434")
-        self.assertEqual(cfg.vision_model, "qwen2-vl:7b")
+        self.assertEqual(cfg.vision_model, "llama3.2-vision:11b")
         self.assertEqual(cfg.frames_per_second, 1)
 
     def test_toml_overrides(self):

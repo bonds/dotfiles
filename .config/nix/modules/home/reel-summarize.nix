@@ -19,7 +19,7 @@ in {
           };
           visionModel = lib.mkOption {
             type = lib.types.str;
-            default = "qwen2-vl:7b";
+            default = "llama3.2-vision:11b";
             description = "Ollama vision model for per-frame OCR";
           };
           summarizeModel = lib.mkOption {

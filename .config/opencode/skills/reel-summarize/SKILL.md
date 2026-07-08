@@ -16,12 +16,12 @@ Reel link and wants to know what it's about without watching it.
 
 **Exit code handling:**
 - Exit 0: success — present stdout directly
-- Exit 2: missing prerequisite — tell the user to run `ollama pull qwen2-vl:7b qwen2.5:7b`
+- Exit 2: missing prerequisite — tell the user to run `ollama pull llama3.2-vision:11b` and `ollama pull qwen2.5:7b`
 - Exit 3: download failure — tell the user the URL may be private or expired
 - Other exit codes: print the error from stderr
 
 **Notes:**
 - Runs entirely locally via Ollama + faster-whisper
 - Takes ~30-120s to complete depending on reel length
-- Must have ollama running with `qwen2-vl:7b` and `qwen2.5:7b` pulled
+- Must have ollama running with `llama3.2-vision:11b` and `qwen2.5:7b` pulled
 - The `reel-summarize` binary is on PATH after `nr`

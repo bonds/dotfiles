@@ -10,7 +10,7 @@ CONFIG_PATH = os.path.expanduser("~/.config/reel-summarize/config.toml")
 @dataclass
 class Config:
     host: str = "http://localhost:11434"
-    vision_model: str = "qwen2-vl:7b"
+    vision_model: str = "llama3.2-vision:11b"
     summarize_model: str = "qwen2.5:7b"
     whisper_model: str = "small"
     frames_per_second: int = 1

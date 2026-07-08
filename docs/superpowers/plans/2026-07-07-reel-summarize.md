@@ -4,7 +4,7 @@
 
 **Goal:** Build a `reel-summarize` CLI tool that downloads an Instagram Reel and returns a concise prose summary combining audio transcription, OCR'd overlay text, visual descriptions, and post caption — all local via Ollama vision models and faster-whisper.
 
-**Architecture:** Python package in ~/.config/nix/pkgs/reel-summarize/ (mirroring what-changed). Pipeline: yt-dlp download → ffmpeg frames+audio → faster-whisper transcription → qwen2-vl per-frame OCR → qwen2.5 summary. Nix-managed (faster-whisper available in nixpkgs). Opencode skill at ~/.config/opencode/skills/reel-summarize/SKILL.md.
+**Architecture:** Python package in ~/.config/nix/pkgs/reel-summarize/ (mirroring what-changed). Pipeline: yt-dlp download → ffmpeg frames+audio → faster-whisper transcription → llama3.2-vision per-frame OCR → qwen2.5 summary. Nix-managed (faster-whisper available in nixpkgs). Opencode skill at ~/.config/opencode/skills/reel-summarize/SKILL.md.
 
 **Tech Stack:** Python 3, httpx (ollama API), faster-whisper (transcription), subprocess (yt-dlp, ffmpeg), nix (packaging), opencode skills.
 
@@ -90,7 +90,7 @@ CONFIG_PATH = os.path.expanduser("~/.config/reel-summarize/config.toml")
 @dataclass
 class Config:
     host: str = "http://localhost:11434"
-    vision_model: str = "qwen2-vl:7b"
+    vision_model: str = "llama3.2-vision:11b"
     summarize_model: str = "qwen2.5:7b"
     whisper_model: str = "small"
     frames_per_second: int = 1
@@ -136,7 +136,7 @@ class TestConfig(unittest.TestCase):
     def test_defaults(self):
         cfg = load("/nonexistent/path")
         self.assertEqual(cfg.host, "http://localhost:11434")
-        self.assertEqual(cfg.vision_model, "qwen2-vl:7b")
+        self.assertEqual(cfg.vision_model, "llama3.2-vision:11b")
         self.assertEqual(cfg.frames_per_second, 1)
 
     def test_toml_overrides(self):
@@ -458,7 +458,7 @@ git commit -m "reel-summarize: add faster-whisper transcription stage"
 
 ---
 
-### Task 4: Vision stage (per-frame qwen2-vl via Ollama HTTP)
+### Task 4: Vision stage (per-frame llama3.2-vision via Ollama HTTP)
 
 **Files:**
 - Create: `~/.config/nix/pkgs/reel-summarize/reel_summarize/stages/vision.py`
@@ -623,7 +623,7 @@ Expected: 3 passed
 
 ```bash
 git add .config/nix/pkgs/reel-summarize/
-git commit -m "reel-summarize: add vision stage (per-frame qwen2-vl via ollama)"
+git commit -m "reel-summarize: add vision stage (per-frame llama3.2-vision via ollama)"
 ```
 
 ---
@@ -799,7 +799,7 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
 
         vision_results = []
         if frames:
-            print(f"\u2192 scanning {len(frames)} frames (qwen2-vl)...", file=sys.stderr)
+            print(f"\u2192 scanning {len(frames)} frames (llama3.2-vision)...", file=sys.stderr)
             vision_results = analyze_frames(frames, cfg)
 
         vision_timeline = format_vision_timeline(
@@ -1054,7 +1054,7 @@ in {
           };
           visionModel = mkOption {
             type = types.str;
-            default = "qwen2-vl:7b";
+            default = "llama3.2-vision:11b";
             description = "Ollama vision model for per-frame OCR";
           };
           summarizeModel = mkOption {
@@ -1124,7 +1124,7 @@ in {
           };
           visionModel = lib.mkOption {
             type = lib.types.str;
-            default = "qwen2-vl:7b";
+            default = "llama3.2-vision:11b";
             description = "Ollama vision model for per-frame OCR";
           };
           summarizeModel = lib.mkOption {
@@ -1219,14 +1219,14 @@ Reel link and wants to know what it's about without watching it.
 
 **Exit code handling:**
 - Exit 0: success — present stdout directly
-- Exit 2: missing prerequisite — tell the user to run `ollama pull qwen2-vl:7b qwen2.5:7b`
+- Exit 2: missing prerequisite — tell the user to run `ollama pull llama3.2-vision:11b qwen2.5:7b`
 - Exit 3: download failure — tell the user the URL may be private or expired
 - Other exit codes: print the error from stderr
 
 **Notes:**
 - Runs entirely locally via Ollama + faster-whisper
 - Takes ~30-120s to complete depending on reel length
-- Must have ollama running with `qwen2-vl:7b` and `qwen2.5:7b` pulled
+- Must have ollama running with `llama3.2-vision:11b` and `qwen2.5:7b` pulled
 - The `reel-summarize` binary is on PATH after `nr`
 ```
 
@@ -1238,9 +1238,9 @@ Add at the end of the AGENTS.md file, under the nix-what-changed section:
 ### reel-summarize
 - **New:** Local Instagram Reel summarizer (v0.1.0)
 - Python package at `~/.config/nix/pkgs/reel-summarize/`
-- Pipeline: yt-dlp download → ffmpeg frames+audio → faster-whisper transcription → qwen2-vl per-frame OCR → qwen2.5 summary
+- Pipeline: yt-dlp download → ffmpeg frames+audio → faster-whisper transcription → llama3.2-vision per-frame OCR → qwen2.5 summary
 - Nix-managed via home-manager module: `programs.reel-summarize.enable`
-- Runtime deps: `yt-dlp`+`ffmpeg` via nix, ollama with `qwen2-vl:7b`+`qwen2.5:7b`
+- Runtime deps: `yt-dlp`+`ffmpeg` via nix, ollama with `llama3.2-vision:11b`+`qwen2.5:7b`
 - CLI: `reel-summarize <url>   # concise prose summary to stdout`
 - Opencode skill: `~/.config/opencode/skills/reel-summarize/SKILL.md`
 - `nix flake check` runs format check, python syntax check, pytest suite (like what-changed)
