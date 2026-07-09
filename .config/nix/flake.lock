@@ -66,11 +66,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1783569952,
-        "narHash": "sha256-gac/PJVqt4Dd8jQ0UHwS4hlSo/Id8limt3s5ZwGlPwk=",
+        "lastModified": 1783570575,
+        "narHash": "sha256-jfTtpAYfMC8hcx8sMmSxptlcTiKILtorlsX7xq/U4wg=",
         "owner": "bonds",
         "repo": "NeoCode",
-        "rev": "a5e41a7301f66083b1bac2449428ad3ef5d89c38",
+        "rev": "92d99bec43a2243fe5d9b5e32257450e92a07f78",
         "type": "github"
       },
       "original": {
