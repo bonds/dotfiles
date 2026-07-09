@@ -66,11 +66,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1783591414,
-        "narHash": "sha256-tkQaxtGj1ItGSf6gFahxm0+uTERKEe/qhEz3EvAtfww=",
+        "lastModified": 1783593448,
+        "narHash": "sha256-S8NuNxEWe3CqfxI2zoHDG4KFr4N+LeO3uCMrHCDS5d8=",
         "owner": "bonds",
         "repo": "NeoCode",
-        "rev": "c69942fcba792fcafacc1bf2b13fd1afa1721bab",
+        "rev": "c0395ddc213bf1e75174fb6cac9ad21e1b01c531",
         "type": "github"
       },
       "original": {
@@ -233,17 +233,14 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1778555494,
-        "narHash": "sha256-Uv+Fn4qes9+LVkFAY1l7AkNMsYIoRayArHDeJ82EG5k=",
-        "owner": "bonds",
-        "repo": "nix-vudials",
-        "rev": "6d92a78306dc56429d5eb2dea9a8c55e62792037",
-        "type": "github"
+        "lastModified": 1783592887,
+        "narHash": "sha256-a7YjVVBfUudvW1p1bpzKU0g6qS2xrm0QtG/OCOMrdHI=",
+        "path": "/Users/scott/Documents/undated/repos/nix-vudials",
+        "type": "path"
       },
       "original": {
-        "owner": "bonds",
-        "repo": "nix-vudials",
-        "type": "github"
+        "path": "/Users/scott/Documents/undated/repos/nix-vudials",
+        "type": "path"
       }
     },
     "zen-browser": {
