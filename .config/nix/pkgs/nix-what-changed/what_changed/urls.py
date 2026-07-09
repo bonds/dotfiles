@@ -109,6 +109,18 @@ def _make_polyptych_url(new_ver: str) -> str | None:
     return "https://api.github.com/repos/bonds/polyptych/commits?per_page=10"
 
 
+def _make_github_release_url(owner: str, repo: str):
+    """Build a URL maker that points to GitHub releases tagged v{version}."""
+    def make(new_ver: str) -> str:
+        return f"https://github.com/{owner}/{repo}/releases/tag/v{new_ver}"
+    return make
+
+
+KNOWN_URLS["neocode"] = _make_github_release_url("bonds", "NeoCode")
+KNOWN_URLS["opencode"] = _make_github_release_url("anomalyco", "opencode")
+KNOWN_URLS["opencode-desktop"] = _make_github_release_url("anomalyco", "opencode")
+
+
 KNOWN_URLS["polyptych"] = _make_polyptych_url
 
 
