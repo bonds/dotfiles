@@ -131,6 +131,7 @@ Three machines managed from this repo:
   - **Dotfiles** use the bare-repo approach described above (`~/.config/dotfiles`). The `config` fish alias is defined in `~/.config/fish/conf.d/10-aliases.fish`.
   - **Syncthing** managed via nix-darwin launchd agent (not standalone app). Declarative `config.xml` generated and deployed by activation script. Config dir at `~/Library/Application Support/Syncthing/`. Preserves `key.pem`, `cert.pem`, `index-v2/` across rebuilds.
   - **Photos export** via `osxphotos` launchd agent (daily at 2am). Exports originals from Apple Photos Library to `~/Pictures/Syncthing-Photos/`, which Syncthing syncs to sophrosyne.
+    - **⚠️ Prerequisite:** In Photos → Settings → General, set "Download Originals to this Mac" (not "Optimize Mac Storage"). If set to Optimize, the export silently gets low-resolution thumbnails and the backup copies are useless. Easy to miss on a fresh account since Photos defaults to Optimize.
 - **metanoia** — NixOS workstation (x86_64-linux)
   - **Dotfiles:** Should be migrated to the bare-repo approach when back online (same as accismus/sophrosyne).
 - **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
