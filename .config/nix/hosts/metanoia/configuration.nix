@@ -127,7 +127,7 @@
 
   services.printing.enable = true;
 
-  hardware.pulseaudio.enable = false;
+  services.pulseaudio.enable = false;
   security.rtkit.enable = true;
   services.pipewire = {
     enable = true;
@@ -183,9 +183,15 @@
     sleep 1
   '';
 
-  powerManagement.powerUpCommands = lib.mkAfter ''
-    systemctl start vuclient.service
-  '';
+  systemd.services.vuclient-wake = {
+    description = "Restart vuclient after resume from sleep";
+    after = ["sleep.target"];
+    wantedBy = ["sleep.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "/run/current-system/sw/bin/systemctl start vuclient.service";
+    };
+  };
 
   systemd.services.wakeusb = {
     serviceConfig = {
