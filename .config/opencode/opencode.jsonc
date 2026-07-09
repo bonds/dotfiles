@@ -4,14 +4,8 @@
   "default_agent": "plan",
   "snapshot": false,
   "plugin": [
-    "superpowers@git+https://github.com/obra/superpowers.git"
+    "oh-my-openagent@latest"
   ],
-   "command": {
-    "auto-plan": {
-      "description": "Toggle auto-switch to plan mode after build",
-      "template": "Toggle auto-plan mode"
-    }
-  },
   "agent": {
     "plan": {
       "model": "opencode-go/glm-5.2"
@@ -21,9 +15,7 @@
       "model": "opencode-go/deepseek-v4-flash"
     }
   },
-  "disabled_providers": [
-    "opencodego2"
-  ],
+  "disabled_providers": [],
   "provider": {
     "opencodego2": {
       "name": "OpenCode Go #2",
