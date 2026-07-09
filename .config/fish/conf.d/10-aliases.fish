@@ -34,3 +34,5 @@ else
     alias reset_mouse "doas rmmod hid_magicmouse; doas modprobe hid_magicmouse"
     alias mtr "doas mtr"
 end
+
+alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'

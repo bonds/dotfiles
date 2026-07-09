@@ -232,9 +232,9 @@ All steps in sequence, big-bang PR.
 
 4. Commit. `flake.lock` will update (new `flake-parts` input). `nix flake lock`
    will pin it.
-5. `git push origin && git push sophrosyne`. Pre-push hook runs `nix flake
+5. `config push origin && config push sophrosyne`. Pre-push hook runs `nix flake
    check --no-build` (eval-only). sophrosyne's
-   `receive.denyCurrentBranch=updateInstead` updates its working tree on push.
+   post-receive hook checks out the working tree on push (see AGENTS.md §Git tracking strategy).
 
 ### Sophrosyne (remote)
 

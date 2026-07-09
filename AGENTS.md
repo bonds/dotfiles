@@ -1,14 +1,34 @@
 # AGENTS.md
 
-Personal dotfiles repo — this is `$HOME` on each machine, but only a curated subset of files is tracked via git.
+Personal dotfiles tracked via a **bare git repo** at `~/.config/dotfiles`, managed
+through a `config` alias (fish-only, see below).  This avoids a `.git/` directory
+cluttering `$HOME`, which was causing issues with various tools.  The approach
+is the one described in the [Atlassian dotfiles
+tutorial](https://www.atlassian.com/git/tutorials/dotfiles).
 
 ## Git tracking strategy
 
-In this repo, untracked files are hidden (`status.showUntrackedFiles = no` set in the repo-local config — not global). Only files explicitly `git add`ed are tracked. The global gitignore (`.config/git/ignore`) additionally ignores `.DS_Store`, `.vscode`, `__pycache__/`, and `**/.claude/settings.local.json`.
+The bare repo lives at `~/.config/dotfiles/` and uses `--work-tree=$HOME` so
+that tracked files appear directly in `$HOME`.  Untracked files in `$HOME` are
+hidden (`status.showUntrackedFiles = no` set in the bare repo's config).
 
-**To see tracked files:** `git ls-files`
-**To add new files to tracking:** `git add -f <path>` (normal `git add` works too since untracked files are shown as ignored in this repo)
-**To untrack a file:** `git rm --cached <path>` — the file stays on disk but is no longer managed. Do NOT add it to `.config/git/ignore`; the "hide all untracked" strategy makes that unnecessary.
+The `config` alias (defined in `.config/fish/conf.d/10-aliases.fish`) wraps
+every git command with the right `--git-dir` and `--work-tree`:
+
+```fish
+alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
+```
+
+**Everything you do with `config` works just like normal git** — `config status`,
+`config add`, `config commit`, `config push`, `config log`, etc.  Only the
+alias changes; the subcommands are the same git you already know.
+
+**To see tracked files:** `config ls-files`
+**To add new files to tracking:** `config add <path>` (the bare repo config
+hides untracked files from status, so `git add` won't accidentally stage
+everything)
+**To untrack a file:** `config rm --cached <path>` — the file stays on disk
+but is no longer managed.
 
 ## Tracked config layout
 
@@ -37,8 +57,11 @@ In this repo, untracked files are hidden (`status.showUntrackedFiles = no` set i
 - `.config/helix/languages.toml` — Helix language config
 
 ### Git
-- `.config/git/config` — per-repo git config (user identity, `showUntrackedFiles = no`)
-- `.config/git/ignore` — global gitignore for this repo
+- `.config/git/config` — **vestigial** (was the old per-repo config before the bare-repo migration). The bare repo's own config lives inside `~/.config/dotfiles/config` and is managed via `config config <key> <value>`.
+- `.config/git/ignore` — **vestigial** (was the old repo-level gitignore). Untracked-file hiding via `status.showUntrackedFiles = no` in the bare repo's config makes it unnecessary.
+- `.config/git/hooks/pre-commit` — pre-commit hook (fish indent/syntax check, reject `.pyc` files). The bare repo's `core.hooksPath` points here.
+- `.config/git/hooks/pre-push` — pre-push hook (runs `nix flake check --no-build`). Same hooksPath mechanism.
+- `.config/git/hooks/post-receive` — post-receive hook (server-side only; on sophrosyne, checks out the work tree after a push to main).
 
 ### SSH
 - `.config/ssh/config` — SSH client config (Secretive agent on macOS, ControlMaster for `*.ggr.com`/`*.local`, auto-tmux on remote connections, port forwarding)
@@ -105,10 +128,13 @@ Useful scripts that live in `~/bin/` but are symlinked or copied from elsewhere 
 ### Machines
 Three machines managed from this repo:
 - **accismus** — macOS laptop (aarch64-darwin, nix-darwin)
+  - **Dotfiles** use the bare-repo approach described above (`~/.config/dotfiles`). The `config` fish alias is defined in `~/.config/fish/conf.d/10-aliases.fish`.
   - **Syncthing** managed via nix-darwin launchd agent (not standalone app). Declarative `config.xml` generated and deployed by activation script. Config dir at `~/Library/Application Support/Syncthing/`. Preserves `key.pem`, `cert.pem`, `index-v2/` across rebuilds.
   - **Photos export** via `osxphotos` launchd agent (daily at 2am). Exports originals from Apple Photos Library to `~/Pictures/Syncthing-Photos/`, which Syncthing syncs to sophrosyne.
 - **metanoia** — NixOS workstation (x86_64-linux)
+  - **Dotfiles:** Should be migrated to the bare-repo approach when back online (same as accismus/sophrosyne).
 - **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
+  - **Dotfiles** use the same bare-repo approach. Remote push target for this machine: `scott@home.ggr.com:~/.config/dotfiles`. The bare repo has a `post-receive` hook at `~/.config/dotfiles/hooks/post-receive` (installed manually during bootstrap; tracked in the repo at `.config/git/hooks/post-receive` and pointed to via `core.hooksPath`) that checks out the work tree to `$HOME` on each push to `main`.
   - **ZFS pool:** The `dragon` pool is intentionally degraded (raidz2, 1 device kept offline) — running on 1-disk redundancy by design.
   - **Temperature logging:** NVMe/CPU temps and fan speeds are logged every minute to `/dragon/logs/temps.log` via `log-temps.timer`. After a crash or lockup, check the last entries in this file to see if temps spiked before the failure. The log survives reboots since it's on the ZFS pool.
   - **Firesafe USB backup:** Automated off-site backup via an A/B USB drive rotation. Defined in `modules/firesafe-backup.nix` (NixOS module: `programs.firesafe-backup`).
@@ -154,17 +180,14 @@ Three machines managed from this repo:
 - Password management: passage (age-encrypted, not GPG)
 - Nix formatting: alejandra (`nix fmt` — unreliable, prefer `alejandra <file>` directly)
 - Before committing any changes, run a code review using the current harness's available code-review skill or tool, and ask the user how to proceed
-- After each batch of changes, commit and push to all remotes (`git push origin && git push sophrosyne`). Never force-push (`--force` / `git push -f`) to any remote. If sophrosyne rejects the push because of divergent histories (e.g. a `git commit --amend` or rebase on either side), pull or merge first to reconcile. If it rejects with "Working directory has unstaged changes", see the `flake.lock` changes section below for the recovery steps. The sophrosyne remote has `receive.denyCurrentBranch = updateInstead` which only accepts fast-forwards — force-push is not needed and should never be used.
+- After each batch of changes, commit and push to all remotes (`config push origin && config push sophrosyne`). Never force-push (`--force` / `config push -f`) to any remote. If sophrosyne rejects the push because of divergent histories (e.g. a `git commit --amend` or rebase on either side), pull or merge first to reconcile. The sophrosyne bare repo has a `post-receive` hook that checks out the work tree on push — no special `receive.denyCurrentBranch` config needed.
 - Code repos I'm actively working on live in `~/Documents/undated/repos/`
 - **Nix deployments to remote machines:** Never attempt a cross-build from the local machine (aarch64-darwin cannot build x86_64-linux derivations that have `allowSubstitutes = false`, such as `arion-compose`). Instead, push the commit and then SSH directly to the target machine to rebuild: `ssh sophrosyne "doas nixos-rebuild switch --flake /home/scott/.config/nix#sophrosyne"`. Use the full `/run/current-system/sw/bin/nixos-rebuild` path if the SSH session's PATH doesn't include it, so the `noPass` doas rule matches.
 - **Version bump policy for `what-changed`:** Bump the minor version (e.g. `0.4.0` → `0.5.0`) whenever user-facing features, behavior, or dependencies change. Bug fixes and internal refactors get a patch if there's a prior tagged release, otherwise batch into the next minor. Keep `default.nix` and `pyproject.toml` in sync.
-- **`git add` WITHOUT `-f` for `nix-what-changed`:** The directory has a `.gitignore` that excludes `__pycache__/`. Using `git add -f` overrides it and tracks `.pyc` files, which then need a cleanup commit. Use plain `git add .config/nix/pkgs/nix-what-changed/what_changed/<file>.py` for individual files, or `git add .config/nix/pkgs/nix-what-changed/` (without `-f`) to respect the gitignore. A pre-commit hook (`~/.git/hooks/pre-commit`) rejects `.pyc` files automatically if you forget.
-- **`flake.lock` changes:** When a commit includes a `flake.lock` update (e.g. after `nr --update`), do not force-push. Instead, push both remotes normally. If sophrosyne rejects the push with "Working directory has unstaged changes" (common when flake.lock was locally modified by a prior `nr --update` on the server):
-  1. `ssh sophrosyne "cd ~ && git stash"`
-  2. `ssh sophrosyne "cd ~ && git pull origin main"`
-  3. `ssh sophrosyne "cd ~ && git stash pop"`
-4. If `flake.lock` conflicts: `ssh sophrosyne "cd ~/.config/nix && nix flake lock"` to regenerate, then `git add flake.lock && git commit`
-5. Push the merged result back: `ssh sophrosyne "cd ~ && git push origin main"`
+- **`config add` WITHOUT `-f` for `nix-what-changed`:** The directory has a `.gitignore` that excludes `__pycache__/`. Using `config add -f` overrides it and tracks `.pyc` files, which then need a cleanup commit. Use plain `config add .config/nix/pkgs/nix-what-changed/what_changed/<file>.py` for individual files, or `config add .config/nix/pkgs/nix-what-changed/` (without `-f`) to respect the gitignore. A pre-commit hook (`.config/git/hooks/pre-commit`) rejects `.pyc` files automatically if you forget.
+- **`flake.lock` changes:** When a commit includes a `flake.lock` update (e.g. after `nr --update`), push both remotes normally (`config push origin && config push sophrosyne`). The sophrosyne post-receive hook does a force checkout so there is no "dirty work tree" rejection. If sophrosyne independently updated its flake.lock (via `nr --update` on the server), the next push from accismus will overwrite it — this is intentional. If you need sophrosyne to pull changes without accismus pushing:
+  1. `ssh sophrosyne "config pull origin main"`
+  2. The post-receive hook won't fire (it only runs on push), so the work tree will be updated by the checkout. If for some reason the work tree is stale: `ssh sophrosyne "cd ~ && git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME checkout -f main"`
 
 ### doas privilege escalation
 

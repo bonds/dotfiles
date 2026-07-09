@@ -5,6 +5,8 @@
 }: {
   environment.systemPackages = with pkgs; [
     alejandra # nix code formatter
+    ast-grep # AST-aware code search and rewrite (for oh-my-openagent)
+    (pkgs.writeShellScriptBin "sg" "exec ${pkgs.ast-grep}/bin/ast-grep \"$@\"") # sg alias for oh-my-openagent
     atuin # synced shell history database
     cabal-install # Haskell build tool and package manager
     gh # GitHub CLI

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Post-receive hook for bare dotfiles repo at ~/.config/dotfiles.
+#
+# When main is pushed to this bare repo, check out the working tree
+# so that $HOME reflects the latest tracked dotfiles.
+#
+# Relative hooksPath is relative to the git dir, so core.hooksPath in
+# the bare repo's config is set to an absolute path (~/.config/git/hooks)
+# pointing here.  See AGENTS.md §Git tracking strategy.
+set -euo pipefail
+
+while read oldrev newrev refname; do
+	case "$refname" in
+	refs/heads/main)
+		echo "post-receive: checking out main to $HOME..."
+		git --work-tree="$HOME" checkout -f main
+		echo "post-receive: working tree updated."
+		;;
+	*)
+		echo "post-receive: ignoring push to $refname (only main is deployed)"
+		;;
+	esac
+done

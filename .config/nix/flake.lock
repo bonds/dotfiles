@@ -233,14 +233,17 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1783592887,
-        "narHash": "sha256-a7YjVVBfUudvW1p1bpzKU0g6qS2xrm0QtG/OCOMrdHI=",
-        "path": "/Users/scott/Documents/undated/repos/nix-vudials",
-        "type": "path"
+        "lastModified": 1778555494,
+        "narHash": "sha256-Uv+Fn4qes9+LVkFAY1l7AkNMsYIoRayArHDeJ82EG5k=",
+        "owner": "bonds",
+        "repo": "nix-vudials",
+        "rev": "6d92a78306dc56429d5eb2dea9a8c55e62792037",
+        "type": "github"
       },
       "original": {
-        "path": "/Users/scott/Documents/undated/repos/nix-vudials",
-        "type": "path"
+        "owner": "bonds",
+        "repo": "nix-vudials",
+        "type": "github"
       }
     },
     "zen-browser": {
