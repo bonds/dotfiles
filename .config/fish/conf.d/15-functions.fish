@@ -65,7 +65,8 @@ function nr
                     nix run nixpkgs#nix-update -- -F --system aarch64-darwin --use-github-releases $pkg
                 end
             end
-            alejandra modules/ollama-overlay.nix modules/zen-browser-overlay.nix modules/opencode-overlay.nix
+            bash $HOME/.config/nix/modules/daisydisk-overlay/update.sh
+            alejandra modules/ollama-overlay.nix modules/zen-browser-overlay.nix modules/opencode-overlay.nix modules/daisydisk-overlay/default.nix
             cd $_pwd
         else
             set -l _pwd $PWD

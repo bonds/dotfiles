@@ -165,6 +165,13 @@ in {
     sudo -u scott defaults write com.cmuxterm.app SUEnableAutomaticUpdates -bool false 2>/dev/null || true
   '';
 
+  # Disable DaisyDisk's built-in Sparkle auto-updater so `nr --update` is the
+  # only update path (matches ollama/opencode pinned-overlay discipline).
+  system.activationScripts.disableDaisyDiskSparkle.text = ''
+    sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUEnableAutomaticChecks -bool false 2>/dev/null || true
+    sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUAutomaticallyUpdate -bool false 2>/dev/null || true
+  '';
+
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
   launchd = {
     user = {
