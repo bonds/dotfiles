@@ -25,16 +25,12 @@
     set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
     current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
   '';
-in {
-  # https://github.com/nix-darwin/nix-darwin?tab=readme-ov-file#prerequisites
 
   # Workaround: cctools ld crashes on arm64 with response files
-  nix.extraOptions = ''
-    env-keep = NIX_LD_USE_RESPONSE_FILE
-  '';
-  environment.variables.NIX_LD_USE_RESPONSE_FILE = "0";
-
-  # List packages installed in system profile. To search by name, run:
+  caffeine = pkgs.caffeine.overrideAttrs (old: {
+    NIX_LD_USE_RESPONSE_FILE = "0";
+  });
+in {
   # $ nix search nixpkgs wget
   # Common packages shared with all machines are in modules/packages/dev.nix and utils.nix
   environment.systemPackages = with pkgs;
