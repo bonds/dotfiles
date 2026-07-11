@@ -274,12 +274,6 @@
           id = "mz9zh-usrfi";
           devices = ["accismus"];
         };
-        "Photos" = {
-          path = "/dragon/media/photos";
-          id = "photos";
-          type = "receiveonly";
-          devices = ["accismus"];
-        };
       };
     };
   };

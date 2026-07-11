@@ -205,17 +205,12 @@ in {
             StandardErrorPath = "/tmp/syncthing.err.log";
           };
         };
-        photos-export = {
+        photos-backup = {
           serviceConfig = {
             ProgramArguments = [
-              "/Applications/Nix Apps/OSXPhotos.app/Contents/MacOS/osxphotos"
-              "export"
-              "--skip-edited"
-              "--skip-live"
-              "--update"
-              "--directory"
-              "{created.year}/{created.month:02d}"
-              "/Users/scott/Pictures/Syncthing-Photos"
+              "/bin/sh"
+              "-c"
+              ''${pkgs.osxphotos}/bin/osxphotos export --export-as-hardlink --sidecar-xmp --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/ && rsync -a --stats /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/''
             ];
             StartCalendarInterval = [
               {
@@ -223,8 +218,8 @@ in {
                 Minute = 0;
               }
             ];
-            StandardOutPath = "/tmp/photos-export.out.log";
-            StandardErrorPath = "/tmp/photos-export.err.log";
+            StandardOutPath = "/tmp/photos-backup.out.log";
+            StandardErrorPath = "/tmp/photos-backup.err.log";
           };
         };
       };
