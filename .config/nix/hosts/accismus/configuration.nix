@@ -8,15 +8,6 @@
 }: let
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
 
-  # Caffeine 1.1.4 fails to link with nix's cctools ld on arm64
-  # (crashes with Trace/BPT on response files). Use system linker.
-  caffeine = pkgs.caffeine.overrideAttrs (old: {
-    nativeBuildInputs = (old.nativeBuildInputs or []) ++ [pkgs.darwin.xcode];
-    preBuild = ''
-      export LD="/usr/bin/ld"
-    '';
-  });
-
   # Syncthing config.xml generated declaratively
   syncthingConfigDir = "/Users/scott/Library/Application Support/Syncthing";
 
@@ -42,7 +33,7 @@ in {
   # Common packages shared with all machines are in modules/packages/dev.nix and utils.nix
   environment.systemPackages = with pkgs;
     [
-      caffeine # don't go to sleep (patched to use /usr/bin/ld)
+      # caffeine removed temporarily — cctools ld crashes on arm64 with response files
       xclip # for copying from terminal to clipboard
       opencode # AI coding agent (CLI, binary overlay, nr --update)
       inputs.neocode.packages.${pkgs.stdenv.hostPlatform.system}.default # Native macOS SwiftUI client for OpenCode (community, flake, nr --update)
