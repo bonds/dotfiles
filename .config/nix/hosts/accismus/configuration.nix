@@ -8,6 +8,9 @@
 }: let
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
 
+  # Workaround: avoid cctools ld response files — crashes on arm64
+  nix.settings.envVars = {NIX_LD_USE_RESPONSE_FILE = "0";};
+
   # Syncthing config.xml generated declaratively
   syncthingConfigDir = "/Users/scott/Library/Application Support/Syncthing";
 
@@ -33,7 +36,7 @@ in {
   # Common packages shared with all machines are in modules/packages/dev.nix and utils.nix
   environment.systemPackages = with pkgs;
     [
-      # caffeine removed temporarily — cctools ld crashes on arm64 with response files
+      caffeine # don't go to sleep
       xclip # for copying from terminal to clipboard
       opencode # AI coding agent (CLI, binary overlay, nr --update)
       inputs.neocode.packages.${pkgs.stdenv.hostPlatform.system}.default # Native macOS SwiftUI client for OpenCode (community, flake, nr --update)
