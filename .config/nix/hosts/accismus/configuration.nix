@@ -8,8 +8,11 @@
 }: let
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
 
-  # Workaround: avoid cctools ld response files — crashes on arm64
-  nix.settings.envVars = {NIX_LD_USE_RESPONSE_FILE = "0";};
+  # Workaround: cctools ld crashes on arm64 with response files
+  nix.extraOptions = ''
+    env-keep = NIX_LD_USE_RESPONSE_FILE
+  '';
+  environment.variables.NIX_LD_USE_RESPONSE_FILE = "0";
 
   # Syncthing config.xml generated declaratively
   syncthingConfigDir = "/Users/scott/Library/Application Support/Syncthing";
