@@ -210,7 +210,7 @@ in {
             ProgramArguments = [
               "/bin/sh"
               "-c"
-              ''${pkgs.osxphotos}/bin/osxphotos export --export-as-hardlink --sidecar XMP --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/ && rsync -a --stats /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/''
+              ''${pkgs.osxphotos}/bin/osxphotos export --export-as-hardlink --sidecar XMP --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/ && rsync -a --delete --stats /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/''
             ];
             StartCalendarInterval = [
               {

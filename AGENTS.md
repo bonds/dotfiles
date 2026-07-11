@@ -130,10 +130,10 @@ Three machines managed from this repo:
 - **accismus** — macOS laptop (aarch64-darwin, nix-darwin)
   - **Dotfiles** use the bare-repo approach described above (`~/.config/dotfiles`). The `config` fish alias is defined in `~/.config/fish/conf.d/10-aliases.fish`.
   - **Syncthing** managed via nix-darwin launchd agent (not standalone app). Declarative `config.xml` generated and deployed by activation script. Config dir at `~/Library/Application Support/Syncthing/`. Preserves `key.pem`, `cert.pem`, `index-v2/` across rebuilds.
-  - **Photos backup** via `photos-backup` launchd agent (daily at 2am). Two-step pipeline: (1) `osxphotos export --export-as-hardlink --sidecar-xmp` creates date-organized hardlinks in `~/Pictures/Syncthing-Photos/` (near-zero extra disk on APFS), (2) `rsync` transfers the export to `sophrosyne:/dragon/media/photos/` over SSH LAN. No Syncthing involved for photos.
+  - **Photos backup** via `photos-backup` launchd agent (daily at 2am). Two-step pipeline: (1) `osxphotos export --export-as-hardlink --sidecar XMP` creates date-organized hardlinks in `~/Pictures/Syncthing-Photos/` (near-zero extra disk on APFS), (2) `rsync` transfers the export to `sophrosyne:/dragon/media/photos/` over SSH LAN. No Syncthing involved for photos.
     - **⚠️ Prerequisite:** In Photos → Settings → General, set "Download Originals to this Mac" (not "Optimize Mac Storage"). If set to Optimize, the export silently gets low-resolution thumbnails and the backup copies are useless. Easy to miss on a fresh account since Photos defaults to Optimize.
-    - **No `--delete`:** rsync does NOT use --delete, so files removed from Photos remain on the server (backup semantics).
-    - **Metadata sidecars:** `--sidecar-xmp` writes XMP sidecar files alongside each photo (keywords, GPS, dates, titles), giving browsable metadata on the server.
+    - **`--delete` on rsync:** rsync uses `--delete` so the server mirrors Photos exactly. Deleted photos are still preserved in the firesafe backup's `.deleted/` directory on the USB drive.
+    - **Metadata sidecars:** `--sidecar XMP` writes XMP sidecar files alongside each photo (keywords, GPS, dates, titles), giving browsable metadata on the server.
 - **metanoia** — NixOS workstation (x86_64-linux)
   - **Dotfiles:** Should be migrated to the bare-repo approach when back online (same as accismus/sophrosyne).
 - **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
@@ -155,7 +155,7 @@ Three machines managed from this repo:
     - **First-time setup:** Label ext4 drive `firesafe` (`e2label`), create `.firesafe-id`, plug in to trigger backup. Drive must be 4.5TB+ to hold Archive + Backups + Documents + selected Media subdirs.
     - **Drive I/O note:** The WD Game Drive USB bridge (1058:262f) is BOT-only, QD=1, no UASP — USB-native PCB, cannot shuck. Random I/O ~1 MB/s; sequential ~40-90 MB/s ext4. ext4 journal vs exFAT speed tradeoffs, dirty page flush hang on umount. See `firesafe-backup.nix` header comment for full details.
   - **Photos pipeline:**
-    - Mac (accismus): `photos-backup` launchd agent runs nightly at 2am — `osxphotos export --export-as-hardlink --sidecar-xmp` creates hardlinks, then `rsync` sends them to sophrosyne
+    - Mac (accismus): `photos-backup` launchd agent runs nightly at 2am — `osxphotos export --export-as-hardlink --sidecar XMP` creates hardlinks, then `rsync --delete` sends them to sophrosyne (server mirrors Photos; deleted files preserved in firesafe `.deleted/`)
     - Storage: `/dragon/media/photos` on sophrosyne (still the same destination, no longer syncthing-managed)
     - Firesafe: `Photos` source picks up `/dragon/media/photos` during backup
     - ZFS dataset: `dragon/photos` mounted at `/dragon/media/photos`, `atime=off`

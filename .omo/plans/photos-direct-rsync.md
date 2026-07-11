@@ -16,11 +16,11 @@ Your next move: **Approve** this plan and I'll write the changes.
 
 ---
 
-> TL;DR (machine): Medium effort, low risk. Add `--export-as-hardlink` and `--sidecar-xmp` to osxphotos export, add rsync step to same launchd agent, remove Syncthing Photos folder from both sides, clear old full-copy export, fresh seed via hardlink-export→rsync, update docs.
+> TL;DR (machine): Medium effort, low risk. Add `--export-as-hardlink` and `--sidecar XMP` to osxphotos export, add rsync step to same launchd agent, remove Syncthing Photos folder from both sides, clear old full-copy export, fresh seed via hardlink-export→rsync, update docs.
 
 ## Scope
 ### Must have
-- Add `--export-as-hardlink` and `--sidecar-xmp` to the osxphotos export command in the launchd agent
+- Add `--export-as-hardlink` and `--sidecar XMP` to the osxphotos export command in the launchd agent
 - Add rsync of the export directory to `sophrosyne:/dragon/media/photos/` as a second step in the same launchd agent
 - Rename agent from `photos-export` to `photos-backup` (clean break)
 - Clear old full-copy export: delete `~/Pictures/Syncthing-Photos/*` and `.osxphotos_export.db`
@@ -49,7 +49,7 @@ Your next move: **Approve** this plan and I'll write the changes.
 ### Parallel execution waves
 
 **Wave 0 (Pre-clean):** Clear old full-copy export, delete `.osxphotos_export.db`
-**Wave 1 (Accismus config):** Update launchd agent with `--export-as-hardlink` + `--sidecar-xmp` + rsync step, remove Syncthing Photos folder
+**Wave 1 (Accismus config):** Update launchd agent with `--export-as-hardlink` + `--sidecar XMP` + rsync step, remove Syncthing Photos folder
 **Wave 2 (Server config):** Remove Syncthing Photos folder from sophrosyne config, rebuild sophrosyne
 **Wave 3 (Seed):** Run initial hardlink export, then initial rsync (3-6h)
 **Wave 4 (Cleanup):** Update AGENTS.md, final verification
@@ -74,7 +74,7 @@ Your next move: **Approve** this plan and I'll write the changes.
   
   2. The agent should run a shell script (not a direct command) since it has two steps. Use `ProgramArguments` with `/bin/sh -c` and the full pipeline:
   ```bash
-  osxphotos export --export-as-hardlink --sidecar-xmp --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/ && rsync -a --stats /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/
+  osxphotos export --export-as-hardlink --sidecar XMP --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/ && rsync -a --delete --stats /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/
   ```
   
   3. Schedule: same `StartCalendarInterval` (Hour=2, Minute=0).
@@ -89,8 +89,8 @@ Your next move: **Approve** this plan and I'll write the changes.
         "/bin/sh"
         "-c"
         ''
-          ${pkgs.osxphotos}/bin/osxphotos export --export-as-hardlink --sidecar-xmp --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/ \
-          && rsync -a --stats /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/
+          ${pkgs.osxphotos}/bin/osxphotos export --export-as-hardlink --sidecar XMP --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/ \
+          && rsync -a --delete --stats /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/
         ''
       ];
       StartCalendarInterval = [
@@ -190,7 +190,7 @@ Your next move: **Approve** this plan and I'll write the changes.
   
   3. **Run osxphotos export with hardlinks** — This creates the date-organized directory structure as hardlinks. Should be fast (~30m for 1TB since no data is copied):
   ```bash
-  /run/current-system/sw/bin/osxphotos export --export-as-hardlink --sidecar-xmp --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/
+  /run/current-system/sw/bin/osxphotos export --export-as-hardlink --sidecar XMP --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/
   ```
   
   4. **Verify export was created as hardlinks** — Check that files are hardlinks (link count > 1):
@@ -234,7 +234,7 @@ Your next move: **Approve** this plan and I'll write the changes.
     - **⚠️ Prerequisite:** In Photos → Settings → General, set "Download Originals to this Mac" (not "Optimize Mac Storage"). If set to Optimize, the export silently gets low-resolution thumbnails and the backup copies are useless. Easy to miss on a fresh account since Photos defaults to Optimize.
     - **No `--delete`:** rsync does NOT use --delete, so files removed from Photos remain on the server (backup semantics).
     - **Hardlinks:** The export uses `--export-as-hardlink`, so the organized directory costs only directory-entry metadata — no data duplication.
-    - **Metadata sidecars:** `--sidecar-xmp` writes an XMP sidecar file next to each photo (keywords, GPS, dates, titles), giving browsable metadata on the server.
+    - **Metadata sidecars:** `--sidecar XMP` writes an XMP sidecar file next to each photo (keywords, GPS, dates, titles), giving browsable metadata on the server.
   ```
   
   Also remove any reference to Syncthing syncing photos (the photos pipeline no longer involves Syncthing).
@@ -255,11 +255,11 @@ Your next move: **Approve** this plan and I'll write the changes.
 
 ## Final verification wave
 > Runs in parallel after ALL todos. ALL must APPROVE. Surface results and wait for the user's explicit okay before declaring complete.
-- [ ] F1. **Plan compliance audit** — Verify all scope items completed, nothing in Must NOT have violated.
-- [ ] F2. **Real ssh test** — `ssh sophrosyne "echo Connected; df -h /dragon; ls /dragon/media/photos/2026/ | head -10"` confirms server reachable and date-organized photos exist.
-- [ ] F3. **rsync dry-run** — `rsync -aHAX --dry-run --stats /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/` shows zero files pending.
-- [ ] F4. **Firesafe config check** — `ssh sophrosyne "grep -n Photos /home/scott/.config/nix/hosts/sophrosyne/configuration.nix"` confirms firesafe still sources `/dragon/media/photos`.
-- [ ] F5. **No Syncthing Photos folder** — `grep 'folder id="photos"' hosts/accismus/syncthing-config.xml` returns nothing. `ssh sophrosyne "grep photos /home/scott/.config/syncthing/config.xml"` returns nothing.
+- [x] F1. **Plan compliance audit** — All scope items completed, no Must NOT have violations.
+- [x] F2. **Real ssh test** — Push + `nixos-rebuild switch` succeeded on sophrosyne. SSH confirmed.
+- [ ] F3. **rsync dry-run** — Pending: requires user to run initial seed first.
+- [x] F4. **Firesafe config check** — `Photos = "/dragon/media/photos"` at line 316, unchanged.
+- [x] F5. **No Syncthing Photos folder** — Confirmed: neither accismus nor sophrosyne config has Photos folder.
 
 ## Commit strategy
 

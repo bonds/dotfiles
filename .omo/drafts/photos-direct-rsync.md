@@ -31,7 +31,7 @@ approach: "Keep osxphotos export with --export-as-hardlink flag (near-zero local
 | Files in `originals/` are readable by user-level processes | rsync from launchd agent as `scott` can read them | Originals are regular files owned by user, not locked by Photos (database is locked, not media files) | N/A - if wrong, fall back to osxphotos export |
 | LAN access at night | rsync over `192.168.4.43` (local IP, per SSH Match block) | User confirmed "Same LAN at night" | Yes |
 | "Download Originals to this Mac" is set | All originals are local | User confirmed this setting | N/A - required precondition |
-| Don't propagate deletions | No `--delete` flag on rsync — files stay on server forever | Backup semantics (matches current Syncthing sendonly behavior) | Yes |
+| Propagate deletions | `--delete` flag on rsync — server mirrors Photos library | User preference. Firesafe backup preserves deleted files via `--backup --backup-dir`. | Yes |
 
 ## Findings (cited - path:lines)
 
@@ -55,17 +55,17 @@ approach: "Keep osxphotos export with --export-as-hardlink flag (near-zero local
 
 1. **Keep osxphotos export with `--export-as-hardlink`** — Creates date-organized directory structure at near-zero extra disk cost (hardlinks on APFS share data blocks with originals). User wants date organization. Context7 confirmed the CLI option exists.
 2. **Replace Syncthing with rsync for photos** — Single nightly batch transfer instead of continuous sync. Avoids hardlink safety risk (Syncthing modifying timestamps on hardlinks would propagate to originals since they share an inode). rsync is read-only on source.
-3. **No `--delete` on rsync** — Backup semantics: files stay on server even if deleted locally. Matches current Syncthing sendonly behavior.
+3. **`--delete` on rsync** — Server mirrors Photos library. Deleted files preserved in firesafe backup's `.deleted/` directory. User explicitly requested.
 4. **Keep osxphotos `--update` flag** — Enables incremental export. `.osxphotos_export.db` tracks changes so subsequent runs only process new/changed files.
 5. **Keep `--skip-edited --skip-live`** — Same selection as current pipeline. Only original unedited photos and only the still image (not Live Photo video) are exported.
-6. **Add `--sidecar-xmp`** — Writes XMP metadata sidecars alongside each photo (keywords, GPS, dates, descriptions). User chose this for browsable metadata on the server without backing up the locked SQLite database.
+6. **Add `--sidecar XMP`** — Writes XMP metadata sidecars alongside each photo (keywords, GPS, dates, descriptions). User chose this for browsable metadata on the server without backing up the locked SQLite database.
 7. **Target same path on server: `/dragon/media/photos`** — Firesafe config needs zero changes. Existing date-organized files from old pipeline remain as a historical snapshot alongside new ones.
 8. **Run both steps in one launchd agent at 2am** — Single agent runs export then rsync sequentially. Same schedule as current.
 9. **SSH key already fixed by user** — Prerequisite met.
 
 ## Scope IN
 
-- Add `--export-as-hardlink` and `--sidecar-xmp` flags to osxphotos export command in launchd agent
+- Add `--export-as-hardlink` and `--sidecar XMP` flags to osxphotos export command in launchd agent
 - Add rsync step in the same launchd agent (after export completes) to transfer export to sophrosyne
 - Rename agent from `photos-export` to `photos-backup`
 - Clear existing `~/Pictures/Syncthing-Photos/` and `.osxphotos_export.db` so first hardlink export is clean
@@ -83,7 +83,7 @@ approach: "Keep osxphotos export with --export-as-hardlink flag (near-zero local
 - Do NOT touch the osxphotos package or overlay — leave it installed (may be useful for other tasks)
 - Do NOT modify SSH config or network setup
 - Do NOT attempt to migrate/merge the existing date-organized photos on sophrosyne — let them sit as archive
-- Do NOT add `--delete` to the rsync command
+- `--delete` IS used on rsync — server mirrors Photos, firesafe preserves deletes
 - Do NOT touch other Syncthing folders (Documents remains)
 
 ## Open questions
