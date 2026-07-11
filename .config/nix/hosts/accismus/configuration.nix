@@ -8,12 +8,6 @@
 }: let
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
 
-  # Workaround: cctools ld crashes on arm64 with response files
-  nix.extraOptions = ''
-    env-keep = NIX_LD_USE_RESPONSE_FILE
-  '';
-  environment.variables.NIX_LD_USE_RESPONSE_FILE = "0";
-
   # Syncthing config.xml generated declaratively
   syncthingConfigDir = "/Users/scott/Library/Application Support/Syncthing";
 
@@ -33,6 +27,12 @@
   '';
 in {
   # https://github.com/nix-darwin/nix-darwin?tab=readme-ov-file#prerequisites
+
+  # Workaround: cctools ld crashes on arm64 with response files
+  nix.extraOptions = ''
+    env-keep = NIX_LD_USE_RESPONSE_FILE
+  '';
+  environment.variables.NIX_LD_USE_RESPONSE_FILE = "0";
 
   # List packages installed in system profile. To search by name, run:
   # $ nix search nixpkgs wget
