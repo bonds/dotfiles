@@ -32,12 +32,12 @@ in {
     [
       caffeine # don't go to sleep
       xclip # for copying from terminal to clipboard
-      opencode # AI coding agent (CLI, binary overlay, nr --update)
       inputs.neocode.packages.${pkgs.stdenv.hostPlatform.system}.default # Native macOS SwiftUI client for OpenCode (community, flake, nr --update)
+      opencode # AI coding agent (CLI, binary overlay, nr --update)
       opencode-desktop # OpenCode Electron desktop app (binary overlay, auto-updater disabled)
       openssh # macos ssh doesn't come with resident ssh support
       ollama # run LLMs locally
-      jan # local AI chat desktop app
+      # jan # local AI chat desktop app
       utm # virtual machine manager for macOS
       flux # blue light filter for sleep
       zen-browser # firefox fork with vertical tabs
@@ -56,7 +56,7 @@ in {
       whisper-cpp # cli tool for converting audio to text
       angband # best cli game ever
       rustup # rust installer
-      autokbisw # switch layout based on which keyboard is plugged in
+      # autokbisw # switch layout based on which keyboard is plugged in
       ice-bar # menu bar organizer
       clamav # antivirus
       cowsay # cli to print stuff with a pic of a cow saying it
@@ -67,7 +67,7 @@ in {
       hugo # blog engine
       libreoffice-bin # office suite
       rage # encryption tool (age alternative)
-      element-desktop # matrix chat client
+      # element-desktop # matrix chat client
       docker # docker
       colima # docker for mac
       lima # vms for mac
