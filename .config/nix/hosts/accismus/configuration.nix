@@ -25,11 +25,6 @@
     set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
     current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
   '';
-
-  # Workaround: cctools ld crashes on arm64 with response files
-  caffeine = pkgs.caffeine.overrideAttrs (old: {
-    NIX_LD_USE_RESPONSE_FILE = "0";
-  });
 in {
   # $ nix search nixpkgs wget
   # Common packages shared with all machines are in modules/packages/dev.nix and utils.nix
