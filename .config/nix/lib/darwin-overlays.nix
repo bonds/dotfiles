@@ -5,18 +5,21 @@
   (import ../modules/opencode-overlay.nix)
   (import ../modules/safari-web-app-overlay.nix)
   (import ../modules/daisydisk-overlay/default.nix)
-  # Override the ld wrapper to use /usr/bin/ld instead of the broken cctools ld64
-  # (which crashes with SIGTRAP on arm64 macOS Sequoia).  This is above the
-  # bootstrap chain, so it won't trigger stage2-stage4 rebuilds.
-  (final: prev: {
-    cctools-binutils-darwin-wrapper = prev.cctools-binutils-darwin-wrapper.overrideAttrs (old: {
-      postInstall =
-        (old.postInstall or "")
-        + ''
-          # Rewrite the hardcoded ld path in the generated wrapper script
-          sed -i 's|/nix/store/[a-z0-9]\+-cctools-binutils-darwin-[0-9.]\+/bin/ld|/usr/bin/ld|g' \
-            "$out/bin/ld"
-        '';
-    });
+  # Replace packages that fail to build due to cctools ld64 crash on arm64
+  # with their last known working builds from the store.
+  (final: prev: let
+    # Helper: create a derivation that wraps an existing store path
+    useCached = name: path:
+      prev.runCommand name {} ''
+        if [ -L "$out" ]; then rm "$out"; fi
+        ln -s ${builtins.storePath path} "$out"
+      '';
+  in {
+    caffeine = useCached "caffeine-1.1.4" "/nix/store/agv65m9wf9z1bdxsj37kjss2ajlsf6aw-caffeine-1.1.4";
+    whisper-cpp = useCached "whisper-cpp-1.8.7" "/nix/store/mh2kal7l6hflvwxqp0bpk6609vh8n2vk-whisper-cpp-1.8.7";
+    starship = useCached "starship-1.26.0" "/nix/store/bdxd2la52jv7gh4sy46na0clc0jafrqv-starship-1.26.0";
+    mpv = useCached "mpv-0.41.0" "/nix/store/03zfgn8fi73mrnr848y69vhb6nn04zwp-mpv-0.41.0";
+    lima = useCached "lima-2.1.4" "/nix/store/qjwdmr860nm9d3pfk85plgpj21rcmwqg-lima-2.1.4";
+    lima-full = useCached "lima-full-2.1.4" "/nix/store/6xz75wd0nqjjwssyvrlx4jb7ayv7ayd7-lima-full-2.1.4";
   })
 ]
