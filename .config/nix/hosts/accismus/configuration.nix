@@ -96,27 +96,23 @@ in {
   security.pam.services.sudo_local.reattach = false;
 
   # Deploy declarative syncthing config.xml (preserves key.pem, cert.pem, and index-v2/)
-  system.activationScripts.extraActivation.text = ''
+  # Also generate the photo-rsync SSH key if missing and sync pubkey to Documents/
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
     echo "syncthing-config: deploying to ${syncthingConfigDir}" >&2
     sudo -u scott mkdir -p "${syncthingConfigDir}"
     cp "${syncthingConfig}" "${syncthingConfigDir}/config.xml"
     chown scott:staff "${syncthingConfigDir}/config.xml"
     chmod 644 "${syncthingConfigDir}/config.xml"
     pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
-  '';
 
-  # Generate a no-passphrase photo rsync SSH key if missing, and sync
-  # the public key to Documents/ so sophrosyne can pick it up via Syncthing.
-  # The key is restricted via command= and from= in the authorized_keys entry.
-  system.activationScripts.photoRsyncKey.text = ''
     KEYFILE="/Users/scott/.ssh/id_photo_rsync"
     if [ ! -f "$KEYFILE" ]; then
       echo "photo-rsync: generating key" >&2
-      /nix/store/*-openssh-*/bin/ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "photo-rsync@accismus" 2>/dev/null || \
-        ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "photo-rsync@accismus"
+      /usr/bin/ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "photo-rsync@accismus"
+      chown scott:staff "$KEYFILE" "$KEYFILE.pub" 2>/dev/null || true
     fi
     mkdir -p "/Users/scott/Documents/.config"
-    cp -f "${KEYFILE}.pub" "/Users/scott/Documents/.config/photo-rsync-key.pub"
+    cp -f "$KEYFILE".pub "/Users/scott/Documents/.config/photo-rsync-key.pub"
   '';
 
   # Used for backwards compatibility, please read the changelog before changing.
