@@ -319,10 +319,11 @@
 
       log() {
         echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') $*"
       }
 
       # Find newest file (exclude .stfolder and hidden)
-      NEWEST=$(find "$PHOTO_DIR" -type f -not -path '*/\.*' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1)
+      NEWEST=$(find "$PHOTO_DIR" -type f -not -path '*/\.*' -printf '%T@ %p\n' 2>/dev/null | sort -rn 2>/dev/null | head -1)
 
       if [ -z "$NEWEST" ]; then
         log "ALERT: No photos found in $PHOTO_DIR"
