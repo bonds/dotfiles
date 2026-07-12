@@ -5,11 +5,11 @@ in
   final: prev: {
     zen-browser = prev.stdenvNoCC.mkDerivation (finalAttrs: {
       pname = "zen-browser";
-      version = "1.21.5b";
+      version = "1.21.6b";
 
       src = prev.fetchurl {
         url = "https://github.com/zen-browser/desktop/releases/download/${finalAttrs.version}/zen.macos-universal.dmg";
-        hash = "sha256-5qs1bt5B1pc/LzwWXt+XTdBNlLSXqtATL4DRqiXUpWY=";
+        hash = "sha256-oVUjVm3RSQvEan/2DswdBWD3ZNaGm05f8szuMr+VYso=";
       };
 
       sourceRoot = ".";

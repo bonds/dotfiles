@@ -1,11 +1,11 @@
 final: prev: {
   opencode = prev.stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "opencode";
-    version = "1.17.14";
+    version = "1.17.18";
 
     src = prev.fetchurl {
       url = "https://github.com/anomalyco/opencode/releases/download/v${finalAttrs.version}/opencode-darwin-arm64.zip";
-      hash = "sha256-7AGMCsi80Gad2/m/a78JABzt5/xGA4HbJ8JzJYivsJg=";
+      hash = "sha256-JDJ/icEDUmwFGPybeXdn8xirhe887oY25yLWE48zqj0=";
     };
 
     sourceRoot = ".";
@@ -30,11 +30,11 @@ final: prev: {
 
   opencode-desktop = prev.stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "opencode-desktop";
-    version = "1.17.14";
+    version = "1.17.18";
 
     src = prev.fetchurl {
       url = "https://github.com/anomalyco/opencode/releases/download/v${finalAttrs.version}/opencode-desktop-mac-arm64.zip";
-      hash = "sha256-W/rT5g5wCoyE1DmGNFQJO1eCoTLPgeNq4o1SWz53dvg=";
+      hash = "sha256-s8O+uO6OSyd5hxngpECbFYminNCab4vu2UQJutqcos0=";
     };
 
     sourceRoot = ".";
