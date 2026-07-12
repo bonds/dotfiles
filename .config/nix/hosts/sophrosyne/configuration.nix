@@ -223,6 +223,7 @@
         "guest ok" = "yes";
         "writeable" = "yes";
         "fruit:time machine" = "yes";
+        "fruit:time machine max size" = "4194304";
       };
       "uploads" = {
         "path" = "/dragon/uploads";
