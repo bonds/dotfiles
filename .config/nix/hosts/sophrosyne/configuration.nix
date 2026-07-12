@@ -84,6 +84,43 @@
       /etc/ssh/authorized_keys.d/scott
   '';
 
+  # Restricted rsync wrapper for photo backup — only allows rsync
+  # to /dragon/media/photos/. Used by the photo-rsync key on accismus.
+  system.activationScripts.photoRsyncWrapper.text = ''
+    mkdir -p /usr/local/bin
+    cat > /usr/local/bin/rrsync-photos << 'WRAPPER'
+    #!/bin/sh
+    case "$SSH_ORIGINAL_COMMAND" in
+      *rsync*--server*/dragon/media/photos/*)
+        exec $SSH_ORIGINAL_COMMAND
+        ;;
+      *)
+        echo "REJECTED: this key is restricted to rsync /dragon/media/photos/ only" >&2
+        exit 1
+        ;;
+    esac
+    WRAPPER
+    chmod 755 /usr/local/bin/rrsync-photos
+  '';
+
+  # Deploy the photo-rsync public key from accismus (synced via Syncthing
+  # Documents folder) with restrictions: LAN-only, rsync-to-photos only.
+  # The key is appended to the existing authorized_keys file.
+  system.activationScripts.photoRsyncKey.text = ''
+    PHOTO_KEY="/home/scott/Documents/.config/photo-rsync-key.pub"
+    if [ -f "$PHOTO_KEY" ]; then
+      KEY_CONTENT=$(cat "$PHOTO_KEY")
+      # Remove any old photo-rsync entry and add fresh one
+      grep -v "photo-rsync@accismus" /etc/ssh/authorized_keys.d/scott > /tmp/authorized_keys_clean 2>/dev/null || true
+      echo "restrict,from=\"192.168.4.*\",command=\"/usr/local/bin/rrsync-photos\" $KEY_CONTENT" >> /tmp/authorized_keys_clean
+      install -m 0444 -o root -g root /tmp/authorized_keys_clean /etc/ssh/authorized_keys.d/scott
+      rm -f /tmp/authorized_keys_clean
+      echo "photo-rsync: deployed restricted key from accismus" >&2
+    else
+      echo "photo-rsync: no key found at $PHOTO_KEY — has accismus run nr yet?" >&2
+    fi
+  '';
+
   environment.systemPackages = with pkgs; [
     pkgs-unstable.python313Packages.huggingface-hub # for downloading models
     nvme-cli # manage NVMe devices from the command line
@@ -127,6 +164,12 @@
           "Copy from /dragon/containers/dontstarve/DoNotStarveTogether/Cluster_1/cluster_token.txt"
       fi
 
+      if [ ! -f /home/scott/Documents/.config/photo-rsync-key.pub ]; then
+        warn_missing \
+          /home/scott/Documents/.config/photo-rsync-key.pub \
+          "Photo rsync SSH public key from accismus — needed for automated nightly photo backup" \
+          "Run nr on accismus first (generates the key), then wait for Syncthing to sync Documents/, then rebuild sophrosyne"
+      fi
 
     '';
   };

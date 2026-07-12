@@ -105,6 +105,20 @@ in {
     pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
   '';
 
+  # Generate a no-passphrase photo rsync SSH key if missing, and sync
+  # the public key to Documents/ so sophrosyne can pick it up via Syncthing.
+  # The key is restricted via command= and from= in the authorized_keys entry.
+  system.activationScripts.photoRsyncKey.text = ''
+    KEYFILE="/Users/scott/.ssh/id_photo_rsync"
+    if [ ! -f "$KEYFILE" ]; then
+      echo "photo-rsync: generating key" >&2
+      /nix/store/*-openssh-*/bin/ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "photo-rsync@accismus" 2>/dev/null || \
+        ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "photo-rsync@accismus"
+    fi
+    mkdir -p "/Users/scott/Documents/.config"
+    cp -f "${KEYFILE}.pub" "/Users/scott/Documents/.config/photo-rsync-key.pub"
+  '';
+
   # Used for backwards compatibility, please read the changelog before changing.
   # $ darwin-rebuild changelog
   system.stateVersion = 6;
@@ -210,7 +224,7 @@ in {
             ProgramArguments = [
               "/bin/sh"
               "-c"
-              ''${pkgs.osxphotos}/bin/osxphotos export --export-as-hardlink --sidecar XMP --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/ && rsync -a --delete --stats /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/''
+              ''${pkgs.osxphotos}/bin/osxphotos export --export-as-hardlink --sidecar XMP --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/ && rsync -a --delete --stats -e "ssh -i /Users/scott/.ssh/id_photo_rsync" /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/''
             ];
             StartCalendarInterval = [
               {
