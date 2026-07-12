@@ -84,6 +84,15 @@
       /etc/ssh/authorized_keys.d/scott
   '';
 
+  # Configure bare repo hooksPath so pushes to ~/.config/dotfiles auto-deploy.
+  # The post-receive hook (tracked at .config/git/hooks/post-receive) checks
+  # out the work tree to $HOME on each push to main.
+  system.activationScripts.bareRepoHooks.text = ''
+    if [ -d "/home/scott/.config/dotfiles" ]; then
+      git --git-dir="/home/scott/.config/dotfiles" config core.hooksPath "/home/scott/.config/git/hooks" || true
+    fi
+  '';
+
   # Restricted rsync wrapper for photo backup — only allows rsync
   # to /dragon/media/photos/. Used by the photo-rsync key on accismus.
   system.activationScripts.photoRsyncWrapper.text = ''
