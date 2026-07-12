@@ -89,7 +89,7 @@
   # out the work tree to $HOME on each push to main.
   system.activationScripts.bareRepoHooks.text = ''
     if [ -d "/home/scott/.config/dotfiles" ]; then
-      git --git-dir="/home/scott/.config/dotfiles" config core.hooksPath "/home/scott/.config/git/hooks" || true
+      ${pkgs.git}/bin/git --git-dir="/home/scott/.config/dotfiles" config core.hooksPath "/home/scott/.config/git/hooks" || true
     fi
   '';
 
