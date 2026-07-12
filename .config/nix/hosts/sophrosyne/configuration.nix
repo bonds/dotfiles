@@ -309,7 +309,7 @@
     configDir = "/home/scott/.config/syncthing";
     settings = {
       devices = {
-        "accismus" = {id = "UIHTW7V-F3HAJC5-AVFUGTM-XX5LUFU-AW5NQQH-NYABTRZ-UPXBHXH-BNCQCQB";};
+        "accismus" = {id = "YH5SQ6S-U6AEOAS-F7JU4F2-YBBZFMH-VT2N6OA-BAVSABW-LBVHDZ7-R3FQLQ5";};
       };
       folders = {
         "Documents" = {
