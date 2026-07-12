@@ -301,6 +301,87 @@
     '';
   };
 
+  # Monitor photo backup freshness — emails if no new photos in 48h
+  systemd.services.photo-backup-monitor = let
+    monitorScript = pkgs.writeShellScript "photo-backup-monitor" ''
+      PHOTO_DIR="/dragon/media/photos"
+      THRESHOLD_HOURS=48
+      LOG_FILE="/var/log/photo-backup-monitor.log"
+
+      log() {
+        echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"
+      }
+
+      # Find newest file (exclude .stfolder and hidden)
+      NEWEST=$(find "$PHOTO_DIR" -type f -not -path '*/\.*' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1)
+
+      if [ -z "$NEWEST" ]; then
+        log "ALERT: No photos found in $PHOTO_DIR"
+        ${pkgs.msmtp}/bin/msmtp -t <<EOM
+      To: root
+      Subject: [ALERT] Photo backup — no photos on sophrosyne
+
+      No photos found in $PHOTO_DIR.
+
+      The backup may have never run or photos were deleted.
+      Check: ssh accismus "launchctl list | grep photos-backup"
+      Logs: cat /tmp/photos-backup.out.log
+      EOM
+        exit 1
+      fi
+
+      NEWEST_TIME=$(echo "$NEWEST" | cut -d' ' -f1)
+      NEWEST_FILE=$(echo "$NEWEST" | cut -d' ' -f2-)
+      NOW=$(date +%s)
+      AGE_HOURS=$(( (NOW - $(printf "%.0f" "$NEWEST_TIME")) / 3600 ))
+
+      if [ "$AGE_HOURS" -gt "$THRESHOLD_HOURS" ]; then
+        log "ALERT: newest photo ''${AGE_HOURS}h old (threshold ''${THRESHOLD_HOURS}h) — $NEWEST_FILE"
+        ${pkgs.msmtp}/bin/msmtp -t <<EOM
+      To: root
+      Subject: [ALERT] Photo backup stalled — ''${AGE_HOURS}h since last photo
+
+      The most recent photo on sophrosyne is ''${AGE_HOURS}h old.
+      File: $NEWEST_FILE
+      Threshold: ''${THRESHOLD_HOURS}h
+
+      Check the backup on accismus:
+        ssh accismus "launchctl list | grep photos-backup"
+        cat /tmp/photos-backup.out.log
+        cat /tmp/photos-backup.err.log
+
+      Or check manually:
+        ls -lt /dragon/media/photos/2026/ | head -5
+      EOM
+        exit 1
+      fi
+
+      log "OK: newest photo ''${AGE_HOURS}h old — $NEWEST_FILE"
+      exit 0
+    '';
+  in {
+    description = "Check if photo backup is fresh — alert if stalled >48h";
+    after = ["network.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = monitorScript;
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      PrivateTmp = true;
+      ProtectHome = true;
+      ReadWritePaths = ["/var/log" "/dragon/media/photos"];
+      RestrictNamespaces = true;
+    };
+  };
+  systemd.timers.photo-backup-monitor = {
+    description = "Daily photo backup freshness check";
+    timerConfig = {
+      OnCalendar = "daily";
+      Persistent = true;
+    };
+    wantedBy = ["timers.target"];
+  };
+
   services.syncthing = {
     enable = true;
     openDefaultPorts = true;
