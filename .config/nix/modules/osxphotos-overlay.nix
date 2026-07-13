@@ -12,46 +12,20 @@ final: prev: {
 
     sourceRoot = ".";
 
-    installPhase = let
-      versionStr = finalAttrs.version;
-    in ''
-      # CLI binary (keeps `osxphotos` in PATH)
-      mkdir -p $out/bin
-      cp osxphotos $out/bin/
-      chmod +x $out/bin/osxphotos
+    installPhase = ''
+            # real binary hidden away (not in PATH directly)
+            mkdir -p $out/lib
+            cp osxphotos $out/lib/osxphotos
+            chmod +x $out/lib/osxphotos
 
-      # .app bundle for stable TCC identity
-      app=$out/Applications/OSXPhotos.app
-      mkdir -p "$app/Contents/MacOS"
-      cp osxphotos "$app/Contents/MacOS/osxphotos"
-      chmod +x "$app/Contents/MacOS/osxphotos"
-      cat > "$app/Contents/Info.plist" <<EOF
-      <?xml version="1.0" encoding="UTF-8"?>
-      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-      <plist version="1.0">
-      <dict>
-        <key>CFBundleExecutable</key>
-        <string>osxphotos</string>
-        <key>CFBundleIdentifier</key>
-        <string>com.rhettbull.osxphotos</string>
-        <key>CFBundleName</key>
-        <string>OSXPhotos</string>
-        <key>CFBundleVersion</key>
-        <string>${versionStr}</string>
-        <key>CFBundleShortVersionString</key>
-        <string>${versionStr}</string>
-        <key>CFBundleInfoDictionaryVersion</key>
-        <string>6.0</string>
-        <key>CFBundlePackageType</key>
-        <string>APPL</string>
-        <key>LSMinimumSystemVersion</key>
-        <string>11.0</string>
-        <key>LSUIElement</key>
-        <true/>
-      </dict>
-      </plist>
-      EOF
-      printf 'APPL????' > "$app/Contents/PkgInfo"
+            # wrapper in PATH — avoids TCC-triggering plist reads
+            # by injecting --library for library-requiring commands
+            # and replacing list with a direct path echo
+            mkdir -p $out/bin
+            cat > $out/bin/osxphotos <<'WRAPPER'
+      ${builtins.readFile ./osxphotos-wrapper.sh}WRAPPER
+            substituteInPlace $out/bin/osxphotos --replace-fail "@out@" "$out"
+            chmod +x $out/bin/osxphotos
     '';
 
     dontStrip = true;
