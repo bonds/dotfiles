@@ -57,6 +57,8 @@ function nr
         if test "$_os" = darwin
             set -l _pwd $PWD
             cd $HOME/.config/nix
+            set -lx GIT_DIR $HOME/.config/dotfiles
+            set -lx GIT_WORK_TREE $HOME
             set -l gh_token (gh auth token 2>/dev/null)
             for pkg in ollama zen-browser opencode opencode-desktop
                 if test -n "$gh_token"
