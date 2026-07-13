@@ -207,7 +207,7 @@
         "inherit permissions" = "yes";
         "vfs objects" = "catia fruit streams_xattr";
         "fruit:metadata" = "stream";
-        "fruit:model" = "RackMount";
+        "fruit:model" = "Xserve";
         "fruit:veto_appledouble" = "no";
         "fruit:nfs_aces" = "no";
         "fruit:wipe_intentionally_left_blank_rfork" = "yes";
