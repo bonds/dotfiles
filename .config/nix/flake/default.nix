@@ -3,8 +3,7 @@
   imports = [
     ./formatter.nix
     ./checks.nix
-    ./devShells.nix
-    ./packages.nix
+    ./pre-commit.nix
     ./nixos.nix
     ./darwin.nix
   ];

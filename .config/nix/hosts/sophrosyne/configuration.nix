@@ -6,7 +6,9 @@
   inputs,
   self,
   ...
-}: {
+}: let
+  userHome = config.users.users.scott.home;
+in {
   imports = [
     ./hardware-configuration.nix
     ../../modules/nixos-common.nix
@@ -80,7 +82,7 @@
   # So copy the key file to a path outside the store.
   system.activationScripts.doasPamAuthKeys.text = ''
     install -D -m 0444 -o root -g root \
-      /home/scott/.config/ssh/keys \
+      ${userHome}/.config/ssh/keys \
       /etc/ssh/authorized_keys.d/scott
   '';
 
@@ -88,8 +90,8 @@
   # The post-receive hook (tracked at .config/git/hooks/post-receive) checks
   # out the work tree to $HOME on each push to main.
   system.activationScripts.bareRepoHooks.text = ''
-    if [ -d "/home/scott/.config/dotfiles" ]; then
-      ${pkgs.git}/bin/git --git-dir="/home/scott/.config/dotfiles" config core.hooksPath "/home/scott/.config/git/hooks" || true
+    if [ -d "${userHome}/.config/dotfiles" ]; then
+      ${pkgs.git}/bin/git --git-dir="${userHome}/.config/dotfiles" config core.hooksPath "${userHome}/.config/git/hooks" || true
     fi
   '';
 
@@ -116,7 +118,7 @@
   # Documents folder) with restrictions: LAN-only, rsync-to-photos only.
   # The key is appended to the existing authorized_keys file.
   system.activationScripts.photoRsyncKey.text = ''
-    PHOTO_KEY="/home/scott/Documents/.config/photo-rsync-key.pub"
+    PHOTO_KEY="${userHome}/Documents/.config/photo-rsync-key.pub"
     if [ -f "$PHOTO_KEY" ]; then
       KEY_CONTENT=$(cat "$PHOTO_KEY")
       # Remove any old photo-rsync entry and add fresh one
@@ -173,9 +175,9 @@
           "Copy from /dragon/containers/dontstarve/DoNotStarveTogether/Cluster_1/cluster_token.txt"
       fi
 
-      if [ ! -f /home/scott/Documents/.config/photo-rsync-key.pub ]; then
+      if [ ! -f ${userHome}/Documents/.config/photo-rsync-key.pub ]; then
         warn_missing \
-          /home/scott/Documents/.config/photo-rsync-key.pub \
+          ${userHome}/Documents/.config/photo-rsync-key.pub \
           "Photo rsync SSH public key from accismus — needed for automated nightly photo backup" \
           "Run nr on accismus first (generates the key), then wait for Syncthing to sync Documents/, then rebuild sophrosyne"
       fi
@@ -183,7 +185,7 @@
     '';
   };
 
-  system.stateVersion = "24.11";
+  system.stateVersion = "26.05";
 
   boot.zfs.forceImportRoot = false;
   networking.hostId = "bf6ff4c5";
@@ -272,8 +274,8 @@
 
   home-manager = {
     users.scott = {pkgs, ...}: {
-      home.stateVersion = "24.11";
-      home.homeDirectory = "/home/scott";
+      home.stateVersion = "26.05";
+      home.homeDirectory = userHome;
       imports = [
         ../../modules/home/tmux.nix
         ../../modules/home/what-changed.nix
@@ -430,14 +432,14 @@
     openDefaultPorts = true;
     user = "scott";
     group = "users";
-    configDir = "/home/scott/.config/syncthing";
+    configDir = "${userHome}/.config/syncthing";
     settings = {
       devices = {
         "accismus" = {id = "YH5SQ6S-U6AEOAS-F7JU4F2-YBBZFMH-VT2N6OA-BAVSABW-LBVHDZ7-R3FQLQ5";};
       };
       folders = {
         "Documents" = {
-          path = "/home/scott/Documents";
+          path = "${userHome}/Documents";
           id = "mz9zh-usrfi";
           devices = ["accismus"];
         };

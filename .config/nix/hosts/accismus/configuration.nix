@@ -6,10 +6,11 @@
   inputs,
   ...
 }: let
+  userHome = "/Users/scott";
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
 
   # Syncthing config.xml generated declaratively
-  syncthingConfigDir = "/Users/scott/Library/Application Support/Syncthing";
+  syncthingConfigDir = "${userHome}/Library/Application Support/Syncthing";
 
   syncthingConfig = pkgs.writeText "syncthing-config.xml" (builtins.readFile ./syncthing-config.xml);
 
@@ -21,7 +22,7 @@
   setZenIconScript = pkgs.writeText "set-zen-icon.applescript" ''
     use framework "Cocoa"
     set appPath to "/Applications/Nix Apps/Zen.app"
-    set iconPath to "${builtins.unsafeDiscardStringContext (builtins.toString zenIcon)}"
+    set iconPath to "${zenIcon}"
     set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
     current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
   '';
@@ -37,7 +38,6 @@ in {
       opencode-desktop # OpenCode Electron desktop app (binary overlay, auto-updater disabled)
       openssh # macos ssh doesn't come with resident ssh support
       ollama # run LLMs locally
-      # jan # local AI chat desktop app
       utm # virtual machine manager for macOS
       flux # blue light filter for sleep
       zen-browser # firefox fork with vertical tabs
@@ -56,7 +56,6 @@ in {
       whisper-cpp # cli tool for converting audio to text
       angband # best cli game ever
       rustup # rust installer
-      # autokbisw # switch layout based on which keyboard is plugged in
       ice-bar # menu bar organizer
       clamav # antivirus
       cowsay # cli to print stuff with a pic of a cow saying it
@@ -67,7 +66,6 @@ in {
       hugo # blog engine
       libreoffice-bin # office suite
       rage # encryption tool (age alternative)
-      # element-desktop # matrix chat client
       docker # docker
       colima # docker for mac
       lima # vms for mac
@@ -87,8 +85,6 @@ in {
     ]
     ++ [
       (pkgs.callPackage ../../pkgs/ghosttile {})
-
-      # safari-web-app-slack # Safari web app wrapper (native WebKit, no Electron) — disabled, higher mem than Electron Slack
       nh # nix helper for rebuilds and garbage collection (darwin, no programs.nh module)
     ];
 
@@ -105,14 +101,14 @@ in {
     chmod 644 "${syncthingConfigDir}/config.xml"
     pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
 
-    KEYFILE="/Users/scott/.ssh/id_photo_rsync"
+    KEYFILE="${userHome}/.ssh/id_photo_rsync"
     if [ ! -f "$KEYFILE" ]; then
       echo "photo-rsync: generating key" >&2
       /usr/bin/ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "photo-rsync@accismus"
       chown scott:staff "$KEYFILE" "$KEYFILE.pub" 2>/dev/null || true
     fi
-    mkdir -p "/Users/scott/Documents/.config"
-    cp -f "$KEYFILE".pub "/Users/scott/Documents/.config/photo-rsync-key.pub"
+    mkdir -p "${userHome}/Documents/.config"
+    cp -f "$KEYFILE".pub "${userHome}/Documents/.config/photo-rsync-key.pub"
   '';
 
   # Used for backwards compatibility, please read the changelog before changing.
@@ -128,7 +124,7 @@ in {
     nerd-fonts.jetbrains-mono
   ];
 
-  users.users.scott.home = "/Users/scott";
+  users.users.scott.home = userHome;
   users.users.scott.shell = pkgs.fish;
   system.primaryUser = "scott";
 
@@ -152,24 +148,6 @@ in {
   system.activationScripts.applications.text = lib.mkAfter ''
     echo "zen-icon: setting custom icon on Zen.app" >&2
     /usr/bin/osascript "${setZenIconScript}" 2>&1 || true
-  '';
-
-  # Symlink nix-built Safari web app (Slack) into ~/Applications/ so Spotlight
-  # indexes it like Apple's own "Add to Dock" web apps.
-  # system.activationScripts.safariWebApps.text = ''
-  #   SRC="${pkgs.safari-web-app-slack}/Applications/Slack.app"
-  #   DST="/Users/scott/Applications/Slack.app"
-  #   if [ -e "$DST" ]; then
-  #     rm -rf "$DST"
-  #   fi
-  #   ln -sf "$SRC" "$DST"
-  #   echo "safari-web-app: symlinked Slack.app to $DST"
-  # '';
-
-  # Disable cmux's built-in Sparkle auto-updater so `nr --update` is the
-  # only update path (matches ollama/opencode pinned-overlay discipline).
-  system.activationScripts.disableCmuxSparkle.text = ''
-    sudo -u scott defaults write com.cmuxterm.app SUEnableAutomaticUpdates -bool false 2>/dev/null || true
   '';
 
   # Disable DaisyDisk's built-in Sparkle auto-updater so `nr --update` is the
@@ -220,7 +198,7 @@ in {
             ProgramArguments = [
               "/bin/sh"
               "-c"
-              ''${pkgs.osxphotos}/bin/osxphotos export --export-as-hardlink --sidecar XMP --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" /Users/scott/Pictures/Syncthing-Photos/ && rsync -a --delete --stats -e "ssh -i /Users/scott/.ssh/id_photo_rsync" /Users/scott/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/''
+              ''${pkgs.osxphotos}/bin/osxphotos export --export-as-hardlink --sidecar XMP --skip-edited --skip-live --update --directory "{created.year}/{created.month:02d}" ${userHome}/Pictures/Syncthing-Photos/ && rsync -a --delete --stats -e "ssh -i ${userHome}/.ssh/id_photo_rsync" ${userHome}/Pictures/Syncthing-Photos/ sophrosyne:/dragon/media/photos/''
             ];
             StartCalendarInterval = [
               {
@@ -239,8 +217,8 @@ in {
   home-manager = {
     extraSpecialArgs = {inherit inputs;};
     users.scott = {pkgs, ...}: {
-      home.stateVersion = "24.11";
-      home.homeDirectory = "/Users/scott";
+      home.stateVersion = "26.05";
+      home.homeDirectory = userHome;
       imports = [
         ../../modules/home/tmux.nix
         ../../modules/home/direnv.nix

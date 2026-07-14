@@ -19,7 +19,7 @@ in {
           };
           visionModel = lib.mkOption {
             type = lib.types.str;
-            default = "llama3.2-vision:11b";
+            default = "llava-llama3:8b";
             description = "Ollama vision model for per-frame OCR";
           };
           summarizeModel = lib.mkOption {
@@ -51,15 +51,17 @@ in {
 
   config = lib.mkIf cfg.enable {
     home.packages = [(pkgs.callPackage ../../pkgs/reel-summarize {})];
-    home.file.".config/reel-summarize/config.toml".text = let
+    home.file.".config/reel-summarize/config.toml".source = let
+      format = pkgs.formats.toml {};
       s = cfg.settings;
-    in ''
-      host = "${s.host}"
-      vision_model = "${s.visionModel}"
-      summarize_model = "${s.summarizeModel}"
-      whisper_model = "${s.whisperModel}"
-      frames_per_second = ${toString s.framesPerSecond}
-      max_frames = ${toString s.maxFrames}
-    '';
+    in
+      format.generate "config.toml" {
+        host = s.host;
+        vision_model = s.visionModel;
+        summarize_model = s.summarizeModel;
+        whisper_model = s.whisperModel;
+        frames_per_second = s.framesPerSecond;
+        max_frames = s.maxFrames;
+      };
   };
 }

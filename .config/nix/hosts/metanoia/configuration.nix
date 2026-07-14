@@ -6,7 +6,9 @@
   inputs,
   self,
   ...
-}: {
+}: let
+  userHome = "/home/scott";
+in {
   imports = [
     ./hardware-configuration.nix
     ../../modules/nixos-common.nix
@@ -50,8 +52,8 @@
     in {
       home = {
         username = "scott";
-        homeDirectory = "/home/scott";
-        stateVersion = "24.05";
+        homeDirectory = userHome;
+        stateVersion = "26.05";
         packages = [
           (inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.zen-browser.override {
             extraPolicies = zenPolicies;
@@ -79,7 +81,7 @@
     ]);
   };
 
-  system.stateVersion = "24.05";
+  system.stateVersion = "26.05";
 
   users.users.root.hashedPassword = "*";
 
@@ -164,8 +166,8 @@
   services.syncthing = {
     enable = true;
     user = "scott";
-    dataDir = "/home/scott/Documents";
-    configDir = "/home/scott/.config/syncthing";
+    dataDir = "${userHome}/Documents";
+    configDir = "${userHome}/.config/syncthing";
   };
 
   systemd.services.syncthing.environment.STNODEFAULTFOLDER = "true";

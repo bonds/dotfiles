@@ -9,7 +9,8 @@ python3.pkgs.buildPythonApplication {
   format = "pyproject";
   nativeBuildInputs = with python3.pkgs; [setuptools];
   propagatedBuildInputs = with python3.pkgs; [rich httpx pyspellchecker];
-  doCheck = false;
+  nativeCheckInputs = with python3.pkgs; [pytest tomli];
+  preCheck = "export HOME=$(mktemp -d)";
   meta = with lib; {
     description = "Show nix system package changelogs using LLM";
     homepage = "https://github.com/bonds/dotfiles";

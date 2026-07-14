@@ -7,9 +7,30 @@ from reel_summarize.config import Config, load as load_config
 from reel_summarize.pipeline import run
 
 
+def _ensure_ollama_model(model: str, cfg: Config):
+    import httpx
+    import subprocess
+
+    resp = httpx.get(f"{cfg.host}/api/tags", timeout=10)
+    resp.raise_for_status()
+    pulled = {m["name"] for m in resp.json().get("models", [])}
+    if model in pulled:
+        return
+
+    print(f"  → pulling '{model}' (this may take a while)...", file=sys.stderr)
+    pull_proc = subprocess.run(
+        ["ollama", "pull", model],
+        timeout=600,
+    )
+    if pull_proc.returncode != 0:
+        print(f"  ✖ failed to pull model '{model}'", file=sys.stderr)
+        sys.exit(2)
+
+
 def _preflight(cfg: Config):
     import shutil
-    import subprocess
+
+    import httpx
 
     errors = []
 
@@ -20,15 +41,9 @@ def _preflight(cfg: Config):
         errors.append("ffmpeg not found on PATH (install via nix or brew)")
 
     try:
-        import httpx
-        resp = httpx.get(f"{cfg.host}/api/tags", timeout=5)
-        resp.raise_for_status()
-        models = {m["name"] for m in resp.json().get("models", [])}
-        if cfg.vision_model not in models:
-            errors.append(f"ollama model '{cfg.vision_model}' not pulled (run: ollama pull {cfg.vision_model})")
-        if cfg.summarize_model not in models:
-            errors.append(f"ollama model '{cfg.summarize_model}' not pulled (run: ollama pull {cfg.summarize_model})")
-    except Exception as e:
+        _ensure_ollama_model(cfg.vision_model, cfg)
+        _ensure_ollama_model(cfg.summarize_model, cfg)
+    except httpx.RequestError as e:
         errors.append(f"ollama unreachable at {cfg.host}: {e}")
 
     try:

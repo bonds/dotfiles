@@ -13,17 +13,28 @@
 
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
-    vudials.url = "github:bonds/nix-vudials";
+    vudials = {
+      url = "github:bonds/nix-vudials";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     zen-browser = {
       url = "github:youwen5/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    polyptych.url = "github:bonds/polyptych";
+    polyptych = {
+      url = "github:bonds/polyptych";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     neocode = {
       url = "github:bonds/NeoCode";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-parts.url = "github:hercules-ci/flake-parts";
+
+    pre-commit-hooks = {
+      url = "github:cachix/pre-commit-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
   outputs = inputs:
     inputs.flake-parts.lib.mkFlake {inherit inputs;} {

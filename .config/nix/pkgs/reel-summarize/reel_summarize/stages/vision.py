@@ -32,7 +32,7 @@ def _call_ollama_vision(image_b64: str, cfg: Config) -> dict:
         resp = httpx.post(
             f"{cfg.host}/api/generate",
             json=payload,
-            timeout=120,
+            timeout=300,
         )
         resp.raise_for_status()
         text = resp.json().get("response", "")
@@ -41,9 +41,17 @@ def _call_ollama_vision(image_b64: str, cfg: Config) -> dict:
             text = text.split("\n", 1)[-1]
             text = text.rsplit("```", 1)[0]
         try:
-            return json.loads(text)
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return parsed
+            if isinstance(parsed, list):
+                return {"text": parsed, "scene": ""}
+            return {"text": [text], "scene": ""}
         except json.JSONDecodeError:
             return {"text": [text], "scene": ""}
+    except httpx.TimeoutException as e:
+        print(f"  timeout: frame took too long ({e})", file=sys.stderr)
+        return {"text": [], "scene": ""}
     except httpx.RequestError as e:
         print(f"  error: cannot reach Ollama at {cfg.host}: {e}", file=sys.stderr)
         sys.exit(2)

@@ -1,4 +1,17 @@
 #!/bin/sh
+# Nix format check (alejandra on staged .nix files)
+nix_staged=$(git diff --cached --name-only --diff-filter=ACM | grep '\.nix$' || true)
+if [ -n "$nix_staged" ]; then
+  if echo "$nix_staged" | xargs alejandra --check 2>/dev/null; then
+    : # all good
+  else
+    echo "ERROR: Nix files are not formatted correctly."
+    echo "Run: alejandra <file>"
+    echo "$nix_staged" | xargs alejandra --check 2>&1 | head -5
+    exit 1
+  fi
+fi
+
 # Reject .pyc files — use `git add` without `-f` to respect .gitignore
 if git diff --cached --name-only --diff-filter=A | grep -q '\.pyc$'; then
   echo "ERROR: .pyc files cannot be committed. Use 'git add' (without -f) to respect .gitignore."

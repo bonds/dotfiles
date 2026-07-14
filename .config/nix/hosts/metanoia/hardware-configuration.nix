@@ -29,17 +29,6 @@
     options = ["fmask=0022" "dmask=0022"];
   };
 
-  # remove all existing swap devices
-  # swapDevices = lib.mkForce [ ];
-
-  # # add a swap file
-  # # https://discourse.nixos.org/t/how-to-add-a-swap-after-nixos-installation/41742
-  # # https://chrisdown.name/2018/01/02/in-defence-of-swap.html
-  # swapDevices = [{
-  #   device = "/swapfile";
-  #   size = 64 * 1024; # 64GB
-  # }];
-
   # use all of my 120GB PNY SSD for swap
   swapDevices = [
     {

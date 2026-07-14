@@ -35,7 +35,7 @@ in {
   programs.tmux.enable = lib.mkDefault true;
   programs.nh = {
     enable = lib.mkDefault true;
-    flake = lib.mkDefault "/home/scott/.config/nix";
+    flake = lib.mkDefault "${config.users.users.scott.home}/.config/nix";
   };
   services.fstrim.enable = lib.mkDefault true;
 

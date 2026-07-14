@@ -25,7 +25,6 @@ in
       modules =
         [
           {nixpkgs.overlays = darwinOverlays;}
-          {nixpkgs.config.allowUnfree = true;}
           nix-index-database.darwinModules.nix-index
           home-manager.darwinModules.home-manager
         ]
