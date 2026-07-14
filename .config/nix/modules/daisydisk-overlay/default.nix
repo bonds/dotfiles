@@ -1,5 +1,7 @@
-final: prev: {
-  daisydisk = prev.stdenvNoCC.mkDerivation (finalAttrs: {
+final: prev: let
+  mkDarwinPackage = import ../../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
+in {
+  daisydisk = mkDarwinPackage {
     pname = "daisydisk";
     version = "4.34.2";
 
@@ -8,24 +10,17 @@ final: prev: {
       hash = "sha256-Re9GOfK03Gogb4Ep1itUJm60L94qvGfXgjqpLg8GQlc=";
     };
 
-    sourceRoot = ".";
-
     nativeBuildInputs = [prev.unzip];
 
     installPhase = ''
-      runHook preInstall
       mkdir -p $out/Applications
       cp -r DaisyDisk.app $out/Applications/
-      runHook postInstall
     '';
-
-    dontFixup = true;
 
     meta = {
       description = "Disk usage visualizer with a pie chart interface";
       homepage = "https://daisydiskapp.com";
       license = prev.lib.licenses.unfree;
-      platforms = ["aarch64-darwin"];
     };
-  });
+  };
 }
