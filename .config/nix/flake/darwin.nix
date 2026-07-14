@@ -9,6 +9,7 @@
       (inputs)
       nix-darwin
       nixpkgs
+      nixpkgs-unstable
       home-manager
       nix-index-database
       ;

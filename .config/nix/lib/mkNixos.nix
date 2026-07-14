@@ -1,8 +1,8 @@
 {
   self,
   nixpkgs,
-  nixpkgs-stable,
-  home-manager-stable,
+  nixpkgs-unstable,
+  home-manager,
   nix-index-database,
   inputs,
 }: let
@@ -12,12 +12,12 @@ in
     modules ? [],
     specialArgs ? {},
   }:
-    nixpkgs-stable.lib.nixosSystem {
+    nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       specialArgs =
         {
           inherit self inputs;
-          pkgs-unstable = import nixpkgs {
+          pkgs-unstable = import nixpkgs-unstable {
             system = "x86_64-linux";
             config.allowUnfree = true;
           };
@@ -27,7 +27,7 @@ in
         commonModules
         ++ [
           nix-index-database.nixosModules.nix-index
-          home-manager-stable.nixosModules.home-manager
+          home-manager.nixosModules.home-manager
         ]
         ++ modules;
     }

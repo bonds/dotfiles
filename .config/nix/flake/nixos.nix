@@ -8,13 +8,13 @@
     inherit
       (inputs)
       nixpkgs
-      nixpkgs-stable
-      home-manager-stable
+      nixpkgs-unstable
+      home-manager
       nix-index-database
       ;
   };
   vudialsPkgs = (import ./../lib/vudials-packages.nix) inputs.vudials (
-    import inputs.nixpkgs-stable {
+    import inputs.nixpkgs {
       system = "x86_64-linux";
       config.allowUnfree = true;
     }

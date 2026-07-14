@@ -2,6 +2,7 @@
   self,
   nix-darwin,
   nixpkgs,
+  nixpkgs-unstable,
   home-manager,
   nix-index-database,
   inputs,
@@ -17,6 +18,7 @@ in
       specialArgs =
         {
           inherit self inputs;
+          inherit nixpkgs-unstable;
           isDarwin = true;
         }
         // specialArgs;
