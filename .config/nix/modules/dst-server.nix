@@ -171,7 +171,7 @@
           +force_install_dir ${cfg.serverInstallDir} \
           +login anonymous \
           +app_update 343050 validate \
-          +quit
+          +quit || echo "SteamCMD update failed — continuing with existing installation"
       ''}
 
           if [ ! -L ${cfg.serverInstallDir}/mods ]; then
