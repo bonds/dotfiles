@@ -110,15 +110,22 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
             frames, vision_results, cfg.frames_per_second
         )
 
+        author = metadata.get("author") or "unknown"
+        caption = metadata.get("caption") or "(no caption)"
         p(f"→ summarizing ({cfg.summarize_model})...")
         summary = generate_summary(
             transcript=transcript,
             vision_timeline=vision_timeline,
-            caption=metadata.get("caption"),
-            author=metadata.get("author"),
+            caption=caption,
+            author=author,
             cfg=cfg,
         )
 
+        if author:
+            print(f"Posted by: {author}")
+        if caption:
+            print(f"Caption: {caption}")
+        print()
         print(summary)
 
     finally:
@@ -158,6 +165,13 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
                 "frames": frames,
                 "metadata": metadata,
             })
+            author = metadata.get("author") or "unknown"
+            caption = metadata.get("caption") or "(no caption)"
+            if author:
+                print(f"Posted by: {author}")
+            if caption:
+                print(f"Caption: {caption}")
+            print(file=sys.stderr, flush=True)
             p(f"✓ download done — {len(frames)} frames, audio extracted")
 
         elif stage == "process":
@@ -190,15 +204,22 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
                 frames, vision_results, cfg.frames_per_second
             )
 
+            author = metadata.get("author") or "unknown"
+            caption = metadata.get("caption") or "(no caption)"
             p(f"→ summarizing ({cfg.summarize_model})...")
             summary = generate_summary(
                 transcript=transcript,
                 vision_timeline=vision_timeline,
-                caption=metadata.get("caption"),
-                author=metadata.get("author"),
+                caption=caption,
+                author=author,
                 cfg=cfg,
             )
 
+            if author:
+                print(f"Posted by: {author}")
+            if caption:
+                print(f"Caption: {caption}")
+            print()
             print(summary)
             _clear_state()
 
