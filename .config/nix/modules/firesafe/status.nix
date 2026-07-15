@@ -3,15 +3,14 @@
   lib,
   cfg,
 }: let
-  script = builtins.readFile ./status.py;
-  script' =
-    builtins.replaceStrings
-    ["@mountPoint@" "@totalSources@"]
-    [cfg.mountPoint (toString (builtins.length (builtins.attrNames cfg.sources)))]
-    script;
+  numSources = toString (builtins.length (builtins.attrNames cfg.sources));
+  pythonBin =
+    pkgs.writers.writePython3Bin "firesafe-status-inner" {
+      libraries = [pkgs.python3Packages.rich];
+      flakeIgnore = ["E501"];
+    }
+    (builtins.readFile ./status.py);
 in
-  pkgs.writers.writePython3Bin "firesafe-status" {
-    libraries = [pkgs.python3Packages.rich];
-    flakeIgnore = ["E501"];
-  }
-  script'
+  pkgs.writeShellScriptBin "firesafe-status" ''
+    exec ${pythonBin}/bin/firesafe-status-inner ${cfg.mountPoint} ${numSources} "$@"
+  ''

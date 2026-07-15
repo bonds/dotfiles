@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import time
@@ -15,10 +16,11 @@ from rich.live import Live
 
 console = Console()
 
-MOUNT_POINT = "@mountPoint@"
 LOG_FILE = "/var/log/firesafe-backup.log"
-TOTAL_SOURCES = @totalSources@
 FIXED_LINES = 7
+
+MOUNT_POINT: str = ""
+TOTAL_SOURCES: int = 0
 
 
 def fmt_time(seconds: int) -> str:
@@ -623,7 +625,16 @@ def build_no_markers(lines: list[str], did: Optional[str]) -> Group:
 
 
 def main() -> None:
-    watch = "-w" in sys.argv[1:] or "--watch" in sys.argv[1:]
+    parser = argparse.ArgumentParser(description="Firesafe backup status display")
+    parser.add_argument("mount_point", help="Mount point of the firesafe drive")
+    parser.add_argument("total_sources", type=int, help="Total number of backup sources")
+    parser.add_argument("-w", "--watch", action="store_true", help="Live-updating display")
+    args = parser.parse_args()
+
+    global MOUNT_POINT, TOTAL_SOURCES
+    MOUNT_POINT = args.mount_point
+    TOTAL_SOURCES = args.total_sources
+    watch = args.watch
 
     lines = read_log()
     mp = MOUNT_POINT
