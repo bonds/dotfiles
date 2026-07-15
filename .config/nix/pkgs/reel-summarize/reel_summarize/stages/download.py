@@ -53,18 +53,47 @@ def _extract_zen_cookies(container_id: str = "1") -> str | None:
     return None
 
 
+def _cookies_opt() -> list[str]:
+    cookies_file = os.environ.get("REEL_SUMMARIZE_COOKIES")
+    if cookies_file:
+        return ["--cookies", cookies_file]
+    zen_cookies = _extract_zen_cookies()
+    if zen_cookies:
+        return ["--cookies", zen_cookies]
+    return []
+
+
+def _parse_metadata(raw: str | None) -> dict:
+    metadata = {"caption": None, "author": None, "duration": None}
+    if not raw:
+        return metadata
+    try:
+        data = json.loads(raw)
+        metadata["caption"] = data.get("description") or data.get("title")
+        metadata["author"] = data.get("uploader") or data.get("channel")
+        metadata["duration"] = data.get("duration")
+    except json.JSONDecodeError:
+        pass
+    return metadata
+
+
+def fetch_metadata(url: str) -> dict:
+    """Fetch only the metadata (caption, author, duration) without downloading video. Fast (~1-2s)."""
+    meta_result = subprocess.run(
+        ["yt-dlp", "--dump-json", *_cookies_opt(), url],
+        capture_output=True, text=True, timeout=30,
+    )
+    if meta_result.returncode != 0:
+        print(f"  metadata fetch error: {meta_result.stderr.strip() or meta_result.stdout.strip()}", file=sys.stderr)
+        sys.exit(3)
+    return _parse_metadata(meta_result.stdout)
+
+
 def download(url: str, work_dir: str) -> dict:
     video_path = os.path.join(work_dir, "reel.mp4")
     meta_path = os.path.join(work_dir, "metadata.json")
 
-    cookies_opt = []
-    cookies_file = os.environ.get("REEL_SUMMARIZE_COOKIES")
-    if cookies_file:
-        cookies_opt = ["--cookies", cookies_file]
-    else:
-        zen_cookies = _extract_zen_cookies()
-        if zen_cookies:
-            cookies_opt = ["--cookies", zen_cookies]
+    cookies_opt = _cookies_opt()
 
     result = subprocess.run(
         ["yt-dlp", "-o", video_path, "--print", "after_move:%(filename)s", *cookies_opt, url],
@@ -78,15 +107,7 @@ def download(url: str, work_dir: str) -> dict:
         ["yt-dlp", "--dump-json", *cookies_opt, url],
         capture_output=True, text=True, timeout=30,
     )
-    metadata = {"caption": None, "author": None, "duration": None}
-    if meta_result.returncode == 0 and meta_result.stdout:
-        try:
-            data = json.loads(meta_result.stdout)
-            metadata["caption"] = data.get("description") or data.get("title")
-            metadata["author"] = data.get("uploader") or data.get("channel")
-            metadata["duration"] = data.get("duration")
-        except json.JSONDecodeError:
-            pass
+    metadata = _parse_metadata(meta_result.stdout if meta_result.returncode == 0 else None)
 
     with open(meta_path, "w") as f:
         json.dump(metadata, f)

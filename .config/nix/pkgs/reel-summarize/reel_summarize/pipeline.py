@@ -8,7 +8,7 @@ import sys
 import tempfile
 
 from reel_summarize.config import Config
-from reel_summarize.stages.download import download
+from reel_summarize.stages.download import download, fetch_metadata
 from reel_summarize.stages.audio_extract import extract_audio
 from reel_summarize.stages.frame_extract import extract_frames
 from reel_summarize.stages.transcribe import transcribe, transcribe_text
@@ -152,10 +152,8 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
                 work_dir = tempfile.mkdtemp(prefix="reel-summarize-")
                 _save_state({"work_dir": work_dir})
 
-            p("→ downloading video...")
-            down = download(url, work_dir)
-            metadata = down["metadata"]
-            video_path = down["video_path"]
+            p("→ fetching metadata...")
+            metadata = fetch_metadata(url)
 
             author = metadata.get("author") or "unknown"
             caption = metadata.get("caption") or "(no caption)"
@@ -163,6 +161,10 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
                 print(f"Posted by: {author}", flush=True)
             if caption:
                 print(f"Caption: {caption}", flush=True)
+
+            p("→ downloading video...")
+            down = download(url, work_dir)
+            video_path = down["video_path"]
 
             p("→ extracting frames and audio...")
             frames = extract_frames(video_path, work_dir, cfg)
