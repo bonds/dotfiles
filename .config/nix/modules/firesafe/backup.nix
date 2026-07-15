@@ -91,9 +91,8 @@
     ]
     script;
 in
-  pkgs.writeShellApplication {
-    name = "firesafe-backup";
-    runtimeInputs = with pkgs; [
+  pkgs.writeShellScriptBin "firesafe-backup" ''
+    export PATH="${lib.makeBinPath (with pkgs; [
       rsync
       util-linux
       e2fsprogs
@@ -103,6 +102,6 @@ in
       gnused
       gawk
       coreutils
-    ];
-    text = script';
-  }
+    ])}:$PATH"
+    ${script'}
+  ''
