@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from reel_summarize.config import Config, load as load_config
-from reel_summarize.pipeline import run
+from reel_summarize.pipeline import run, run_stage
 
 
 def _ensure_ollama_model(model: str, cfg: Config):
@@ -69,6 +70,8 @@ def entry():
                         help="Keep intermediate files in /tmp/")
     parser.add_argument("--frames-per-second", type=int, default=None,
                         help="Override frame sampling rate")
+    parser.add_argument("--stage", choices=["download", "process", "all"], default="all",
+                        help="Run only specific stage(s)")
 
     args = parser.parse_args()
 
@@ -83,7 +86,10 @@ def entry():
         parser.print_help()
         sys.exit(1)
 
-    run(args.url, cfg, keep_artifacts=args.keep_artifacts)
+    if args.stage == "all":
+        run(args.url, cfg, keep_artifacts=args.keep_artifacts)
+    else:
+        run_stage(args.stage, args.url, cfg, keep_artifacts=args.keep_artifacts)
 
 
 if __name__ == "__main__":

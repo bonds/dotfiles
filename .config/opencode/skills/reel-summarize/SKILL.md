@@ -9,35 +9,51 @@ Reel link and wants to know what it's about without watching it.
 
 **Procedure:**
 
-1. Extract the reel URL from the user's message
-2. Run `reel-summarize <url>` via the bash tool
-3. Capture stdout (the summary) and stderr (progress messages)
-4. Present the summary to the user
+Run in two phases so the user sees progress — each phase is a separate bash call:
+
+### Phase 1: Download
+
+Tell the user "→ starting download..." then run:
+
+```
+PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage download <url>
+```
+
+Wait for completion. On success (exit 0), tell the user "→ download done, now processing..."
+
+On **exit 3** (download failure): tell the user "Instagram session expired — log into Instagram in Zen (Personal workspace), then I'll retry." Then retry phase 1.
+
+On **exit 2** (missing model): run `ollama pull llava:7b && ollama pull qwen2.5:7b` then retry.
+
+### Phase 2: Process (transcribe, vision, summarize)
+
+Run:
+
+```
+PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage process <url>
+```
+
+Wait for completion. Capture stdout (the summary) and present it. If any stderr progress lines appear, include them for context.
+
+### If a phase fails or the URL is the same as a previous attempt
+
+If phase 1 already completed but you're retrying, just run phase 2. The state is
+stored in `/tmp/reel-summarize-stage/state.json` — if it's stale or missing,
+re-run phase 1 first.
 
 **If the default `reel-summarize` fails with "cannot access post / empty response":**
-The installed binary may be stale (missing cookie/gpu fixes). Use the PYTHONPATH override:
-```
-PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize <url>
-```
-
-**Exit code handling:**
-- Exit 0: success — present stdout directly
-- Exit 2: missing prerequisite — tell the user to run `ollama pull llava:7b` and `ollama pull qwen2.5:7b`
-- Exit 3: download failure — could be auth (cookies stale), private account, or expired URL. Regenerate cookies if needed.
-- Other exit codes: print the error from stderr
+The installed binary may be stale. Use the PYTHONPATH override (shown above).
 
 **Known issues & workarounds:**
 
 | Issue | Workaround |
 |-------|-----------|
 | `max_frames = 60` makes it too slow | Change `max_frames` in `~/.config/reel-summarize/config.toml` or rebuild nix |
-| Vision model times out per-frame | Ensure `llava:7b` is pulled (not `llama3.2-vision:11b` — mllama arch unsupported) |
-| Nix package stale (missing cookie/gpu fixes) | Use PYTHONPATH override above, or rebuild with `nr` |
-| ollama slow on M2 | Check `num_gpu: 99` is in the ollama API payload (`vision.py` sets it); verify GPU layers via `ps aux \| grep llama-server` |
+| Vision model times out per-frame | Ensure `llava:7b` is pulled (not `llama3.2-vision:11b`) |
+| Nix package stale (missing fixes) | Use PYTHONPATH override above, or rebuild with `nr` |
+| ollama slow on M2 | Verify GPU layers via `ps aux \| grep llama-server` (should see `-ngl 99`) |
 
 **Notes:**
-- Runs entirely locally via Ollama + whisper (openai-whisper)
-- Takes ~1-3 min to complete depending on reel length
+- Runs entirely locally via Ollama + whisper
 - Must have ollama running with `llava:7b` and `qwen2.5:7b` pulled
-- The `reel-summarize` binary is on PATH after `nr`
-- Automatically detects cookies from Zen browser's Personal workspace (no manual login needed)
+- Automatically detects cookies from Zen browser's Personal workspace

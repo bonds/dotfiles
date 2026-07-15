@@ -72,7 +72,7 @@ def analyze_frames(frames: list[str], cfg: Config) -> list[dict]:
             "text": result.get("text", []),
             "scene": result.get("scene", ""),
         })
-        print(f"  scanned frame {i+1}/{total}", file=sys.stderr)
+        print(f"  scanned frame {i+1}/{total}", file=sys.stderr, flush=True)
     return results
 
 

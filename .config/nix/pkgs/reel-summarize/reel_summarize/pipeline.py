@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import fcntl
+import json
 import os
 import shutil
 import sys
@@ -16,6 +17,47 @@ from reel_summarize.stages.summarize import generate_summary
 
 _LOCK_PATH = os.path.expanduser("~/.cache/reel-summarize.lock")
 
+STAGE_DIR = os.path.join(tempfile.gettempdir(), "reel-summarize-stage")
+STATE_FILE = os.path.join(STAGE_DIR, "state.json")
+
+
+def _ensure_ollama_model(model: str, cfg: Config):
+    import subprocess
+    import httpx
+
+    resp = httpx.get(f"{cfg.host}/api/tags", timeout=10)
+    resp.raise_for_status()
+    pulled = {m["name"] for m in resp.json().get("models", [])}
+    if model in pulled:
+        return
+
+    print(f"  → pulling '{model}' (this may take a while)...", file=sys.stderr, flush=True)
+    pull_proc = subprocess.run(
+        ["ollama", "pull", model],
+        timeout=600,
+    )
+    if pull_proc.returncode != 0:
+        print(f"  ✖ failed to pull model '{model}'", file=sys.stderr, flush=True)
+        sys.exit(2)
+
+
+def _save_state(data: dict):
+    os.makedirs(STAGE_DIR, exist_ok=True)
+    with open(STATE_FILE, "w") as f:
+        json.dump(data, f, default=str)
+
+
+def _load_state() -> dict:
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE) as f:
+            return json.load(f)
+    return {}
+
+
+def _clear_state():
+    if os.path.exists(STATE_FILE):
+        os.unlink(STATE_FILE)
+
 
 def _acquire_lock():
     os.makedirs(os.path.dirname(_LOCK_PATH), exist_ok=True)
@@ -29,60 +71,46 @@ def _release_lock(lock_fd):
     lock_fd.close()
 
 
-def _ensure_ollama_model(model: str, cfg: Config):
-    import subprocess
-
-    import httpx
-
-    resp = httpx.get(f"{cfg.host}/api/tags", timeout=10)
-    resp.raise_for_status()
-    pulled = {m["name"] for m in resp.json().get("models", [])}
-    if model in pulled:
-        return
-
-    print(f"  → pulling '{model}' (this may take a while)...", file=sys.stderr)
-    pull_proc = subprocess.run(
-        ["ollama", "pull", model],
-        timeout=600,
-    )
-    if pull_proc.returncode != 0:
-        print(f"  ✖ failed to pull model '{model}'", file=sys.stderr)
-        sys.exit(2)
-
-
 def run(url: str, cfg: Config, keep_artifacts: bool = False):
     lock_fd = _acquire_lock()
     work_dir = tempfile.mkdtemp(prefix="reel-summarize-")
+    _clear_state()
 
     try:
         _ensure_ollama_model(cfg.vision_model, cfg)
         _ensure_ollama_model(cfg.summarize_model, cfg)
 
-        print("→ downloading video...", file=sys.stderr)
+        p = lambda m: print(m, file=sys.stderr, flush=True)
+
+        p("→ downloading video...")
         down = download(url, work_dir)
         video_path = down["video_path"]
         metadata = down["metadata"]
+        p("→ done download")
 
-        print("→ extracting audio...", file=sys.stderr)
+        p("→ extracting audio...")
         audio_path = extract_audio(video_path, work_dir)
+        p("→ done audio extract")
 
-        print("→ extracting frames...", file=sys.stderr)
+        p("→ extracting frames...")
         frames = extract_frames(video_path, work_dir, cfg)
+        p(f"→ done frame extract ({len(frames)} frames)")
 
-        print("→ transcribing audio (whisper)...", file=sys.stderr)
+        p("→ transcribing audio (whisper)...")
         segments = transcribe(audio_path, cfg)
         transcript = transcribe_text(segments)
+        p(f"→ done transcribe ({len(transcript)} chars)")
 
         vision_results = []
         if frames:
-            print(f"→ scanning {len(frames)} frames ({cfg.vision_model})...", file=sys.stderr)
+            p(f"→ scanning {len(frames)} frames ({cfg.vision_model})...")
             vision_results = analyze_frames(frames, cfg)
 
         vision_timeline = format_vision_timeline(
             frames, vision_results, cfg.frames_per_second
         )
 
-        print(f"→ summarizing ({cfg.summarize_model})...", file=sys.stderr)
+        p(f"→ summarizing ({cfg.summarize_model})...")
         summary = generate_summary(
             transcript=transcript,
             vision_timeline=vision_timeline,
@@ -96,4 +124,86 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
     finally:
         if not keep_artifacts:
             shutil.rmtree(work_dir, ignore_errors=True)
+        _release_lock(lock_fd)
+
+
+def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
+    """Run a single stage of the pipeline. Saves intermediate results to a
+    shared temp directory so stages can be called incrementally."""
+    lock_fd = _acquire_lock()
+    state = _load_state()
+    work_dir = state.get("work_dir")
+
+    try:
+        p = lambda m: print(m, file=sys.stderr, flush=True)
+
+        if stage == "download":
+            _ensure_ollama_model(cfg.vision_model, cfg)
+            _ensure_ollama_model(cfg.summarize_model, cfg)
+
+            if not work_dir:
+                work_dir = tempfile.mkdtemp(prefix="reel-summarize-")
+                _save_state({"work_dir": work_dir})
+
+            p("→ downloading video...")
+            down = download(url, work_dir)
+            metadata = down["metadata"]
+            video_path = down["video_path"]
+            frames = extract_frames(video_path, work_dir, cfg)
+            audio_path = extract_audio(video_path, work_dir)
+            _save_state({
+                "work_dir": work_dir,
+                "video_path": video_path,
+                "audio_path": audio_path,
+                "frames": frames,
+                "metadata": metadata,
+            })
+            p(f"✓ download done — {len(frames)} frames, audio extracted")
+
+        elif stage == "process":
+            state = _load_state()
+            if not state or "work_dir" not in state:
+                print("→ no prior download state found — run --stage download first", file=sys.stderr)
+                sys.exit(1)
+
+            work_dir = state["work_dir"]
+            metadata = state["metadata"]
+            video_path = state.get("video_path")
+            audio_path = state.get("audio_path")
+            frames = state.get("frames", [])
+
+            if not audio_path or not os.path.exists(audio_path):
+                p("→ audio not found, re-extracting...")
+                audio_path = extract_audio(video_path, work_dir)
+
+            p("→ transcribing audio (whisper)...")
+            segments = transcribe(audio_path, cfg)
+            transcript = transcribe_text(segments)
+            p(f"✓ transcription done ({len(transcript)} chars)")
+
+            vision_results = []
+            if frames:
+                p(f"→ scanning {len(frames)} frames ({cfg.vision_model})...")
+                vision_results = analyze_frames(frames, cfg)
+
+            vision_timeline = format_vision_timeline(
+                frames, vision_results, cfg.frames_per_second
+            )
+
+            p(f"→ summarizing ({cfg.summarize_model})...")
+            summary = generate_summary(
+                transcript=transcript,
+                vision_timeline=vision_timeline,
+                caption=metadata.get("caption"),
+                author=metadata.get("author"),
+                cfg=cfg,
+            )
+
+            print(summary)
+            _clear_state()
+
+    finally:
+        if stage == "process" or (not keep_artifacts and stage != "download"):
+            if work_dir and os.path.exists(work_dir):
+                shutil.rmtree(work_dir, ignore_errors=True)
         _release_lock(lock_fd)
