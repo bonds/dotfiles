@@ -14,26 +14,30 @@ between each. Always use the PYTHONPATH override since the nix package is stale.
 
 ### Phase 1: Metadata (fast ~1-2s)
 
-Tell the user "→ fetching metadata..." then run:
+Run:
 
 ```
 PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage metadata <url>
 ```
 
-This returns just the author and caption within ~1-2 seconds. **STOP here.** Present the caption to the user as a clearly formatted text message (e.g. "**Posted by:** ..." / "**Caption:** ..."). Do NOT proceed to Phase 2 until the user sees the caption or acknowledges. The caption is the fast part — let them read it before the slow work starts.
+This returns the author and caption within ~1-2 seconds. Present them to the user
+inline ("**Posted by:** ... / **Caption:** ...") and **immediately proceed to Phase 2**
+without waiting. Do not ask for confirmation — the user wants to see the caption
+early and wants the pipeline to keep going.
 
 On **exit 3** (no session): tell the user "Instagram session expired — log into
 Instagram in Zen (Personal workspace), then I'll retry." Then retry phase 1.
 
 ### Phase 2: Download + extract
 
-Tell the user "→ downloading and extracting..." then run:
+Run:
 
 ```
 PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage download <url>
 ```
 
 On **exit 2** (missing model): run `ollama pull llava:7b && ollama pull qwen2.5:7b` then retry.
+On **exit 3**: retry phase 1 with fresh cookies.
 
 ### Phase 3: Process (transcribe, vision, summarize)
 
