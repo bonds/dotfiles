@@ -73,8 +73,8 @@
     };
     dst-cluster-token = {
       file = ../../secrets/dst-cluster-token.age;
-      owner = "scott";
-      group = "root";
+      owner = "dst";
+      group = "dst";
       mode = "0400";
     };
   };
