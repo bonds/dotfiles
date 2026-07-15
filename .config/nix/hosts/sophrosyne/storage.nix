@@ -44,7 +44,7 @@
         host = "smtp.gmail.com";
         user = "woaifafong@gmail.com";
         from = "woaifafong@gmail.com";
-        passwordeval = "cat /etc/email-pass";
+        passwordeval = "cat ${config.age.secrets.email-pass.path}";
       };
     };
   };

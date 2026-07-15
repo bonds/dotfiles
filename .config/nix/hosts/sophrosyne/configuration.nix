@@ -43,6 +43,27 @@
 
   services.openssh.settings.KbdInteractiveAuthentication = false;
 
+  age.secrets = {
+    ddns-token = {
+      file = ../../secrets/ddns-token.age;
+      owner = "scott";
+      group = "root";
+      mode = "0400";
+    };
+    email-pass = {
+      file = ../../secrets/email-pass.age;
+      owner = "scott";
+      group = "root";
+      mode = "0400";
+    };
+    dst-cluster-token = {
+      file = ../../secrets/dst-cluster-token.age;
+      owner = "scott";
+      group = "root";
+      mode = "0400";
+    };
+  };
+
   services.minecraft-bedrock = {
     enable = true;
     eula = true;
@@ -52,7 +73,7 @@
 
   services.dst-server = {
     enable = true;
-    clusterTokenFile = "/var/lib/dst-server/cluster_token.txt";
+    clusterTokenFile = config.age.secrets.dst-cluster-token.path;
     openFirewall = true;
   };
 

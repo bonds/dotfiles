@@ -4,6 +4,7 @@
   nixpkgs-unstable,
   home-manager,
   nix-index-database,
+  agenix,
   inputs,
 }: let
   commonModules = import ./common-modules.nix self;
@@ -28,6 +29,7 @@ in
         ++ [
           nix-index-database.nixosModules.nix-index
           home-manager.nixosModules.home-manager
+          agenix.nixosModules.default
         ]
         ++ modules;
     }

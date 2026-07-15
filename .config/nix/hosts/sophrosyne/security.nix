@@ -81,43 +81,11 @@ in {
     fi
   '';
 
-  system.activationScripts.checkSecrets = {
-    text = ''
-      warn_missing() {
-        echo "WARNING: $1 is missing!" >&2
-        echo "  Purpose: $2" >&2
-        echo "  Source: $3" >&2
-      }
-
-      if [ ! -f /etc/ddns-token ]; then
-        warn_missing \
-          /etc/ddns-token \
-          "DNSimple API token for DDNS (updates home.ggr.com A record)" \
-          "Bitwarden vault entry: \"home.ggr.com dns token\""
-      fi
-
-      if [ ! -f /etc/email-pass ]; then
-        warn_missing \
-          /etc/email-pass \
-          "Gmail app password for msmtp (system emails, ZED alerts)" \
-          "Bitwarden vault entry: \"server email account\""
-      fi
-
-      if [ ! -f /var/lib/dst-server/cluster_token.txt ]; then
-        warn_missing \
-          /var/lib/dst-server/cluster_token.txt \
-          "Klei cluster token for Don't Starve Together server" \
-          "Copy from /dragon/containers/dontstarve/DoNotStarveTogether/Cluster_1/cluster_token.txt"
-      fi
-
-      if [ ! -f ${userHome}/Documents/.config/photo-rsync-key.pub ]; then
-        warn_missing \
-          ${userHome}/Documents/.config/photo-rsync-key.pub \
-          "Photo rsync SSH public key from accismus — needed for automated nightly photo backup" \
-          "Run nr on accismus first (generates the key), then wait for Syncthing to sync Documents/, then rebuild sophrosyne"
-      fi
-    '';
-  };
+  system.activationScripts.checkMissingPhotoKey.text = ''
+    if [ ! -f ${userHome}/Documents/.config/photo-rsync-key.pub ]; then
+      echo "WARNING: photo-rsync-key.pub missing — run nr on accismus first" >&2
+    fi
+  '';
 
   security.polkit.extraConfig = ''
     polkit.addRule(function(action, subject) {

@@ -16,7 +16,7 @@
     };
     path = [pkgs.curl];
     script = ''
-      TOKEN=$(cat /etc/ddns-token)
+      TOKEN=$(cat ${config.age.secrets.ddns-token.path})
       ACCOUNT_ID="75214"
       ZONE_ID="ggr.com"
       RECORD_ID="47161920"

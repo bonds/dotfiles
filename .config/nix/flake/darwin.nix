@@ -12,6 +12,7 @@
       nixpkgs-unstable
       home-manager
       nix-index-database
+      agenix
       ;
   };
   vudialsPkgs = (import ./../lib/vudials-packages.nix) inputs.vudials (

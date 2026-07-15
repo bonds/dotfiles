@@ -5,6 +5,7 @@
   nixpkgs-unstable,
   home-manager,
   nix-index-database,
+  agenix,
   inputs,
 }: let
   commonModules = import ./common-modules.nix self;
@@ -27,6 +28,7 @@ in
           {nixpkgs.overlays = darwinOverlays;}
           nix-index-database.darwinModules.nix-index
           home-manager.darwinModules.home-manager
+          agenix.darwinModules.default
         ]
         ++ commonModules ++ modules;
     }
