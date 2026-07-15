@@ -83,13 +83,17 @@ but is no longer managed.
   - `nix flake check` runs alejandra format check, Python syntax check, and pytest suite.
   - Supports ollama + OpenAI-compatible backends. Caches results in `~/.cache/what-changed/`.
 - `.config/nix/pkgs/reel-summarize/` — **`reel-summarize` tool** (v0.1.0) — Local Instagram Reel summarizer.
-  - Pipeline: yt-dlp download → ffmpeg frames+audio → whisper transcription → llama3.2-vision per-frame OCR → qwen2.5 summary.
+  - Pipeline: yt-dlp download → ffmpeg frames+audio → whisper transcription → llava:7b per-frame OCR → qwen2.5 summary.
   - Nix-managed via home-manager: `programs.reel-summarize.enable` (enabled on accismus).
-  - Runtime deps: `yt-dlp`+`ffmpeg` via nix, ollama with `llama3.2-vision:11b`+`qwen2.5:7b`.
+  - Runtime deps: `yt-dlp`+`ffmpeg` via nix, ollama with `llava:7b`+`qwen2.5:7b`.
   - CLI: `reel-summarize <url>` — concise prose summary to stdout.
   - Opencode skill at `~/.config/opencode/skills/reel-summarize/SKILL.md`.
   - `nix flake check` runs format check, python syntax check, pytest suite.
   - Config at `~/.config/reel-summarize/config.toml`.
+  - **Auto cookie extraction:** Automatically reads cookies from Zen browser's Personal workspace (userContextId=1) via `cookies.sqlite`. No manual cookie setup needed.
+  - **GPU acceleration:** All model layers offloaded to GPU via `options.num_gpu = 99` in vision API calls. On M2, `llava:7b` takes ~3-10s per frame.
+  - **Default settings (after nix rebuild):** `llava:7b`, `max_frames = 10`, `1 fps`, `timeout = 300s`. Total run: ~1-3 min for a 60s reel.
+  - **Source overrides (without nix rebuild):** `PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize <url>` picks up uncommitted source changes.
 
 ### Haskell
 - `.config/ghc/ghci.conf` — GHCi config

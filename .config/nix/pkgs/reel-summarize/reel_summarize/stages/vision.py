@@ -27,12 +27,13 @@ def _call_ollama_vision(image_b64: str, cfg: Config) -> dict:
         "prompt": _VISION_PROMPT,
         "images": [image_b64],
         "stream": False,
+        "options": {"num_gpu": 99},
     }
     try:
         resp = httpx.post(
             f"{cfg.host}/api/generate",
             json=payload,
-            timeout=300,
+            timeout=cfg.timeout,
         )
         resp.raise_for_status()
         text = resp.json().get("response", "")

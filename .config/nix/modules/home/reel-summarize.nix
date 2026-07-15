@@ -19,8 +19,8 @@ in {
           };
           visionModel = lib.mkOption {
             type = lib.types.str;
-            default = "llava-llama3:8b";
-            description = "Ollama vision model for per-frame OCR";
+            default = "llava:7b";
+            description = "Ollama vision model for per-frame OCR (use 'llava:7b' for speed on CPU)";
           };
           summarizeModel = lib.mkOption {
             type = lib.types.str;
@@ -39,8 +39,13 @@ in {
           };
           maxFrames = lib.mkOption {
             type = lib.types.int;
-            default = 60;
-            description = "Maximum frames to analyze";
+            default = 10;
+            description = "Maximum frames to analyze (10 takes ~1-2 min with llava:7b on M2)";
+          };
+          timeout = lib.mkOption {
+            type = lib.types.int;
+            default = 300;
+            description = "HTTP timeout in seconds for Ollama API calls";
           };
         };
       };
@@ -62,6 +67,7 @@ in {
         whisper_model = s.whisperModel;
         frames_per_second = s.framesPerSecond;
         max_frames = s.maxFrames;
+        timeout = s.timeout;
       };
   };
 }
