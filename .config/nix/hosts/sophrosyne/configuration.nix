@@ -43,6 +43,21 @@
 
   services.openssh.settings.KbdInteractiveAuthentication = false;
 
+  age.identityPaths = ["/etc/age/identity"];
+
+  system.activationScripts.agenixIdentity = {
+    deps = ["specialfs"];
+    text = ''
+      mkdir -p /etc/age
+      if [ ! -f /etc/age/identity ]; then
+        ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > /etc/age/identity
+        chmod 600 /etc/age/identity
+      fi
+    '';
+  };
+
+  system.activationScripts.agenixInstall.deps = ["agenixIdentity"];
+
   age.secrets = {
     ddns-token = {
       file = ../../secrets/ddns-token.age;
