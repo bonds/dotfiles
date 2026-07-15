@@ -9,23 +9,33 @@ Reel link and wants to know what it's about without watching it.
 
 **Procedure:**
 
-Run in two phases so the user sees progress — each phase is a separate bash call:
+Run in **three phases**, each a separate bash call, so the user sees progress
+between each. Always use the PYTHONPATH override since the nix package is stale.
 
-### Phase 1: Download
+### Phase 1: Metadata (fast ~1-2s)
 
-Tell the user "→ starting download..." then run:
+Tell the user "→ fetching metadata..." then run:
+
+```
+PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage metadata <url>
+```
+
+This returns just the author and caption within ~1-2 seconds. Show them to the user.
+
+On **exit 3** (no session): tell the user "Instagram session expired — log into
+Instagram in Zen (Personal workspace), then I'll retry." Then retry phase 1.
+
+### Phase 2: Download + extract
+
+Tell the user "→ downloading and extracting..." then run:
 
 ```
 PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage download <url>
 ```
 
-Wait for completion. On success (exit 0), tell the user "→ download done, now processing..."
-
-On **exit 3** (download failure): tell the user "Instagram session expired — log into Instagram in Zen (Personal workspace), then I'll retry." Then retry phase 1.
-
 On **exit 2** (missing model): run `ollama pull llava:7b && ollama pull qwen2.5:7b` then retry.
 
-### Phase 2: Process (transcribe, vision, summarize)
+### Phase 3: Process (transcribe, vision, summarize)
 
 Run:
 
@@ -33,16 +43,12 @@ Run:
 PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage process <url>
 ```
 
-Wait for completion. Capture stdout (the summary) and present it. If any stderr progress lines appear, include them for context.
+Capture stdout as the summary and present it to the user.
 
-### If a phase fails or the URL is the same as a previous attempt
+### If state is stale
 
-If phase 1 already completed but you're retrying, just run phase 2. The state is
-stored in `/tmp/reel-summarize-stage/state.json` — if it's stale or missing,
-re-run phase 1 first.
-
-**If the default `reel-summarize` fails with "cannot access post / empty response":**
-The installed binary may be stale. Use the PYTHONPATH override (shown above).
+State is stored in `/tmp/reel-summarize-stage/state.json`. If a phase fails,
+run all three phases in order. If only phase 1 succeeded, run phases 2 and 3.
 
 **Known issues & workarounds:**
 

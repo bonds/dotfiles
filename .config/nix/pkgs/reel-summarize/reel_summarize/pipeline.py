@@ -144,23 +144,36 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
     try:
         p = lambda m: print(m, file=sys.stderr, flush=True)
 
-        if stage == "download":
-            _ensure_ollama_model(cfg.vision_model, cfg)
-            _ensure_ollama_model(cfg.summarize_model, cfg)
-
-            if not work_dir:
-                work_dir = tempfile.mkdtemp(prefix="reel-summarize-")
-                _save_state({"work_dir": work_dir})
-
-            p("→ fetching metadata...")
+        if stage == "metadata":
             metadata = fetch_metadata(url)
-
             author = metadata.get("author") or "unknown"
             caption = metadata.get("caption") or "(no caption)"
             if author:
                 print(f"Posted by: {author}", flush=True)
             if caption:
                 print(f"Caption: {caption}", flush=True)
+            _save_state({"metadata": metadata})
+            return
+
+        if stage == "download":
+            _ensure_ollama_model(cfg.vision_model, cfg)
+            _ensure_ollama_model(cfg.summarize_model, cfg)
+
+            state = _load_state()
+            metadata = state.get("metadata") if state else None
+            if not metadata:
+                p("→ fetching metadata...")
+                metadata = fetch_metadata(url)
+                author = metadata.get("author") or "unknown"
+                caption = metadata.get("caption") or "(no caption)"
+                if author:
+                    print(f"Posted by: {author}", flush=True)
+                if caption:
+                    print(f"Caption: {caption}", flush=True)
+
+            if not work_dir:
+                work_dir = tempfile.mkdtemp(prefix="reel-summarize-")
+                _save_state({"work_dir": work_dir, "metadata": metadata})
 
             p("→ downloading video...")
             down = download(url, work_dir)

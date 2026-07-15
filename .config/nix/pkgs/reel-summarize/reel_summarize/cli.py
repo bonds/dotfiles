@@ -70,7 +70,7 @@ def entry():
                         help="Keep intermediate files in /tmp/")
     parser.add_argument("--frames-per-second", type=int, default=None,
                         help="Override frame sampling rate")
-    parser.add_argument("--stage", choices=["download", "process", "all"], default="all",
+    parser.add_argument("--stage", choices=["metadata", "download", "process", "all"], default="all",
                         help="Run only specific stage(s)")
 
     args = parser.parse_args()
