@@ -156,6 +156,15 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
             down = download(url, work_dir)
             metadata = down["metadata"]
             video_path = down["video_path"]
+
+            author = metadata.get("author") or "unknown"
+            caption = metadata.get("caption") or "(no caption)"
+            if author:
+                print(f"Posted by: {author}", flush=True)
+            if caption:
+                print(f"Caption: {caption}", flush=True)
+
+            p("→ extracting frames and audio...")
             frames = extract_frames(video_path, work_dir, cfg)
             audio_path = extract_audio(video_path, work_dir)
             _save_state({
@@ -165,12 +174,6 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
                 "frames": frames,
                 "metadata": metadata,
             })
-            author = metadata.get("author") or "unknown"
-            caption = metadata.get("caption") or "(no caption)"
-            if author:
-                print(f"Posted by: {author}", flush=True)
-            if caption:
-                print(f"Caption: {caption}", flush=True)
             p(f"✓ download done — {len(frames)} frames, audio extracted")
 
         elif stage == "process":
