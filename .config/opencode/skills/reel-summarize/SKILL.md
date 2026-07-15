@@ -20,7 +20,7 @@ Tell the user "→ fetching metadata..." then run:
 PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage metadata <url>
 ```
 
-This returns just the author and caption within ~1-2 seconds. Show them to the user.
+This returns just the author and caption within ~1-2 seconds. **STOP here.** Present the caption to the user as a clearly formatted text message (e.g. "**Posted by:** ..." / "**Caption:** ..."). Do NOT proceed to Phase 2 until the user sees the caption or acknowledges. The caption is the fast part — let them read it before the slow work starts.
 
 On **exit 3** (no session): tell the user "Instagram session expired — log into
 Instagram in Zen (Personal workspace), then I'll retry." Then retry phase 1.
