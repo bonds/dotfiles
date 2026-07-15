@@ -1,9 +1,9 @@
 let
-  zenPolicies = import ./home/zen-policies.nix;
-  zenIcon = ./zen-icon.icns;
+  zenPolicies = import ../home/zen-policies.nix;
+  zenIcon = ../zen-icon.icns;
 in
   final: prev: let
-    mkDarwinPackage = import ../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
+    mkDarwinPackage = import ../../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
   in {
     zen-browser = mkDarwinPackage {
       pname = "zen-browser";

@@ -9,7 +9,6 @@
 }: {
   imports = [
     ./hardware-configuration.nix
-    ../../modules/nixos-common.nix
     ./security.nix
     ./networking.nix
     ./services.nix
@@ -141,13 +140,11 @@
 
   home-manager = {
     users.scott = {pkgs, ...}: {
-      home.stateVersion = "26.05";
       home.homeDirectory = config.users.users.scott.home;
+
       imports = [
-        ../../modules/home/tmux.nix
-        ../../modules/home/what-changed.nix
+        ../../modules/home/base.nix
       ];
-      programs.what-changed.enable = true;
     };
   };
 

@@ -1,7 +1,7 @@
 [
-  (import ../modules/ollama-overlay.nix)
-  (import ../modules/osxphotos-overlay.nix)
-  (import ../modules/zen-browser-overlay.nix)
-  (import ../modules/opencode-overlay.nix)
+  (import ../modules/ollama/default.nix)
+  (import ../modules/osxphotos/default.nix)
+  (import ../modules/zen-browser/default.nix)
+  (import ../modules/opencode/default.nix)
   (import ../modules/daisydisk-overlay/default.nix)
 ]

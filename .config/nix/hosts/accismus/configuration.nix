@@ -27,70 +27,16 @@
     current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
   '';
 in {
-  # $ nix search nixpkgs wget
-  # Common packages shared with all machines are in modules/packages/dev.nix and utils.nix
-  # (sorted alphabetically)
-  environment.systemPackages = with pkgs; [
-    age-plugin-yubikey # age encryption with YubiKey support
-    angband # best cli game ever
-    bun # javascript runtime
-    caffeine # don't go to sleep
-    clamav # antivirus
-    cloc # count lines of code
-    coconutbattery # battery health monitor
-    colima # docker for mac
-    coreutils # for timeout for athome script
-    cowsay # cli to print stuff with a pic of a cow saying it
-    daisydisk # disk usage visualizer
-    delta # git delta syntax highlighter
-    discord # voice and text chat
-    docker # docker
-    duti # set default file handlers for macOS
-    flux # blue light filter for sleep
-    fortune # random quotes
-    google-cloud-sdk # google cloud CLI and friends
-    hugo # blog engine
-    ice-bar # menu bar organizer
-    idris2Packages.idris2Lsp # language service provider for idris2
-    idris2Packages.pack # packages manager for idris2
-    inputs.neocode.packages.${pkgs.stdenv.hostPlatform.system}.default # Native macOS SwiftUI client for OpenCode (community, flake, nr --update)
-    inputs.polyptych.packages.${pkgs.stdenv.hostPlatform.system}.default # spanned fullscreen video player
-    jujutsu # git alternative
-    libreoffice-bin # office suite
-    lima # vms for mac
-    mpv # minimalist media player
-    mtr # better traceroute
-    nh # nix helper for rebuilds and garbage collection (darwin, no programs.nh module)
-    nodejs # needed for hihello development
-    ollama # run LLMs locally
-    opencode # AI coding agent (CLI, binary overlay, nr --update)
-    opencode-desktop # OpenCode Electron desktop app (binary overlay, auto-updater disabled)
-    openssh # macos ssh doesn't come with resident ssh support
-    osxphotos # export photos from Apple Photos app
-    passage # age-based password manager
-    (pkgs.callPackage ../../pkgs/ghosttile {}) # hide apps from Dock/Cmd+Tab
-    (python3.withPackages (p:
-      with p; [
-        python-kasa # control TP-Link smart home devices
-      ]))
-    rage # encryption tool (age alternative)
-    rustup # rust installer
-    syncthing # peer-to-peer file synchronization
-    tailscale # tailnet CLI
-    the-powder-toy # physics simulation game
-    typescript # javascript dialect
-    utm # virtual machine manager for macOS
-    whisper-cpp # cli tool for converting audio to text
-    xclip # for copying from terminal to clipboard
-    yt-dlp # download videos from YouTube and more
-    zen-browser # firefox fork with vertical tabs
+  imports = [
+    ../../modules/packages/macos.nix
   ];
 
   security.pam.services.sudo_local.touchIdAuth = true;
   security.pam.services.sudo_local.reattach = false;
 
   # Deploy declarative syncthing config.xml (preserves key.pem, cert.pem, and index-v2/)
-  # Also generate the photo-rsync SSH key if missing and sync pubkey to Documents/
+  # Generate photo-rsync SSH key if missing, sync pubkey to Documents/
+  # Plus misc reminders and post-setup.
   system.activationScripts.extraActivation.text = lib.mkAfter ''
     echo "syncthing-config: deploying to ${syncthingConfigDir}" >&2
     sudo -u scott mkdir -p "${syncthingConfigDir}"
@@ -107,6 +53,19 @@ in {
     fi
     mkdir -p "${userHome}/Documents/.config"
     cp -f "$KEYFILE".pub "${userHome}/Documents/.config/photo-rsync-key.pub"
+
+    containers_setup="$HOME/.config/zen/containers-setup"
+    if [ ! -f "$containers_setup" ]; then
+      echo "REMINDER: Set up Zen browser containers (one-time):" >&2
+      echo "  1. Launch Zen, open Settings > Containers" >&2
+      echo "  2. Create: Personal (fingerprint/blue), Work (briefcase/orange)," >&2
+      echo "     Banking (dollar/green), Shopping (cart/pink)" >&2
+      echo "  3. Run: touch $containers_setup" >&2
+      echo "  (this reminder won't show again)" >&2
+    fi
+
+    sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUEnableAutomaticChecks -bool false 2>/dev/null || true
+    sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUAutomaticallyUpdate -bool false 2>/dev/null || true
   '';
 
   # Used for backwards compatibility, please read the changelog before changing.
@@ -126,19 +85,6 @@ in {
   users.users.scott.shell = pkgs.fish;
   system.primaryUser = "scott";
 
-  # Remind about manual first-run setup for Zen browser containers
-  system.activationScripts.checkZenSetup.text = ''
-    containers_setup="$HOME/.config/zen/containers-setup"
-    if [ ! -f "$containers_setup" ]; then
-      echo "REMINDER: Set up Zen browser containers (one-time):" >&2
-      echo "  1. Launch Zen, open Settings > Containers" >&2
-      echo "  2. Create: Personal (fingerprint/blue), Work (briefcase/orange)," >&2
-      echo "     Banking (dollar/green), Shopping (cart/pink)" >&2
-      echo "  3. Run: touch $containers_setup" >&2
-      echo "  (this reminder won't show again)" >&2
-    fi
-  '';
-
   # Custom icon for Zen.app — injected into the "applications" activation
   # script so it runs right after rsync deploys the app (otherwise the
   # freshly-rsynced bundle would lose the com.apple.FinderInfo xattr).
@@ -146,13 +92,6 @@ in {
   system.activationScripts.applications.text = lib.mkAfter ''
     echo "zen-icon: setting custom icon on Zen.app" >&2
     /usr/bin/osascript "${setZenIconScript}" 2>&1 || true
-  '';
-
-  # Disable DaisyDisk's built-in Sparkle auto-updater so `nr --update` is the
-  # only update path (matches ollama/opencode pinned-overlay discipline).
-  system.activationScripts.disableDaisyDiskSparkle.text = ''
-    sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUEnableAutomaticChecks -bool false 2>/dev/null || true
-    sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUAutomaticallyUpdate -bool false 2>/dev/null || true
   '';
 
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
@@ -215,16 +154,14 @@ in {
   home-manager = {
     extraSpecialArgs = {inherit inputs;};
     users.scott = {pkgs, ...}: {
-      home.stateVersion = "26.05";
       home.homeDirectory = userHome;
+
       imports = [
-        ../../modules/home/tmux.nix
+        ../../modules/home/base.nix
         ../../modules/home/direnv.nix
         ../../modules/home/polyptych.nix
-        ../../modules/home/what-changed.nix
         ../../modules/home/reel-summarize.nix
       ];
-      programs.what-changed.enable = true;
       programs.reel-summarize.enable = true;
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
     };

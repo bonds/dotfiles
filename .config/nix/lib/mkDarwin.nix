@@ -19,8 +19,11 @@ in
       specialArgs =
         {
           inherit self inputs;
-          inherit nixpkgs-unstable;
           isDarwin = true;
+          pkgs-unstable = import nixpkgs-unstable {
+            system = "aarch64-darwin";
+            config.allowUnfree = true;
+          };
         }
         // specialArgs;
       modules =

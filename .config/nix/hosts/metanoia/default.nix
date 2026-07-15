@@ -18,7 +18,6 @@ mkNixos "metanoia" {
     ../../modules/vudials-uids.nix
   ];
   specialArgs = {
-    isDarwin = false;
     inherit (vudialsPkgs) vuserver vuclient;
   };
 }

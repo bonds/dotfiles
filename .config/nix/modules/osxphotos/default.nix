@@ -1,5 +1,5 @@
 final: prev: let
-  mkDarwinPackage = import ../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
+  mkDarwinPackage = import ../../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
 in {
   osxphotos = mkDarwinPackage {
     pname = "osxphotos";
@@ -19,7 +19,7 @@ in {
 
       mkdir -p $out/bin
       cat > $out/bin/osxphotos <<'WRAPPER'
-      ${builtins.readFile ./osxphotos-wrapper.sh}WRAPPER
+      ${builtins.readFile ./wrapper.sh}WRAPPER
       substituteInPlace $out/bin/osxphotos --replace-fail "@out@" "$out"
       chmod +x $out/bin/osxphotos
     '';

@@ -1,5 +1,5 @@
 final: prev: let
-  mkDarwinPackage = import ../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
+  mkDarwinPackage = import ../../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
 in {
   ollama = mkDarwinPackage {
     pname = "ollama";

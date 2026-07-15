@@ -2,10 +2,11 @@
 set -euo pipefail
 
 DIR=$(cd "$(dirname "$0")" && pwd)
-OVERLAY="$DIR/ollama-overlay.nix"
+OVERLAY="$DIR/default.nix"
 
-echo "Checking ollama latest version from GitHub releases..."
-version=$(curl -fsSL https://api.github.com/repos/ollama/ollama/releases/latest | jq -r '.tag_name | sub("^v"; "")')
+echo "Checking zen-browser latest version from GitHub releases..."
+# zen-browser tags look like "1.21.6b" (no 'v' prefix)
+version=$(curl -fsSL https://api.github.com/repos/zen-browser/desktop/releases/latest | jq -r '.tag_name')
 
 if [ -z "$version" ]; then
   echo "ERROR: Could not parse latest version" >&2
@@ -14,7 +15,7 @@ fi
 
 echo "Latest version: $version"
 
-DOWNLOAD_URL="https://github.com/ollama/ollama/releases/download/v${version}/ollama-darwin.tgz"
+DOWNLOAD_URL="https://github.com/zen-browser/desktop/releases/download/${version}/zen.macos-universal.dmg"
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 
@@ -28,4 +29,4 @@ sed -i.bak "s/version = \".*\";/version = \"$version\";/" "$OVERLAY"
 sed -i.bak "s|hash = \"sha256-[A-Za-z0-9+/=]*\";|hash = \"$hash\";|" "$OVERLAY"
 rm -f "$OVERLAY.bak"
 
-echo "Updated ollama overlay to version $version"
+echo "Updated zen-browser overlay to version $version"

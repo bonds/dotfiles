@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DIR=$(cd "$(dirname "$0")" && pwd)
-OVERLAY="$DIR/opencode-overlay.nix"
+OVERLAY="$DIR/default.nix"
 
 echo "Checking opencode latest version from GitHub releases..."
 version=$(curl -fsSL https://api.github.com/repos/anomalyco/opencode/releases/latest | jq -r '.tag_name | sub("^v"; "")')
