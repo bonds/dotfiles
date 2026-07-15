@@ -122,10 +122,10 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
         )
 
         if author:
-            print(f"Posted by: {author}")
+            print(f"Posted by: {author}", flush=True)
         if caption:
-            print(f"Caption: {caption}")
-        print()
+            print(f"Caption: {caption}", flush=True)
+        print(flush=True)
         print(summary)
 
     finally:
@@ -168,10 +168,9 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
             author = metadata.get("author") or "unknown"
             caption = metadata.get("caption") or "(no caption)"
             if author:
-                print(f"Posted by: {author}")
+                print(f"Posted by: {author}", flush=True)
             if caption:
-                print(f"Caption: {caption}")
-            print(file=sys.stderr, flush=True)
+                print(f"Caption: {caption}", flush=True)
             p(f"✓ download done — {len(frames)} frames, audio extracted")
 
         elif stage == "process":
@@ -216,10 +215,10 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
             )
 
             if author:
-                print(f"Posted by: {author}")
+                print(f"Posted by: {author}", flush=True)
             if caption:
-                print(f"Caption: {caption}")
-            print()
+                print(f"Caption: {caption}", flush=True)
+            print(flush=True)
             print(summary)
             _clear_state()
 
