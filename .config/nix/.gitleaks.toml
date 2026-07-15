@@ -3,4 +3,7 @@ useDefault = true
 
 [allowlist]
 description = "DST default cluster key (inter-shard, not a real secret)"
-paths = [".*dst-server-config/cluster\\.ini\\.nix"]
+paths = [
+  ".*dst-server-config/cluster\\.ini\\.nix",
+  ".*secrets\\.nix",
+]
