@@ -93,14 +93,16 @@
 
   programs.nix-ld.enable = true;
 
-  services.syncthing = {
+  services.syncthing = let
+    syncthingIds = import ../../lib/syncthing-ids.nix;
+  in {
     enable = true;
     openDefaultPorts = true;
     user = "scott";
     group = "users";
     configDir = "${config.users.users.scott.home}/.config/syncthing";
     settings = {
-      devices."accismus" = {id = "YH5SQ6S-U6AEOAS-F7JU4F2-YBBZFMH-VT2N6OA-BAVSABW-LBVHDZ7-R3FQLQ5";};
+      devices."accismus" = {id = syncthingIds.accismus;};
       folders."Documents" = {
         path = "${config.users.users.scott.home}/Documents";
         id = "mz9zh-usrfi";

@@ -2,10 +2,8 @@ let
   zenPolicies = import ../home/zen-policies.nix;
   zenIcon = ../zen-icon.icns;
 in
-  final: prev: let
-    mkDarwinPackage = import ../../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
-  in {
-    zen-browser = mkDarwinPackage {
+  final: prev: {
+    zen-browser = final.mkDarwinPackage {
       pname = "zen-browser";
       version = "1.21.6b";
 

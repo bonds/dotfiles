@@ -8,16 +8,22 @@
 }: let
   userHome = "/Users/scott";
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
+  syncthingIds = import ../../lib/syncthing-ids.nix;
 
-  # Syncthing config.xml generated declaratively
   syncthingConfigDir = "${userHome}/Library/Application Support/Syncthing";
 
-  syncthingConfig = pkgs.writeText "syncthing-config.xml" (builtins.readFile ./syncthing-config.xml);
+  syncthingConfigTemplate = builtins.readFile ./syncthing-config.xml;
+  syncthingConfig = pkgs.writeText "syncthing-config.xml" (
+    lib.replaceStrings [
+      "@ACCISMUS_ID@"
+      "@SOPHROSYNE_ID@"
+    ] [
+      syncthingIds.accismus
+      syncthingIds.sophrosyne
+    ]
+    syncthingConfigTemplate
+  );
 
-  # Custom icon for Zen.app — the DMG ships a Firefox icon packed in
-  # Assets.car which shadows the .icns file, so replacing firefox.icns alone
-  # doesn't work.  This AppleScript calls NSWorkspace.setIcon (same mechanism
-  # as pasting into Get Info) to set a custom icon that overrides everything.
   zenIcon = ../../modules/zen-icon.icns;
   setZenIconScript = pkgs.writeText "set-zen-icon.applescript" ''
     use framework "Cocoa"
@@ -34,26 +40,32 @@ in {
   security.pam.services.sudo_local.touchIdAuth = true;
   security.pam.services.sudo_local.reattach = false;
 
-  # Deploy declarative syncthing config.xml (preserves key.pem, cert.pem, and index-v2/)
-  # Generate photo-rsync SSH key if missing, sync pubkey to Documents/
-  # Plus misc reminders and post-setup.
+  system.activationScripts = {
+    syncthingConfig.text = ''
+      echo "syncthing-config: deploying to ${syncthingConfigDir}" >&2
+      sudo -u scott mkdir -p "${syncthingConfigDir}"
+      cp "${syncthingConfig}" "${syncthingConfigDir}/config.xml"
+      chown scott:staff "${syncthingConfigDir}/config.xml"
+      chmod 644 "${syncthingConfigDir}/config.xml"
+      pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
+    '';
+    photoRsyncKey.text = ''
+      KEYFILE="${userHome}/.ssh/id_photo_rsync"
+      if [ ! -f "$KEYFILE" ]; then
+        echo "photo-rsync: generating key" >&2
+        /usr/bin/ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "photo-rsync@accismus"
+        chown scott:staff "$KEYFILE" "$KEYFILE.pub" 2>/dev/null || true
+      fi
+      mkdir -p "${userHome}/Documents/.config"
+      cp -f "$KEYFILE".pub "${userHome}/Documents/.config/photo-rsync-key.pub"
+    '';
+    daisydiskDefaults.text = ''
+      sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUEnableAutomaticChecks -bool false 2>/dev/null || true
+      sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUAutomaticallyUpdate -bool false 2>/dev/null || true
+    '';
+  };
+
   system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo "syncthing-config: deploying to ${syncthingConfigDir}" >&2
-    sudo -u scott mkdir -p "${syncthingConfigDir}"
-    cp "${syncthingConfig}" "${syncthingConfigDir}/config.xml"
-    chown scott:staff "${syncthingConfigDir}/config.xml"
-    chmod 644 "${syncthingConfigDir}/config.xml"
-    pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
-
-    KEYFILE="${userHome}/.ssh/id_photo_rsync"
-    if [ ! -f "$KEYFILE" ]; then
-      echo "photo-rsync: generating key" >&2
-      /usr/bin/ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "photo-rsync@accismus"
-      chown scott:staff "$KEYFILE" "$KEYFILE.pub" 2>/dev/null || true
-    fi
-    mkdir -p "${userHome}/Documents/.config"
-    cp -f "$KEYFILE".pub "${userHome}/Documents/.config/photo-rsync-key.pub"
-
     containers_setup="$HOME/.config/zen/containers-setup"
     if [ ! -f "$containers_setup" ]; then
       echo "REMINDER: Set up Zen browser containers (one-time):" >&2
@@ -63,9 +75,6 @@ in {
       echo "  3. Run: touch $containers_setup" >&2
       echo "  (this reminder won't show again)" >&2
     fi
-
-    sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUEnableAutomaticChecks -bool false 2>/dev/null || true
-    sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUAutomaticallyUpdate -bool false 2>/dev/null || true
   '';
 
   # Used for backwards compatibility, please read the changelog before changing.

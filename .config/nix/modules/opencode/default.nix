@@ -1,7 +1,5 @@
-final: prev: let
-  mkDarwinPackage = import ../../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
-in {
-  opencode = mkDarwinPackage {
+final: prev: {
+  opencode = final.mkDarwinPackage {
     pname = "opencode";
     version = "1.17.20";
 
@@ -24,7 +22,7 @@ in {
     };
   };
 
-  opencode-desktop = mkDarwinPackage {
+  opencode-desktop = final.mkDarwinPackage {
     pname = "opencode-desktop";
     version = "1.17.20";
 

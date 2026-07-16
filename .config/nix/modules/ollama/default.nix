@@ -1,7 +1,5 @@
-final: prev: let
-  mkDarwinPackage = import ../../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
-in {
-  ollama = mkDarwinPackage {
+final: prev: {
+  ollama = final.mkDarwinPackage {
     pname = "ollama";
     version = "0.32.0";
 

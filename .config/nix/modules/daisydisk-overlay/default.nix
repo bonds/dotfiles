@@ -1,7 +1,5 @@
-final: prev: let
-  mkDarwinPackage = import ../../lib/mkDarwinPackage.nix {inherit (prev) stdenvNoCC lib;};
-in {
-  daisydisk = mkDarwinPackage {
+final: prev: {
+  daisydisk = final.mkDarwinPackage {
     pname = "daisydisk";
     version = "4.34.2";
 

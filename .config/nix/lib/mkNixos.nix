@@ -7,7 +7,7 @@
   agenix,
   inputs,
 }: let
-  commonModules = import ./common-modules.nix self;
+  commonModules = import ./shared-modules.nix self;
 in
   hostname: {
     modules ? [],

@@ -41,6 +41,18 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
+  nixConfig = {
+    extra-substituters = [
+      "https://cache.garnix.io"
+      "https://nix-community.cachix.org"
+      "https://zen-browser.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78bD7HEGj2x7a7Bs="
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+      "zen-browser.cachix.org-1:6ABdUuAq2NIDh3tKf/5uAn7LoFO2duBBLgJMhsF3cig="
+    ];
+  };
   outputs = inputs:
     inputs.flake-parts.lib.mkFlake {inherit inputs;} {
       imports = [./flake/default.nix];

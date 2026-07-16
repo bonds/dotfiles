@@ -1,6 +1,8 @@
 {
+  config,
   lib,
   pkgs,
+  inputs,
   ...
 }: {
   nix.settings.experimental-features = let
@@ -22,4 +24,18 @@
   };
   nix.channel.enable = lib.mkDefault false;
   nixpkgs.config.allowUnfree = lib.mkDefault true;
+
+  # Only register nixpkgs variants as channel aliases, skip build-only inputs
+  nix.registry = lib.mapAttrs (n: flake: lib.mkDefault {inherit flake;}) (
+    lib.filterAttrs (n: _: lib.elem n ["nixpkgs" "nixpkgs-unstable"]) inputs
+  );
+  nix.nixPath = lib.mapAttrsToList (n: _: "${n}=flake:${n}") (
+    lib.filterAttrs (n: _: lib.elem n ["nixpkgs" "nixpkgs-unstable"]) inputs
+  );
+
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+    backupFileExtension = "old";
+  };
 }
