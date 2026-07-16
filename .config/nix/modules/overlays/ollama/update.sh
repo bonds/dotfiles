@@ -26,6 +26,7 @@ echo "SRI hash: $hash"
 
 sed -i.bak "s/version = \".*\";/version = \"$version\";/" "$OVERLAY"
 sed -i.bak "s|hash = \"sha256-[A-Za-z0-9+/=]*\";|hash = \"$hash\";|" "$OVERLAY"
+sed -i.bak "s|/download/v[^/]*/ollama-darwin.tgz|/download/v$version/ollama-darwin.tgz|" "$OVERLAY"
 rm -f "$OVERLAY.bak"
 
 echo "Updated ollama overlay to version $version"

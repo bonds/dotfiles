@@ -30,15 +30,15 @@ curl -fsSL -o "$tmp_desktop" "$DESKTOP_URL"
 desktop_hash=$(nix hash file --type sha256 "$tmp_desktop")
 echo "Desktop SRI hash: $desktop_hash"
 
-# Update version and both hashes using awk (reliable across sed implementations)
+# Update version, both hashes, and URLs using awk
 awk -v ver="$version" -v cli_hash="$cli_hash" -v desktop_hash="$desktop_hash" '
-/version = ".*";/ && !ver_done { sub(/version = ".*";/, "version = \"" ver "\";"); ver_done = 1 }
-/hash = "sha256-[A-Za-z0-9+/=]*";/ {
+/version = ".*";/ { sub(/version = ".*";/, "version = \"" ver "\";") }
+/hash = "sha256-[^"]*";/ {
   count++
   if (count == 1) sub(/hash = "[^"]*";/, "hash = \"" cli_hash "\";")
   else if (count == 2) sub(/hash = "[^"]*";/, "hash = \"" desktop_hash "\";")
 }
-{ print }
+{ gsub(/\/download\/v[0-9.]+\//, "/download/v" ver "/"); print }
 ' "$OVERLAY" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
 
 echo "Updated opencode overlay to version $version"

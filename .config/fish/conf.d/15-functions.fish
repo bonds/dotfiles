@@ -57,18 +57,11 @@ function nr
         if test "$_os" = darwin
             set -l _pwd $PWD
             cd $HOME/.config/nix
-            set -lx GIT_DIR $HOME/.config/dotfiles
-            set -lx GIT_WORK_TREE $HOME
-            set -l gh_token (gh auth token 2>/dev/null)
-            for pkg in ollama zen-browser opencode opencode-desktop
-                if test -n "$gh_token"
-                    env GITHUB_TOKEN=$gh_token nix run nixpkgs#nix-update -- -F --system aarch64-darwin --use-github-releases $pkg
-                else
-                    nix run nixpkgs#nix-update -- -F --system aarch64-darwin --use-github-releases $pkg
-                end
-            end
-            bash $HOME/.config/nix/modules/daisydisk-overlay/update.sh
-            alejandra modules/ollama-overlay.nix modules/zen-browser-overlay.nix modules/opencode-overlay.nix modules/daisydisk-overlay/default.nix
+            bash modules/overlays/ollama/update.sh
+            bash modules/overlays/zen-browser/update.sh
+            bash modules/overlays/opencode/update.sh
+            bash modules/overlays/daisydisk-overlay/update.sh
+            alejandra modules/overlays/ollama/default.nix modules/overlays/zen-browser/default.nix modules/overlays/opencode/default.nix modules/overlays/daisydisk-overlay/default.nix
             cd $_pwd
         else
             set -l _pwd $PWD
