@@ -1,17 +1,17 @@
 {
   self,
   nix-darwin,
-  nixpkgs,
   nixpkgs-unstable,
   home-manager,
   nix-index-database,
   agenix,
   inputs,
+  ...
 }: let
   commonModules = import ./shared-modules.nix self;
   darwinOverlays = import ./darwin-overlays.nix;
 in
-  hostname: {
+  _hostname: {
     modules ? [],
     specialArgs ? {},
   }:

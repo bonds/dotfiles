@@ -4,7 +4,7 @@
   pkgs,
   ...
 }: let
-  inherit (lib) mkOption mkIf mkEnableOption types optional optionals optionalString concatMapStringsSep literalExpression length;
+  inherit (lib) mkOption mkIf mkEnableOption types optional optionals optionalString concatMapStringsSep length;
   cfg = config.services.dst-server;
 
   configDir = ../modules/dst-server-config;

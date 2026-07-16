@@ -4,6 +4,9 @@
   lib,
   ...
 }: {
+  nix.settings.min-free = lib.mkDefault (10 * 1024 * 1024 * 1024);
+  nix.settings.max-free = lib.mkDefault (50 * 1024 * 1024 * 1024);
+
   boot.zfs.forceImportRoot = false;
   networking.hostId = "bf6ff4c5";
 

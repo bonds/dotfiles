@@ -2,9 +2,6 @@
   config,
   pkgs,
   pkgs-unstable,
-  lib,
-  inputs,
-  self,
   ...
 }: {
   imports = [
@@ -13,6 +10,7 @@
     ./networking.nix
     ./services.nix
     ./storage.nix
+    ../../modules/ollama-server.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -111,9 +109,8 @@
     };
   };
 
+  services.ollama-server.enable = true;
   services.ollama = {
-    enable = true;
-    package = pkgs-unstable.ollama;
     models = "/dragon/servers/ollama";
     host = "127.0.0.1";
   };
@@ -141,7 +138,7 @@
   hardware.rasdaemon.enable = true;
 
   home-manager = {
-    users.scott = {pkgs, ...}: {
+    users.scott = {...}: {
       home.homeDirectory = config.users.users.scott.home;
 
       imports = [

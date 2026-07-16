@@ -27,7 +27,7 @@
       default = (pkgsFor system).callPackage ./default.nix {};
     });
 
-    overlays.default = final: prev: {
+    overlays.default = final: _prev: {
       what-changed = final.callPackage ./default.nix {};
     };
 

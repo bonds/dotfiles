@@ -1,7 +1,7 @@
 let
   # Expose mkDarwinPackage so overlays can use final.mkDarwinPackage instead
   # of manually importing with stdenvNoCC/lib each time.
-  mkDarwinOverlay = final: prev: {
+  mkDarwinOverlay = final: _prev: {
     mkDarwinPackage = final.callPackage ../lib/mkDarwinPackage.nix {};
   };
 in [

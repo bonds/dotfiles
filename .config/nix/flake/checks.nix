@@ -20,6 +20,14 @@
           alejandra -c . || (echo "Run: alejandra ." && exit 1)
         '';
 
+        deadnix-check = mkCheck "deadnix-check" [pkgs.deadnix] ''
+          deadnix --fail . 2>&1 || (echo "Run: deadnix -w ." && exit 1)
+        '';
+
+        statix-check = mkCheck "statix-check" [pkgs.statix] ''
+          statix check . 2>/dev/null || true
+        '';
+
         secrets-check = mkCheck "secrets-check" [pkgs.gitleaks] ''
           gitleaks detect \
             --source . \

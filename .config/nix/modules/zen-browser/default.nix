@@ -22,6 +22,10 @@ in
 
         cp ${zenIcon} $out/Applications/Zen.app/Contents/Resources/firefox.icns
 
+        # policies.json is how Firefox-derived browsers on macOS read enterprise
+        # policies natively. This is equivalent to nixpkgs' .override { extraPolicies }
+        # used on Linux — both consume the same zen-policies.nix. Do NOT switch to
+        # .override here; it doesn't apply to fetchurl-based overlays.
         cat > $out/Applications/Zen.app/Contents/Resources/distribution/policies.json <<POLICIES_EOF
         ${builtins.toJSON {policies = zenPolicies;}}
         POLICIES_EOF

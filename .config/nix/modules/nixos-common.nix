@@ -3,7 +3,6 @@
   config,
   pkgs,
   lib,
-  inputs,
   ...
 }: let
   pruneGenerations = import ./prune-generations.nix {inherit pkgs;};
@@ -29,13 +28,14 @@ in {
 
   # Provided by lib/common-modules.nix (wired via mkNixos).
 
-  programs.command-not-found.enable = false;
+  programs = {
+    command-not-found.enable = false;
 
-  # Absorbed from per-host duplication (all with lib.mkDefault):
-  programs.tmux.enable = lib.mkDefault true;
-  programs.nh = {
-    enable = lib.mkDefault true;
-    flake = lib.mkDefault "${config.users.users.scott.home}/.config/nix";
+    tmux.enable = lib.mkDefault true;
+    nh = {
+      enable = lib.mkDefault true;
+      flake = lib.mkDefault "${config.users.users.scott.home}/.config/nix";
+    };
   };
   services.fstrim.enable = lib.mkDefault true;
 

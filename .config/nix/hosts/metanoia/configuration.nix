@@ -1,10 +1,8 @@
 {
   config,
   pkgs,
-  pkgs-unstable,
   lib,
   inputs,
-  self,
   ...
 }: let
   userHome = "/home/scott";
@@ -12,9 +10,14 @@ in {
   imports = [
     ./hardware-configuration.nix
     ../../modules/packages/desktop.nix
+    ../../modules/ollama-server.nix
   ];
 
-  networking.hostName = "metanoia";
+  networking = {
+    hostName = "metanoia";
+    networkmanager.enable = true;
+    nftables.enable = true;
+  };
 
   users.users.scott = {
     description = "Scott Bonds";
@@ -23,20 +26,25 @@ in {
     shell = pkgs.fish;
   };
 
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  boot.extraModulePackages = with config.boot.kernelPackages; [
-    v4l2loopback
-  ];
-
-  networking.networkmanager.enable = true;
-  networking.nftables.enable = true;
+  boot = {
+    loader = {
+      systemd-boot = {
+        enable = true;
+        configurationLimit = 10;
+      };
+      efi.canTouchEfiVariables = true;
+    };
+    extraModulePackages = with config.boot.kernelPackages; [
+      v4l2loopback
+    ];
+    kernelParams = ["fbcon=rotate:3"];
+    initrd.systemd.enable = true;
+    tmp.useTmpfs = true;
+  };
 
   fonts.packages = with pkgs; [
     helvetica-neue-lt-std
   ];
-
-  boot.kernelParams = ["fbcon=rotate:3"];
 
   home-manager = {
     extraSpecialArgs = {
@@ -81,13 +89,9 @@ in {
 
   users.users.root.hashedPassword = "*";
 
-  boot.initrd.systemd.enable = true;
-  boot.tmp.useTmpfs = true;
   systemd.services.nix-daemon = {
     environment.TMPDIR = "/var/tmp";
   };
-
-  boot.loader.systemd-boot.configurationLimit = 10;
 
   programs.appimage = {
     enable = true;
@@ -140,10 +144,7 @@ in {
     };
   };
 
-  services.ollama = {
-    package = pkgs-unstable.ollama;
-    enable = true;
-  };
+  services.ollama-server.enable = true;
 
   systemd.services.ollama.serviceConfig.Restart = lib.mkOverride 900 "always";
 

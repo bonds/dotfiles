@@ -67,7 +67,7 @@
     cfg.sources;
 
   mkSourceChecks =
-    lib.mapAttrsToList (name: path: ''
+    lib.mapAttrsToList (_name: path: ''
       if [ ! -d "${path}" ]; then
         log "ERROR: Source '${path}' does not exist or is not a directory"
         SOURCES_OK=false

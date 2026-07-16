@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Personal nix flake for:
-- macOS laptop **accismus** (`aarch64-darwin`, nix-darwin, `nixpkgs-unstable`)
+- macOS laptop **accismus** (`aarch64-darwin`, nix-darwin, primary `nixos-26.05` stable to avoid cctools ld64 crash)
 - NixOS server **sophrosyne** (`x86_64-linux`, `nixos-26.05`, also at `sophrosyne.local` / `home.ggr.com`)
 - NixOS workstation **metanoia** (`x86_64-linux`, `nixos-26.05` — currently offline, not plugged in)
 
@@ -123,11 +123,11 @@ modules/           # Shared modules
 - **`warn-dirty = false`** is set in `nix.conf` — builds work fine with uncommitted changes.
 - **Uses `pkgs.lix`** as the nix package on all machines, not the default `pkgs.nix`.
 - **`allowUnfree = true`** — required for `helvetica-neue-lt-std` font on laptop.
-- **Server uses two nixpkgs:** `nixos-26.05` (stable) for most packages, `nixpkgs-unstable` for ollama + tailscale (passed via `pkgs-unstable` specialArg). Same pattern for metanoia.
+- **All machines use two nixpkgs:** `nixos-26.05` (stable) for most packages, `nixpkgs-unstable` for select packages (passed via `pkgs-unstable` specialArg).
 - **`nix-index-database`** replaces the old `~/bin/nix-command-not-found` hand-rolled script with the upstream module.
 - **`nix fmt` is unreliable.** It sometimes fails on stdin ("unexpected end of file"). When it does, run alejandra directly on the changed files instead: `alejandra <file> <file>...`.
 - **Run alejandra after every nix file change.** Before building or deploying, always format any modified `.nix` files: `alejandra <file> <file>...` (from both `~/.config/nix` and `~/.config/nix-vudials`).
-- **NEVER commit secrets to the repo.** All secrets (passwords, API tokens, private keys) must live outside git as local-only files on the target machine. The repo only references their paths.
+- **NEVER commit secrets to the repo.** All secrets (passwords, API tokens, private keys) must live outside git as local-only files on the target machine. The repo only references their paths. **Exception:** agenix-encrypted `.age` blobs are safe to track (encryption makes them non-secret; that's the agenix model).
 - **Secrets scanning runs via `nix flake check`** (not at build time). The `secrets-check` derivation lives in `flake/checks.nix` and runs `gitleaks detect`. The pre-push hook (`nix flake check --no-build` in `.config/git/hooks/pre-push`) evaluates all checks but doesn't build them — to run gitleaks, use `nix flake check` (without `--no-build`) or `nix build .#checks.aarch64-darwin.secrets-check`.
 - **Local-only secrets on the server must have a `warn_missing` check.** If a service reads a secret file that lives outside the repo (e.g. `/etc/ddns-token`, `/etc/email-pass`), add a corresponding `warn_missing` check in `system.activationScripts.checkSecrets` in `hosts/sophrosyne/configuration.nix`. This prints a clear warning at activation time telling the admin what the secret is for and where to find it (e.g. Bitwarden).
 - **After every nix file change, always run the build step to catch errors before attempting a switch.** The switch step requires `sudo` which may fail remotely; the build step catches evaluation and compilation errors first. Do not commit and push changes to sophrosyne or metanoia without first building remotely to verify they compile clean.

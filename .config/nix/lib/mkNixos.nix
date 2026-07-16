@@ -9,7 +9,7 @@
 }: let
   commonModules = import ./shared-modules.nix self;
 in
-  hostname: {
+  _hostname: {
     modules ? [],
     specialArgs ? {},
   }:

@@ -1,8 +1,4 @@
-{
-  config,
-  pkgs,
-  ...
-}: {
+{pkgs, ...}: {
   environment.systemPackages = with pkgs; [
     alejandra # nix code formatter
     ast-grep # AST-aware code search and rewrite (for oh-my-openagent)

@@ -3,10 +3,6 @@
   lib,
 }: {
   pname,
-  version,
-  src,
-  installPhase,
-  nativeBuildInputs ? [],
   sourceRoot ? ".",
   dontFixup ? true,
   dontStrip ? true,

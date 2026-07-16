@@ -1,10 +1,5 @@
 # GNOME desktop settings for metanoia.
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}: let
+{lib, ...}: let
   inherit (lib.gvariant) mkTuple mkUint32 mkVariant;
 in {
   dconf.settings = {

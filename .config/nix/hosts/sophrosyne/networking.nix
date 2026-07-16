@@ -1,10 +1,4 @@
-{
-  config,
-  pkgs,
-  lib,
-  pkgs-unstable,
-  ...
-}: {
+{pkgs-unstable, ...}: {
   networking.networkmanager.enable = true;
 
   boot.kernel.sysctl."net.ipv4.ip_forward" = 1;

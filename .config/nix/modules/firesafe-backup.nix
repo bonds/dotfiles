@@ -29,10 +29,10 @@
   cfg = config.programs.firesafe-backup;
 
   backupScript = import ./firesafe/backup.nix {inherit pkgs lib cfg;};
-  statusScript = import ./firesafe/status.nix {inherit pkgs lib cfg;};
-  reclaimScript = import ./firesafe/reclaim.nix {inherit pkgs lib cfg;};
-  deletedScript = import ./firesafe/deleted.nix {inherit pkgs lib cfg;};
-  ejectScript = import ./firesafe/eject.nix {inherit pkgs lib cfg;};
+  statusScript = import ./firesafe/status.nix {inherit pkgs cfg;};
+  reclaimScript = import ./firesafe/reclaim.nix {inherit pkgs cfg;};
+  deletedScript = import ./firesafe/deleted.nix {inherit pkgs cfg;};
+  ejectScript = import ./firesafe/eject.nix {inherit pkgs cfg;};
 in {
   options.programs.firesafe-backup = {
     enable = lib.mkEnableOption "firesafe USB backup service";

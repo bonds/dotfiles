@@ -1,6 +1,5 @@
 {
   pkgs,
-  lib,
   cfg,
 }:
 pkgs.writeShellScriptBin "firesafe-deleted" ''

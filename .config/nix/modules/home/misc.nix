@@ -1,9 +1,5 @@
 # Misc home-manager settings for metanoia.
-{
-  config,
-  pkgs,
-  ...
-}: {
+{pkgs, ...}: {
   home = {
     packages = with pkgs; [
       gnome-themes-extra # GTK theme engine and base themes

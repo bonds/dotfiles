@@ -1,6 +1,5 @@
 {
   pkgs,
-  lib,
   cfg,
 }: let
   numSources = toString (builtins.length (builtins.attrNames cfg.sources));
