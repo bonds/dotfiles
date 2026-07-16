@@ -6,7 +6,7 @@
   "agent": {
     "plan": {
       // "model": "opencode-go/glm-5.2"
-      "model": "opencode-go/deepseek-v4-flash"
+      "model": "opencode-go/qwen3.7-max"
     },
     "build": {
       "model": "opencode-go/deepseek-v4-flash"
