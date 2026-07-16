@@ -5,11 +5,9 @@ pkgs.writeShellScriptBin "prune-generations" (
   else ''
     #!${pkgs.bash}/bin/bash
     set -euo pipefail
-    exec ${pkgs.nh}/bin/nh clean \
-      --profile /nix/var/nix/profiles/system \
+    exec ${pkgs.nh}/bin/nh clean profile \
+      /nix/var/nix/profiles/system \
       --keep 5 \
-      --keep-weekly 4 \
-      --keep-monthly 6 \
-      --keep-yearly 3
+      --keep-since 30d
   ''
 )
