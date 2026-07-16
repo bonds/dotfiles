@@ -7,7 +7,7 @@
   pythonBin =
     pkgs.writers.writePython3Bin "firesafe-status-inner" {
       libraries = [pkgs.python3Packages.rich];
-      flakeIgnore = ["E501"];
+      flakeIgnore = ["E501" "F401"];
     }
     (builtins.readFile ./status.py);
 in
