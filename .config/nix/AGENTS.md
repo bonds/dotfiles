@@ -63,7 +63,13 @@ nix flake update
 ## Structure
 
 ```
-flake.nix          # Inputs + shared module wiring for all machines
+flake.nix          # Inputs + nixConfig (binary caches) + shared module wiring for all machines
+lib/
+  syncthing-ids.nix  # Centralized Syncthing device IDs (accismus + sophrosyne)
+  shared-modules.nix # Module path list shared by all platforms
+  mkNixos.nix        # nixosSystem builder
+  mkDarwin.nix       # darwinSystem builder
+  mkDarwinPackage.nix # Binary overlay helper (exposed via callPackage)
 hosts/
   accismus/        # Laptop nix-darwin config
     configuration.nix
@@ -82,7 +88,6 @@ hosts/
 modules/           # Shared modules
   home/            # Home-manager modules (all machines)
     base.nix        #   Shared base: stateVersion, tmux, what-changed (reduces per-host duplication)
-    common.nix      #   Shared home-manager settings (useGlobalPkgs, useUserPackages)
     direnv.nix      #   direnv configuration
     gnome.nix       #   GNOME dconf, extensions, keybindings (metanoia only)
     misc.nix        #   WirePlumber, uBlock, fish plugins, ulauncher (metanoia only)
@@ -95,7 +100,6 @@ modules/           # Shared modules
     utils.nix       #   System utilities (shared: file, network, system tools)
     desktop.nix     #   metanoia workstation packages (GNOME, Steam, etc.)
     macos.nix       #   accismus-specific packages (macOS apps, binaries)
-  nix-registry.nix  # Shared nix registry/nixPath pinning (darwin + NixOS)
   nixos-common.nix  # Shared NixOS settings — auto-included by mkNixos.nix (not per-host)
   ollama/           # Overlay: pinned ollama darwin binary + update.sh
   osxphotos/        # Overlay: pinned osxphotos darwin binary + update.sh + wrapper.sh
@@ -106,7 +110,6 @@ modules/           # Shared modules
   bash-to-fish.nix  # Shell detection: bash → fish exec wrapper
   fish-command-not-found.nix  # nix-locate based command-not-found handler
   prune-generations.nix  # Nix generation pruning (darwin + Linux)
-  secrets-check.nix # Gitleaks secret scan at build time
   ssh-authorized-keys.nix  # Symlink ~/.config/ssh/keys → ~/.ssh/authorized_keys
   ...[service modules: minecraft-bedrock, dst-server, firesafe-backup, etc.]
 ```
@@ -125,7 +128,7 @@ modules/           # Shared modules
 - **`nix fmt` is unreliable.** It sometimes fails on stdin ("unexpected end of file"). When it does, run alejandra directly on the changed files instead: `alejandra <file> <file>...`.
 - **Run alejandra after every nix file change.** Before building or deploying, always format any modified `.nix` files: `alejandra <file> <file>...` (from both `~/.config/nix` and `~/.config/nix-vudials`).
 - **NEVER commit secrets to the repo.** All secrets (passwords, API tokens, private keys) must live outside git as local-only files on the target machine. The repo only references their paths.
-- **Secrets scanning is enforced at build time.** `modules/secrets-check.nix` runs `gitleaks` on the flake source in a derivation added to `environment.systemPackages`. If any secrets are found (not in `.gitleaks.toml` allowlist), the build fails — `darwin-rebuild`, `nixos-rebuild`, and `nr` all refuse to proceed. `nix flake check` also runs a secrets check (useful pre-push since it doesn't require a full build).
+- **Secrets scanning runs via `nix flake check`** (not at build time). The `secrets-check` derivation lives in `flake/checks.nix` and runs `gitleaks detect`. The pre-push hook (`nix flake check --no-build` in `.config/git/hooks/pre-push`) evaluates all checks but doesn't build them — to run gitleaks, use `nix flake check` (without `--no-build`) or `nix build .#checks.aarch64-darwin.secrets-check`.
 - **Local-only secrets on the server must have a `warn_missing` check.** If a service reads a secret file that lives outside the repo (e.g. `/etc/ddns-token`, `/etc/email-pass`), add a corresponding `warn_missing` check in `system.activationScripts.checkSecrets` in `hosts/sophrosyne/configuration.nix`. This prints a clear warning at activation time telling the admin what the secret is for and where to find it (e.g. Bitwarden).
 - **After every nix file change, always run the build step to catch errors before attempting a switch.** The switch step requires `sudo` which may fail remotely; the build step catches evaluation and compilation errors first. Do not commit and push changes to sophrosyne or metanoia without first building remotely to verify they compile clean.
 - **When changes require a reboot to take effect (kernel params, boot config), tell the user explicitly.** After a successful switch, check whether any changes need a reboot — `boot.kernelParams` changes always do, as do filesystem changes and some systemd settings. Say "reboot needed" rather than just "run nr".
