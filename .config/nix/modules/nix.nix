@@ -25,6 +25,18 @@
   nix.channel.enable = lib.mkDefault false;
   nixpkgs.config.allowUnfree = lib.mkDefault true;
 
+  # Trusted binary caches (system-level nix.conf — no flake prompt)
+  nix.settings.extra-trusted-substituters = lib.mkDefault [
+    "https://cache.garnix.io"
+    "https://nix-community.cachix.org"
+    "https://zen-browser.cachix.org"
+  ];
+  nix.settings.extra-trusted-public-keys = lib.mkDefault [
+    "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78bD7HEGj2x7a7Bs="
+    "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+    "zen-browser.cachix.org-1:6ABdUuAq2NIDh3tKf/5uAn7LoFO2duBBLgJMhsF3cig="
+  ];
+
   # Only register nixpkgs variants as channel aliases, skip build-only inputs
   nix.registry = lib.mapAttrs (n: flake: lib.mkDefault {inherit flake;}) (
     lib.filterAttrs (n: _: lib.elem n ["nixpkgs" "nixpkgs-unstable"]) inputs
