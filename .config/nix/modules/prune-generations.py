@@ -3,12 +3,13 @@ import subprocess
 import sys
 from datetime import datetime
 
+NIX_ENV = "@nix_env@"
 PROFILE = "/nix/var/nix/profiles/system"
 
 
 def list_generations():
     result = subprocess.run(
-        ["nix-env", "--list-generations", "-p", PROFILE],
+        [NIX_ENV, "--list-generations", "-p", PROFILE],
         capture_output=True,
         text=True,
         timeout=30,
@@ -84,7 +85,7 @@ def main():
         file=sys.stderr,
     )
     subprocess.run(
-        ["nix-env", "--delete-generations", "-p", PROFILE] + to_delete,
+        [NIX_ENV, "--delete-generations", "-p", PROFILE] + to_delete,
         timeout=60,
     )
 
