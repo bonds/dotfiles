@@ -1,6 +1,6 @@
 let
-  zenPolicies = import ../home/zen-policies.nix;
-  zenIcon = ../zen-icon.icns;
+  zenPolicies = import ../../home/zen-policies.nix;
+  zenIcon = ../../zen-icon.icns;
 in
   final: prev: {
     zen-browser = final.mkDarwinPackage {

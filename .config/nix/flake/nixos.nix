@@ -14,15 +14,9 @@
       agenix
       ;
   };
-  vudialsPkgs = (import ./../lib/vudials-packages.nix) inputs.vudials (
-    import inputs.nixpkgs {
-      system = "x86_64-linux";
-      config.allowUnfree = true;
-    }
-  );
 in {
   flake.nixosConfigurations = {
     sophrosyne = (import ./../hosts/sophrosyne/default.nix) {inherit mkNixos;};
-    metanoia = (import ./../hosts/metanoia/default.nix) {inherit mkNixos vudialsPkgs inputs;};
+    metanoia = (import ./../hosts/metanoia/default.nix) {inherit mkNixos inputs;};
   };
 }

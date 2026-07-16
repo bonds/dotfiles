@@ -9,7 +9,7 @@
   ...
 }: let
   commonModules = import ./shared-modules.nix self;
-  darwinOverlays = import ./darwin-overlays.nix;
+  darwinOverlays = import ../modules/overlays/darwin.nix {inherit inputs;};
 in
   _hostname: {
     modules ? [],

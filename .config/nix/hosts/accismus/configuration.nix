@@ -4,23 +4,8 @@
   inputs,
   ...
 }: let
-  userHome = "/Users/scott";
+  userHome = import ../../lib/user-home.nix pkgs;
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
-  syncthingIds = import ../../lib/syncthing-ids.nix;
-
-  syncthingConfigDir = "${userHome}/Library/Application Support/Syncthing";
-
-  syncthingConfigTemplate = builtins.readFile ./syncthing-config.xml;
-  syncthingConfig = pkgs.writeText "syncthing-config.xml" (
-    lib.replaceStrings [
-      "@ACCISMUS_ID@"
-      "@SOPHROSYNE_ID@"
-    ] [
-      syncthingIds.accismus
-      syncthingIds.sophrosyne
-    ]
-    syncthingConfigTemplate
-  );
 
   zenIcon = ../../modules/zen-icon.icns;
   setZenIconScript = pkgs.writeText "set-zen-icon.applescript" ''
@@ -39,14 +24,6 @@ in {
   security.pam.services.sudo_local.reattach = false;
 
   system.activationScripts = {
-    syncthingConfig.text = ''
-      echo "syncthing-config: deploying to ${syncthingConfigDir}" >&2
-      sudo -u scott mkdir -p "${syncthingConfigDir}"
-      cp "${syncthingConfig}" "${syncthingConfigDir}/config.xml"
-      chown scott:staff "${syncthingConfigDir}/config.xml"
-      chmod 644 "${syncthingConfigDir}/config.xml"
-      pgrep -f "Syncthing.app" && pkill -f "Syncthing.app" 2>/dev/null || true
-    '';
     photoRsyncKey.text = ''
       KEYFILE="${userHome}/.ssh/id_photo_rsync"
       if [ ! -f "$KEYFILE" ]; then
@@ -128,15 +105,6 @@ in {
             StandardErrorPath = "/tmp/prune-generations.err.log";
           };
         };
-        syncthing = {
-          command = "${pkgs.syncthing}/bin/syncthing --no-browser --home='${syncthingConfigDir}'";
-          serviceConfig = {
-            KeepAlive = true;
-            RunAtLoad = true;
-            StandardOutPath = "/tmp/syncthing.out.log";
-            StandardErrorPath = "/tmp/syncthing.err.log";
-          };
-        };
         photos-backup = {
           serviceConfig = {
             ProgramArguments = [
@@ -160,7 +128,9 @@ in {
 
   home-manager = {
     extraSpecialArgs = {inherit inputs;};
-    users.scott = {pkgs, ...}: {
+    users.scott = {pkgs, ...}: let
+      syncthingIds = import ../../lib/syncthing-ids.nix;
+    in {
       home.homeDirectory = userHome;
 
       imports = [
@@ -169,6 +139,31 @@ in {
         ../../modules/home/polyptych.nix
         ../../modules/home/reel-summarize.nix
       ];
+
+      services.syncthing = let
+        syncthingIds = import ../../lib/syncthing-ids.nix;
+      in {
+        enable = true;
+        settings = {
+          devices.sophrosyne = {
+            id = syncthingIds.sophrosyne;
+            name = "sophrosyne";
+            addresses = ["dynamic"];
+            compression = "metadata";
+          };
+          folders.Documents = {
+            path = "${userHome}/Documents";
+            id = "mz9zh-usrfi";
+            label = "Documents";
+            type = "sendreceive";
+            rescanInterval = 3600;
+            fsWatcherEnabled = true;
+            fsWatcherDelayS = 10;
+            devices = ["sophrosyne"];
+          };
+        };
+      };
+
       programs.reel-summarize.enable = true;
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
     };

@@ -3,8 +3,6 @@
   "autoupdate": false,
   "default_agent": "plan",
   "snapshot": true,
-  "plugin": [
-  ],
   "agent": {
     "plan": {
       // "model": "opencode-go/glm-5.2"

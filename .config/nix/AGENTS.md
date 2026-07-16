@@ -70,12 +70,14 @@ lib/
   mkNixos.nix        # nixosSystem builder
   mkDarwin.nix       # darwinSystem builder
   mkDarwinPackage.nix # Binary overlay helper (exposed via callPackage)
+  user-home.nix      # Platform-aware home directory resolver
 hosts/
   accismus/        # Laptop nix-darwin config
     configuration.nix
-    syncthing-config.xml
   metanoia/        # Workstation NixOS config
     configuration.nix
+    desktop.nix
+    services.nix
     hardware-configuration.nix
     monitors.xml    #   GDM display config (extracted from configuration.nix)
   sophrosyne/      # Server NixOS config
@@ -86,6 +88,13 @@ hosts/
     services.nix
     storage.nix
 modules/           # Shared modules
+  overlays/          # Binary package overlays (darwin-only; NixOS uses nixpkgs directly)
+    darwin.nix       #   Master list of darwin overlays (includes vudials)
+    ollama/          #   Pinned ollama darwin binary + update.sh
+    osxphotos/       #   Pinned osxphotos darwin binary + update.sh + wrapper.sh
+    zen-browser/     #   Pinned zen-browser darwin binary + update.sh
+    opencode/        #   Pinned opencode CLI + desktop binaries + update.sh
+    daisydisk-overlay/ # Pinned DaisyDisk darwin binary + update.sh
   home/            # Home-manager modules (all machines)
     base.nix        #   Shared base: stateVersion, tmux, what-changed (reduces per-host duplication)
     direnv.nix      #   direnv configuration
@@ -101,11 +110,6 @@ modules/           # Shared modules
     desktop.nix     #   metanoia workstation packages (GNOME, Steam, etc.)
     macos.nix       #   accismus-specific packages (macOS apps, binaries)
   nixos-common.nix  # Shared NixOS settings — auto-included by mkNixos.nix (not per-host)
-  ollama/           # Overlay: pinned ollama darwin binary + update.sh
-  osxphotos/        # Overlay: pinned osxphotos darwin binary + update.sh + wrapper.sh
-  zen-browser/      # Overlay: pinned zen-browser darwin binary + update.sh
-  opencode/         # Overlay: pinned opencode CLI + desktop binaries + update.sh
-  daisydisk-overlay/ # Overlay: pinned DaisyDisk darwin binary + update.sh
   vudials-uids.nix  # Scott's dial UID defaults (imported by both accismus + metanoia)
   bash-to-fish.nix  # Shell detection: bash → fish exec wrapper
   fish-command-not-found.nix  # nix-locate based command-not-found handler

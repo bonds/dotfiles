@@ -3,7 +3,9 @@
   pkgs,
   pkgs-unstable,
   ...
-}: {
+}: let
+  userHome = import ../../lib/user-home.nix pkgs;
+in {
   imports = [
     ./hardware-configuration.nix
     ./security.nix
