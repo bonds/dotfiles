@@ -5,6 +5,17 @@ Personal nix flake for:
 - NixOS server **sophrosyne** (`x86_64-linux`, `nixos-26.05`, also at `sophrosyne.local` / `home.ggr.com`)
 - NixOS workstation **metanoia** (`x86_64-linux`, `nixos-26.05` — currently offline, not plugged in)
 
+## Git repo (accismus)
+
+Accismus dotfiles use a **bare repo at `~/.config/dotfiles/`** with **worktree `$HOME`** — the `.git` directory is not inside `.config/nix`.
+
+- **Alias:** `config` = `git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME`
+- Defined in `~/.config/fish/conf.d/10-aliases.fish`
+- When using the bare repo directly in a script, `cd ~` first so relative paths resolve
+- **Remotes:** `origin` (GitHub, `git@github.com:bonds/dotfiles.git`), `sophrosyne` (scott@home.ggr.com:~/.config/dotfiles)
+- Push both: `config push origin && config push sophrosyne`
+- For comparison: sophrosyne's clone is a normal clone at `~` (`~/.git`)
+
 ## Commands
 
 **Always use `nr` for rebuilds.** The `nr` fish function (in `~/.config/fish/config.fish`) wraps `nh` and auto-detects the host to pick the right flake target. Do not recommend raw `nixos-rebuild` or `darwin-rebuild` commands unless `nr` is broken.
