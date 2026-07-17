@@ -140,9 +140,7 @@ in {
         ../../modules/home/reel-summarize.nix
       ];
 
-      services.syncthing = let
-        syncthingIds = import ../../lib/syncthing-ids.nix;
-      in {
+      services.syncthing = {
         enable = true;
         settings = {
           devices.sophrosyne = {

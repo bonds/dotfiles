@@ -16,7 +16,7 @@
   };
 in {
   flake.nixosConfigurations = {
-    sophrosyne = (import ./../hosts/sophrosyne/default.nix) {inherit mkNixos;};
+    sophrosyne = (import ./../hosts/sophrosyne/default.nix) {inherit mkNixos inputs;};
     metanoia = (import ./../hosts/metanoia/default.nix) {inherit mkNixos inputs;};
   };
 }

@@ -1,4 +1,4 @@
-{mkNixos}:
+{mkNixos, ...}:
 mkNixos "sophrosyne" {
   modules = [
     ./configuration.nix
