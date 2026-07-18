@@ -6,6 +6,7 @@
   sourceRoot ? ".",
   dontFixup ? true,
   dontStrip ? true,
+  platforms ? ["aarch64-darwin"],
   meta ? {},
   ...
 } @ attrs:
@@ -14,7 +15,7 @@ stdenvNoCC.mkDerivation (attrs
     inherit sourceRoot dontFixup dontStrip;
     meta =
       {
-        platforms = ["aarch64-darwin"];
+        inherit platforms;
         mainProgram = pname;
         license = lib.licenses.mit;
       }

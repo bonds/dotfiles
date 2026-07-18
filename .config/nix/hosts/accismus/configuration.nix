@@ -87,8 +87,8 @@ in {
           serviceConfig = {
             KeepAlive = true;
             RunAtLoad = true;
-            StandardOutPath = "/tmp/ollama.out.log";
-            StandardErrorPath = "/tmp/ollama.err.log";
+            StandardOutPath = "${userHome}/Library/Logs/ollama.out.log";
+            StandardErrorPath = "${userHome}/Library/Logs/ollama.err.log";
           };
         };
         prune-generations = {
@@ -101,8 +101,8 @@ in {
                 Weekday = 0;
               }
             ];
-            StandardOutPath = "/tmp/prune-generations.out.log";
-            StandardErrorPath = "/tmp/prune-generations.err.log";
+            StandardOutPath = "${userHome}/Library/Logs/prune-generations.out.log";
+            StandardErrorPath = "${userHome}/Library/Logs/prune-generations.err.log";
           };
         };
         photos-backup = {
@@ -118,8 +118,8 @@ in {
                 Minute = 0;
               }
             ];
-            StandardOutPath = "/tmp/photos-backup.out.log";
-            StandardErrorPath = "/tmp/photos-backup.err.log";
+            StandardOutPath = "${userHome}/Library/Logs/photos-backup.out.log";
+            StandardErrorPath = "${userHome}/Library/Logs/photos-backup.err.log";
           };
         };
       };
@@ -151,7 +151,7 @@ in {
           };
           folders.Documents = {
             path = "${userHome}/Documents";
-            id = "mz9zh-usrfi";
+            id = syncthingIds.folders.Documents;
             label = "Documents";
             type = "sendreceive";
             rescanInterval = 3600;

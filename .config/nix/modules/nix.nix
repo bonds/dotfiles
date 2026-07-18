@@ -16,16 +16,9 @@
     trusted-users = lib.mkDefault ["scott"];
     max-jobs = lib.mkDefault "auto";
     auto-optimise-store = lib.mkDefault true;
-    extra-trusted-substituters = lib.mkDefault [
-      "https://cache.garnix.io"
-      "https://nix-community.cachix.org"
-      "https://zen-browser.cachix.org"
-    ];
-    extra-trusted-public-keys = lib.mkDefault [
-      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78bD7HEGj2x7a7Bs="
-      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-      "zen-browser.cachix.org-1:6ABdUuAq2NIDh3tKf/5uAn7LoFO2duBBLgJMhsF3cig="
-    ];
+    min-free = lib.mkDefault 1073741824; # 1GB — trigger GC
+    max-free = lib.mkDefault 5368709120; # 5GB — target reclaim
+    accept-flake-config = lib.mkDefault true; # pick up nixConfig from flake.nix
   };
   nix.package = lib.mkDefault pkgs.lixPackageSets.latest.lix;
   nix.gc = {

@@ -1,5 +1,17 @@
 {
   description = "Scott Bonds <scott@ggr.com> multi-machine flake (darwin + NixOS)";
+  nixConfig = {
+    extra-trusted-substituters = [
+      "https://cache.garnix.io"
+      "https://nix-community.cachix.org"
+      "https://zen-browser.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78bD7HEGj2x7a7Bs="
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+      "zen-browser.cachix.org-1:6ABdUuAq2NIDh3tKf/5uAn7LoFO2duBBLgJMhsF3cig="
+    ];
+  };
   inputs = {
     # Stable nixpkgs (primary system packages — avoids cctools ld64 crash on arm64)
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";

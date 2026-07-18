@@ -42,6 +42,14 @@ in {
 
   services.openssh.settings.KbdInteractiveAuthentication = false;
 
+  # Privilege escalation for wheel group (sudo is disabled globally via nixos-common.nix)
+  security.doas.extraRules = [
+    {
+      users = [":wheel"];
+      persist = true;
+    }
+  ];
+
   age.identityPaths = ["/etc/age/identity"];
 
   system.activationScripts.agenixIdentity = {
@@ -105,7 +113,7 @@ in {
       devices."accismus" = {id = syncthingIds.accismus;};
       folders."Documents" = {
         path = "${config.users.users.scott.home}/Documents";
-        id = "mz9zh-usrfi";
+        id = syncthingIds.folders.Documents;
         devices = ["accismus"];
       };
     };
