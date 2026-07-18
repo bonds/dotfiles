@@ -114,8 +114,9 @@ in {
   services.ollama-server.enable = true;
   services.ollama = {
     models = "/dragon/servers/ollama";
-    host = "127.0.0.1";
+    host = "0.0.0.0";
   };
+  networking.firewall.allowedTCPPorts = [11434];
 
   programs.firesafe-backup = {
     enable = true;
