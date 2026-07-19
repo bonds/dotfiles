@@ -12,7 +12,7 @@ in {
     ./networking.nix
     ./services.nix
     ./storage.nix
-    ../../modules/ollama-server.nix
+    ../../modules/llamacpp-server.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -119,12 +119,15 @@ in {
     };
   };
 
-  services.ollama-server.enable = true;
-  services.ollama = {
-    models = "/dragon/servers/ollama";
+  services.llamacpp-server = {
+    enable = true;
     host = "0.0.0.0";
+    port = 8080;
+    model = "/dragon/servers/llamacpp/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf";
+    modelUrl = "https://huggingface.co/bartowski/Qwen_Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf";
+    extraArgs = ["--ctx-size" "4096"];
   };
-  networking.firewall.allowedTCPPorts = [11434];
+  networking.firewall.allowedTCPPorts = [8080];
 
   programs.firesafe-backup = {
     enable = true;
