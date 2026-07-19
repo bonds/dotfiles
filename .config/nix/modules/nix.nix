@@ -16,7 +16,6 @@
     trusted-users = lib.mkDefault ["scott"];
     max-jobs = lib.mkDefault "auto";
     auto-optimise-store = lib.mkDefault true;
-    min-free = lib.mkDefault 1073741824; # 1GB — trigger GC
     accept-flake-config = lib.mkDefault true; # pick up nixConfig from flake.nix
   };
   nix.package = lib.mkDefault pkgs.lixPackageSets.latest.lix;
