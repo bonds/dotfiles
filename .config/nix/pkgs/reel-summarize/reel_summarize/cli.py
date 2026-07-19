@@ -48,9 +48,12 @@ def _preflight(cfg: Config):
         errors.append(f"ollama unreachable at {cfg.host}: {e}")
 
     try:
-        import whisper  # noqa: F401
+        import transcribe_cpp  # noqa: F401
     except ImportError:
-        errors.append("whisper not available (should be installed by nix package)")
+        errors.append("transcribe-cpp not available (should be installed by nix package)")
+    except Exception as e:
+        # transcribe_cpp import checks the native library — surface that error
+        errors.append(f"transcribe-cpp native library error: {e}")
 
     if errors:
         for e in errors:

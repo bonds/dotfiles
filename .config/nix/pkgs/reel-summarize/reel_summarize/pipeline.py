@@ -7,7 +7,7 @@ import shutil
 import sys
 import tempfile
 
-from reel_summarize.config import Config
+from reel_summarize.config import Config, whisper_model_path, MODELS_DIR, MODEL_URL
 from reel_summarize.stages.download import download, fetch_metadata
 from reel_summarize.stages.audio_extract import extract_audio
 from reel_summarize.stages.frame_extract import extract_frames
@@ -39,6 +39,26 @@ def _ensure_ollama_model(model: str, cfg: Config):
     if pull_proc.returncode != 0:
         print(f"  ✖ failed to pull model '{model}'", file=sys.stderr, flush=True)
         sys.exit(2)
+
+
+def _ensure_whisper_model(cfg: Config):
+    path = whisper_model_path(cfg)
+    if os.path.exists(path):
+        return
+
+    filename = os.path.basename(path)
+    url = f"{MODEL_URL}/{filename}"
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    import httpx
+
+    print(f"  → downloading whisper model '{filename}'...", file=sys.stderr, flush=True)
+    with httpx.stream("GET", url, timeout=600, follow_redirects=True) as resp:
+        resp.raise_for_status()
+        with open(path, "wb") as f:
+            for chunk in resp.iter_bytes(chunk_size=1024 * 1024):
+                f.write(chunk)
+    print(f"  ✓ saved to {path}", file=sys.stderr, flush=True)
 
 
 def _save_state(data: dict):
@@ -79,6 +99,7 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
     try:
         _ensure_ollama_model(cfg.vision_model, cfg)
         _ensure_ollama_model(cfg.summarize_model, cfg)
+        _ensure_whisper_model(cfg)
 
         p = lambda m: print(m, file=sys.stderr, flush=True)
 
@@ -207,6 +228,7 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
                 p("→ audio not found, re-extracting...")
                 audio_path = extract_audio(video_path, work_dir)
 
+            _ensure_whisper_model(cfg)
             p("→ transcribing audio (whisper)...")
             segments = transcribe(audio_path, cfg)
             transcript = transcribe_text(segments)

@@ -6,6 +6,10 @@
   };
 in [
   mkDarwinOverlay
+  (final: _prev: {
+    transcribe-cpp = final.callPackage ../../pkgs/transcribe-cpp {};
+    transcribe-cpp-python = final.callPackage ../../pkgs/transcribe-cpp-python {};
+  })
   (import ./ollama/default.nix)
   (import ./osxphotos/default.nix)
   (import ./zen-browser/default.nix)

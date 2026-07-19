@@ -5,6 +5,9 @@ import tomllib
 from dataclasses import dataclass, fields
 
 CONFIG_PATH = os.path.expanduser("~/.config/reel-summarize/config.toml")
+MODELS_DIR = os.path.expanduser("~/.local/share/transcribe-models")
+
+MODEL_URL = "https://huggingface.co/handy-computer/whisper-small-gguf/resolve/main"
 
 
 @dataclass
@@ -12,10 +15,21 @@ class Config:
     host: str = "http://localhost:11434"
     vision_model: str = "llava:7b"
     summarize_model: str = "qwen2.5:7b"
-    whisper_model: str = "small"
+    whisper_model: str = "whisper-small-Q5_K_M.gguf"
     frames_per_second: int = 1
     max_frames: int = 10
     timeout: int = 180
+
+
+def whisper_model_path(cfg: Config) -> str:
+    """Resolve whisper_model to an absolute path.
+
+    If it's already an absolute path, use it as-is. Otherwise treat it as a
+    filename inside MODELS_DIR (auto-downloaded on first run).
+    """
+    if os.path.isabs(cfg.whisper_model):
+        return cfg.whisper_model
+    return os.path.join(MODELS_DIR, cfg.whisper_model)
 
 
 def load(path: str | None = None) -> Config:

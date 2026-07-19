@@ -29,8 +29,8 @@ in {
           };
           whisperModel = lib.mkOption {
             type = lib.types.str;
-            default = "small";
-            description = "Whisper model size (tiny, base, small, medium, large-v3)";
+            default = "whisper-small-Q5_K_M.gguf";
+            description = "Whisper GGUF model path (downloaded from HuggingFace handy-computer)";
           };
           framesPerSecond = lib.mkOption {
             type = lib.types.int;
