@@ -1,0 +1,35 @@
+final: prev: {
+  osaurus = final.mkDarwinPackage {
+    pname = "osaurus";
+    version = "0.22.8";
+
+    src = prev.fetchurl {
+      url = "https://github.com/osaurus-ai/osaurus/releases/download/0.22.8/Osaurus-0.22.8.dmg";
+      hash = "sha256-dg/fcpxqm/M0gM50dTZtbSH4SCLLKwPcYBqcMVpQrhY=";
+    };
+
+    nativeBuildInputs = [prev._7zz];
+
+    unpackPhase = ''
+      7zz -snld x "$src"
+    '';
+
+    installPhase = ''
+      mkdir -p $out/Applications
+      app=$(find . -name "*.app" -type d | head -1)
+      if [ -z "$app" ]; then
+        echo "ERROR: .app bundle not found in DMG contents"
+        ls -la
+        exit 1
+      fi
+      mv "$app" "$out/Applications/"
+    '';
+
+    meta = {
+      description = "Own your AI — native macOS AI agent harness";
+      homepage = "https://osaurus.ai";
+      license = prev.lib.licenses.mit;
+      platforms = ["aarch64-darwin"];
+    };
+  };
+}

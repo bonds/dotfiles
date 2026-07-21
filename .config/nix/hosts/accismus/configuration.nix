@@ -74,6 +74,15 @@
     set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
     current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
   '';
+
+  osaurusIcon = ../../modules/overlays/osaurus/osaurus-icon.icns;
+  setOsaurusIconScript = pkgs.writeText "set-osaurus-icon.applescript" ''
+    use framework "Cocoa"
+    set appPath to "/Applications/Nix Apps/osaurus.app"
+    set iconPath to "${osaurusIcon}"
+    set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
+    current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
+  '';
 in {
   imports = [
     ../../modules/packages/macos.nix
@@ -135,6 +144,9 @@ in {
   system.activationScripts.applications.text = lib.mkAfter ''
     echo "zen-icon: setting custom icon on Zen.app" >&2
     /usr/bin/osascript "${setZenIconScript}" 2>&1 || true
+
+    echo "osaurus-icon: setting custom icon on osaurus.app" >&2
+    /usr/bin/osascript "${setOsaurusIconScript}" 2>&1 || true
   '';
 
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
