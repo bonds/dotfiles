@@ -12,7 +12,7 @@ in {
     ./desktop.nix
     ./services.nix
     ../../modules/packages/desktop.nix
-    ../../modules/ollama-server.nix
+    ../../modules/llamacpp-server.nix
   ];
 
   networking = {

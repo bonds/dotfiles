@@ -59,7 +59,7 @@ style = "bold red"
 
 # cmd_duration config
 [cmd_duration]
-show_milliseconds = true
+show_milliseconds = false
 style = "bold yellow"
 format = "took [$duration]($style) "
 

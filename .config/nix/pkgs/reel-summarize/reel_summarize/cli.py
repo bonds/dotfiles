@@ -45,7 +45,7 @@ def _preflight(cfg: Config):
         _ensure_ollama_model(cfg.vision_model, cfg)
         _ensure_ollama_model(cfg.summarize_model, cfg)
     except httpx.RequestError as e:
-        errors.append(f"ollama unreachable at {cfg.host}: {e}")
+        errors.append(f"LLM unreachable at {cfg.host}: {e}")
 
     try:
         import transcribe_cpp  # noqa: F401

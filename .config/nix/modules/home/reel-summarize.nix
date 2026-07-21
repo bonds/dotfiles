@@ -14,18 +14,23 @@ in {
         options = {
           host = lib.mkOption {
             type = lib.types.str;
-            default = "http://localhost:11434";
-            description = "Ollama API host";
+            default = "http://localhost:8080";
+            description = "LLM API host (http://localhost:8080 = llama.cpp, http://localhost:11434 = ollama)";
+          };
+          backend = lib.mkOption {
+            type = lib.types.enum ["openai" "ollama"];
+            default = "openai";
+            description = "LLM backend (openai = llama.cpp / OpenAI-compatible API)";
           };
           visionModel = lib.mkOption {
             type = lib.types.str;
-            default = "llava:7b";
-            description = "Ollama vision model for per-frame OCR (use 'llava:7b' for speed on CPU)";
+            default = "qwen2.5:7b";
+            description = "Vision model for per-frame OCR (use 'qwen2.5:7b' for text-only, need multimodal GGUF for actual vision)";
           };
           summarizeModel = lib.mkOption {
             type = lib.types.str;
             default = "qwen2.5:7b";
-            description = "Ollama model for final summary";
+            description = "Model for final summary";
           };
           whisperModel = lib.mkOption {
             type = lib.types.str;
@@ -45,7 +50,7 @@ in {
           timeout = lib.mkOption {
             type = lib.types.int;
             default = 300;
-            description = "HTTP timeout in seconds for Ollama API calls";
+            description = "HTTP timeout in seconds for LLM API calls";
           };
         };
       };
@@ -62,6 +67,7 @@ in {
     in
       format.generate "config.toml" {
         host = s.host;
+        backend = s.backend;
         vision_model = s.visionModel;
         summarize_model = s.summarizeModel;
         whisper_model = s.whisperModel;

@@ -7,13 +7,13 @@
         options = {
           backend = lib.mkOption {
             type = lib.types.enum ["ollama" "openai"];
-            default = "ollama";
-            description = "LLM backend to use for summarization";
+            default = "openai";
+            description = "LLM backend to use for summarization (openai = llama.cpp / OpenAI-compatible API)";
           };
           host = lib.mkOption {
             type = lib.types.str;
-            default = "http://localhost:11434";
-            description = "LLM API host";
+            default = "http://localhost:8080";
+            description = "LLM API host (port 8080 = llama.cpp, port 11434 = ollama)";
           };
           model = lib.mkOption {
             type = lib.types.str;

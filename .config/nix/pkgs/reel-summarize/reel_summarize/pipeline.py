@@ -21,6 +21,13 @@ STAGE_DIR = os.path.join(tempfile.gettempdir(), "reel-summarize-stage")
 STATE_FILE = os.path.join(STAGE_DIR, "state.json")
 
 
+def _ensure_model(cfg: Config, model: str, label: str):
+    if cfg.backend == "openai":
+        # llama.cpp loads models at server startup — nothing to pull
+        return
+    _ensure_ollama_model(model, cfg)
+
+
 def _ensure_ollama_model(model: str, cfg: Config):
     import subprocess
     import httpx
@@ -97,8 +104,8 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
     _clear_state()
 
     try:
-        _ensure_ollama_model(cfg.vision_model, cfg)
-        _ensure_ollama_model(cfg.summarize_model, cfg)
+        _ensure_model(cfg, cfg.vision_model, "vision")
+        _ensure_model(cfg, cfg.summarize_model, "summary")
         _ensure_whisper_model(cfg)
 
         p = lambda m: print(m, file=sys.stderr, flush=True)
@@ -177,8 +184,8 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
             return
 
         if stage == "download":
-            _ensure_ollama_model(cfg.vision_model, cfg)
-            _ensure_ollama_model(cfg.summarize_model, cfg)
+            _ensure_model(cfg, cfg.vision_model, "vision")
+            _ensure_model(cfg, cfg.summarize_model, "summary")
 
             state = _load_state()
             metadata = state.get("metadata") if state else None

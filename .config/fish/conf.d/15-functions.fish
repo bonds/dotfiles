@@ -57,11 +57,12 @@ function nr
         if test "$_os" = darwin
             set -l _pwd $PWD
             cd $HOME/.config/nix
-            bash modules/overlays/ollama/update.sh
+            bash pkgs/oxillama/update.sh
             bash modules/overlays/zen-browser/update.sh
             bash modules/overlays/opencode/update.sh
             bash modules/overlays/daisydisk-overlay/update.sh
-            alejandra modules/overlays/ollama/default.nix modules/overlays/zen-browser/default.nix modules/overlays/opencode/default.nix modules/overlays/daisydisk-overlay/default.nix
+            bash modules/overlays/osaurus/update.sh
+            alejandra pkgs/oxillama/default.nix modules/overlays/zen-browser/default.nix modules/overlays/opencode/default.nix modules/overlays/daisydisk-overlay/default.nix modules/overlays/osaurus/default.nix
             cd $_pwd
         else
             set -l _pwd $PWD

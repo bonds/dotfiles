@@ -12,8 +12,10 @@ MODEL_URL = "https://huggingface.co/handy-computer/whisper-small-gguf/resolve/ma
 
 @dataclass
 class Config:
-    host: str = "http://localhost:11434"
-    vision_model: str = "llava:7b"
+    host: str = "http://localhost:8080"
+    vision_host: str = "http://localhost:8081"
+    backend: str = "openai"  # "openai" (llama.cpp) or "ollama"
+    vision_model: str = "qwen2.5-vl:7b"
     summarize_model: str = "qwen2.5:7b"
     whisper_model: str = "whisper-small-Q5_K_M.gguf"
     frames_per_second: int = 1
@@ -42,7 +44,9 @@ def load(path: str | None = None) -> Config:
             if fld.name in raw:
                 setattr(cfg, fld.name, raw[fld.name])
     env = {
-        "host": "REEL_SUMMARIZE_OLLAMA_HOST",
+        "host": "REEL_SUMMARIZE_HOST",
+        "vision_host": "REEL_SUMMARIZE_VISION_HOST",
+        "backend": "REEL_SUMMARIZE_BACKEND",
         "vision_model": "REEL_SUMMARIZE_VISION_MODEL",
         "summarize_model": "REEL_SUMMARIZE_MODEL",
         "whisper_model": "REEL_SUMMARIZE_WHISPER_MODEL",

@@ -85,7 +85,7 @@ but is no longer managed.
 - `.config/nix/pkgs/reel-summarize/` — **`reel-summarize` tool** (v0.1.0) — Local Instagram Reel summarizer.
   - Pipeline: yt-dlp download → ffmpeg frames+audio → whisper transcription → llava:7b per-frame OCR → qwen2.5 summary.
   - Nix-managed via home-manager: `programs.reel-summarize.enable` (enabled on accismus).
-  - Runtime deps: `yt-dlp`+`ffmpeg` via nix, ollama with `llava:7b`+`qwen2.5:7b`.
+  - Runtime deps: `yt-dlp`+`ffmpeg` via nix, llama.cpp with `llava:7b`+`qwen2.5:7b`.
   - CLI: `reel-summarize <url>` — concise prose summary to stdout.
   - Opencode skill at `~/.config/opencode/skills/reel-summarize/SKILL.md`.
   - `nix flake check` runs format check, python syntax check, pytest suite.
@@ -118,7 +118,7 @@ but is no longer managed.
 ### Scripts (`bin/`)
 Cross-platform utility scripts, organized by OS:
 - `bin/` root — general utilities: `bench`, `def`, `mylocation`, `rainbow`, `rdemo`, `repo2txt`, `sort_photos`, `wattage`, `wifi_qrcode`, `wol`, `youtube`
-- `bin/darwin/` — macOS-specific: `create_devbox_app_aliases`, `launch-ollama`, `macos-defaults` (system preference toggles)
+- `bin/darwin/` — macOS-specific: `create_devbox_app_aliases`, `macos-defaults` (system preference toggles)
 - `bin/linux/` — Linux-specific: `idletime`, `maximize_across_multiple_monitors`, `vu1server`, `wear`
 - `bin/openbsd/` — OpenBSD-specific: `packages`, `wipe`
 - Haskell/Idris source: `rainbow.hs`, `rainbow.idr`

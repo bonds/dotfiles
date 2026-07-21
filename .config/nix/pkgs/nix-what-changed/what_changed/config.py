@@ -9,8 +9,8 @@ CONFIG_PATH = os.path.expanduser("~/.config/what-changed/config.toml")
 
 @dataclass
 class Config:
-    backend: str = "ollama"
-    host: str = "http://localhost:11434"
+    backend: str = "openai"
+    host: str = "http://localhost:8080"
     model: str = "qwen2.5:1.5b"
     timeout: int = 180
     max_input_bytes: int = 8000

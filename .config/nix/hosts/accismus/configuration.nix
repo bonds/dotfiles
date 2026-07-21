@@ -7,6 +7,65 @@
   userHome = import ../../lib/user-home.nix pkgs;
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
 
+  modelName = "Qwen2.5-7B-Instruct-Q4_K_M.gguf";
+  modelPath = "${userHome}/.local/share/llama.cpp/models/${modelName}";
+  modelUrl = "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/${modelName}";
+
+  vlModelName = "Qwen_Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf";
+  vlModelPath = "${userHome}/.local/share/llama.cpp/models/${vlModelName}";
+  vlModelUrl = "https://huggingface.co/bartowski/Qwen_Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/${vlModelName}";
+  mmprojName = "mmproj-Qwen_Qwen2.5-VL-7B-Instruct-f16.gguf";
+  mmprojPath = "${userHome}/.local/share/llama.cpp/models/${mmprojName}";
+  mmprojUrl = "https://huggingface.co/bartowski/Qwen_Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/${mmprojName}";
+
+  llamacppServeScript = pkgs.writeShellScript "llamacpp-serve" ''
+    set -euo pipefail
+    MODEL="${modelPath}"
+    MODEL_URL="${modelUrl}"
+    if ! [ -f "$MODEL" ]; then
+      echo "→ downloading model to $MODEL ..."
+      mkdir -p "$(dirname "$MODEL")"
+      ${pkgs.curl}/bin/curl -fSL -o "$MODEL.tmp" "$MODEL_URL" \
+        --retry 3 --retry-delay 10 --progress-bar
+      mv "$MODEL.tmp" "$MODEL"
+      echo "✓ model downloaded"
+    fi
+    exec ${pkgs.llama-cpp}/bin/llama-server \
+      --host 127.0.0.1 --port 8080 \
+      -m "$MODEL" \
+      --n-gpu-layers 99 \
+      --ctx-size 4096
+  '';
+
+  llamacppVisionServeScript = pkgs.writeShellScript "llamacpp-vision-serve" ''
+    set -euo pipefail
+    MODEL="${vlModelPath}"
+    MODEL_URL="${vlModelUrl}"
+    MMPROJ="${mmprojPath}"
+    MMPROJ_URL="${mmprojUrl}"
+    if ! [ -f "$MODEL" ]; then
+      echo "→ downloading vision model to $MODEL ..."
+      mkdir -p "$(dirname "$MODEL")"
+      ${pkgs.curl}/bin/curl -fSL -o "$MODEL.tmp" "$MODEL_URL" \
+        --retry 3 --retry-delay 10 --progress-bar
+      mv "$MODEL.tmp" "$MODEL"
+      echo "✓ vision model downloaded"
+    fi
+    if ! [ -f "$MMPROJ" ]; then
+      echo "→ downloading mmproj to $MMPROJ ..."
+      ${pkgs.curl}/bin/curl -fSL -o "$MMPROJ.tmp" "$MMPROJ_URL" \
+        --retry 3 --retry-delay 10 --progress-bar
+      mv "$MMPROJ.tmp" "$MMPROJ"
+      echo "✓ mmproj downloaded"
+    fi
+    exec ${pkgs.llama-cpp}/bin/llama-server \
+      --host 127.0.0.1 --port 8081 \
+      -m "$MODEL" \
+      --mmproj "$MMPROJ" \
+      --n-gpu-layers 99 \
+      --ctx-size 4096
+  '';
+
   zenIcon = ../../modules/zen-icon.icns;
   setZenIconScript = pkgs.writeText "set-zen-icon.applescript" ''
     use framework "Cocoa"
@@ -82,13 +141,22 @@ in {
   launchd = {
     user = {
       agents = {
-        ollama-serve = {
-          command = "${pkgs.ollama}/bin/ollama serve";
+        llamacpp-serve = {
+          command = "${llamacppServeScript}";
           serviceConfig = {
             KeepAlive = true;
             RunAtLoad = true;
-            StandardOutPath = "${userHome}/Library/Logs/ollama.out.log";
-            StandardErrorPath = "${userHome}/Library/Logs/ollama.err.log";
+            StandardOutPath = "${userHome}/Library/Logs/llamacpp.out.log";
+            StandardErrorPath = "${userHome}/Library/Logs/llamacpp.err.log";
+          };
+        };
+        llamacpp-vision-serve = {
+          command = "${llamacppVisionServeScript}";
+          serviceConfig = {
+            KeepAlive = true;
+            RunAtLoad = true;
+            StandardOutPath = "${userHome}/Library/Logs/llamacpp-vision.out.log";
+            StandardErrorPath = "${userHome}/Library/Logs/llamacpp-vision.err.log";
           };
         };
         prune-generations = {
@@ -127,7 +195,9 @@ in {
   };
 
   home-manager = {
-    extraSpecialArgs = {inherit inputs;};
+    extraSpecialArgs = {
+      inherit inputs;
+    };
     users.scott = {pkgs, ...}: let
       syncthingIds = import ../../lib/syncthing-ids.nix;
     in {

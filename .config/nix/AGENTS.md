@@ -101,7 +101,6 @@ hosts/
 modules/           # Shared modules
   overlays/          # Binary package overlays (darwin-only; NixOS uses nixpkgs directly)
     darwin.nix       #   Master list of darwin overlays (includes vudials)
-    ollama/          #   Pinned ollama darwin binary + update.sh
     osxphotos/       #   Pinned osxphotos darwin binary + update.sh + wrapper.sh
     zen-browser/     #   Pinned zen-browser darwin binary + update.sh
     opencode/        #   Pinned opencode CLI + desktop binaries + update.sh
@@ -160,9 +159,7 @@ modules/           # Shared modules
 - **Launchd agents auto-restart on `darwin-rebuild switch`** via an activation script that detects package hash changes. To manually bounce them: `launchctl kickstart -k gui/501/org.nixos.vuserver && launchctl kickstart -k gui/501/org.nixos.vuclient`.
 - **VU dials require the FTDI VCP driver (dext)** installed once manually from [ftdichip.com/drivers/vcp-drivers/](https://ftdichip.com/drivers/vcp-drivers/). On darwin the device path is `/dev/cu.usbserial-DQ0164KM`; on NixOS it's `/dev/vuserver-DQ0164KM` (managed by udev rules in the vudials module).
 
-- **The ollama overlay on accismus (`modules/overlays/ollama/default.nix`) is intentionally pinned.** Upstream nixpkgs ollama lags behind upstream releases. This overlay fetches the latest macOS binary directly. The pinned version is updated via the `nr` command's update capability. Do not replace this with `pkgs.ollama` or `pkgs-unstable.ollama` — it's pinned on purpose.
-
-- **The opencode overlay on accismus (`modules/overlays/opencode/default.nix`) is intentionally pinned.** Same rationale as ollama — nixpkgs-unstable lags behind upstream opencode releases. The overlay fetches the darwin arm64 binary directly from `anomalyco/opencode/releases`. Updated via `nr --update`. Do not replace with `pkgs.opencode` — it's pinned on purpose.
+- **The opencode overlay on accismus (`modules/overlays/opencode/default.nix`) is intentionally pinned.** nixpkgs-unstable lags behind upstream opencode releases. The overlay fetches the darwin arm64 binary directly from `anomalyco/opencode/releases`. Updated via `nr --update`. Do not replace with `pkgs.opencode` — it's pinned on purpose.
   - **`opencode-desktop`** is a second binary overlay in the same file, fetching the Electron desktop `.zip` from the same releases. Strips `Contents/Resources/app-update.yml` to disable the built-in Electron auto-updater (`nr --update` is the only path). Uses `dontFixup = true`. Added to `nr --update`'s package loop alongside the CLI.
 - **`nr --update` on darwin uses `update.sh` scripts, not `nix-update`.** Binary overlays under `modules/overlays/<pkg>/` are updated by their own `update.sh` scripts (called from `nr --update`), not by `nix-update`. `nix-update` doesn't work here because the packages live under `modules/overlays/` (not `pkgs/`) and use the `mkDarwinPackage` wrapper instead of `stdenv.mkDerivation`. The `update.sh` scripts handle both version bumps and SRI hash recomputation. If you add a new binary overlay, write an `update.sh` for it and wire it into `nr` — don't add it to a `nix-update` loop.
 - **The neocode package on accismus is consumed via a flake input** (`github:bonds/NeoCode`). The fork's `flake.nix` exposes `packages.aarch64-darwin.default` that fetches the prebuilt `.dmg`, extracts via `7zz`, strips Sparkle auto-update keys, and re-signs ad-hoc. The DMG hash lives in NeoCode's `flake.nix`, next to the source. To update: rebase fork on upstream, run `neocode-release` from a terminal (builds in `/tmp` to avoid Xcode SCM integration fighting with the dotfiles git repo), then `nr --update` in the dotfiles repo bumps the `neocode` flake input to the new commit.

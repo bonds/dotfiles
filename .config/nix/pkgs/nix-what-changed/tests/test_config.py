@@ -6,7 +6,7 @@ from what_changed.config import Config, load
 
 def test_defaults():
     cfg = Config()
-    assert cfg.backend == "ollama"
+    assert cfg.backend == "openai"
     assert cfg.model == "qwen2.5:1.5b"
     assert cfg.timeout == 180
     assert cfg.max_bullets == 5
@@ -18,7 +18,7 @@ def test_load_from_file(tmp_path):
     cfg = load(str(cfg_path))
     assert cfg.model == "test-model"
     assert cfg.timeout == 99
-    assert cfg.backend == "ollama"
+    assert cfg.backend == "openai"
 
 
 def test_unknown_keys_ignored(tmp_path):
@@ -30,7 +30,7 @@ def test_unknown_keys_ignored(tmp_path):
 
 def test_missing_file_uses_defaults(tmp_path):
     cfg = load(str(tmp_path / "nonexistent.toml"))
-    assert cfg.backend == "ollama"
+    assert cfg.backend == "openai"
 
 
 def test_config_fields_match_fetch():

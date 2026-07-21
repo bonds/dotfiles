@@ -36,7 +36,7 @@ Run:
 PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage download <url>
 ```
 
-On **exit 2** (missing model): run `ollama pull llava:7b && ollama pull qwen2.5:7b` then retry.
+On **exit 2** (missing model): run `bash ~/.config/nix/scripts/download-llamacpp-models.sh` or ensure the GGUF files are in `~/.cache/llama.cpp/models/`.
 On **exit 3**: retry phase 1 with fresh cookies.
 
 ### Phase 3: Process (transcribe, vision, summarize)
@@ -59,11 +59,11 @@ run all three phases in order. If only phase 1 succeeded, run phases 2 and 3.
 | Issue | Workaround |
 |-------|-----------|
 | `max_frames = 60` makes it too slow | Change `max_frames` in `~/.config/reel-summarize/config.toml` or rebuild nix |
-| Vision model times out per-frame | Ensure `llava:7b` is pulled (not `llama3.2-vision:11b`) |
+| Vision model times out per-frame | Ensure `qwen2.5-vl:7b` GGUF is in `~/.cache/llama.cpp/models/` |
 | Nix package stale (missing fixes) | Use PYTHONPATH override above, or rebuild with `nr` |
-| ollama slow on M2 | Verify GPU layers via `ps aux \| grep llama-server` (should see `-ngl 99`) |
+| Slow on M2 | Verify GPU layers via `ps aux \| grep llama-server` (should see `-ngl 99`) |
 
 **Notes:**
-- Runs entirely locally via Ollama + whisper
-- Must have ollama running with `llava:7b` and `qwen2.5:7b` pulled
+- Runs entirely locally via llama.cpp + transcribe.cpp
+- Must have llama.cpp server running on `localhost:8080` and/or `localhost:8081` with GGUF models in `~/.cache/llama.cpp/models/`
 - Automatically detects cookies from Zen browser's Personal workspace

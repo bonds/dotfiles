@@ -35,9 +35,10 @@
     mtr # better traceroute
     nh # nix helper for rebuilds and garbage collection (darwin, no programs.nh module)
     nodejs # needed for hihello development
-    ollama # run LLMs locally
     opencode # AI coding agent (CLI, binary overlay, nr --update)
     opencode-desktop # OpenCode Electron desktop app (binary overlay, auto-updater disabled)
+    osaurus # native macOS AI agent harness (binary overlay, nr --update)
+    oxillama # pure Rust LLM inference engine (experimental, pkgs/oxillama/update.sh, nr --update)
     openssh # macos ssh doesn't come with resident ssh support
     osxphotos # export photos from Apple Photos app
     passage # age-based password manager

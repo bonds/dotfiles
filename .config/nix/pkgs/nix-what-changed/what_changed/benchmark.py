@@ -147,8 +147,8 @@ async def main():
     default_model = Config().model
     parser.add_argument("--models", help=f"Comma-separated model names (default: {default_model})", default=default_model)
     parser.add_argument("--samples", help="Comma-separated sample names (default: all)")
-    parser.add_argument("--host", default="http://localhost:11434", help="LLM API host")
-    parser.add_argument("--backend", default="ollama", choices=["ollama", "openai"])
+    parser.add_argument("--host", default="http://localhost:8080", help="LLM API host")
+    parser.add_argument("--backend", default="openai", choices=["ollama", "openai"])
     parser.add_argument("--json", action="store_true", help="Output JSON")
     parser.add_argument("--prompt", default="curate", help="Prompt style (curate, default, strict, concise, no-hallucinate, numbered)")
     parser.add_argument("--save", action="store_true", help="Save results to benchmarks/")

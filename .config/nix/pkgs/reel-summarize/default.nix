@@ -20,7 +20,7 @@ python3.pkgs.buildPythonApplication {
     "${transcribe-cpp}/lib/libtranscribe.dylib"
   ];
   meta = with lib; {
-    description = "Summarize Instagram Reels using local models (Ollama + transcribe.cpp)";
+    description = "Summarize Instagram Reels using local models (llama.cpp + transcribe.cpp, or Ollama)";
     homepage = "https://github.com/bonds/dotfiles";
     license = licenses.mit;
     platforms = platforms.all;

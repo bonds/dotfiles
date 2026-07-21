@@ -8,9 +8,6 @@
 in {
   services.printing.enable = true;
 
-  services.ollama-server.enable = true;
-  systemd.services.ollama.serviceConfig.Restart = lib.mkForce "always";
-
   services.fprintd.enable = true;
 
   services.avahi = {
