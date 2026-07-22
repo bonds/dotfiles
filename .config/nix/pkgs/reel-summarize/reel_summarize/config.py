@@ -23,6 +23,28 @@ class Config:
     timeout: int = 180
 
 
+def resolve_model_name(host: str, cfg: Config) -> str:
+    """Query the LLM server for the actual loaded model name."""
+    import httpx
+
+    try:
+        if cfg.backend == "openai":
+            resp = httpx.get(f"{host.rstrip('/')}/v1/models", timeout=5)
+            resp.raise_for_status()
+            data = resp.json().get("data", [])
+            if data:
+                return data[0].get("id", cfg.vision_model)
+        elif cfg.backend == "ollama":
+            resp = httpx.get(f"{host.rstrip('/')}/api/tags", timeout=5)
+            resp.raise_for_status()
+            models = resp.json().get("models", [])
+            if models:
+                return models[0].get("name", cfg.vision_model)
+    except Exception:
+        pass
+    return cfg.vision_model
+
+
 def whisper_model_path(cfg: Config) -> str:
     """Resolve whisper_model to an absolute path.
 

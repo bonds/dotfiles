@@ -7,7 +7,7 @@ import shutil
 import sys
 import tempfile
 
-from reel_summarize.config import Config, whisper_model_path, MODELS_DIR, MODEL_URL
+from reel_summarize.config import Config, resolve_model_name, whisper_model_path, MODELS_DIR, MODEL_URL
 from reel_summarize.stages.download import download, fetch_metadata
 from reel_summarize.stages.audio_extract import extract_audio
 from reel_summarize.stages.frame_extract import extract_frames
@@ -131,7 +131,8 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
 
         vision_results = []
         if frames:
-            p(f"→ scanning {len(frames)} frames ({cfg.vision_model})...")
+            _vmodel = resolve_model_name(cfg.vision_host, cfg)
+            p(f"→ scanning {len(frames)} frames ({_vmodel})...")
             vision_results = analyze_frames(frames, cfg)
 
         vision_timeline = format_vision_timeline(
@@ -140,7 +141,8 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
 
         author = metadata.get("author") or "unknown"
         caption = metadata.get("caption") or "(no caption)"
-        p(f"→ summarizing ({cfg.summarize_model})...")
+        _smodel = resolve_model_name(cfg.host, cfg)
+        p(f"→ summarizing ({_smodel})...")
         summary = generate_summary(
             transcript=transcript,
             vision_timeline=vision_timeline,
@@ -243,7 +245,8 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
 
             vision_results = []
             if frames:
-                p(f"→ scanning {len(frames)} frames ({cfg.vision_model})...")
+                _vmodel = resolve_model_name(cfg.vision_host, cfg)
+                p(f"→ scanning {len(frames)} frames ({_vmodel})...")
                 vision_results = analyze_frames(frames, cfg)
 
             vision_timeline = format_vision_timeline(
@@ -252,7 +255,8 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
 
             author = metadata.get("author") or "unknown"
             caption = metadata.get("caption") or "(no caption)"
-            p(f"→ summarizing ({cfg.summarize_model})...")
+            _smodel = resolve_model_name(cfg.host, cfg)
+            p(f"→ summarizing ({_smodel})...")
             summary = generate_summary(
                 transcript=transcript,
                 vision_timeline=vision_timeline,
