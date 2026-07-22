@@ -30,11 +30,22 @@
       mv "$MODEL.tmp" "$MODEL"
       echo "✓ model downloaded"
     fi
+    # Server flags rationale:
+    #   ctx 8192: increased from 4096 because 4096 truncated the
+    #   summarization prompt (transcript + vision timeline), causing
+    #   empty-summary failures. 32768 matches Qwen2.5 native context
+    #   but doubles KV cache memory with no benefit for reel-length inputs.
+    #   batch/ubatch 2048/1024: benchmarked on the same Daily Show reel
+    #   (139s, 10 frames) — 7.4% faster than defaults (512/512):
+    #   559.9s vs 604.6s. --flash-attn on was also tested but added ~8%
+    #   overhead with garbled output; not worth enabling.
     exec ${pkgs.llama-cpp}/bin/llama-server \
       --host 127.0.0.1 --port 8080 \
       -m "$MODEL" \
       --n-gpu-layers 99 \
-      --ctx-size 4096
+      --ctx-size 8192 \
+      --batch-size 2048 \
+      --ubatch-size 1024
   '';
 
   llamacppVisionServeScript = pkgs.writeShellScript "llamacpp-vision-serve" ''
@@ -58,12 +69,15 @@
       mv "$MMPROJ.tmp" "$MMPROJ"
       echo "✓ mmproj downloaded"
     fi
+    # same tuned values as text server — see above for rationale
     exec ${pkgs.llama-cpp}/bin/llama-server \
       --host 127.0.0.1 --port 8081 \
       -m "$MODEL" \
       --mmproj "$MMPROJ" \
       --n-gpu-layers 99 \
-      --ctx-size 4096
+      --ctx-size 8192 \
+      --batch-size 2048 \
+      --ubatch-size 1024
   '';
 
   zenIcon = ../../modules/zen-icon.icns;
