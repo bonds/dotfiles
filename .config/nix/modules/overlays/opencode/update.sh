@@ -38,7 +38,7 @@ awk -v ver="$version" -v cli_hash="$cli_hash" -v desktop_hash="$desktop_hash" '
   if (count == 1) sub(/hash = "[^"]*";/, "hash = \"" cli_hash "\";")
   else if (count == 2) sub(/hash = "[^"]*";/, "hash = \"" desktop_hash "\";")
 }
-{ gsub(/\/download\/v[0-9.]+\//, "/download/v" ver "/"); print }
+{ print }
 ' "$OVERLAY" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
 
 echo "Updated opencode overlay to version $version"

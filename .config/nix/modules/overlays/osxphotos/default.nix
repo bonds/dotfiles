@@ -1,10 +1,10 @@
 final: prev: {
-  osxphotos = final.mkDarwinPackage {
+  osxphotos = final.mkDarwinPackage rec {
     pname = "osxphotos";
     version = "0.76.1";
 
     src = prev.fetchurl {
-      url = "https://github.com/RhetTbull/osxphotos/releases/download/v0.76.1/osxphotos_MacOS_exe_darwin_arm64_v0.76.1.zip";
+      url = "https://github.com/RhetTbull/osxphotos/releases/download/v${version}/osxphotos_MacOS_exe_darwin_arm64_v${version}.zip";
       hash = "sha256-SDYhKc37BLzlsLuuDiWl6wcSDW996YEtv9ZqILG6YJc=";
     };
 

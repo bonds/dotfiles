@@ -1,10 +1,10 @@
 final: prev: {
-  opencode = final.mkDarwinPackage {
+  opencode = final.mkDarwinPackage rec {
     pname = "opencode";
     version = "1.18.4";
 
     src = prev.fetchurl {
-      url = "https://github.com/anomalyco/opencode/releases/download/v1.18.4/opencode-darwin-arm64.zip";
+      url = "https://github.com/anomalyco/opencode/releases/download/v${version}/opencode-darwin-arm64.zip";
       hash = "sha256-BPuIG2MrMjxxLf2m3LvG/Oc2OU8HunYXblLWZlkl1OY=";
     };
 
@@ -22,12 +22,12 @@ final: prev: {
     };
   };
 
-  opencode-desktop = final.mkDarwinPackage {
+  opencode-desktop = final.mkDarwinPackage rec {
     pname = "opencode-desktop";
     version = "1.18.4";
 
     src = prev.fetchurl {
-      url = "https://github.com/anomalyco/opencode/releases/download/v1.18.4/opencode-desktop-mac-arm64.zip";
+      url = "https://github.com/anomalyco/opencode/releases/download/v${version}/opencode-desktop-mac-arm64.zip";
       hash = "sha256-LOScg+/s6XLXmRkQAVburQ6yhpagjHR+gJxq1igQjPI=";
     };
 

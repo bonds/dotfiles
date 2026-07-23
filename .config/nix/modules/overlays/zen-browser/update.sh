@@ -27,7 +27,6 @@ echo "SRI hash: $hash"
 
 sed -i.bak "s/version = \".*\";/version = \"$version\";/" "$OVERLAY"
 sed -i.bak "s|hash = \"sha256-[A-Za-z0-9+/=]*\";|hash = \"$hash\";|" "$OVERLAY"
-sed -i.bak "s|/download/[^/]*/zen.macos-universal.dmg|/download/$version/zen.macos-universal.dmg|" "$OVERLAY"
 rm -f "$OVERLAY.bak"
 
 echo "Updated zen-browser overlay to version $version"
