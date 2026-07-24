@@ -199,47 +199,6 @@ in {
             StandardErrorPath = "${userHome}/Library/Logs/prune-generations.err.log";
           };
         };
-        photos-backup = {
-          serviceConfig = {
-            ProgramArguments = [
-              "/bin/sh"
-              "-c"
-              ''
-                MNT="/Volumes/sophrosyne-photos"
-                PASS=$(security find-internet-password -s sophrosyne.local -a "photo-backup" -w 2>/dev/null)
-                if [ -z "$PASS" ]; then
-                  echo "photo-backup: no Keychain entry for sophrosyne.local/photo-backup — skipping"
-                  echo "  Set up: security add-internet-password -s sophrosyne.local -a \"photo-backup\" -w \"PASSWORD\""
-                  exit 0
-                fi
-
-                mkdir -p "$MNT" || { echo "photo-backup: can't create $MNT"; exit 0; }
-                mount -t smbfs "//photo-backup:$PASS@sophrosyne.local/photos" "$MNT" || {
-                  echo "photo-backup: mount failed — skipping"
-                  rmdir "$MNT" 2>/dev/null
-                  exit 0
-                }
-
-                ${pkgs.osxphotos}/bin/osxphotos export \
-                  --exportdb "${userHome}/.cache/osxphotos-export.db" \
-                  --retry 3 \
-                  --sidecar XMP --skip-edited --skip-live --update \
-                  --directory "{created.year}/{created.month:02d}" \
-                  "$MNT/"
-
-                umount "$MNT" || true
-              ''
-            ];
-            StartCalendarInterval = [
-              {
-                Hour = 2;
-                Minute = 0;
-              }
-            ];
-            StandardOutPath = "${userHome}/Library/Logs/photos-backup.out.log";
-            StandardErrorPath = "${userHome}/Library/Logs/photos-backup.err.log";
-          };
-        };
       };
     };
   };
