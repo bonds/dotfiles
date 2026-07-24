@@ -77,6 +77,11 @@
         "guest ok" = "yes";
         "writeable" = "yes";
       };
+      "photos" = {
+        "path" = "/dragon/media/photos";
+        "valid users" = "photo-backup";
+        "writeable" = "yes";
+      };
     };
   };
 
