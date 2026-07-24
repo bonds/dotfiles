@@ -33,7 +33,7 @@
   systemd.services.photo-backup-monitor = let
     monitorScript = pkgs.writeShellScript "photo-backup-monitor" ''
       PHOTO_DIR="/dragon/media/photos"
-      THRESHOLD_HOURS=48
+      THRESHOLD_HOURS=168
       LOG_FILE="/var/log/photo-backup-monitor.log"
 
       log() {
