@@ -79,8 +79,10 @@ async def call_tool(name: str, arguments: dict) -> list:
     return [
         TextContent(
             type="text",
-            text=f'Search results for "{query}":\n\n'
-            + "\n\n---\n\n".join(formatted),
+            text=(
+                f'Search results for "{query}":\n\n'
+                + "\n\n---\n\n".join(formatted)
+            ),
         )
     ]
 

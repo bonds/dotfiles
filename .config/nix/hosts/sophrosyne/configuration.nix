@@ -8,7 +8,7 @@
 
   mcpSearchServer = pkgs.writers.writePython3Bin "mcp-searxng-search" {
     libraries = with pkgs.python3Packages; [mcp httpx starlette uvicorn];
-    flakeIgnore = ["E501" "E402"];
+    flakeIgnore = ["E501" "E402" "W503"];
   } (builtins.readFile ../../pkgs/mcp-searxng-search/server.py);
 in {
   imports = [
