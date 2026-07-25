@@ -5,8 +5,10 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent
 from mcp.server.sse import SseServerTransport
 from starlette.applications import Starlette
-from starlette.routing import Route, Mount
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import Response
+from starlette.routing import Route, Mount
 
 server = Server("searxng-search")
 
@@ -106,7 +108,15 @@ app = Starlette(
     routes=[
         Route("/sse", endpoint=handle_sse),
         Mount("/messages/", app=sse.handle_post_message),
-    ]
+    ],
+    middleware=[
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_methods=["*"],
+            allow_headers=["*"],
+        ),
+    ],
 )
 
 
