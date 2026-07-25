@@ -198,6 +198,7 @@ in {
           );
           Restart = "always";
           RestartSec = 5;
+          TimeoutStartSec = lib.mkDefault "infinity";
         };
       }
       // lib.optionalAttrs (preStartScript != "") {
