@@ -123,9 +123,21 @@ in {
     enable = true;
     host = "0.0.0.0";
     port = 8080;
-    model = "/dragon/servers/llamacpp/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf";
-    modelUrl = "https://huggingface.co/bartowski/Qwen_Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf";
-    extraArgs = ["--ctx-size" "4096"];
+    router = {
+      enable = true;
+      modelsMax = 1;
+      sleepIdleSeconds = 300;
+      models = {
+        "gemma-4-31b-it" = {
+          url = "https://huggingface.co/unsloth/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-Q4_K_M.gguf";
+          args = {ctx-size = "8192";};
+        };
+        "qwen3.6-35b-a3b" = {
+          url = "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf";
+          args = {ctx-size = "8192";};
+        };
+      };
+    };
   };
   networking.firewall.allowedTCPPorts = [8080];
 
