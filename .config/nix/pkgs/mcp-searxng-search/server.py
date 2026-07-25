@@ -104,7 +104,32 @@ async def app(scope, receive, send):
 
     if scope["type"] == "http":
         if scope["path"] == "/sse":
-            await session_manager.handle_request(scope, receive, send)
+            if scope["method"] == "OPTIONS":
+                await send({
+                    "type": "http.response.start",
+                    "status": 200,
+                    "headers": [
+                        (b"access-control-allow-origin", b"*"),
+                        (b"access-control-allow-methods", b"GET, POST, OPTIONS"),
+                        (b"access-control-allow-headers", b"*"),
+                        (b"access-control-max-age", b"600"),
+                    ],
+                })
+                await send({"type": "http.response.body", "body": b""})
+                return
+
+            orig_send = send
+
+            async def cors_send(message):
+                if message["type"] == "http.response.start":
+                    headers = list(message.get("headers", []))
+                    headers.append((b"access-control-allow-origin", b"*"))
+                    headers.append((b"access-control-allow-methods", b"GET, POST, OPTIONS"))
+                    headers.append((b"access-control-allow-headers", b"*"))
+                    message = {**message, "headers": headers}
+                await orig_send(message)
+
+            await session_manager.handle_request(scope, receive, cors_send)
         else:
             await send({
                 "type": "http.response.start",
