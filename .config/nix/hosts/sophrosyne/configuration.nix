@@ -5,6 +5,11 @@
   ...
 }: let
   userHome = import ../../lib/user-home.nix pkgs;
+
+  mcpSearchServer = pkgs.writers.writePython3Bin "mcp-searxng-search" {
+    libraries = with pkgs.python3Packages; [mcp httpx starlette uvicorn];
+    flakeIgnore = ["E501" "E402"];
+  } (builtins.readFile ../../pkgs/mcp-searxng-search/server.py);
 in {
   imports = [
     ./hardware-configuration.nix
@@ -129,7 +134,8 @@ in {
     enable = true;
     host = "0.0.0.0";
     port = 8080;
-    tools = ["exec_shell_command" "read_file" "get_datetime"];
+    tools = ["read_file" "get_datetime"];
+    extraArgs = ["--webui-mcp-proxy"];
     router = {
       enable = true;
       modelsMax = 1;
@@ -147,6 +153,23 @@ in {
     };
   };
   networking.firewall.allowedTCPPorts = [8080];
+
+  systemd.services.mcp-searxng-search = {
+    description = "SearXNG MCP server for web search";
+    after = ["searx.service" "network.target"];
+    wants = ["searx.service"];
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      ExecStart = "${mcpSearchServer}/bin/mcp-searxng-search";
+      User = "llamacpp";
+      Group = "llamacpp";
+      Restart = "always";
+      RestartSec = 5;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+      IPAddressAllow = "127.0.0.0/8";
+    };
+  };
 
   services.searx = {
     enable = true;
