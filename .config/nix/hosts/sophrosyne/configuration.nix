@@ -90,12 +90,6 @@ in {
       group = "searx";
       mode = "0400";
     };
-    llamacpp-api-key = {
-      file = ../../secrets/llamacpp-api-key.age;
-      owner = "llamacpp";
-      group = "llamacpp";
-      mode = "0400";
-    };
   };
 
   services.minecraft-bedrock = {
@@ -135,7 +129,6 @@ in {
     enable = true;
     host = "0.0.0.0";
     port = 8080;
-    apiKeyFile = config.age.secrets.llamacpp-api-key.path;
     tools = ["exec_shell_command" "read_file" "get_datetime"];
     router = {
       enable = true;
