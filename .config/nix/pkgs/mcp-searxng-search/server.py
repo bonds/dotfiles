@@ -1,13 +1,9 @@
 """SearXNG MCP server — provides web_search tool for llama.cpp web UI"""
 
-import contextlib
-
 import httpx
 from mcp.server import Server
 from mcp.types import Tool, TextContent
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
-from starlette.applications import Starlette
-from starlette.routing import Mount
 
 server = Server("searxng-search")
 
@@ -95,18 +91,27 @@ session_manager = StreamableHTTPSessionManager(
 )
 
 
-@contextlib.asynccontextmanager
-async def lifespan(app):
-    async with session_manager.run():
-        yield
+async def app(scope, receive, send):
+    if scope["type"] == "lifespan":
+        async with session_manager.run():
+            while True:
+                message = await receive()
+                if message["type"] == "lifespan.shutdown":
+                    break
+        return
 
-
-app = Starlette(
-    routes=[
-        Mount("/sse", app=session_manager.handle_request),
-    ],
-    lifespan=lifespan,
-)
+    if scope["type"] == "http" and scope["path"] == "/sse":
+        await session_manager.handle_request(scope, receive, send)
+    else:
+        await send({
+            "type": "http.response.start",
+            "status": 404,
+            "headers": [(b"content-type", b"text/plain")],
+        })
+        await send({
+            "type": "http.response.body",
+            "body": b"Not Found",
+        })
 
 
 if __name__ == "__main__":
