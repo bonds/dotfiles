@@ -114,6 +114,10 @@ in {
 
   services.syncthing = let
     syncthingIds = import ../../lib/syncthing-ids.nix;
+    mcpFetchServer = pkgs.writers.writePython3Bin "mcp-fetch" {
+      libraries = with pkgs.python3Packages; [mcp httpx uvicorn];
+      flakeIgnore = ["E501" "E402" "W503"];
+    } (builtins.readFile ../../pkgs/mcp-fetch/server.py);
   in {
     enable = true;
     openDefaultPorts = true;
@@ -152,7 +156,7 @@ in {
       };
     };
   };
-  networking.firewall.allowedTCPPorts = [8080 8890];
+  networking.firewall.allowedTCPPorts = [8080 8890 8891];
 
   systemd.services.mcp-searxng-search = {
     description = "SearXNG MCP server for web search";
@@ -161,6 +165,21 @@ in {
     wantedBy = ["multi-user.target"];
     serviceConfig = {
       ExecStart = "${mcpSearchServer}/bin/mcp-searxng-search";
+      User = "llamacpp";
+      Group = "llamacpp";
+      Restart = "always";
+      RestartSec = 5;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+    };
+  };
+
+  systemd.services.mcp-fetch = {
+    description = "Web fetch MCP server";
+    after = ["network.target"];
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      ExecStart = "${mcpFetchServer}/bin/mcp-fetch";
       User = "llamacpp";
       Group = "llamacpp";
       Restart = "always";
