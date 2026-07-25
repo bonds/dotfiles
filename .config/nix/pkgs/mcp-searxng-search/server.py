@@ -94,24 +94,27 @@ session_manager = StreamableHTTPSessionManager(
 async def app(scope, receive, send):
     if scope["type"] == "lifespan":
         async with session_manager.run():
+            await send({"type": "lifespan.startup.complete"})
             while True:
                 message = await receive()
                 if message["type"] == "lifespan.shutdown":
                     break
+            await send({"type": "lifespan.shutdown.complete"})
         return
 
-    if scope["type"] == "http" and scope["path"] == "/sse":
-        await session_manager.handle_request(scope, receive, send)
-    else:
-        await send({
-            "type": "http.response.start",
-            "status": 404,
-            "headers": [(b"content-type", b"text/plain")],
-        })
-        await send({
-            "type": "http.response.body",
-            "body": b"Not Found",
-        })
+    if scope["type"] == "http":
+        if scope["path"] == "/sse":
+            await session_manager.handle_request(scope, receive, send)
+        else:
+            await send({
+                "type": "http.response.start",
+                "status": 404,
+                "headers": [(b"content-type", b"text/plain")],
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b"Not Found",
+            })
 
 
 if __name__ == "__main__":
