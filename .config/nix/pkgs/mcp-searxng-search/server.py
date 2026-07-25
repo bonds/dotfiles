@@ -93,20 +93,22 @@ sse = SseServerTransport("/messages/")
 
 
 async def handle_sse(request):
-    async with sse.connect_sse(
-        request.scope, request.receive, request._send
-    ) as streams:
-        await server.run(
-            streams[0],
-            streams[1],
-            server.create_initialization_options(),
-        )
-    return Response()
+    if request.method == "GET":
+        async with sse.connect_sse(
+            request.scope, request.receive, request._send
+        ) as streams:
+            await server.run(
+                streams[0],
+                streams[1],
+                server.create_initialization_options(),
+            )
+        return Response()
+    return await sse.handle_post_message(request.scope, request.receive, request._send)
 
 
 app = Starlette(
     routes=[
-        Route("/sse", endpoint=handle_sse),
+        Route("/sse", endpoint=handle_sse, methods=["GET", "POST"]),
         Mount("/messages/", app=sse.handle_post_message),
     ],
     middleware=[
