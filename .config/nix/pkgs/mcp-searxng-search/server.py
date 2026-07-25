@@ -1,14 +1,15 @@
 """SearXNG MCP server — provides web_search tool for llama.cpp web UI"""
 
+import contextlib
+
 import httpx
 from mcp.server import Server
 from mcp.types import Tool, TextContent
-from mcp.server.sse import SseServerTransport
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import Response
-from starlette.routing import Route, Mount
+from starlette.routing import Route
 
 server = Server("searxng-search")
 
@@ -89,28 +90,30 @@ async def call_tool(name: str, arguments: dict) -> list:
     ]
 
 
-sse = SseServerTransport("/messages/")
+session_manager = StreamableHTTPSessionManager(
+    server,
+    json_response=True,
+    stateless=True,
+)
 
 
-async def handle_sse(request):
-    if request.method == "GET":
-        async with sse.connect_sse(
-            request.scope, request.receive, request._send
-        ) as streams:
-            await server.run(
-                streams[0],
-                streams[1],
-                server.create_initialization_options(),
-            )
-        return Response()
-    return await sse.handle_post_message(request.scope, request.receive, request._send)
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    async with session_manager.run():
+        yield
+
+
+async def handle_mcp(request):
+    await session_manager.handle_request(
+        request.scope, request.receive, request._send
+    )
 
 
 app = Starlette(
     routes=[
-        Route("/sse", endpoint=handle_sse, methods=["GET", "POST"]),
-        Mount("/messages/", app=sse.handle_post_message),
+        Route("/sse", endpoint=handle_mcp, methods=["GET", "POST"]),
     ],
+    lifespan=lifespan,
     middleware=[
         Middleware(
             CORSMiddleware,
