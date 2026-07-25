@@ -5,4 +5,6 @@ in {
   "/Users/scott/.config/nix/secrets/ddns-token.age".publicKeys = [sophrosyne accismus-yubikey];
   "/Users/scott/.config/nix/secrets/email-pass.age".publicKeys = [sophrosyne accismus-yubikey];
   "/Users/scott/.config/nix/secrets/dst-cluster-token.age".publicKeys = [sophrosyne accismus-yubikey];
+  "/Users/scott/.config/nix/secrets/searx-secret-key.age".publicKeys = [sophrosyne accismus-yubikey];
+  "/Users/scott/.config/nix/secrets/llamacpp-api-key.age".publicKeys = [sophrosyne accismus-yubikey];
 }

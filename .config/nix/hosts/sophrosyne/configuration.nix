@@ -84,6 +84,18 @@ in {
       group = "dst";
       mode = "0400";
     };
+    searx-secret-key = {
+      file = ../../secrets/searx-secret-key.age;
+      owner = "searx";
+      group = "searx";
+      mode = "0400";
+    };
+    llamacpp-api-key = {
+      file = ../../secrets/llamacpp-api-key.age;
+      owner = "llamacpp";
+      group = "llamacpp";
+      mode = "0400";
+    };
   };
 
   services.minecraft-bedrock = {
@@ -123,6 +135,8 @@ in {
     enable = true;
     host = "0.0.0.0";
     port = 8080;
+    apiKeyFile = config.age.secrets.llamacpp-api-key.path;
+    tools = ["exec_shell_command" "read_file" "get_datetime"];
     router = {
       enable = true;
       modelsMax = 1;
@@ -140,6 +154,21 @@ in {
     };
   };
   networking.firewall.allowedTCPPorts = [8080];
+
+  services.searx = {
+    enable = true;
+    settings = {
+      server = {
+        bind_address = "127.0.0.1";
+        port = 8888;
+        secret_key = "$SEARX_SECRET_KEY";
+        limiter = false;
+        public_instance = false;
+      };
+      search.formats = ["html" "json"];
+    };
+    environmentFile = config.age.secrets.searx-secret-key.path;
+  };
 
   programs.firesafe-backup = {
     enable = true;

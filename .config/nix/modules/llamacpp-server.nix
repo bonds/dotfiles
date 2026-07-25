@@ -4,9 +4,12 @@
   pkgs,
   ...
 }: let
-  inherit (lib) mkOption mkIf mkEnableOption types literalExpression;
+  inherit (lib) mkOption mkIf mkEnableOption mkDefault types literalExpression;
   cfg = config.services.llamacpp-server;
   isRouter = cfg.router.enable;
+
+  svcUser = cfg.user;
+  svcGroup = cfg.group;
 
   singleModelArgs =
     lib.optionals (!isRouter)
@@ -23,6 +26,11 @@
     "--sleep-idle-seconds"
     (toString cfg.router.sleepIdleSeconds)
   ];
+
+  toolArgs =
+    lib.optionals (cfg.tools != []) ["--tools" (lib.concatStringsSep "," cfg.tools)];
+  apiKeyArgs =
+    lib.optionals (cfg.apiKeyFile != null) ["--api-key-file" cfg.apiKeyFile];
 
   # Generate the preset INI content from the models attrset
   presetIni = pkgs.writeText "llamacpp-presets.ini" (let
@@ -119,6 +127,30 @@ in {
       description = "llama.cpp package to use";
     };
 
+    apiKeyFile = mkOption {
+      type = types.nullOr types.path;
+      default = null;
+      description = "Path to API key file (one key per line). Enables --api-key-file for tool authentication.";
+    };
+
+    tools = mkOption {
+      type = types.listOf types.str;
+      default = [];
+      description = "Built-in tools to enable (e.g., exec_shell_command, read_file, get_datetime). Use with caution — exec_shell_command runs arbitrary commands.";
+    };
+
+    user = mkOption {
+      type = types.str;
+      default = "llamacpp";
+      description = "User to run the server as";
+    };
+
+    group = mkOption {
+      type = types.str;
+      default = "llamacpp";
+      description = "Group to run the server as";
+    };
+
     router = {
       enable = mkOption {
         type = types.bool;
@@ -178,6 +210,13 @@ in {
       }
     ];
 
+    users.users.${svcUser} = {
+      isSystemUser = true;
+      group = svcGroup;
+      description = "llama.cpp server user";
+    };
+    users.groups.${svcGroup} = {};
+
     systemd.services.llamacpp-server =
       {
         description = "llama-server (llama.cpp)";
@@ -194,15 +233,31 @@ in {
             ]
             ++ singleModelArgs
             ++ routerArgs
+            ++ toolArgs
+            ++ apiKeyArgs
             ++ cfg.extraArgs
           );
+          User = svcUser;
+          Group = svcGroup;
           Restart = "always";
           RestartSec = 5;
           TimeoutStartSec = lib.mkDefault "infinity";
+          ProtectSystem = "strict";
+          ProtectHome = true;
+          PrivateTmp = true;
+          NoNewPrivileges = true;
+          IPAddressAllow = "127.0.0.0/8";
         };
       }
       // lib.optionalAttrs (preStartScript != "") {
-        preStart = lib.mkBefore preStartScript;
+        preStart = lib.mkBefore (preStartScript
+          + lib.optionalString (isRouter || cfg.model != null) ''
+            chown -R ${svcUser}:${svcGroup} "${
+              if isRouter
+              then cfg.router.modelsDir
+              else builtins.dirOf cfg.model
+            }" 2>/dev/null || true
+          '');
       };
   };
 }
