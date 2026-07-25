@@ -7,12 +7,10 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.applications import Starlette
-from starlette.middleware import Middleware
-from starlette.middleware.cors import CORSMiddleware
 from starlette.routing import Mount
 
-
 server = Server("searxng-search")
+
 
 @server.list_tools()
 async def list_tools():
@@ -108,14 +106,6 @@ app = Starlette(
         Mount("/sse", app=session_manager.handle_request),
     ],
     lifespan=lifespan,
-    middleware=[
-        Middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_methods=["*"],
-            allow_headers=["*"],
-        ),
-    ],
 )
 
 
