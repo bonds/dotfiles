@@ -240,7 +240,7 @@ in {
           User = svcUser;
           Group = svcGroup;
           Environment = [
-            "PATH=${lib.makeSearchPath "bin" (with pkgs; [bash curl coreutils findutils gnugrep gnused systemd])}:/run/wrappers/bin"
+            "PATH=${lib.makeSearchPath "bin" (with pkgs; [bash curl coreutils findutils gnugrep gnused systemd python3])}:/run/wrappers/bin"
           ];
           Restart = "always";
           RestartSec = 5;
