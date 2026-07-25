@@ -239,6 +239,9 @@ in {
           );
           User = svcUser;
           Group = svcGroup;
+          Environment = [
+            "PATH=${lib.makeSearchPath "bin" (with pkgs; [bash curl coreutils findutils gnugrep gnused systemd])}:/run/wrappers/bin"
+          ];
           Restart = "always";
           RestartSec = 5;
           TimeoutStartSec = lib.mkDefault "infinity";
