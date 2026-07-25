@@ -7,9 +7,14 @@
   userHome = import ../../lib/user-home.nix pkgs;
 
   mcpSearchServer = pkgs.writers.writePython3Bin "mcp-searxng-search" {
-    libraries = with pkgs.python3Packages; [mcp httpx starlette uvicorn];
+    libraries = with pkgs.python3Packages; [mcp httpx uvicorn];
     flakeIgnore = ["E501" "E402" "W503"];
   } (builtins.readFile ../../pkgs/mcp-searxng-search/server.py);
+
+  mcpFetchServer = pkgs.writers.writePython3Bin "mcp-fetch" {
+    libraries = with pkgs.python3Packages; [mcp httpx uvicorn];
+    flakeIgnore = ["E501" "E402" "W503"];
+  } (builtins.readFile ../../pkgs/mcp-fetch/server.py);
 in {
   imports = [
     ./hardware-configuration.nix
@@ -114,10 +119,6 @@ in {
 
   services.syncthing = let
     syncthingIds = import ../../lib/syncthing-ids.nix;
-    mcpFetchServer = pkgs.writers.writePython3Bin "mcp-fetch" {
-      libraries = with pkgs.python3Packages; [mcp httpx uvicorn];
-      flakeIgnore = ["E501" "E402" "W503"];
-    } (builtins.readFile ../../pkgs/mcp-fetch/server.py);
   in {
     enable = true;
     openDefaultPorts = true;
