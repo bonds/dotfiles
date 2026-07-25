@@ -17,8 +17,6 @@
       ++ lib.optionals (cfg.mmproj != null) ["--mmproj" cfg.mmproj]);
 
   routerArgs = lib.optionals isRouter [
-    "--models-dir"
-    cfg.router.modelsDir
     "--models-preset"
     presetIni
     "--models-max"
