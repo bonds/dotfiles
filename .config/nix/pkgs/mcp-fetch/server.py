@@ -137,9 +137,20 @@ async def app(scope, receive, send):
                     "status": 200,
                     "headers": [
                         (b"access-control-allow-origin", b"*"),
-                        (b"access-control-allow-methods", b"GET, POST, OPTIONS"),
+                        (b"access-control-allow-methods", b"POST, OPTIONS"),
                         (b"access-control-allow-headers", b"*"),
                         (b"access-control-max-age", b"600"),
+                    ],
+                })
+                await send({"type": "http.response.body", "body": b""})
+                return
+
+            if scope["method"] == "GET":
+                await send({
+                    "type": "http.response.start",
+                    "status": 204,
+                    "headers": [
+                        (b"access-control-allow-origin", b"*"),
                     ],
                 })
                 await send({"type": "http.response.body", "body": b""})
