@@ -152,7 +152,7 @@ in {
       };
     };
   };
-  networking.firewall.allowedTCPPorts = [8080];
+  networking.firewall.allowedTCPPorts = [8080 8890];
 
   systemd.services.mcp-searxng-search = {
     description = "SearXNG MCP server for web search";
@@ -167,7 +167,6 @@ in {
       RestartSec = 5;
       PrivateTmp = true;
       NoNewPrivileges = true;
-      IPAddressAllow = "127.0.0.0/8";
     };
   };
 
