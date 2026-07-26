@@ -93,9 +93,13 @@
     export RESTIC_PASSWORD_FILE="$PASSWORD_FILE"
 
     # LAN check — skip if not home
-    if ! ping -c 1 -t 1 192.168.4.43 >/dev/null 2>&1; then
+    if ! ping -c 1 -t 2 192.168.4.43 >/dev/null 2>&1; then
+      echo "$(date) — not on home LAN, skipping" >> "$LOGFILE"
       exit 0
     fi
+
+    # Wait for network stability after wake
+    sleep 5
 
     # Lock
     if ! mkdir "$LOCKDIR" 2>/dev/null; then
@@ -112,15 +116,25 @@
     fi
 
     echo "$(date) — starting backup" >> "$LOGFILE"
-    restic -r "$REPO" -o "sftp.args=-i $SSH_KEY -o ControlMaster=no" backup \
-      --exclude-file="$HOME/.config/restic/excludes" \
-      --tag hourly \
-      "$HOME" >> "$LOGFILE" 2>&1
+
+    # Retry loop: up to 3 attempts with 10s delay
+    for attempt in 1 2 3; do
+      if restic -r "$REPO" -o "sftp.args=-i $SSH_KEY -o ControlMaster=no -o ConnectTimeout=10" backup \
+        --exclude-file="$HOME/.config/restic/excludes" \
+        --tag hourly \
+        "$HOME" >> "$LOGFILE" 2>&1; then
+        break
+      fi
+      if [ "$attempt" -lt 3 ]; then
+        echo "$(date) — attempt $attempt failed, retrying in 10s..." >> "$LOGFILE"
+        sleep 10
+      fi
+    done
 
     # Weekly prune (Sunday)
     if [ "$(date +%u)" -eq 7 ]; then
       echo "$(date) — pruning" >> "$LOGFILE"
-      restic -r "$REPO" -o "sftp.args=-i $SSH_KEY -o ControlMaster=no" forget \
+      restic -r "$REPO" -o "sftp.args=-i $SSH_KEY -o ControlMaster=no -o ConnectTimeout=10" forget \
         --keep-hourly 24 \
         --keep-daily 7 \
         --keep-weekly 4 \
