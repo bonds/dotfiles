@@ -83,7 +83,7 @@
   resticBackupScript = pkgs.writeShellScript "restic-backup" ''
     set -euo pipefail
 
-    REPO="sftp:restic-backup@sophrosyne.local:/dragon/backups/accismus"
+    REPO="sftp:restic-backup@192.168.4.43:/dragon/backups/accismus"
     SSH_KEY="$HOME/.ssh/id_restic_backup"
     PASSWORD_FILE="$HOME/.config/restic/password"
     LOCKDIR="/tmp/restic-backup.lock"
