@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MNT="/tmp/sophrosyne-photos"
+LOCKDIR="/tmp/photos-backup.lock"
+LOGFILE="$HOME/Library/Logs/photos-backup.out.log"
+ERRFILE="$HOME/Library/Logs/photos-backup.err.log"
+
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+  echo "$(date) — backup already running, skipping" >> "$LOGFILE"
+  exit 0
+fi
+PASS=$(security find-internet-password -s sophrosyne.local -a "photo-backup" -w 2>/dev/null)
+if [ -z "$PASS" ]; then
+  echo "$(date) — no Keychain entry for sophrosyne.local/photo-backup" >> "$LOGFILE"
+  exit 0
+fi
+
+mkdir -p "$MNT"
+
+EXPECT_SCRIPT=$(mktemp /tmp/photos-backup-expect.XXXXXX)
+trap 'rm -rf "$LOCKDIR"; rm -f "$EXPECT_SCRIPT"' EXIT
+
+cat > "$EXPECT_SCRIPT" << 'EXPECTEOF'
+set pass [lindex $argv 0]
+set mnt [lindex $argv 1]
+spawn /sbin/mount_smbfs //photo-backup@sophrosyne.local/photos $mnt
+expect "assword:"
+send "$pass\r"
+expect eof
+catch wait result
+exit [lindex $result 3]
+EXPECTEOF
+
+if ! expect "$EXPECT_SCRIPT" "$PASS" "$MNT" >> "$LOGFILE" 2>> "$ERRFILE"; then
+  echo "$(date) — mount failed" >> "$LOGFILE"
+  rmdir "$MNT" 2>/dev/null || true
+  exit 0
+fi
+
+PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH" osxphotos export \
+  --exportdb "$HOME/.cache/osxphotos-export.db" \
+  --retry 3 \
+  --download-missing --sidecar XMP --skip-edited --skip-live --update \
+  --directory "{created.year}/{created.month:02d}" \
+  "$MNT/" 2>>"$ERRFILE" >>"$LOGFILE"
+
+umount "$MNT" 2>/dev/null || true
+echo "$(date) — backup complete" >> "$LOGFILE"
