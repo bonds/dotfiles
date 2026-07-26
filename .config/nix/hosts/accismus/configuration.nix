@@ -98,8 +98,14 @@
       exit 0
     fi
 
-    # Wait for network stability after wake
-    sleep 5
+    # Wait for network stability after wake (macOS can take ~10s)
+    for i in 1 2 3 4 5; do
+      if nc -z -G 2 192.168.4.43 22 2>/dev/null; then
+        break
+      fi
+      echo "$(date) — waiting for network (attempt $i)..." >> "$LOGFILE"
+      sleep 3
+    done
 
     # Lock
     if ! mkdir "$LOCKDIR" 2>/dev/null; then
