@@ -129,7 +129,6 @@ function myweather
 end
 
 function backup-status --description "Check restic backup status"
-    set -l restic_args "-o sftp.args=-i $HOME/.ssh/id_restic_backup -o ControlMaster=no"
     set -l repo "sftp:restic-backup@192.168.4.43:/dragon/backups/accismus"
     set -l pwfile "$HOME/.config/restic/password"
 
@@ -138,7 +137,6 @@ function backup-status --description "Check restic backup status"
         return 1
     end
 
-    # Check LAN
     if not ping -c 1 -t 1 192.168.4.43 >/dev/null 2>&1
         echo "Not on home network (192.168.4.x unreachable)" >&2
         return 1
@@ -148,13 +146,13 @@ function backup-status --description "Check restic backup status"
 
     switch "$argv[1]"
         case snapshots s
-            restic -r "$repo" $restic_args snapshots
+            restic -r "$repo" -o "sftp.args=-i $HOME/.ssh/id_restic_backup -o ControlMaster=no" snapshots
         case logs l
             tail -20 ~/Library/Logs/restic-backup.out.log
         case server
-            ssh sophrosyne "restic -r /dragon/backups/accismus snapshots"
+            ssh sophrosyne "doas restic -r /dragon/backups/accismus snapshots --password-file /run/agenix/restic-password"
         case last
-            restic -r "$repo" $restic_args snapshots --latest 1
+            restic -r "$repo" -o "sftp.args=-i $HOME/.ssh/id_restic_backup -o ControlMaster=no" snapshots --latest 1
         case '*'
             echo "Usage: backup-status [snapshots|logs|server|last]"
             echo "  snapshots (s) — list recent backups"
