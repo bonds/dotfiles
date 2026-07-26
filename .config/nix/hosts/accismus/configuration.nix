@@ -271,7 +271,7 @@ in {
           serviceConfig = {
             StartCalendarInterval = [
               {
-                Minute = 0;
+                Minute = 17;
               }
             ];
             StandardOutPath = "${userHome}/Library/Logs/restic-backup.out.log";
