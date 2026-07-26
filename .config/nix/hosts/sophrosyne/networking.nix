@@ -67,7 +67,8 @@
       };
       "timemachine" = {
         "path" = "/dragon/timemachine";
-        "guest ok" = "yes";
+        "valid users" = "photo-backup";
+        # "guest ok" = "yes";
         "writeable" = "yes";
         "fruit:time machine" = "yes";
         "fruit:time machine max size" = "4T";
