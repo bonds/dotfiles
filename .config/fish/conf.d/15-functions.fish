@@ -128,6 +128,42 @@ function myweather
     curl -s "wttr.in/~$loc?uQ0"
 end
 
+function backup-status --description "Check restic backup status"
+    set -l restic_args "-o sftp.args=-i $HOME/.ssh/id_restic_backup -o ControlMaster=no"
+    set -l repo "sftp:restic-backup@192.168.4.43:/dragon/backups/accismus"
+    set -l pwfile "$HOME/.config/restic/password"
+
+    if not test -f "$pwfile"
+        echo "No password file at $pwfile — has restic init been run?" >&2
+        return 1
+    end
+
+    # Check LAN
+    if not ping -c 1 -t 1 192.168.4.43 >/dev/null 2>&1
+        echo "Not on home network (192.168.4.x unreachable)" >&2
+        return 1
+    end
+
+    set -lx RESTIC_PASSWORD_FILE "$pwfile"
+
+    switch "$argv[1]"
+        case snapshots s
+            restic -r "$repo" $restic_args snapshots
+        case logs l
+            tail -20 ~/Library/Logs/restic-backup.out.log
+        case server
+            ssh sophrosyne "restic -r /dragon/backups/accismus snapshots"
+        case last
+            restic -r "$repo" $restic_args snapshots --latest 1
+        case '*'
+            echo "Usage: backup-status [snapshots|logs|server|last]"
+            echo "  snapshots (s) — list recent backups"
+            echo "  logs (l)     — last 20 lines of backup log"
+            echo "  server       — check snapshots from server side"
+            echo "  last         — show most recent snapshot"
+    end
+end
+
 function nix-shell
     if contains -- --command $argv; or contains -- --run $argv
         command nix-shell $argv

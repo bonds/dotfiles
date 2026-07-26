@@ -44,6 +44,7 @@ in {
   environment.systemPackages = with pkgs; [
     pkgs-unstable.python313Packages.huggingface-hub
     nvme-cli
+    restic
     util-linux
     dmidecode
     edac-utils
