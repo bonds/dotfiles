@@ -31,6 +31,27 @@
     };
   };
 
+  users.users.restic-backup = {
+    isSystemUser = true;
+    group = "restic-backup";
+    home = "/dragon/backups";
+    shell = pkgs.lib.mkForce "/run/current-system/sw/bin/false";
+  };
+
+  users.groups.restic-backup = {};
+
+  system.activationScripts.resticBackupDataset.text = ''
+    if ! ${pkgs.zfs}/bin/zfs list dragon/backups >/dev/null 2>&1; then
+      ${pkgs.zfs}/bin/zfs create -o compression=off dragon/backups
+      echo "restic-backup: created dragon/backups dataset" >&2
+    fi
+    mkdir -p /dragon/backups/accismus
+    chown restic-backup:restic-backup /dragon/backups/accismus
+    chmod 700 /dragon/backups/accismus
+    chown restic-backup:restic-backup /dragon/backups
+    echo "restic-backup: dataset ready at /dragon/backups/accismus" >&2
+  '';
+
   programs.msmtp = {
     enable = true;
     setSendmail = true;

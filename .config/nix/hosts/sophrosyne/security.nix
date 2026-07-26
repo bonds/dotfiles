@@ -80,6 +80,27 @@ in {
     fi
   '';
 
+  system.activationScripts.resticBackupKey.text = ''
+    RESTIC_KEY="${userHome}/Documents/.config/restic-backup-key.pub"
+    if [ -f "$RESTIC_KEY" ]; then
+      KEY_CONTENT=$(cat "$RESTIC_KEY")
+      install -d -m 0755 -o root -g root /etc/ssh/authorized_keys.d
+      grep -v "restic-backup@accismus" /etc/ssh/authorized_keys.d/restic-backup > /tmp/restic_authorized_keys_clean 2>/dev/null || true
+      echo "restrict,from=\"192.168.4.*\" $KEY_CONTENT" >> /tmp/restic_authorized_keys_clean
+      install -m 0444 -o root -g root /tmp/restic_authorized_keys_clean /etc/ssh/authorized_keys.d/restic-backup
+      rm -f /tmp/restic_authorized_keys_clean
+      echo "restic-backup: deployed restricted key from accismus (restrict,from=192.168.4.*)" >&2
+    else
+      echo "restic-backup: no key found at $RESTIC_KEY — has accismus run nr yet?" >&2
+    fi
+  '';
+
+  system.activationScripts.checkMissingResticKey.text = ''
+    if [ ! -f ${userHome}/Documents/.config/restic-backup-key.pub ]; then
+      echo "WARNING: restic-backup-key.pub missing — run nr on accismus first" >&2
+    fi
+  '';
+
   system.activationScripts.checkMissingPhotoKey.text = ''
     if [ ! -f ${userHome}/Documents/.config/photo-rsync-key.pub ]; then
       echo "WARNING: photo-rsync-key.pub missing — run nr on accismus first" >&2

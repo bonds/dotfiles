@@ -148,6 +148,97 @@
     wantedBy = ["timers.target"];
   };
 
+  systemd.services.restic-backup-monitor = let
+    monitorScript = pkgs.writeShellScript "restic-backup-monitor" ''
+      set -euo pipefail
+      REPO="/dragon/backups/accismus"
+      PASSWORD_FILE="${config.age.secrets.restic-password.path}"
+      LOG_FILE="/var/log/restic-backup-monitor.log"
+      THRESHOLD_HOURS=26
+
+      log() {
+        echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') $*"
+      }
+
+      if [ ! -f "$PASSWORD_FILE" ]; then
+        log "ALERT: restic password file missing at $PASSWORD_FILE"
+        exit 1
+      fi
+
+      export RESTIC_PASSWORD_FILE="$PASSWORD_FILE"
+
+      SNAPSHOTS=$(${pkgs.restic}/bin/restic -r "$REPO" snapshots --json 2>/dev/null || echo "[]")
+
+      if [ "$SNAPSHOTS" = "[]" ] || [ "$SNAPSHOTS" = "" ]; then
+        log "ALERT: no restic snapshots found in $REPO"
+        ${pkgs.msmtp}/bin/msmtp -t <<EOM
+      To: root
+      Subject: [ALERT] Restic backup — no snapshots on sophrosyne
+
+      No restic snapshots found in $REPO.
+
+      The backup may have never run or the repo was deleted.
+      Check accismus:
+        ssh accismus "launchctl list | grep restic-backup"
+        cat /Users/scott/Library/Logs/restic-backup.out.log
+      EOM
+        exit 1
+      fi
+
+      NEWEST_TIME=$(echo "$SNAPSHOTS" | ${pkgs.jq}/bin/jq -r 'max_by(.time).time' 2>/dev/null || echo "")
+      if [ -z "$NEWEST_TIME" ] || [ "$NEWEST_TIME" = "null" ]; then
+        log "ALERT: could not parse snapshot times"
+        exit 1
+      fi
+
+      NEWEST_UNIX=$(date -d "$NEWEST_TIME" +%s 2>/dev/null || echo "0")
+      NOW=$(date +%s)
+      AGE_HOURS=$(( (NOW - NEWEST_UNIX) / 3600 ))
+
+      if [ "$AGE_HOURS" -gt "$THRESHOLD_HOURS" ]; then
+        log "ALERT: newest snapshot ''${AGE_HOURS}h old (threshold ''${THRESHOLD_HOURS}h) — $NEWEST_TIME"
+        ${pkgs.msmtp}/bin/msmtp -t <<EOM
+      To: root
+      Subject: [ALERT] Restic backup stalled — ''${AGE_HOURS}h since last snapshot
+
+      The most recent restic snapshot is ''${AGE_HOURS}h old.
+      Time: $NEWEST_TIME
+      Threshold: ''${THRESHOLD_HOURS}h
+
+      Check the backup on accismus:
+        ssh accismus "launchctl list | grep restic-backup"
+        cat /Users/scott/Library/Logs/restic-backup.out.log
+      EOM
+        exit 1
+      fi
+
+      log "OK: newest snapshot ''${AGE_HOURS}h old — $NEWEST_TIME"
+      exit 0
+    '';
+  in {
+    description = "Check if restic backup is fresh — alert if stalled >26h";
+    after = ["network.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = monitorScript;
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      PrivateTmp = true;
+      ProtectHome = true;
+      ReadWritePaths = ["/var/log" "/dragon/backups"];
+      RestrictNamespaces = true;
+    };
+  };
+  systemd.timers.restic-backup-monitor = {
+    description = "Daily restic backup freshness check";
+    timerConfig = {
+      OnCalendar = "daily";
+      Persistent = true;
+    };
+    wantedBy = ["timers.target"];
+  };
+
   systemd.services.set-max-fans = let
     fanScript = pkgs.writeShellScript "set-max-fans" ''
       for _ in 1 2 3 4 5; do

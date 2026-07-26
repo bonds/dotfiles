@@ -48,6 +48,7 @@
         python-kasa # control TP-Link smart home devices
       ]))
     rage # encryption tool (age alternative)
+    restic # encrypted deduplicating backups to sophrosyne
     rustup # rust installer
     syncthing # peer-to-peer file synchronization
     tailscale # tailnet CLI

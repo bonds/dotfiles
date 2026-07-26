@@ -65,14 +65,6 @@
         "guest ok" = "yes";
         "writeable" = "no";
       };
-      "timemachine" = {
-        "path" = "/dragon/timemachine";
-        "valid users" = "photo-backup";
-        # "guest ok" = "yes";
-        "writeable" = "yes";
-        "fruit:time machine" = "yes";
-        "fruit:time machine max size" = "4T";
-      };
       "uploads" = {
         "path" = "/dragon/uploads";
         "guest ok" = "yes";

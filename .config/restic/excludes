@@ -1,0 +1,18 @@
+/Users/scott/.Trash
+/Users/scott/.cache
+/Users/scott/Library/Caches
+/Users/scott/Library/Application Support/Google/Chrome/Default/Service Worker
+/Users/scott/Library/Application Support/Code/Cache
+/Users/scott/Library/Application Support/Code/CachedData
+/Users/scott/Library/Application Support/Code/CachedExtensions
+/Users/scott/node_modules
+/Users/scott/**/node_modules
+/Users/scott/**/__pycache__
+/Users/scott/**/.venv
+/Users/scott/Pictures/Photos Library.photoslibrary
+/Users/scott/Pictures/Syncthing-Photos
+/Users/scott/.local/share/Steam
+/Users/scott/.docker
+/Users/scott/.nix-profile
+/Users/scott/.config/dotfiles
+/Users/scott/Library/Containers

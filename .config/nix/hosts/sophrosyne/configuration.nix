@@ -51,6 +51,12 @@ in {
   ];
 
   services.openssh.settings.KbdInteractiveAuthentication = false;
+  services.openssh.settings.AuthorizedKeysFile = "/etc/ssh/authorized_keys.d/%u .ssh/authorized_keys .ssh/authorized_keys2";
+
+  services.openssh.extraConfig = ''
+    Match User restic-backup
+      ForceCommand internal-sftp
+  '';
 
   # Privilege escalation for wheel group (sudo is disabled globally via nixos-common.nix)
   security.doas.extraRules = [
@@ -92,6 +98,12 @@ in {
       file = ../../secrets/dst-cluster-token.age;
       owner = "dst";
       group = "dst";
+      mode = "0400";
+    };
+    restic-password = {
+      file = ../../secrets/restic-password.age;
+      owner = "restic-backup";
+      group = "restic-backup";
       mode = "0400";
     };
     searx-secret-key = {
