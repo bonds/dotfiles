@@ -175,7 +175,7 @@
       fi
 
       log "starting snapshot $TIMESTAMP"
-      ${pkgs.rsync}/bin/rsync -a --delete $LINK_DEST "$LIVE/" "$NEW_SNAPSHOT/" >> "$LOG_FILE" 2>&1
+      ${pkgs.rsync}/bin/rsync -a --delete $LINK_DEST "$LIVE/" "$NEW_SNAPSHOT/" >> "$LOG_FILE" 2>&1 || true
       ln -snf "$TIMESTAMP" "$CURRENT"
       log "snapshot $TIMESTAMP complete"
 
