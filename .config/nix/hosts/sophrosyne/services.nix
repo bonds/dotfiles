@@ -148,12 +148,115 @@
     wantedBy = ["timers.target"];
   };
 
-  systemd.services.restic-backup-monitor = let
-    monitorScript = pkgs.writeShellScript "restic-backup-monitor" ''
+  systemd.services.accismus-snapshot = let
+    snapshotScript = pkgs.writeShellScript "accismus-snapshot" ''
       set -euo pipefail
-      REPO="/dragon/backups/accismus"
-      PASSWORD_FILE="${config.age.secrets.restic-password.path}"
-      LOG_FILE="/var/log/restic-backup-monitor.log"
+      LIVE="/dragon/backups/accismus/live"
+      SNAPSHOTS="/dragon/backups/accismus/snapshots"
+      TIMESTAMP=$(date +%Y-%m-%d_%H%M%S)
+      NEW_SNAPSHOT="$SNAPSHOTS/$TIMESTAMP"
+      CURRENT="$SNAPSHOTS/current"
+      LOG_FILE="/var/log/accismus-snapshot.log"
+
+      log() {
+        echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"
+      }
+
+      # Only run if syncthing has synced data
+      if [ ! -d "$LIVE" ] || [ -z "$(ls -A "$LIVE" 2>/dev/null)" ]; then
+        log "SKIP: live directory empty or missing"
+        exit 0
+      fi
+
+      mkdir -p "$SNAPSHOTS"
+      LINK_DEST=""
+      if [ -L "$CURRENT" ] && [ -d "$(readlink -f "$CURRENT" 2>/dev/null)" ]; then
+        LINK_DEST="--link-dest=$(readlink -f "$CURRENT")"
+      fi
+
+      log "starting snapshot $TIMESTAMP"
+      rsync -a --delete $LINK_DEST "$LIVE/" "$NEW_SNAPSHOT/" >> "$LOG_FILE" 2>&1
+      ln -snf "$TIMESTAMP" "$CURRENT"
+      log "snapshot $TIMESTAMP complete"
+
+      # --- Prune old snapshots ---
+      NOW=$(date +%s)
+      KEEP=0
+      LAST_DAY=""
+      LAST_WEEK=""
+      LAST_MONTH=""
+      LAST_YEAR=""
+
+      for snap in $(ls -1 "$SNAPSHOTS" | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}$' | sort -r); do
+        TS=$(date -d "$(echo "$snap" | sed 's/_/ /')" +%s 2>/dev/null || echo "")
+        [ -z "$TS" ] && continue
+        AGE=$(( (NOW - TS) / 3600 ))
+        DAY=$(date -d "@$TS" +%Y%m%d)
+        WEEK=$(date -d "@$TS" +%Y%W)
+        MONTH=$(date -d "@$TS" +%Y%m)
+        YEAR=$(date -d "@$TS" +%Y)
+
+        DELETE=1
+        # hourly: keep first 24
+        if [ "$AGE" -le 24 ]; then
+          DELETE=0
+        # daily: keep 1 per day for days 2-7
+        elif [ "$AGE" -le 168 ] && [ "$DAY" != "$LAST_DAY" ]; then
+          DELETE=0
+          LAST_DAY="$DAY"
+        # weekly: keep 1 per week for weeks 2-4
+        elif [ "$AGE" -le 672 ] && [ "$WEEK" != "$LAST_WEEK" ]; then
+          DELETE=0
+          LAST_WEEK="$WEEK"
+        # monthly: keep 1 per month for months 2-6
+        elif [ "$AGE" -le 4380 ] && [ "$MONTH" != "$LAST_MONTH" ]; then
+          DELETE=0
+          LAST_MONTH="$MONTH"
+        # yearly: keep 1 per year for years 2-4
+        elif [ "$AGE" -le 35040 ] && [ "$YEAR" != "$LAST_YEAR" ]; then
+          DELETE=0
+          LAST_YEAR="$YEAR"
+          DELETE=0
+          LAST_MONTH="$MONTH"
+        fi
+
+        if [ "$DELETE" = 1 ]; then
+          rm -rf "$SNAPSHOTS/$snap"
+          log "pruned $snap ($AGE hours old)"
+        fi
+      done
+      log "prune complete"
+    '';
+  in {
+    description = "Hourly rsync snapshot of accismus home backup";
+    after = ["network.target" "syncthing.service"];
+    wants = ["syncthing.service"];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = snapshotScript;
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      PrivateTmp = true;
+      ProtectHome = true;
+      ReadWritePaths = ["/var/log" "/dragon/backups"];
+      RestrictNamespaces = true;
+    };
+  };
+  systemd.timers.accismus-snapshot = {
+    description = "Hourly rsync snapshot";
+    timerConfig = {
+      OnCalendar = "hourly";
+      Persistent = true;
+    };
+    wantedBy = ["timers.target"];
+  };
+
+  systemd.services.accismus-backup-monitor = let
+    monitorScript = pkgs.writeShellScript "accismus-backup-monitor" ''
+      set -euo pipefail
+      SNAPSHOTS="/dragon/backups/accismus/snapshots"
+      CURRENT="$SNAPSHOTS/current"
+      LOG_FILE="/var/log/accismus-backup-monitor.log"
       THRESHOLD_HOURS=26
 
       log() {
@@ -161,63 +264,49 @@
         echo "$(date '+%Y-%m-%d %H:%M:%S') $*"
       }
 
-      if [ ! -f "$PASSWORD_FILE" ]; then
-        log "ALERT: restic password file missing at $PASSWORD_FILE"
-        exit 1
-      fi
-
-      export RESTIC_PASSWORD_FILE="$PASSWORD_FILE"
-
-      SNAPSHOTS=$(${pkgs.restic}/bin/restic -r "$REPO" snapshots --json 2>/dev/null || echo "[]")
-
-      if [ "$SNAPSHOTS" = "[]" ] || [ "$SNAPSHOTS" = "" ]; then
-        log "ALERT: no restic snapshots found in $REPO"
+      if [ ! -L "$CURRENT" ]; then
+        log "ALERT: no current snapshot symlink"
         ${pkgs.msmtp}/bin/msmtp -t <<EOM
       To: root
-      Subject: [ALERT] Restic backup — no snapshots on sophrosyne
+      Subject: [ALERT] Backup — no current snapshot
 
-      No restic snapshots found in $REPO.
-
-      The backup may have never run or the repo was deleted.
-      Check accismus:
-        ssh accismus "launchctl list | grep restic-backup"
-        cat /Users/scott/Library/Logs/restic-backup.out.log
+      No rsync snapshot found at $CURRENT.
+      Check: systemctl status accismus-snapshot
+      Check: ls -la $SNAPSHOTS
       EOM
         exit 1
       fi
 
-      NEWEST_TIME=$(echo "$SNAPSHOTS" | ${pkgs.jq}/bin/jq -r 'max_by(.time).time' 2>/dev/null || echo "")
-      if [ -z "$NEWEST_TIME" ] || [ "$NEWEST_TIME" = "null" ]; then
-        log "ALERT: could not parse snapshot times"
+      TARGET=$(readlink "$CURRENT")
+      TS=$(date -d "$(echo "$TARGET" | sed 's/_/ /')" +%s 2>/dev/null || echo "")
+      if [ -z "$TS" ]; then
+        log "ALERT: could not parse snapshot date from $TARGET"
         exit 1
       fi
 
-      NEWEST_UNIX=$(date -d "$NEWEST_TIME" +%s 2>/dev/null || echo "0")
       NOW=$(date +%s)
-      AGE_HOURS=$(( (NOW - NEWEST_UNIX) / 3600 ))
+      AGE_HOURS=$(( (NOW - TS) / 3600 ))
 
       if [ "$AGE_HOURS" -gt "$THRESHOLD_HOURS" ]; then
-        log "ALERT: newest snapshot ''${AGE_HOURS}h old (threshold ''${THRESHOLD_HOURS}h) — $NEWEST_TIME"
+        log "ALERT: last snapshot ''${AGE_HOURS}h old (threshold ''${THRESHOLD_HOURS}h)"
         ${pkgs.msmtp}/bin/msmtp -t <<EOM
       To: root
-      Subject: [ALERT] Restic backup stalled — ''${AGE_HOURS}h since last snapshot
+      Subject: [ALERT] Backup stalled — ''${AGE_HOURS}h since last snapshot
 
-      The most recent restic snapshot is ''${AGE_HOURS}h old.
-      Time: $NEWEST_TIME
+      The most recent snapshot is ''${AGE_HOURS}h old.
+      Snapshot: $TARGET
       Threshold: ''${THRESHOLD_HOURS}h
 
-      Check the backup on accismus:
-        ssh accismus "launchctl list | grep restic-backup"
-        cat /Users/scott/Library/Logs/restic-backup.out.log
+      Check: systemctl status accismus-snapshot
+      Check: ls -la $SNAPSHOTS
       EOM
         exit 1
       fi
 
-      log "OK: newest snapshot ''${AGE_HOURS}h old — $NEWEST_TIME"
-      exit 0
+      log "OK: last snapshot ''${AGE_HOURS}h old — $TARGET"
     '';
   in {
-    description = "Check if restic backup is fresh — alert if stalled >26h";
+    description = "Check if rsync backup is fresh — alert if stalled >26h";
     after = ["network.target"];
     serviceConfig = {
       Type = "oneshot";
@@ -230,8 +319,8 @@
       RestrictNamespaces = true;
     };
   };
-  systemd.timers.restic-backup-monitor = {
-    description = "Daily restic backup freshness check";
+  systemd.timers.accismus-backup-monitor = {
+    description = "Daily backup freshness check";
     timerConfig = {
       OnCalendar = "daily";
       Persistent = true;

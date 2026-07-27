@@ -80,77 +80,6 @@
       --ubatch-size 1024
   '';
 
-  resticBackupScript = pkgs.writeShellScript "restic-backup" ''
-    set -euo pipefail
-
-    REPO="sftp:restic-backup@192.168.4.43:/dragon/backups/accismus"
-    SSH_KEY="$HOME/.ssh/id_restic_backup"
-    PASSWORD_FILE="$HOME/.config/restic/password"
-    LOCKDIR="/tmp/restic-backup.lock"
-    LOGFILE="$HOME/Library/Logs/restic-backup.out.log"
-
-    PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:/bin:$PATH"
-    export RESTIC_PASSWORD_FILE="$PASSWORD_FILE"
-
-    # LAN check — skip if not home
-    if ! ping -c 1 -t 2 192.168.4.43 >/dev/null 2>&1; then
-      echo "$(date) — not on home LAN, skipping" >> "$LOGFILE"
-      exit 0
-    fi
-
-    # Wait for network stability after wake (macOS can take ~10s)
-    for i in 1 2 3 4 5; do
-      if nc -z -G 2 192.168.4.43 22 2>/dev/null; then
-        break
-      fi
-      echo "$(date) — waiting for network (attempt $i)..." >> "$LOGFILE"
-      sleep 3
-    done
-
-    # Lock
-    if ! mkdir "$LOCKDIR" 2>/dev/null; then
-      echo "$(date) — already running" >> "$LOGFILE"
-      exit 0
-    fi
-    trap 'rmdir "$LOCKDIR"' EXIT
-
-    # Password check
-    if [ ! -f "$PASSWORD_FILE" ]; then
-      echo "$(date) — no password file at $PASSWORD_FILE" >> "$LOGFILE"
-      echo "  Create it with the password from agenix/bitwarden, then run restic init" >> "$LOGFILE"
-      exit 1
-    fi
-
-    echo "$(date) — starting backup" >> "$LOGFILE"
-
-    # Retry loop: up to 3 attempts with 10s delay
-    for attempt in 1 2 3; do
-      if restic -r "$REPO" -o "sftp.args=-i $SSH_KEY -o ControlMaster=no -o ConnectTimeout=10" backup \
-        --exclude-file="$HOME/.config/restic/excludes" \
-        --tag hourly \
-        "$HOME" >> "$LOGFILE" 2>&1; then
-        break
-      fi
-      if [ "$attempt" -lt 3 ]; then
-        echo "$(date) — attempt $attempt failed, retrying in 10s..." >> "$LOGFILE"
-        sleep 10
-      fi
-    done
-
-    # Weekly prune (Sunday)
-    if [ "$(date +%u)" -eq 7 ]; then
-      echo "$(date) — pruning" >> "$LOGFILE"
-      restic -r "$REPO" -o "sftp.args=-i $SSH_KEY -o ControlMaster=no -o ConnectTimeout=10" forget \
-        --keep-hourly 24 \
-        --keep-daily 7 \
-        --keep-weekly 4 \
-        --keep-monthly 6 \
-        --prune >> "$LOGFILE" 2>&1
-    fi
-
-    echo "$(date) — done" >> "$LOGFILE"
-  '';
-
   zenIcon = ../../modules/zen-icon.icns;
   setZenIconScript = pkgs.writeText "set-zen-icon.applescript" ''
     use framework "Cocoa"
@@ -177,16 +106,6 @@ in {
   security.pam.services.sudo_local.reattach = false;
 
   system.activationScripts = {
-    resticBackupKey.text = ''
-      KEYFILE="${userHome}/.ssh/id_restic_backup"
-      if [ ! -f "$KEYFILE" ]; then
-        echo "restic-backup: generating key" >&2
-        /usr/bin/ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "restic-backup@accismus"
-        chown scott:staff "$KEYFILE" "$KEYFILE.pub" 2>/dev/null || true
-      fi
-      mkdir -p "${userHome}/Documents/.config"
-      cp -f "$KEYFILE".pub "${userHome}/Documents/.config/restic-backup-key.pub"
-    '';
     photoRsyncKey.text = ''
       KEYFILE="${userHome}/.ssh/id_photo_rsync"
       if [ ! -f "$KEYFILE" ]; then
@@ -266,18 +185,6 @@ in {
             StandardErrorPath = "${userHome}/Library/Logs/llamacpp-vision.err.log";
           };
         };
-        restic-backup = {
-          command = "${resticBackupScript}";
-          serviceConfig = {
-            StartCalendarInterval = [
-              {
-                Minute = 17;
-              }
-            ];
-            StandardOutPath = "${userHome}/Library/Logs/restic-backup.out.log";
-            StandardErrorPath = "${userHome}/Library/Logs/restic-backup.err.log";
-          };
-        };
         prune-generations = {
           command = "${pruneGenerations}/bin/prune-generations";
           serviceConfig = {
@@ -330,6 +237,54 @@ in {
             fsWatcherEnabled = true;
             fsWatcherDelayS = 10;
             devices = ["sophrosyne"];
+          };
+          folders.Home = {
+            path = "${userHome}";
+            id = syncthingIds.folders.Home;
+            label = "Home";
+            type = "sendonly";
+            rescanInterval = 3600;
+            fsWatcherEnabled = true;
+            fsWatcherDelayS = 60;
+            devices = ["sophrosyne"];
+            ignores = [
+              ".Trash"
+              ".cache"
+              ".rustup"
+              ".cargo/registry"
+              ".npm"
+              ".bun"
+              ".config/dotfiles"
+              "Library/Caches"
+              "Library/Containers"
+              "Library/WebKit"
+              "Library/Logs"
+              "Library/Mobile Documents/com~apple~CloudDocs"
+              "Library/Application Support/zen"
+              "Library/Application Support/zoom.us"
+              "Library/Application Support/Linear"
+              "Library/Application Support/FluidAudio"
+              "Library/Application Support/Syncthing"
+              "Library/Application Support/ai.opencode.desktop"
+              "Library/Application Support/Signal"
+              ".local/share/llama.cpp"
+              ".local/share/llamacpp"
+              ".local/share/osaurus"
+              ".local/share/opencode"
+              ".local/share/claude"
+              ".local/share/devbox"
+              ".local/share/transcribe-models"
+              ".local/state"
+              ".osaurus/cache"
+              "src/bonds/local"
+              "src/bonds/config"
+              "src/bonds/nix"
+              "Documents"
+              "**/node_modules"
+              "**/__pycache__"
+              "**/.venv"
+              "**/.DS_Store"
+            ];
           };
         };
       };

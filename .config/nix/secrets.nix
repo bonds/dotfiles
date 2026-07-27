@@ -7,5 +7,4 @@ in {
   "/Users/scott/.config/nix/secrets/dst-cluster-token.age".publicKeys = [sophrosyne accismus-yubikey];
   "/Users/scott/.config/nix/secrets/searx-secret-key.age".publicKeys = [sophrosyne accismus-yubikey];
   "/Users/scott/.config/nix/secrets/llamacpp-api-key.age".publicKeys = [sophrosyne accismus-yubikey];
-  "/Users/scott/.config/nix/secrets/restic-password.age".publicKeys = [sophrosyne accismus-yubikey];
 }

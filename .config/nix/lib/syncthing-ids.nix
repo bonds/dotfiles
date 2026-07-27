@@ -4,4 +4,5 @@
 
   # Syncthing folder IDs (must match across all peers)
   folders.Documents = "mz9zh-usrfi";
+  folders.Home = "y6v8x-qw5pl";
 }

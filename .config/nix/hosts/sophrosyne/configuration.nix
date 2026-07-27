@@ -44,7 +44,6 @@ in {
   environment.systemPackages = with pkgs; [
     pkgs-unstable.python313Packages.huggingface-hub
     nvme-cli
-    restic
     util-linux
     dmidecode
     edac-utils
@@ -52,12 +51,6 @@ in {
   ];
 
   services.openssh.settings.KbdInteractiveAuthentication = false;
-  services.openssh.settings.AuthorizedKeysFile = "/etc/ssh/authorized_keys.d/%u .ssh/authorized_keys .ssh/authorized_keys2";
-
-  services.openssh.extraConfig = ''
-    Match User restic-backup
-      ForceCommand internal-sftp
-  '';
 
   # Privilege escalation for wheel group (sudo is disabled globally via nixos-common.nix)
   security.doas.extraRules = [
@@ -101,12 +94,6 @@ in {
       group = "dst";
       mode = "0400";
     };
-    restic-password = {
-      file = ../../secrets/restic-password.age;
-      owner = "restic-backup";
-      group = "restic-backup";
-      mode = "0400";
-    };
     searx-secret-key = {
       file = ../../secrets/searx-secret-key.age;
       owner = "searx";
@@ -143,6 +130,13 @@ in {
       folders."Documents" = {
         path = "${config.users.users.scott.home}/Documents";
         id = syncthingIds.folders.Documents;
+        devices = ["accismus"];
+      };
+      folders."Home" = {
+        path = "/dragon/backups/accismus/live";
+        id = syncthingIds.folders.Home;
+        label = "Home";
+        type = "receiveonly";
         devices = ["accismus"];
       };
     };
