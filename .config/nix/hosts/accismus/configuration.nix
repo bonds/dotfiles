@@ -221,7 +221,6 @@ in {
 
       services.syncthing = {
         enable = true;
-        configDir = "${userHome}/Library/Application Support/Syncthing";
         settings = {
           devices.sophrosyne = {
             id = syncthingIds.sophrosyne;
