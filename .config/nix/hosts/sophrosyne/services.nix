@@ -153,7 +153,7 @@
       set -euo pipefail
       LIVE="/dragon/backups/accismus/live"
       SNAPSHOTS="/dragon/backups/accismus/snapshots"
-      TIMESTAMP=$(date +%Y-%m-%d_%H%M%S)
+      TIMESTAMP=$(date +%Y-%m-%d_%H%M%S_%Z)
       NEW_SNAPSHOT="$SNAPSHOTS/$TIMESTAMP"
       CURRENT="$SNAPSHOTS/current"
       LOG_FILE="/var/log/accismus-snapshot.log"
@@ -187,8 +187,8 @@
       LAST_MONTH=""
       LAST_YEAR=""
 
-      for snap in $(ls -1 "$SNAPSHOTS" | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}$' | sort -r); do
-        TS=$(date -d "$(echo "$snap" | sed 's/_/ /')" +%s 2>/dev/null || echo "")
+      for snap in $(ls -1 "$SNAPSHOTS" | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}(_[A-Z]+)?$' | sort -r); do
+        TS=$(date -d "$(echo "$snap" | sed 's/_[A-Z]*$//;s/_/ /')" +%s 2>/dev/null || echo "")
         [ -z "$TS" ] && continue
         AGE=$(( (NOW - TS) / 3600 ))
         DAY=$(date -d "@$TS" +%Y%m%d)
@@ -278,7 +278,7 @@
       fi
 
       TARGET=$(readlink "$CURRENT")
-      TS=$(date -d "$(echo "$TARGET" | sed 's/_/ /')" +%s 2>/dev/null || echo "")
+      TS=$(date -d "$(echo "$TARGET" | sed 's/_[A-Z]*$//;s/_/ /')" +%s 2>/dev/null || echo "")
       if [ -z "$TS" ]; then
         log "ALERT: could not parse snapshot date from $TARGET"
         exit 1
