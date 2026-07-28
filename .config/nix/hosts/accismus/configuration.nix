@@ -247,50 +247,52 @@ in {
             fsWatcherEnabled = true;
             fsWatcherDelayS = 60;
             devices = ["sophrosyne"];
-            ignores = [
-              ".Trash"
-              ".cache"
-              ".rustup"
-              ".cargo/registry"
-              ".npm"
-              ".bun"
-              ".config/dotfiles"
-              "Library/Caches"
-              "Library/Containers"
-              "Library/WebKit"
-              "Library/Logs"
-              "Library/Mobile Documents/com~apple~CloudDocs"
-              "Library/Application Support/zen"
-              "Library/Application Support/zoom.us"
-              "Library/Application Support/Linear"
-              "Library/Application Support/FluidAudio"
-              "Library/Application Support/Syncthing"
-              "Library/Application Support/ai.opencode.desktop"
-              "Library/Application Support/Signal"
-              ".local/share/llama.cpp"
-              ".local/share/llamacpp"
-              ".local/share/osaurus"
-              ".local/share/opencode"
-              ".local/share/claude"
-              ".local/share/devbox"
-              ".local/share/transcribe-models"
-              ".local/state"
-              ".osaurus/cache"
-              "src/bonds/local"
-              "src/bonds/config"
-              "src/bonds/nix"
-              "Documents"
-              "**/node_modules"
-              "**/__pycache__"
-              "**/.venv"
-              "**/.DS_Store"
-            ];
           };
         };
       };
 
       programs.reel-summarize.enable = true;
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
+
+      home.file.".stignore".text = ''
+        .Trash
+        .cache
+        .rustup
+        .cargo/registry
+        .npm
+        .bun
+        .config/dotfiles
+        .stignore
+        Library/Caches
+        Library/Containers
+        Library/WebKit
+        Library/Logs
+        Library/Mobile Documents/com~apple~CloudDocs
+        Library/Application Support/zen
+        Library/Application Support/zoom.us
+        Library/Application Support/Linear
+        Library/Application Support/FluidAudio
+        Library/Application Support/Syncthing
+        Library/Application Support/ai.opencode.desktop
+        Library/Application Support/Signal
+        .local/share/llama.cpp
+        .local/share/llamacpp
+        .local/share/osaurus
+        .local/share/opencode
+        .local/share/claude
+        .local/share/devbox
+        .local/share/transcribe-models
+        .local/state
+        .osaurus/cache
+        src/bonds/local
+        src/bonds/config
+        src/bonds/nix
+        Documents
+        **/node_modules
+        **/__pycache__
+        **/.venv
+        **/.DS_Store
+      '';
     };
   };
 }
