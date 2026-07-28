@@ -141,6 +141,9 @@ in {
   # The platform the configuration will be used on.
   nixpkgs.hostPlatform = "aarch64-darwin";
 
+  networking.hostName = "accismus";
+  networking.computerName = "Scott's MacBook Air";
+
   # add a font so libreoffice docs look the same across mac and linux
   fonts.packages = with pkgs; [
     helvetica-neue-lt-std
