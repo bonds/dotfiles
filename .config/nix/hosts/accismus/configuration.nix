@@ -281,7 +281,6 @@ in {
         src/bonds/local
         src/bonds/config
         src/bonds/nix
-        Documents
         **/node_modules
         **/__pycache__
         **/.venv
