@@ -268,27 +268,7 @@ in {
         .stignore
         .stversions
         .stfolder
-        Library/Caches
-        Library/Containers
-        Library/WebKit
-        Library/Logs
-        Library/Assistant
-        Library/Biome
-        Library/com.apple.icloud.searchpartyd
-        Library/Mobile Documents/com~apple~CloudDocs
-        Library/Mobile Documents/57T9237FN3~net~whatsapp~WhatsApp
-        Library/Application Support/zen
-        Library/Application Support/zoom.us
-        Library/Application Support/Linear
-        Library/Application Support/FluidAudio
-        Library/Application Support/Syncthing
-        Library/Application Support/ai.opencode.desktop
-        Library/Application Support/Signal
-        Library/Application Support/Code/Cache
-        Library/Application Support/Spotify
-        Library/Group Containers/group.com.apple.CoreSpeech
-        Library/Group Containers/group.com.apple.icloud.findmy
-        Library/PersonalizationPortrait
+        Library
         .local/share/llama.cpp
         .local/share/llamacpp
         .local/share/osaurus
