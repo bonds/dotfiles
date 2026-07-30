@@ -256,13 +256,15 @@ in {
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
 
       home.file.".stignore".text = ''
-        # Deny everything — only include specific dirs
-        **
-
-        # Re-include important directories
+        # Deny all root entries, then re-include specific dirs
+        *
+        !/.config/
         !/.config/**
+        !/Desktop/
         !/Desktop/**
+        !/Documents/
         !/Documents/**
+        !/Downloads/
         !/Downloads/**
         !/.plan
 
