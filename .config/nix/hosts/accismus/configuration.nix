@@ -256,28 +256,24 @@ in {
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
 
       home.file.".stignore".text = ''
-        Library
-        Pictures
-        .rustup
-        .cargo
-        .npm
-        .bun
-        .cache
-        .local
-        .Trash
-        .stversions
-        .config/dotfiles
-        .config/opencode/node_modules
-        .config/opencode/skills
-        src
-        Music
-        Movies
-        Applications
-        Public
-        **/node_modules
-        **/__pycache__
-        **/.venv
-        **/.DS_Store
+        # Specific excludes within included dirs
+        /.config/dotfiles/**
+        /.config/opencode/node_modules/**
+        /.config/opencode/skills/**
+
+        # Include specific directories (root-level, no traversal)
+        !/.config
+        !/.config/**
+        !/Desktop
+        !/Desktop/**
+        !/Documents
+        !/Documents/**
+        !/Downloads
+        !/Downloads/**
+        !/.plan
+
+        # Deny everything else
+        *
       '';
     };
   };
