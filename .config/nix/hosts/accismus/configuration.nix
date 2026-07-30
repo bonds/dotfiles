@@ -263,13 +263,9 @@ in {
 
         # Include specific directories (root-level, no traversal)
         !/.config
-        !/.config/**
         !/Desktop
-        !/Desktop/**
         !/Documents
-        !/Documents/**
         !/Downloads
-        !/Downloads/**
         !/.plan
 
         # Deny everything else
