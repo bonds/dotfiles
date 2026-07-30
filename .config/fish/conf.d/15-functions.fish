@@ -68,7 +68,8 @@ function nr
             set -l _pwd $PWD
             cd $HOME/.config/nix
             bash pkgs/bedrock-server/update.sh
-            alejandra pkgs/bedrock-server/default.nix
+            bash pkgs/rsync-tmbackup/update.sh
+            alejandra pkgs/bedrock-server/default.nix pkgs/rsync-tmbackup/default.nix
             cd $_pwd
         end
     end

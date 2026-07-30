@@ -41,14 +41,18 @@ in {
     packages = with pkgs; [];
   };
 
-  environment.systemPackages = with pkgs; [
-    pkgs-unstable.python313Packages.huggingface-hub
-    nvme-cli
-    util-linux
-    dmidecode
-    edac-utils
-    lm_sensors
-  ];
+  environment.systemPackages = with pkgs;
+    [
+      pkgs-unstable.python313Packages.huggingface-hub
+      nvme-cli
+      util-linux
+      dmidecode
+      edac-utils
+      lm_sensors
+    ]
+    ++ [
+      (pkgs.callPackage ../../pkgs/rsync-tmbackup {})
+    ];
 
   services.openssh.settings.KbdInteractiveAuthentication = false;
 

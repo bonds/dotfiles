@@ -152,80 +152,16 @@
     snapshotScript = pkgs.writeShellScript "accismus-snapshot" ''
       set -euo pipefail
       LIVE="/dragon/backups/accismus/live"
-      SNAPSHOTS="/dragon/backups/accismus/snapshots"
-      TIMESTAMP=$(date +%Y-%m-%d_%H%M%S_%Z)
-      NEW_SNAPSHOT="$SNAPSHOTS/$TIMESTAMP"
-      CURRENT="$SNAPSHOTS/current"
-      LOG_FILE="/var/log/accismus-snapshot.log"
 
-      log() {
-        echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"
-      }
-
-      # Only run if syncthing has synced data
       if [ ! -d "$LIVE" ] || [ -z "$(ls -A "$LIVE" 2>/dev/null)" ]; then
-        log "SKIP: live directory empty or missing"
         exit 0
       fi
 
-      mkdir -p "$SNAPSHOTS"
-      LINK_DEST=""
-      if [ -L "$CURRENT" ] && [ -d "$(readlink -f "$CURRENT" 2>/dev/null)" ]; then
-        LINK_DEST="--link-dest=$(readlink -f "$CURRENT")"
-      fi
-
-      log "starting snapshot $TIMESTAMP"
-      ${pkgs.rsync}/bin/rsync -a --delete $LINK_DEST "$LIVE/" "$NEW_SNAPSHOT/" >> "$LOG_FILE" 2>&1 || true
-      ln -snf "$TIMESTAMP" "$CURRENT"
-      log "snapshot $TIMESTAMP complete"
-
-      # --- Prune old snapshots ---
-      NOW=$(date +%s)
-      KEEP=0
-      LAST_DAY=""
-      LAST_WEEK=""
-      LAST_MONTH=""
-      LAST_YEAR=""
-
-      for snap in $(ls -1 "$SNAPSHOTS" | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}(_[A-Z]+)?$' | sort -r); do
-        TS=$(date -d "$(echo "$snap" | sed 's/_[A-Z]*$//;s/_/ /;s/\([0-9][0-9]\)\([0-9][0-9]\)\([0-9][0-9]\)$/\1:\2:\3/')" +%s 2>/dev/null || echo "")
-        [ -z "$TS" ] && continue
-        AGE=$(( (NOW - TS) / 3600 ))
-        DAY=$(date -d "@$TS" +%Y%m%d)
-        WEEK=$(date -d "@$TS" +%Y%W)
-        MONTH=$(date -d "@$TS" +%Y%m)
-        YEAR=$(date -d "@$TS" +%Y)
-
-        DELETE=1
-        # hourly: keep first 24
-        if [ "$AGE" -le 24 ]; then
-          DELETE=0
-        # daily: keep 1 per day for days 2-7
-        elif [ "$AGE" -le 168 ] && [ "$DAY" != "$LAST_DAY" ]; then
-          DELETE=0
-          LAST_DAY="$DAY"
-        # weekly: keep 1 per week for weeks 2-4
-        elif [ "$AGE" -le 672 ] && [ "$WEEK" != "$LAST_WEEK" ]; then
-          DELETE=0
-          LAST_WEEK="$WEEK"
-        # monthly: keep 1 per month for months 2-6
-        elif [ "$AGE" -le 4380 ] && [ "$MONTH" != "$LAST_MONTH" ]; then
-          DELETE=0
-          LAST_MONTH="$MONTH"
-        # yearly: keep 1 per year for years 2-4
-        elif [ "$AGE" -le 35040 ] && [ "$YEAR" != "$LAST_YEAR" ]; then
-          DELETE=0
-          LAST_YEAR="$YEAR"
-          DELETE=0
-          LAST_MONTH="$MONTH"
-        fi
-
-        if [ "$DELETE" = 1 ]; then
-          rm -rf "$SNAPSHOTS/$snap"
-          log "pruned $snap ($AGE hours old)"
-        fi
-      done
-      log "prune complete"
+      exec ${pkgs.rsync-tmbackup}/bin/rsync-tmbackup \
+        --strategy "1:1 7:7 28:30 180:365" \
+        --log-dir /var/log/rsync-tmbackup \
+        "$LIVE/" \
+        /dragon/backups/accismus/
     '';
   in {
     description = "Hourly rsync snapshot of accismus home backup";
@@ -254,8 +190,8 @@
   systemd.services.accismus-backup-monitor = let
     monitorScript = pkgs.writeShellScript "accismus-backup-monitor" ''
       set -euo pipefail
-      SNAPSHOTS="/dragon/backups/accismus/snapshots"
-      CURRENT="$SNAPSHOTS/current"
+      BACKUP_DIR="/dragon/backups/accismus"
+      LATEST="$BACKUP_DIR/latest"
       LOG_FILE="/var/log/accismus-backup-monitor.log"
       THRESHOLD_HOURS=26
 
@@ -264,21 +200,21 @@
         echo "$(date '+%Y-%m-%d %H:%M:%S') $*"
       }
 
-      if [ ! -L "$CURRENT" ]; then
-        log "ALERT: no current snapshot symlink"
+      if [ ! -L "$LATEST" ]; then
+        log "ALERT: no latest snapshot symlink"
         ${pkgs.msmtp}/bin/msmtp -t <<EOM
       To: root
-      Subject: [ALERT] Backup — no current snapshot
+      Subject: [ALERT] Backup — no latest snapshot
 
-      No rsync snapshot found at $CURRENT.
+      No rsync snapshot found at $LATEST.
       Check: systemctl status accismus-snapshot
-      Check: ls -la $SNAPSHOTS
+      Check: ls -la $BACKUP_DIR
       EOM
         exit 1
       fi
 
-      TARGET=$(readlink "$CURRENT")
-      TS=$(date -d "$(echo "$TARGET" | sed 's/_[A-Z]*$//;s/_/ /;s/\([0-9][0-9]\)\([0-9][0-9]\)\([0-9][0-9]\)$/\1:\2:\3/')" +%s 2>/dev/null || echo "")
+      TARGET=$(readlink "$LATEST")
+      TS=$(date -d "$(echo "$TARGET" | sed 's/^\(....\)-\(..\)-\(..\)-\(..\)\(..\)\(..\).*$/\1-\2-\3 \4:\5:\6/')" +%s 2>/dev/null || echo "")
       if [ -z "$TS" ]; then
         log "ALERT: could not parse snapshot date from $TARGET"
         exit 1
@@ -298,7 +234,7 @@
       Threshold: ''${THRESHOLD_HOURS}h
 
       Check: systemctl status accismus-snapshot
-      Check: ls -la $SNAPSHOTS
+      Check: ls -la $BACKUP_DIR
       EOM
         exit 1
       fi
