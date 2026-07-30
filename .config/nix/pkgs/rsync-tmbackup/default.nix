@@ -16,7 +16,9 @@ stdenv.mkDerivation rec {
 
   installPhase = ''
     mkdir -p $out/bin
-    sed 's/^NOW=\(.*\)"%Y-%m-%d-%H%M%S"/NOW=\1"%Y-%m-%d-%H%M%S%z"/' "$src" > "$out/bin/rsync-tmbackup"
+    sed '1c\
+    #!${stdenv.shell}
+    s/^NOW=\(.*\)"%Y-%m-%d-%H%M%S"/NOW=\1"%Y-%m-%d-%H%M%S%z"/' "$src" > "$out/bin/rsync-tmbackup"
     chmod +x "$out/bin/rsync-tmbackup"
   '';
 

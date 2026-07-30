@@ -45,6 +45,7 @@ in {
     [
       pkgs-unstable.python313Packages.huggingface-hub
       nvme-cli
+      rsync
       util-linux
       dmidecode
       edac-utils
