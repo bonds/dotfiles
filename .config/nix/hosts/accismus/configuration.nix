@@ -256,33 +256,20 @@ in {
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
 
       home.file.".stignore".text = ''
-        .Trash
-        .cache
-        .rustup
-        .cargo/registry
-        .npm
-        .bun
-        .config/dotfiles
-        .stignore
-        .stversions
-        .stfolder
-        Library
-        .local/share/llama.cpp
-        .local/share/llamacpp
-        .local/share/osaurus
-        .local/share/opencode
-        .local/share/claude
-        .local/share/devbox
-        .local/share/transcribe-models
-        .local/state
-        .osaurus/cache
-        src/bonds/local
-        src/bonds/config
-        src/bonds/nix
-        **/node_modules
-        **/__pycache__
-        **/.venv
-        **/.DS_Store
+        # Deny everything — only include specific dirs
+        **
+
+        # Re-include important directories
+        !/.config/**
+        !/Desktop/**
+        !/Documents/**
+        !/Downloads/**
+        !/.plan
+
+        # Specific excludes within included dirs
+        /.config/dotfiles/**
+        /.config/opencode/node_modules/**
+        /.config/opencode/skills/**
       '';
     };
   };
