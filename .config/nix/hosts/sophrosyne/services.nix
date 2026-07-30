@@ -1,8 +1,11 @@
 {
   config,
   pkgs,
+  lib,
   ...
-}: {
+}: let
+  rsync-tmbackup = pkgs.callPackage ../../pkgs/rsync-tmbackup {};
+in {
   systemd.services.ddns = {
     startAt = "*:0/15";
     serviceConfig = {
@@ -157,7 +160,7 @@
         exit 0
       fi
 
-      exec ${pkgs.rsync-tmbackup}/bin/rsync-tmbackup \
+      exec ${rsync-tmbackup}/bin/rsync-tmbackup \
         --strategy "1:1 7:7 28:30 180:365" \
         --log-dir /var/log/rsync-tmbackup \
         "$LIVE/" \
