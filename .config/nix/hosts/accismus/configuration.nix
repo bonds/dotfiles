@@ -247,8 +247,6 @@ in {
             label = "Home";
             type = "sendonly";
             rescanInterval = 3600;
-            fsWatcherEnabled = true;
-            fsWatcherDelayS = 60;
             devices = ["sophrosyne"];
           };
         };
