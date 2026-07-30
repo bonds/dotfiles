@@ -176,7 +176,6 @@ in {
       NoNewPrivileges = true;
       ProtectSystem = "strict";
       PrivateTmp = true;
-      ProtectHome = true;
       ReadWritePaths = ["/var/log" "/dragon/backups"];
       RestrictNamespaces = true;
     };
