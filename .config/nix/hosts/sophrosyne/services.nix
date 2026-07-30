@@ -179,6 +179,7 @@ in {
       ReadWritePaths = ["/var/log" "/dragon/backups"];
       RestrictNamespaces = true;
     };
+    path = [pkgs.rsync];
   };
   systemd.timers.accismus-snapshot = {
     description = "Hourly rsync snapshot";
