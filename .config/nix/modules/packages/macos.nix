@@ -16,7 +16,6 @@
     cowsay # cli to print stuff with a pic of a cow saying it
     daisydisk # disk usage visualizer
     delta # git delta syntax highlighter
-    discord # voice and text chat
     docker # docker
     duti # set default file handlers for macOS
     flux # blue light filter for sleep
