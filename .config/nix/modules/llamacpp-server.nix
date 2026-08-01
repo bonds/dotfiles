@@ -254,14 +254,16 @@ in {
         };
       }
       // lib.optionalAttrs (preStartScript != "") {
-        preStart = lib.mkBefore (preStartScript
-          + lib.optionalString (isRouter || cfg.model != null) ''
-            chown -R ${svcUser}:${svcGroup} "${
-              if isRouter
-              then cfg.router.modelsDir
-              else builtins.dirOf cfg.model
-            }" 2>/dev/null || true
-          '');
+        preStart = let
+          modelsPath =
+            if isRouter
+            then cfg.router.modelsDir
+            else builtins.dirOf cfg.model;
+          chownCmd = ''
+            chown -R ${svcUser}:${svcGroup} "${modelsPath}" 2>/dev/null || true
+          '';
+        in
+          lib.mkBefore (chownCmd + "\n" + preStartScript);
       };
   };
 }
