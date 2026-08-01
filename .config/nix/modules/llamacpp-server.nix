@@ -245,6 +245,9 @@ in {
           TimeoutStartSec = lib.mkDefault "infinity";
           ProtectSystem = "strict";
           ProtectHome = true;
+          ReadWritePaths =
+            lib.optionals isRouter [cfg.router.modelsDir]
+            ++ lib.optionals (cfg.model != null) [(builtins.dirOf cfg.model)];
           PrivateTmp = true;
           NoNewPrivileges = true;
           IPAddressAllow = "127.0.0.0/8";
