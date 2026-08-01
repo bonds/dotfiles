@@ -254,16 +254,17 @@ in {
         };
       }
       // lib.optionalAttrs (preStartScript != "") {
-        preStart = let
-          modelsPath =
-            if isRouter
-            then cfg.router.modelsDir
-            else builtins.dirOf cfg.model;
-          chownCmd = ''
-            chown -R ${svcUser}:${svcGroup} "${modelsPath}" 2>/dev/null || true
-          '';
-        in
-          lib.mkBefore (chownCmd + "\n" + preStartScript);
+        preStart = lib.mkBefore preStartScript;
       };
+
+    system.activationScripts.llamacpp-models-dir = lib.mkIf (isRouter || cfg.model != null) (let
+      modelsPath =
+        if isRouter
+        then cfg.router.modelsDir
+        else builtins.dirOf cfg.model;
+    in ''
+      mkdir -p "${modelsPath}"
+      chown -R ${svcUser}:${svcGroup} "${modelsPath}" 2>/dev/null || true
+    '');
   };
 }
