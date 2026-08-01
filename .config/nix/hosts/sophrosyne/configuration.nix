@@ -160,15 +160,15 @@ in {
       models = {
         "gemma-4-31b-it" = {
           url = "https://huggingface.co/unsloth/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-Q4_K_M.gguf";
-          args = {ctx-size = "8192";};
+          args = {ctx-size = "102400";};
         };
         "qwen3.6-27b" = {
           url = "https://huggingface.co/unsloth/Qwen3.6-27B-GGUF/resolve/main/Qwen3.6-27B-UD-Q4_K_XL.gguf";
-          args = {ctx-size = "8192";};
+          args = {ctx-size = "102400";};
         };
         "qwen3.6-35b-a3b" = {
           url = "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf";
-          args = {ctx-size = "8192";};
+          args = {ctx-size = "102400";};
         };
       };
     };
