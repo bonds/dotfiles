@@ -5,11 +5,29 @@
   "snapshot": true,
   "agent": {
     "plan": {
+      // "model": "opencode-go/deepseek-v4-flash-new"
       // "model": "opencode-go/glm-5.2"
-      "model": "opencode-go/qwen3.7-max"
+      // "model": "opencode-go/qwen3.7-max"
+      "model": "opencode-go/mimo-v2.5"
     },
     "build": {
-      "model": "opencode-go/deepseek-v4-flash"
+      // "model": "opencode-go/deepseek-v4-flash-new"
+      "model": "opencode-go/mimo-v2.5"
+    }
+  },
+  "disabled_providers": [],
+  "provider": {
+    "sophrosyne": {
+      "name": "Sophrosyne",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://sophrosyne.local:8080"
+      },
+      "models": {
+        "qwen3.6-27b": {
+          "name": "Qwen 3.6 27B"
+        }
+      }
     }
   }
 }
