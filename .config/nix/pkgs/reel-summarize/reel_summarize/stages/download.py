@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 
+from reel_summarize.errors import DownloadError, ReelError
+
 
 def _extract_zen_cookies(container_id: str = "1") -> str | None:
     """Extract cookies from Zen browser's personal workspace into a Netscape-format temp file."""
@@ -84,8 +86,10 @@ def fetch_metadata(url: str) -> dict:
         capture_output=True, text=True, timeout=30,
     )
     if meta_result.returncode != 0:
-        print(f"  metadata fetch error: {meta_result.stderr.strip() or meta_result.stdout.strip()}", file=sys.stderr)
-        sys.exit(3)
+        raise DownloadError(
+            f"couldn't fetch metadata for {url}: "
+            f"{meta_result.stderr.strip() or meta_result.stdout.strip()}"
+        )
     return _parse_metadata(meta_result.stdout)
 
 
@@ -100,8 +104,10 @@ def download(url: str, work_dir: str) -> dict:
         capture_output=True, text=True, timeout=300,
     )
     if result.returncode != 0:
-        print(f"  yt-dlp error: {result.stderr.strip() or result.stdout.strip()}", file=sys.stderr)
-        sys.exit(3)
+        raise DownloadError(
+            f"yt-dlp failed to download {url}: "
+            f"{result.stderr.strip() or result.stdout.strip()}"
+        )
 
     meta_result = subprocess.run(
         ["yt-dlp", "--dump-json", *cookies_opt, url],

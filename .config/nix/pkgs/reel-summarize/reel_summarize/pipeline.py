@@ -8,6 +8,7 @@ import sys
 import tempfile
 
 from reel_summarize.config import Config, resolve_model_name, whisper_model_path, MODELS_DIR, MODEL_URL
+from reel_summarize.errors import ReelError
 from reel_summarize.stages.download import download, fetch_metadata
 from reel_summarize.stages.audio_extract import extract_audio
 from reel_summarize.stages.frame_extract import extract_frames
@@ -44,8 +45,7 @@ def _ensure_ollama_model(model: str, cfg: Config):
         timeout=600,
     )
     if pull_proc.returncode != 0:
-        print(f"  ✖ failed to pull model '{model}'", file=sys.stderr, flush=True)
-        sys.exit(2)
+        raise ReelError(f"failed to pull model '{model}'")
 
 
 def _ensure_whisper_model(cfg: Config):
@@ -176,7 +176,11 @@ def run_structured(url: str, cfg: Config, keep_artifacts: bool = False) -> dict:
 
 
 def run(url: str, cfg: Config, keep_artifacts: bool = False):
-    result = run_structured(url, cfg, keep_artifacts=keep_artifacts)
+    try:
+        result = run_structured(url, cfg, keep_artifacts=keep_artifacts)
+    except ReelError as e:
+        print(f"  ✖ {e}", file=sys.stderr, flush=True)
+        sys.exit(3)
     if result["author"]:
         print(f"Posted by: {result['author']}", flush=True)
     if result["caption"]:
@@ -294,6 +298,10 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
             print(flush=True)
             print(summary)
             _clear_state()
+
+    except ReelError as e:
+        print(f"  ✖ {e}", file=sys.stderr, flush=True)
+        sys.exit(3)
 
     finally:
         if stage == "process" or (not keep_artifacts and stage != "download"):

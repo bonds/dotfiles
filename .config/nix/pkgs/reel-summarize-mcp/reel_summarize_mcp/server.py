@@ -90,7 +90,11 @@ async def call_tool(name: str, arguments: dict) -> list:
     if arguments.get("frames_per_second") is not None:
         cfg.frames_per_second = int(arguments["frames_per_second"])
 
-    result = await asyncio.to_thread(run_structured, url, cfg)
+    try:
+        result = await asyncio.to_thread(run_structured, url, cfg)
+    except Exception as e:  # ReelError and friends — never let a failure 500 or kill the server
+        text = f"error: summarize_reel failed: {e}"
+        return [TextContent(type="text", text=text)]
 
     payload = {
         "url": result["url"],
