@@ -2,6 +2,7 @@
   pkgs,
   lib,
   inputs,
+  config,
   ...
 }: let
   userHome = import ../../lib/user-home.nix pkgs;
@@ -105,6 +106,35 @@ in {
   security.pam.services.sudo_local.touchIdAuth = true;
   security.pam.services.sudo_local.reattach = false;
 
+  age.identityPaths = ["/etc/age/identity"];
+
+  system.activationScripts.agenixIdentity = {
+    text = ''
+      mkdir -p /etc/age
+      if [ ! -f /etc/age/identity ]; then
+        ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > /etc/age/identity
+        chmod 600 /etc/age/identity
+      fi
+    '';
+  };
+
+  system.activationScripts.osaurusApiKey = {
+    deps = ["agenix"];
+    text = ''
+      mkdir -p "${userHome}/.config/reel-summarize"
+      ln -sf /etc/agenix/osaurus-api-key "${userHome}/.config/reel-summarize/osaurus-api-key"
+    '';
+  };
+
+  age.secrets = {
+    osaurus-api-key = {
+      file = ../../secrets/osaurus-api-key.age;
+      owner = "scott";
+      group = "staff";
+      mode = "0400";
+    };
+  };
+
   system.activationScripts = {
     photoRsyncKey.text = ''
       KEYFILE="${userHome}/.ssh/id_photo_rsync"
@@ -200,6 +230,19 @@ in {
             ];
             StandardOutPath = "${userHome}/Library/Logs/prune-generations.out.log";
             StandardErrorPath = "${userHome}/Library/Logs/prune-generations.err.log";
+          };
+        };
+        photos-backup = {
+          command = "${userHome}/bin/photos-smb-backup";
+          serviceConfig = {
+            StartCalendarInterval = [
+              {
+                Hour = 2;
+                Minute = 0;
+              }
+            ];
+            StandardOutPath = "${userHome}/Library/Logs/photos-backup.out.log";
+            StandardErrorPath = "${userHome}/Library/Logs/photos-backup.err.log";
           };
         };
       };
