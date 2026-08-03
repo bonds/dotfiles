@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reel-summarize-mcp"
+version = "0.1.0"
+description = "MCP server for summarizing Instagram Reels using local models"
+requires-python = ">=3.10"
+dependencies = ["reel-summarize", "mcp", "httpx", "starlette", "uvicorn"]
+
+[project.scripts]
+reel-summarize-mcp = "reel_summarize_mcp.server:main"
+
+[tool.setuptools.packages.find]
+include = ["reel_summarize_mcp*"]

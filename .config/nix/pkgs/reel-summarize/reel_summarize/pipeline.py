@@ -22,8 +22,8 @@ STATE_FILE = os.path.join(STAGE_DIR, "state.json")
 
 
 def _ensure_model(cfg: Config, model: str, label: str):
-    if cfg.backend == "openai":
-        # llama.cpp loads models at server startup — nothing to pull
+    if cfg.backend in ("openai", "osaurus"):
+        # llama.cpp loads models at server startup; Osaurus manages its own models
         return
     _ensure_ollama_model(model, cfg)
 
@@ -98,7 +98,13 @@ def _release_lock(lock_fd):
     lock_fd.close()
 
 
-def run(url: str, cfg: Config, keep_artifacts: bool = False):
+def run_structured(url: str, cfg: Config, keep_artifacts: bool = False) -> dict:
+    """Run the full pipeline and return structured results (no summary printed).
+
+    Shared by the ``reel-summarize`` CLI and the ``reel-summarize-mcp`` server so
+    both use a single code path. Returns author/caption (raw, may be None),
+    transcript, vision timeline, duration, summary, and the resolved model names.
+    """
     lock_fd = _acquire_lock()
     work_dir = tempfile.mkdtemp(prefix="reel-summarize-")
     _clear_state()
@@ -139,8 +145,8 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
             frames, vision_results, cfg.frames_per_second
         )
 
-        author = metadata.get("author") or "unknown"
-        caption = metadata.get("caption") or "(no caption)"
+        author = metadata.get("author")
+        caption = metadata.get("caption")
         _smodel = resolve_model_name(cfg.host, cfg)
         p(f"→ summarizing ({_smodel})...")
         summary = generate_summary(
@@ -151,17 +157,32 @@ def run(url: str, cfg: Config, keep_artifacts: bool = False):
             cfg=cfg,
         )
 
-        if author:
-            print(f"Posted by: {author}", flush=True)
-        if caption:
-            print(f"Caption: {caption}", flush=True)
-        print(flush=True)
-        print(summary)
+        return {
+            "url": url,
+            "author": author,
+            "caption": caption,
+            "transcript": transcript,
+            "vision_timeline": vision_timeline,
+            "duration": metadata.get("duration"),
+            "summary": summary,
+            "model": _smodel,
+            "vision_model": _vmodel if frames else None,
+        }
 
     finally:
         if not keep_artifacts:
             shutil.rmtree(work_dir, ignore_errors=True)
         _release_lock(lock_fd)
+
+
+def run(url: str, cfg: Config, keep_artifacts: bool = False):
+    result = run_structured(url, cfg, keep_artifacts=keep_artifacts)
+    if result["author"]:
+        print(f"Posted by: {result['author']}", flush=True)
+    if result["caption"]:
+        print(f"Caption: {result['caption']}", flush=True)
+    print(flush=True)
+    print(result["summary"])
 
 
 def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
@@ -245,7 +266,8 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
 
             vision_results = []
             if frames:
-                _vmodel = resolve_model_name(cfg.vision_host, cfg)
+                _vhost = cfg.host if cfg.backend == "osaurus" else cfg.vision_host
+                _vmodel = resolve_model_name(_vhost, cfg)
                 p(f"→ scanning {len(frames)} frames ({_vmodel})...")
                 vision_results = analyze_frames(frames, cfg)
 

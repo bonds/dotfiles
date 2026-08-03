@@ -15,6 +15,8 @@
     libraries = with pkgs.python3Packages; [mcp httpx uvicorn];
     flakeIgnore = ["E501" "E402" "W503"];
   } (builtins.readFile ../../pkgs/mcp-fetch/server.py);
+
+  reelSummarizeMcp = pkgs.callPackage ../../pkgs/reel-summarize-mcp {};
 in {
   imports = [
     ./hardware-configuration.nix
@@ -172,8 +174,19 @@ in {
         };
       };
     };
+    vision = {
+      enable = true;
+      host = "127.0.0.1";
+      port = 8081;
+      model = "/dragon/servers/llamacpp/models/Qwen_Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf";
+      modelUrl = "https://huggingface.co/bartowski/Qwen_Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/Qwen_Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf";
+      mmproj = "/dragon/servers/llamacpp/models/mmproj-Qwen_Qwen2.5-VL-7B-Instruct-f16.gguf";
+      mmprojUrl = "https://huggingface.co/bartowski/Qwen_Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/mmproj-Qwen_Qwen2.5-VL-7B-Instruct-f16.gguf";
+      # KV cache in q8_0 cuts vision-server memory; quality impact is negligible
+      extraArgs = ["--cache-type-k" "q8_0" "--cache-type-v" "q8_0"];
+    };
   };
-  networking.firewall.allowedTCPPorts = [8080 8890 8891];
+  networking.firewall.allowedTCPPorts = [8080 8890 8891 8892];
 
   systemd.services.mcp-searxng-search = {
     description = "SearXNG MCP server for web search";
@@ -201,6 +214,33 @@ in {
       Group = "llamacpp";
       Restart = "always";
       RestartSec = 5;
+      PrivateTmp = true;
+      NoNewPrivileges = true;
+    };
+  };
+
+  systemd.services.reel-summarize-mcp = {
+    description = "Reel summarization MCP server";
+    after = ["llamacpp-server.service" "llamacpp-vision-server.service" "network.target"];
+    wants = ["llamacpp-server.service" "llamacpp-vision-server.service"];
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      ExecStart = "${reelSummarizeMcp}/bin/reel-summarize-mcp";
+      User = "llamacpp";
+      Group = "llamacpp";
+      Restart = "always";
+      RestartSec = 5;
+      # Persistent writable HOME for the whisper model cache + pipeline lock.
+      StateDirectory = "reel-summarize-mcp";
+      Environment = [
+        "REEL_SUMMARIZE_HOST=http://127.0.0.1:8080"
+        "REEL_SUMMARIZE_VISION_HOST=http://127.0.0.1:8081"
+        "REEL_SUMMARIZE_BACKEND=openai"
+        "HOME=/var/lib/reel-summarize-mcp"
+        # Instagram cookies (Netscape format) for authenticated downloads; add
+        # once `age.secrets.reel-ig-cookies` exists:
+        # "REEL_SUMMARIZE_COOKIES=/run/agenix/reel-ig-cookies"
+      ];
       PrivateTmp = true;
       NoNewPrivileges = true;
     };

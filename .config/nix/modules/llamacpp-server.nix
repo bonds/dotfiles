@@ -198,6 +198,56 @@ in {
         description = "Default preset arguments applied to all models (the [*] section)";
       };
     };
+
+    vision = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = "Enable a second llama-server instance for a vision (multimodal) model";
+      };
+
+      host = mkOption {
+        type = types.str;
+        default = "127.0.0.1";
+        description = "Host address to bind the vision server to";
+      };
+
+      port = mkOption {
+        type = types.port;
+        default = 8081;
+        description = "Port for the vision server";
+      };
+
+      model = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "Path to the vision GGUF model (auto-downloaded on first start if modelUrl is set)";
+      };
+
+      modelUrl = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "URL to download the vision model GGUF from when it doesn't exist on disk";
+      };
+
+      mmproj = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "Path to the multimodal projector GGUF for the vision model";
+      };
+
+      mmprojUrl = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "URL to download the multimodal projector GGUF from when it doesn't exist on disk";
+      };
+
+      extraArgs = mkOption {
+        type = types.listOf types.str;
+        default = [];
+        description = "Extra arguments to pass to the vision llama-server";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -205,6 +255,10 @@ in {
       {
         assertion = !(isRouter && cfg.model != null);
         message = "llamacpp-server: router.enable and model are mutually exclusive. Set model = null when using router mode.";
+      }
+      {
+        assertion = !cfg.vision.enable || (cfg.vision.model != null && cfg.vision.mmproj != null);
+        message = "llamacpp-server: vision.enable requires vision.model and vision.mmproj to be set.";
       }
     ];
 
@@ -266,5 +320,69 @@ in {
       mkdir -p "${modelsPath}"
       chown -R ${svcUser}:${svcGroup} "${modelsPath}" 2>/dev/null || true
     '');
+
+    # --- Optional second llama-server instance for a vision (multimodal) model ---
+    systemd.services.llamacpp-vision-server = lib.mkIf cfg.vision.enable {
+      description = "llama-server (llama.cpp) vision model";
+      wantedBy = ["multi-user.target"];
+      after = ["network.target"];
+      serviceConfig = {
+        ExecStart = lib.concatStringsSep " " (
+          [
+            "${cfg.package}/bin/llama-server"
+            "--host"
+            cfg.vision.host
+            "--port"
+            (toString cfg.vision.port)
+            "-m"
+            cfg.vision.model
+            "--mmproj"
+            cfg.vision.mmproj
+          ]
+          ++ cfg.vision.extraArgs
+        );
+        User = svcUser;
+        Group = svcGroup;
+        Environment = [
+          "PATH=${lib.makeSearchPath "bin" (with pkgs; [bash curl coreutils findutils gnugrep gnused systemd python3])}:/run/wrappers/bin"
+        ];
+        Restart = "always";
+        RestartSec = 5;
+        TimeoutStartSec = lib.mkDefault "infinity";
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ReadWritePaths = [(builtins.dirOf cfg.vision.model)];
+        PrivateTmp = true;
+        NoNewPrivileges = true;
+        IPAddressAllow = "127.0.0.0/8";
+      };
+      preStart = lib.mkBefore (let
+        files = [
+          {
+            path = cfg.vision.model;
+            url = cfg.vision.modelUrl;
+          }
+          {
+            path = cfg.vision.mmproj;
+            url = cfg.vision.mmprojUrl;
+          }
+        ];
+        downloads =
+          map (f: ''
+            if ! [ -f "${f.path}" ]; then
+              mkdir -p "$(dirname "${f.path}")"
+              ${pkgs.curl}/bin/curl -fSL -o "${f.path}.tmp" "${f.url}" --retry 3 --retry-delay 5
+              mv "${f.path}.tmp" "${f.path}"
+            fi
+          '')
+          files;
+      in
+        lib.concatStringsSep "\n" downloads);
+    };
+
+    system.activationScripts.llamacpp-vision-models-dir = lib.mkIf cfg.vision.enable ''
+      mkdir -p "${builtins.dirOf cfg.vision.model}"
+      chown -R ${svcUser}:${svcGroup} "${builtins.dirOf cfg.vision.model}" 2>/dev/null || true
+    '';
   };
 }
