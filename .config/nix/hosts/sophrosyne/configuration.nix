@@ -186,7 +186,7 @@ in {
       extraArgs = ["--cache-type-k" "q8_0" "--cache-type-v" "q8_0"];
     };
   };
-  networking.firewall.allowedTCPPorts = [8080 8890 8891 8892];
+  networking.firewall.allowedTCPPorts = [8080 8890 8891];
 
   systemd.services.mcp-searxng-search = {
     description = "SearXNG MCP server for web search";
@@ -236,6 +236,8 @@ in {
         "REEL_SUMMARIZE_HOST=http://127.0.0.1:8080"
         "REEL_SUMMARIZE_VISION_HOST=http://127.0.0.1:8081"
         "REEL_SUMMARIZE_BACKEND=openai"
+        # Loopback only; reached from accismus via ~/.ssh/config LocalForward 8892
+        "REEL_SUMMARIZE_MCP_HOST=127.0.0.1"
         "HOME=/var/lib/reel-summarize-mcp"
         # Instagram cookies (Netscape format) for authenticated downloads; add
         # once `age.secrets.reel-ig-cookies` exists:

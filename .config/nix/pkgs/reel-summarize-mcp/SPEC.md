@@ -54,7 +54,8 @@ Python `buildPythonApplication` (mirrors `reel-summarize`'s style) that:
 - **Service:** `reel-summarize-mcp.service` runs as `llamacpp`, `wants`
   both llama servers, `StateDirectory=reel-summarize-mcp` + `HOME=/var/lib/...`
   for the whisper cache, env config points at `127.0.0.1:8080/8081`, backend
-  `openai`. Firewall opens **8892**.
+  `openai`. Binds **loopback only** (`REEL_SUMMARIZE_MCP_HOST=127.0.0.1`); not
+  exposed on the network (no firewall rule).
 - **IG cookies:** `age.secrets.reel-ig-cookies` + `REEL_SUMMARIZE_COOKIES` —
   pending a Netscape-format cookie blob from the user (see "Remaining steps").
 
@@ -69,5 +70,7 @@ Python `buildPythonApplication` (mirrors `reel-summarize`'s style) that:
       uncomment `REEL_SUMMARIZE_COOKIES`.
 - [ ] `alejandra` + build (nixos-rebuild build on sophrosyne) + `nr --update`/switch.
 - [ ] Osaurus MCP provider (manual): name `reel-summarize`,
-      `http://sophrosyne:8892/sse`.
+      `http://127.0.0.1:8892/sse` — reached over the SSH `LocalForward 8892`
+      in `~/.ssh/config` (tunnel must be live, e.g. an open/ControlPersist
+      session to sophrosyne).
 - [ ] Follow-ups: async job-ID + poll; point/retire the old `reel-summarizer` skill.
