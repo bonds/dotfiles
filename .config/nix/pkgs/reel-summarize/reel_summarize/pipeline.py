@@ -98,12 +98,21 @@ def _release_lock(lock_fd):
     lock_fd.close()
 
 
-def run_structured(url: str, cfg: Config, keep_artifacts: bool = False) -> dict:
+def run_structured(
+    url: str,
+    cfg: Config,
+    keep_artifacts: bool = False,
+    pre_fetched_metadata: dict | None = None,
+) -> dict:
     """Run the full pipeline and return structured results (no summary printed).
 
     Shared by the ``reel-summarize`` CLI and the ``reel-summarize-mcp`` server so
     both use a single code path. Returns author/caption (raw, may be None),
     transcript, vision timeline, duration, summary, and the resolved model names.
+
+    If *pre_fetched_metadata* is provided (from a prior ``fetch_metadata`` call),
+    the download step still runs (needed for video) but reuses the metadata
+    instead of re-fetching it.
     """
     lock_fd = _acquire_lock()
     work_dir = tempfile.mkdtemp(prefix="reel-summarize-")
@@ -119,7 +128,7 @@ def run_structured(url: str, cfg: Config, keep_artifacts: bool = False) -> dict:
         p("→ downloading video...")
         down = download(url, work_dir)
         video_path = down["video_path"]
-        metadata = down["metadata"]
+        metadata = pre_fetched_metadata if pre_fetched_metadata else down["metadata"]
         p("→ done download")
 
         p("→ extracting audio...")
