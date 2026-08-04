@@ -1,8 +1,12 @@
 """Reel Summarize MCP server — summarizes Instagram Reels via local models.
 
-Exposes one tool, ``summarize_reel(url)``, which runs the shared reel-summarize
-pipeline (yt-dlp download → ffmpeg audio/frames → whisper transcription → VL
-frame analysis → final synthesis) and returns structured JSON.
+Exposes two tools:
+
+- ``start_summarize_reel(url)`` — queues a job, returns ``{job_id, status}``
+- ``get_reel_summary(job_id)`` — returns ``{status, result?}`` for polling
+
+The pipeline (yt-dlp → ffmpeg → whisper → VL frames → summary) runs in a
+background thread so the MCP call returns immediately.
 
 Transport mirrors ``mcp-searxng-search`` (streamable HTTP at ``/sse``). Optional
 bearer-token auth: if ``REEL_SUMMARIZE_MCP_TOKEN`` is set, every request must
@@ -14,6 +18,9 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import threading
+import time
+import uuid
 
 from mcp.server import Server
 from mcp.types import Tool, TextContent
@@ -24,6 +31,67 @@ from reel_summarize.pipeline import run_structured
 
 server = Server("reel-summarize")
 
+# ---------------------------------------------------------------------------
+# In-memory job store
+# ---------------------------------------------------------------------------
+# Each job: { "status": "queued"|"running"|"done"|"error",
+#             "result": <dict or None>, "error": <str or None>,
+#             "created_at": <float>, "updated_at": <float> }
+_jobs: dict[str, dict] = {}
+_jobs_lock = threading.Lock()
+
+# ---------------------------------------------------------------------------
+# Background worker — picks queued jobs and runs them
+# ---------------------------------------------------------------------------
+
+def _worker_loop():
+    """Single background thread that processes queued jobs."""
+    while True:
+        job_id = None
+        # Find next queued job
+        with _jobs_lock:
+            for jid, job in _jobs.items():
+                if job["status"] == "queued":
+                    job_id = jid
+                    job["status"] = "running"
+                    job["updated_at"] = time.time()
+                    break
+        if job_id is None:
+            time.sleep(1)
+            continue
+        # Run the pipeline
+        try:
+            cfg = load_config()
+            url = _jobs[job_id]["url"]
+            max_frames = _jobs[job_id].get("max_frames")
+            fps = _jobs[job_id].get("frames_per_second")
+            if max_frames is not None:
+                cfg.max_frames = int(max_frames)
+            if fps is not None:
+                cfg.frames_per_second = int(fps)
+            result = run_structured(url, cfg)
+            with _jobs_lock:
+                _jobs[job_id].update(
+                    status="done",
+                    result=result,
+                    updated_at=time.time(),
+                )
+        except Exception as e:
+            import time
+            with _jobs_lock:
+                _jobs[job_id].update(
+                    status="error",
+                    error=str(e),
+                    updated_at=time.time(),
+                )
+
+
+_worker_thread = threading.Thread(target=_worker_loop, daemon=True)
+_worker_thread.start()
+
+# ---------------------------------------------------------------------------
+# Token auth
+# ---------------------------------------------------------------------------
 
 def _token() -> str | None:
     token = os.environ.get("REEL_SUMMARIZE_MCP_TOKEN", "").strip()
@@ -40,17 +108,19 @@ def _authorized(headers: list[tuple[bytes, bytes]]) -> bool:
             return True
     return False
 
+# ---------------------------------------------------------------------------
+# Tool definitions
+# ---------------------------------------------------------------------------
 
 @server.list_tools()
 async def list_tools():
     return [
         Tool(
-            name="summarize_reel",
+            name="start_summarize_reel",
             description=(
-                "Download an Instagram Reel and summarize it: transcribes the audio "
-                "with whisper, analyzes sampled frames with a vision model, and "
-                "synthesizes a prose summary. Returns the summary, caption, author, "
-                "transcript, vision timeline, duration, and models used."
+                "Queue an Instagram Reel for summarization. Returns a job_id "
+                "immediately. The pipeline (download → transcribe → vision → "
+                "summary) runs in the background. Poll with get_reel_summary."
             ),
             inputSchema={
                 "type": "object",
@@ -74,44 +144,93 @@ async def list_tools():
                 },
                 "required": ["url"],
             },
-        )
+        ),
+        Tool(
+            name="get_reel_summary",
+            description=(
+                "Poll for the result of a previously queued reel summarization "
+                "job. Returns status (queued|running|done|error) and the result "
+                "when complete."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "job_id": {
+                        "type": "string",
+                        "description": "Job ID returned by start_summarize_reel",
+                    },
+                },
+                "required": ["job_id"],
+            },
+        ),
     ]
 
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list:
-    if name != "summarize_reel":
+    import time
+
+    if name == "start_summarize_reel":
+        url = arguments["url"]
+        job_id = uuid.uuid4().hex[:12]
+        with _jobs_lock:
+            _jobs[job_id] = {
+                "url": url,
+                "status": "queued",
+                "result": None,
+                "error": None,
+                "max_frames": arguments.get("max_frames"),
+                "frames_per_second": arguments.get("frames_per_second"),
+                "created_at": time.time(),
+                "updated_at": time.time(),
+            }
+        payload = {
+            "job_id": job_id,
+            "status": "queued",
+            "message": "Job queued. Poll get_reel_summary for results.",
+        }
+        return [TextContent(type="text", text=json.dumps(payload, indent=2))]
+
+    elif name == "get_reel_summary":
+        job_id = arguments["job_id"]
+        with _jobs_lock:
+            job = _jobs.get(job_id)
+        if job is None:
+            return [TextContent(
+                type="text",
+                text=json.dumps({"error": f"Unknown job_id: {job_id}"}),
+            )]
+
+        payload: dict = {
+            "job_id": job_id,
+            "status": job["status"],
+        }
+
+        if job["status"] == "done":
+            r = job["result"]
+            payload["result"] = {
+                "url": r["url"],
+                "author": r["author"],
+                "caption": r["caption"],
+                "transcript": r["transcript"],
+                "vision_timeline": r["vision_timeline"],
+                "duration": r["duration"],
+                "summary": r["summary"],
+                "model": r["model"],
+                "vision_model": r["vision_model"],
+            }
+        elif job["status"] == "error":
+            payload["error"] = job["error"]
+
+        return [TextContent(type="text", text=json.dumps(payload, indent=2))]
+
+    else:
         raise ValueError(f"Unknown tool: {name}")
 
-    url = arguments["url"]
-    cfg = load_config()
-    if arguments.get("max_frames") is not None:
-        cfg.max_frames = int(arguments["max_frames"])
-    if arguments.get("frames_per_second") is not None:
-        cfg.frames_per_second = int(arguments["frames_per_second"])
 
-    try:
-        result = await asyncio.to_thread(run_structured, url, cfg)
-    except Exception as e:  # ReelError and friends — never let a failure 500 or kill the server
-        text = f"error: summarize_reel failed: {e}"
-        return [TextContent(type="text", text=text)]
-
-    payload = {
-        "url": result["url"],
-        "author": result["author"],
-        "caption": result["caption"],
-        "transcript": result["transcript"],
-        "vision_timeline": result["vision_timeline"],
-        "duration": result["duration"],
-        "summary": result["summary"],
-        "model": result["model"],
-        "vision_model": result["vision_model"],
-    }
-    text = json.dumps(payload, ensure_ascii=False, indent=2)
-    return [TextContent(type="text", text=text)]
-
-
-# --- streamable HTTP transport (mirrors mcp-searxng-search) ---
+# ---------------------------------------------------------------------------
+# streamable HTTP transport (mirrors mcp-searxng-search)
+# ---------------------------------------------------------------------------
 
 session_manager = StreamableHTTPSessionManager(server, json_response=True, stateless=True)
 
