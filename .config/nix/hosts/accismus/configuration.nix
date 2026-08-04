@@ -219,6 +219,21 @@ in {
         #     StandardErrorPath = "${userHome}/Library/Logs/llamacpp-vision.err.log";
         #   };
         # };
+        # Persistent SSH tunnel to sophrosyne — forwards all LocalForward
+        # ports from SSH config (8892 reel-summarize MCP, 8385 Syncthing).
+        # Runs at login, auto-restarts on connection drop (sleep/wake,
+        # network changes). ControlMaster reuses an existing socket when
+        # one is available.
+        sophrosyne-tunnel = {
+          command = "/usr/bin/ssh -N sophrosyne";
+          serviceConfig = {
+            KeepAlive = true;
+            RunAtLoad = true;
+            ThrottleInterval = 10;
+            StandardOutPath = "${userHome}/Library/Logs/sophrosyne-tunnel.out.log";
+            StandardErrorPath = "${userHome}/Library/Logs/sophrosyne-tunnel.err.log";
+          };
+        };
         prune-generations = {
           command = "${pruneGenerations}/bin/prune-generations";
           serviceConfig = {
