@@ -178,6 +178,10 @@ in {
           url = "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf";
           args = {ctx-size = "102400";};
         };
+        "qwen2.5-7b" = {
+          url = "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf";
+          args = {ctx-size = "102400";};
+        };
       };
     };
     vision = {
@@ -243,7 +247,7 @@ in {
         "REEL_SUMMARIZE_VISION_HOST=http://127.0.0.1:8081"
         "REEL_SUMMARIZE_BACKEND=openai"
         # 3B-active MoE: fast enough on CPU for final summary generation
-        "REEL_SUMMARIZE_MODEL=qwen3.6-35b-a3b"
+        "REEL_SUMMARIZE_MODEL=qwen2.5-7b"
         # Headroom for CPU cold-starts (router model load + vision frames)
         "REEL_SUMMARIZE_TIMEOUT=600"
         # Loopback only; reached from accismus via ~/.ssh/config LocalForward 8892
