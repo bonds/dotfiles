@@ -56,9 +56,24 @@ def _extract_zen_cookies(container_id: str = "1") -> str | None:
 
 
 def _cookies_opt() -> list[str]:
+    """Return yt-dlp ``--cookies`` args (or ``[]`` if none found).
+
+    yt-dlp rewrites the cookie jar on exit, so when the source lives in a
+    read-only store (e.g. ``/run/agenix/...``) we pass it a writable copy in
+    temp instead, to avoid a ``PermissionError`` on save.
+    """
     cookies_file = os.environ.get("REEL_SUMMARIZE_COOKIES")
     if cookies_file:
-        return ["--cookies", cookies_file]
+        try:
+            with open(cookies_file, "r", encoding="utf-8") as fh:
+                data = fh.read()
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".txt", delete=False, encoding="utf-8"
+            ) as fh:
+                fh.write(data)
+                return ["--cookies", fh.name]
+        except OSError:
+            pass  # fall through to Zen extraction below
     zen_cookies = _extract_zen_cookies()
     if zen_cookies:
         return ["--cookies", zen_cookies]
