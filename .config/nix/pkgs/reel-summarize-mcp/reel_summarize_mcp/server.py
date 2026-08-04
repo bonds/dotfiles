@@ -1,12 +1,14 @@
-"""Reel Summarize MCP server — summarizes Instagram Reels via local models.
+"""Reel Summarize MCP server — summarizes Instagram Reel via local models.
 
 Exposes two tools:
 
-- ``start_summarize_reel(url)`` — queues a job, returns ``{job_id, status}``
-- ``get_reel_summary(job_id)`` — returns ``{status, result?}`` for polling
+- ``start_summarize_reel(url)`` — fetches metadata (author, caption) immediately
+  (~1-2s), queues heavy pipeline in background, returns ``{job_id, author, caption}``
+- ``get_reel_summary(job_id)`` — returns ``{status, result?}`` for polling;
+  author/caption available immediately even while running
 
 The pipeline (yt-dlp → ffmpeg → whisper → VL frames → summary) runs in a
-background thread so the MCP call returns immediately.
+background thread so the MCP call returns immediately with metadata.
 
 Transport mirrors ``mcp-searxng-search`` (streamable HTTP at ``/sse``). Optional
 bearer-token auth: if ``REEL_SUMMARIZE_MCP_TOKEN`` is set, every request must
@@ -28,6 +30,7 @@ from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 
 from reel_summarize.config import load as load_config
 from reel_summarize.pipeline import run_structured
+from reel_summarize.stages.download import fetch_metadata
 
 server = Server("reel-summarize")
 
@@ -65,11 +68,12 @@ def _worker_loop():
             url = _jobs[job_id]["url"]
             max_frames = _jobs[job_id].get("max_frames")
             fps = _jobs[job_id].get("frames_per_second")
+            pre_meta = _jobs[job_id].get("metadata")
             if max_frames is not None:
                 cfg.max_frames = int(max_frames)
             if fps is not None:
                 cfg.frames_per_second = int(fps)
-            result = run_structured(url, cfg)
+            result = run_structured(url, cfg, pre_fetched_metadata=pre_meta)
             with _jobs_lock:
                 _jobs[job_id].update(
                     status="done",
@@ -117,9 +121,11 @@ async def list_tools():
         Tool(
             name="start_summarize_reel",
             description=(
-                "Queue an Instagram Reel for summarization. Returns a job_id "
-                "immediately. The pipeline (download → transcribe → vision → "
-                "summary) runs in the background. Poll with get_reel_summary."
+                "Summarize an Instagram Reel. Fetches metadata (author, caption) "
+                "immediately (~1-2s), then runs the heavy pipeline (download → "
+                "transcribe → vision → summary) in the background. Returns "
+                "author and caption right away; poll get_reel_summary for the "
+                "full summary."
             ),
             inputSchema={
                 "type": "object",
@@ -170,12 +176,26 @@ async def call_tool(name: str, arguments: dict) -> list:
     if name == "start_summarize_reel":
         url = arguments["url"]
         job_id = uuid.uuid4().hex[:12]
+
+        # Fetch metadata immediately (fast ~1-2s) so we can return caption early
+        try:
+            metadata = fetch_metadata(url)
+        except Exception as e:
+            return [TextContent(
+                type="text",
+                text=json.dumps({"error": f"Failed to fetch metadata: {e}"}),
+            )]
+
+        author = metadata.get("author") or "unknown"
+        caption = metadata.get("caption") or "(no caption)"
+
         with _jobs_lock:
             _jobs[job_id] = {
                 "url": url,
                 "status": "queued",
                 "result": None,
                 "error": None,
+                "metadata": metadata,
                 "max_frames": arguments.get("max_frames"),
                 "frames_per_second": arguments.get("frames_per_second"),
                 "created_at": time.time(),
@@ -184,7 +204,9 @@ async def call_tool(name: str, arguments: dict) -> list:
         payload = {
             "job_id": job_id,
             "status": "queued",
-            "message": "Job queued. Poll get_reel_summary for results.",
+            "author": author,
+            "caption": caption,
+            "message": "Metadata fetched. Heavy processing (download → transcribe → vision → summary) running in background. Poll get_reel_summary for the full result.",
         }
         return [TextContent(type="text", text=json.dumps(payload, indent=2))]
 
@@ -202,6 +224,12 @@ async def call_tool(name: str, arguments: dict) -> list:
             "job_id": job_id,
             "status": job["status"],
         }
+
+        # Always include author/caption if available (even while running)
+        metadata = job.get("metadata")
+        if metadata:
+            payload["author"] = metadata.get("author") or "unknown"
+            payload["caption"] = metadata.get("caption") or "(no caption)"
 
         if job["status"] == "done":
             r = job["result"]
