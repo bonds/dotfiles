@@ -184,10 +184,10 @@ in {
       enable = true;
       host = "127.0.0.1";
       port = 8081;
-      model = "/dragon/servers/llamacpp/models/Qwen_Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf";
-      modelUrl = "https://huggingface.co/bartowski/Qwen_Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/Qwen_Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf";
-      mmproj = "/dragon/servers/llamacpp/models/mmproj-Qwen_Qwen2.5-VL-7B-Instruct-f16.gguf";
-      mmprojUrl = "https://huggingface.co/bartowski/Qwen_Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/mmproj-Qwen_Qwen2.5-VL-7B-Instruct-f16.gguf";
+      model = "/dragon/servers/llamacpp/models/Qwen3VL-2B-Instruct-Q4_K_M.gguf";
+      modelUrl = "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/resolve/main/Qwen3VL-2B-Instruct-Q4_K_M.gguf";
+      mmproj = "/dragon/servers/llamacpp/models/mmproj-Qwen3VL-2B-Instruct-F16.gguf";
+      mmprojUrl = "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/resolve/main/mmproj-Qwen3VL-2B-Instruct-F16.gguf";
       # KV cache in q8_0 cuts vision-server memory; quality impact is negligible
       extraArgs = ["--cache-type-k" "q8_0" "--cache-type-v" "q8_0"];
     };
