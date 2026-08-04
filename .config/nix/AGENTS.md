@@ -1,5 +1,9 @@
 # AGENTS.md
 
+> **Also see:** `~/AGENTS.md` for the full dotfiles layout — shell config,
+> scripts, machine-specific details (syncthing, photos, firesafe), and
+> conventions (fish, doas, git workflow).
+
 Personal nix flake for:
 - macOS laptop **accismus** (`aarch64-darwin`, nix-darwin, primary `nixos-26.05` stable to avoid cctools ld64 crash)
 - NixOS server **sophrosyne** (`x86_64-linux`, `nixos-26.05`, also at `sophrosyne.local` / `home.ggr.com`)

@@ -1,5 +1,8 @@
 # AGENTS.md
 
+> **Also see:** `.config/nix/AGENTS.md` for nix-flake-specific docs — rebuild
+> commands, flake structure, per-machine gotchas, and nix conventions.
+
 Personal dotfiles tracked via a **bare git repo** at `~/.config/dotfiles`, managed
 through a `config` alias (fish-only, see below).  This avoids a `.git/` directory
 cluttering `$HOME`, which was causing issues with various tools.  The approach
