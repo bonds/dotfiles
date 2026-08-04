@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import sys
-
 from reel_summarize.config import Config
+from reel_summarize.errors import SummaryError
 
 
 _FINAL_PROMPT = (
@@ -60,11 +59,9 @@ def _call_ollama(prompt: str, cfg: Config) -> str:
         resp.raise_for_status()
         return resp.json().get("response", "").strip()
     except httpx.RequestError as e:
-        print(f"  error: cannot reach LLM at {cfg.host}: {e}", file=sys.stderr)
-        sys.exit(2)
+        raise SummaryError(f"cannot reach LLM at {cfg.host}: {e}") from e
     except Exception as e:
-        print(f"  error during summarization: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise SummaryError(f"error during summarization: {e}") from e
 
 
 def _call_openai(prompt: str, cfg: Config) -> str:
@@ -74,7 +71,7 @@ def _call_openai(prompt: str, cfg: Config) -> str:
     payload = {
         "model": cfg.summarize_model,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 512,
+        "max_tokens": 2048,
         "stream": False,
     }
     try:
@@ -84,13 +81,18 @@ def _call_openai(prompt: str, cfg: Config) -> str:
             timeout=cfg.timeout,
         )
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"].strip()
+        msg = resp.json()["choices"][0]["message"]
+        content = (msg.get("content") or "").strip()
+        # Some reasoning models (e.g. qwen3) emit the answer as
+        # reasoning_content and leave content empty when the token
+        # budget is spent thinking — fall back so we never return "".
+        if not content:
+            content = (msg.get("reasoning_content") or "").strip()
+        return content
     except httpx.RequestError as e:
-        print(f"  error: cannot reach LLM at {cfg.host}: {e}", file=sys.stderr)
-        sys.exit(2)
+        raise SummaryError(f"cannot reach LLM at {cfg.host}: {e}") from e
     except Exception as e:
-        print(f"  error during summarization: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise SummaryError(f"error during summarization: {e}") from e
 
 
 def _call_osaurus(prompt: str, cfg: Config) -> str:
@@ -115,7 +117,7 @@ def _call_osaurus(prompt: str, cfg: Config) -> str:
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 512,
+        "max_tokens": 2048,
         "stream": False,
     }
     try:
@@ -126,10 +128,12 @@ def _call_osaurus(prompt: str, cfg: Config) -> str:
             timeout=cfg.timeout,
         )
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"].strip()
+        msg = resp.json()["choices"][0]["message"]
+        content = (msg.get("content") or "").strip()
+        if not content:
+            content = (msg.get("reasoning_content") or "").strip()
+        return content
     except httpx.RequestError as e:
-        print(f"  error: cannot reach Osaurus at {cfg.host}: {e}", file=sys.stderr)
-        sys.exit(2)
+        raise SummaryError(f"cannot reach Osaurus at {cfg.host}: {e}") from e
     except Exception as e:
-        print(f"  error during summarization: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise SummaryError(f"error during summarization: {e}") from e

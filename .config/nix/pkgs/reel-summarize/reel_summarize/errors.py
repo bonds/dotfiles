@@ -9,5 +9,9 @@ class ReelError(Exception):
     """
 
 
+class SummaryError(ReelError):
+    """The summary LLM call failed (unreachable, timeout, or bad response)."""
+
+
 class DownloadError(ReelError):
     """The video could not be downloaded (network, auth/cookies, or 404)."""
