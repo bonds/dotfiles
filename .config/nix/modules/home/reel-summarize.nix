@@ -18,9 +18,9 @@ in {
             description = "LLM API host (http://localhost:8080 = llama.cpp, http://localhost:11434 = ollama)";
           };
           backend = lib.mkOption {
-            type = lib.types.enum ["openai" "ollama"];
+            type = lib.types.enum ["openai" "ollama" "osaurus"];
             default = "openai";
-            description = "LLM backend (openai = llama.cpp / OpenAI-compatible API)";
+            description = "LLM backend (openai = llama.cpp, osaurus = Osaurus native macOS AI)";
           };
           visionModel = lib.mkOption {
             type = lib.types.str;
