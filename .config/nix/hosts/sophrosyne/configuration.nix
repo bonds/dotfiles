@@ -107,6 +107,12 @@ in {
       group = "searx";
       mode = "0400";
     };
+    reel-ig-cookies = {
+      file = ../../secrets/reel-ig-cookies.age;
+      owner = "llamacpp";
+      group = "llamacpp";
+      mode = "0400";
+    };
   };
 
   services.minecraft-bedrock = {
@@ -239,9 +245,8 @@ in {
         # Loopback only; reached from accismus via ~/.ssh/config LocalForward 8892
         "REEL_SUMMARIZE_MCP_HOST=127.0.0.1"
         "HOME=/var/lib/reel-summarize-mcp"
-        # Instagram cookies (Netscape format) for authenticated downloads; add
-        # once `age.secrets.reel-ig-cookies` exists:
-        # "REEL_SUMMARIZE_COOKIES=/run/agenix/reel-ig-cookies"
+        # Instagram cookies (Netscape format) for authenticated downloads
+        "REEL_SUMMARIZE_COOKIES=/run/agenix/reel-ig-cookies"
       ];
       PrivateTmp = true;
       NoNewPrivileges = true;
