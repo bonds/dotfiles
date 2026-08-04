@@ -77,7 +77,6 @@ def _worker_loop():
                     updated_at=time.time(),
                 )
         except Exception as e:
-            import time
             with _jobs_lock:
                 _jobs[job_id].update(
                     status="error",
@@ -168,8 +167,6 @@ async def list_tools():
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list:
-    import time
-
     if name == "start_summarize_reel":
         url = arguments["url"]
         job_id = uuid.uuid4().hex[:12]
