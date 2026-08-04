@@ -242,6 +242,10 @@ in {
         "REEL_SUMMARIZE_HOST=http://127.0.0.1:8080"
         "REEL_SUMMARIZE_VISION_HOST=http://127.0.0.1:8081"
         "REEL_SUMMARIZE_BACKEND=openai"
+        # 3B-active MoE: fast enough on CPU for final summary generation
+        "REEL_SUMMARIZE_MODEL=qwen3.6-35b-a3b"
+        # Headroom for CPU cold-starts (router model load + vision frames)
+        "REEL_SUMMARIZE_TIMEOUT=600"
         # Loopback only; reached from accismus via ~/.ssh/config LocalForward 8892
         "REEL_SUMMARIZE_MCP_HOST=127.0.0.1"
         "HOME=/var/lib/reel-summarize-mcp"

@@ -37,6 +37,8 @@ def generate_summary(
     )
     if cfg.backend == "openai":
         return _call_openai(prompt, cfg)
+    if cfg.backend == "osaurus":
+        return _call_osaurus(prompt, cfg)
     return _call_ollama(prompt, cfg)
 
 
@@ -77,7 +79,7 @@ def _call_openai(prompt: str, cfg: Config) -> str:
     }
     try:
         resp = httpx.post(
-            f"{host}/chat/completions",
+            f"{host}/v1/chat/completions",
             json=payload,
             timeout=cfg.timeout,
         )
@@ -85,6 +87,48 @@ def _call_openai(prompt: str, cfg: Config) -> str:
         return resp.json()["choices"][0]["message"]["content"].strip()
     except httpx.RequestError as e:
         print(f"  error: cannot reach LLM at {cfg.host}: {e}", file=sys.stderr)
+        sys.exit(2)
+    except Exception as e:
+        print(f"  error during summarization: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _call_osaurus(prompt: str, cfg: Config) -> str:
+    import httpx
+
+    host = cfg.host.rstrip("/")
+    headers = {}
+    if cfg.osaurus_api_key:
+        headers["Authorization"] = f"Bearer {cfg.osaurus_api_key}"
+
+    # Auto-detect the actual model from the server
+    model = cfg.summarize_model
+    try:
+        resp = httpx.get(f"{host}/v1/models", headers=headers, timeout=5)
+        resp.raise_for_status()
+        models = resp.json().get("data", [])
+        if models:
+            model = models[0].get("id", model)
+    except Exception:
+        pass
+
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 512,
+        "stream": False,
+    }
+    try:
+        resp = httpx.post(
+            f"{host}/v1/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=cfg.timeout,
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"].strip()
+    except httpx.RequestError as e:
+        print(f"  error: cannot reach Osaurus at {cfg.host}: {e}", file=sys.stderr)
         sys.exit(2)
     except Exception as e:
         print(f"  error during summarization: {e}", file=sys.stderr)

@@ -14,7 +14,7 @@ def extract_frames(video_path: str, work_dir: str, cfg: Config) -> list[str]:
     pattern = os.path.join(frames_dir, "frame_%04d.jpg")
     result = subprocess.run(
         ["ffmpeg", "-y", "-i", video_path,
-         "-vf", f"fps={cfg.frames_per_second}",
+         "-vf", f"fps={cfg.frames_per_second},scale=512:512:force_original_aspect_ratio=decrease:force_divisible_by=2",
          "-frames:v", str(cfg.max_frames),
          pattern],
         capture_output=True, text=True, timeout=120,
