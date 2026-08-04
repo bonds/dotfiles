@@ -200,24 +200,25 @@ in {
   launchd = {
     user = {
       agents = {
-        llamacpp-serve = {
-          command = "${llamacppServeScript}";
-          serviceConfig = {
-            KeepAlive = true;
-            RunAtLoad = true;
-            StandardOutPath = "${userHome}/Library/Logs/llamacpp.out.log";
-            StandardErrorPath = "${userHome}/Library/Logs/llamacpp.err.log";
-          };
-        };
-        llamacpp-vision-serve = {
-          command = "${llamacppVisionServeScript}";
-          serviceConfig = {
-            KeepAlive = true;
-            RunAtLoad = true;
-            StandardOutPath = "${userHome}/Library/Logs/llamacpp-vision.out.log";
-            StandardErrorPath = "${userHome}/Library/Logs/llamacpp-vision.err.log";
-          };
-        };
+        # --- Disabled 2026-08-04: moving to MCP on sophrosyne ---
+        # llamacpp-serve = {
+        #   command = "${llamacppServeScript}";
+        #   serviceConfig = {
+        #     KeepAlive = true;
+        #     RunAtLoad = true;
+        #     StandardOutPath = "${userHome}/Library/Logs/llamacpp.out.log";
+        #     StandardErrorPath = "${userHome}/Library/Logs/llamacpp.err.log";
+        #   };
+        # };
+        # llamacpp-vision-serve = {
+        #   command = "${llamacppVisionServeScript}";
+        #   serviceConfig = {
+        #     KeepAlive = true;
+        #     RunAtLoad = true;
+        #     StandardOutPath = "${userHome}/Library/Logs/llamacpp-vision.out.log";
+        #     StandardErrorPath = "${userHome}/Library/Logs/llamacpp-vision.err.log";
+        #   };
+        # };
         prune-generations = {
           command = "${pruneGenerations}/bin/prune-generations";
           serviceConfig = {
