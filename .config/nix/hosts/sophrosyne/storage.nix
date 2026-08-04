@@ -42,7 +42,11 @@
     fi
     mkdir -p /dragon/backups/accismus/live
     mkdir -p /dragon/backups/accismus/snapshots
-    chown -R scott:users /dragon/backups/accismus
+    # NOTE (2026-08-04): the recursive `chown -R scott:users` was intentionally
+    # removed -- it walked the whole hard-linked rsync-tmbackup snapshot tree on
+    # every activation (~30 min). Backups are rewritten as scott via rsync -a,
+    # so it was only a one-time fix. If ownership ever drifts, run manually:
+    #   sudo chown -R scott:users /dragon/backups/accismus
     chmod 700 /dragon/backups/accismus
     echo "backup: directory structure ready at /dragon/backups/accismus" >&2
   '';
