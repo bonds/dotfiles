@@ -21,8 +21,6 @@ Match host sophrosyne exec "bash -c 'ping -c 1 -t 1 192.168.4.43 >/dev/null 2>&1
 
 Host sophrosyne
     HostName home.ggr.com
-    IdentityFile ~/.ssh/id_agent
-    IdentitiesOnly yes
 
 Host metanoia
     HostName 192.168.4.98

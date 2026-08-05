@@ -18,6 +18,7 @@
     rsync # fast incremental file transfer
     smartmontools # monitor disk health (S.M.A.R.T.)
     socat # multipurpose socket relay and pipe tool
+    sox # audio synthesis/playback (play -n pinknoise vol 0.1)
     speedtest-cli # command-line internet speed test
     sysbench # system performance benchmark suite
     units # unit conversion calculator

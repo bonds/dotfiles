@@ -36,3 +36,4 @@ else
 end
 
 alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
+alias noise='play -n synth pinknoise vol 0.5 bass +3 treble -6'
