@@ -277,6 +277,7 @@ in {
       imports = [
         ../../modules/home/base.nix
         ../../modules/home/direnv.nix
+        ../../modules/home/ice.nix
         ../../modules/home/polyptych.nix
         ../../modules/home/reel-summarize.nix
       ];
