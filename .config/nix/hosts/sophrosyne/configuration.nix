@@ -164,7 +164,7 @@ in {
     router = {
       enable = true;
       modelsMax = 1;
-      sleepIdleSeconds = 300;
+      sleepIdleSeconds = -1;
       models = {
         "gemma-4-31b-it" = {
           url = "https://huggingface.co/unsloth/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-Q4_K_M.gguf";
