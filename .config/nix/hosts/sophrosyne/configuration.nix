@@ -251,8 +251,8 @@ in {
         "REEL_SUMMARIZE_MODEL=qwen2.5-7b"
         # Headroom for CPU cold-starts (router model load + vision frames)
         "REEL_SUMMARIZE_TIMEOUT=600"
-        # Loopback only; reached from accismus via ~/.ssh/config LocalForward 8892
-        "REEL_SUMMARIZE_MCP_HOST=127.0.0.1"
+        # Listen on all interfaces (reached from accismus via Tailscale)
+        "REEL_SUMMARIZE_MCP_HOST=0.0.0.0"
         "HOME=/var/lib/reel-summarize-mcp"
         # Instagram cookies (Netscape format) for authenticated downloads
         "REEL_SUMMARIZE_COOKIES=/run/agenix/reel-ig-cookies"

@@ -38,9 +38,6 @@ Host *.ggr.com *.local sophrosyne metanoia
 Host *.ggr.com *.local sophrosyne
     # forward syncthing web ui ports so I can manage them locally
     LocalForward 8385 127.0.0.1:8384
-    # forward reel-summarize MCP (sophrosyne 127.0.0.1:8892) so Osaurus reaches it
-    # at http://127.0.0.1:8892/sse without opening 8892 on the network
-    LocalForward 8892 127.0.0.1:8892
 
 Host sophrosyne
     # sophrosyne doesn't know about xterm-ghostty

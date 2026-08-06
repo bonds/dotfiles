@@ -88,4 +88,7 @@
     package = pkgs-unstable.tailscale;
     extraSetFlags = ["--advertise-routes=192.168.4.0/24" "--advertise-exit-node"];
   };
+
+  # Allow reel-summarize MCP on Tailscale interface only (not LAN or public)
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [8892];
 }
