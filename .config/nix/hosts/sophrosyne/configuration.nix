@@ -138,6 +138,8 @@ in {
     user = "scott";
     group = "users";
     configDir = "${config.users.users.scott.home}/.config/syncthing";
+    # Listen on all interfaces so the web UI is reachable via Tailscale
+    guiAddress = "0.0.0.0:8384";
     settings = {
       devices."accismus" = {id = syncthingIds.accismus;};
       folders."Documents" = {
