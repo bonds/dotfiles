@@ -35,10 +35,6 @@ Host *.ggr.com *.local sophrosyne metanoia
     ServerAliveInterval 10s
     ForwardAgent yes
 
-Host *.ggr.com *.local sophrosyne
-    # forward syncthing web ui ports so I can manage them locally
-    LocalForward 8385 127.0.0.1:8384
-
 Host sophrosyne
     # sophrosyne doesn't know about xterm-ghostty
     SetEnv TERM=xterm-256color
