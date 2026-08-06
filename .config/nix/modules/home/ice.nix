@@ -6,7 +6,7 @@
 # Defaults read from: com.jordanbaird.Ice (~/Library/Preferences)
 # Docs: https://github.com/jordanbaird/Ice
 {...}: {
-  targets.darwin.userdefaults = {
+  targets.darwin.defaults = {
     "com.jordanbaird.Ice" = {
       # --- Ice Bar ---
       UseIceBar = true; # show hidden icons in a secondary bar below the menu bar
