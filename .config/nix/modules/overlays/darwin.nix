@@ -13,8 +13,8 @@ in [
   (import ./osxphotos/default.nix)
   (import ./zen-browser/default.nix)
   (import ./ghostty/default.nix)
-  (import ./opencode/default.nix)
-  (import ./daisydisk-overlay/default.nix)
+  (import ./opencode/default.nix inputs.nixpkgs)
+  (import ./daisydisk-overlay/default.nix inputs.nixpkgs)
   (import ./osaurus/default.nix)
   (final: _prev: {
     oxillama = final.callPackage ../../pkgs/oxillama {};
