@@ -181,6 +181,10 @@ in {
           url = "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf";
           args = {ctx-size = "102400";};
         };
+        "ornith-1.0-35b" = {
+          url = "https://huggingface.co/deepreinforce-ai/Ornith-1.0-35B-GGUF/resolve/main/ornith-1.0-35b-Q4_K_M.gguf";
+          args = {ctx-size = "102400";};
+        };
         "qwen2.5-7b" = {
           url = "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf";
           args = {ctx-size = "102400";};
