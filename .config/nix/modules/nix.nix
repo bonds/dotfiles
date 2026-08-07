@@ -13,7 +13,7 @@
     nix-path = lib.mkDefault "";
     flake-registry = lib.mkDefault "";
     warn-dirty = lib.mkDefault false;
-    trusted-users = lib.mkDefault ["scott"];
+    trusted-users = lib.mkOverride 99 ["scott"]; # priority 99 beats NixOS default of 100
     max-jobs = lib.mkDefault "auto";
     auto-optimise-store = lib.mkDefault true;
     accept-flake-config = lib.mkDefault true; # pick up nixConfig from flake.nix
