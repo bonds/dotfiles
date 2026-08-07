@@ -20,7 +20,7 @@
           "$yellow" "$cmd_color" "$cmd" "$yellow" "$reset"
         printf >&2 '  %sPackage:%s  nixpkgs#%s\n\n' "$green" "$reset" "$attrs[1]"
         printf >&2 '  %sInstall:%s   nix profile install nixpkgs#"%s"\n' "$cyan" "$reset" "$attrs[1]"
-        printf >&2 '  %sTry once:%s  nix shell nixpkgs#"%s" -c %s\n' "$cyan" "$reset" "$attrs[1]" "$cmd"
+        printf >&2 '  %sTry now:%s   , %s\n' "$cyan" "$reset" "$cmd"
       else
         printf >&2 \
           '%sThe program %s%s%s is not installed, but is available in nixpkgs.%s\n\n' \
@@ -40,7 +40,7 @@
         end
         printf >&2 '\n'
         printf >&2 '  %sInstall:%s   nix profile install nixpkgs#"<package>"\n' "$cyan" "$reset"
-        printf >&2 '  %sTry once:%s  nix shell nixpkgs#"<package>" -c %s\n' "$cyan" "$reset" "$cmd"
+        printf >&2 '  %sTry now:%s   , %s\n' "$cyan" "$reset" "$cmd"
       end
       return 127
     end

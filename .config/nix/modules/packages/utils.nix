@@ -23,6 +23,7 @@
     sysbench # system performance benchmark suite
     units # unit conversion calculator
     unzip # extract ZIP archives
+    comma # run any nixpkgs program without installing (`, <cmd>`)
     watch # execute a command periodically
     weather # command-line weather forecast
   ];
