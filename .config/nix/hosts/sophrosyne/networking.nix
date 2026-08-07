@@ -89,6 +89,6 @@
     extraSetFlags = ["--advertise-routes=192.168.4.0/24" "--advertise-exit-node"];
   };
 
-  # Allow reel-summarize MCP and Syncthing GUI on Tailscale interface only
-  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [8384 8892];
+  # Allow services on Tailscale interface only (not LAN or public)
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [8080 8384 8892];
 }
