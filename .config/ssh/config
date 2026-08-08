@@ -6,16 +6,6 @@ Match exec "test -e /Users/scott/Library/Containers/com.maxgoedjen.Secretive.Sec
 
     IdentityAgent /Users/scott/Library/Containers/com.maxgoedjen.Secretive.SecretAgent/Data/socket.ssh
 
-# for connecting to locally running docker instances
-#Include ~/.colima/ssh_config
-#Match host="172.16.0.*"
-#    User root
-
-# always use the long name for home servers so ssh realizes the short and long
-# names are the same host
-# Match !exec "echo %h | grep '\.'"
-#     Hostname %h.ggr.com
-
 Match host sophrosyne exec "bash -c 'ping -c 1 -t 1 192.168.4.43 >/dev/null 2>&1' 2>/dev/null"
     HostName 192.168.4.43
 
