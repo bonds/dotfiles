@@ -1,16 +1,18 @@
 ---
-description: Summarize an Instagram Reel using local models (llama.cpp + transcribe.cpp)
+description: Summarize an Instagram Reel via the sophrosyne MCP server
 ---
 
-Run in three phases, each a separate bash call, so the user sees progress:
+Summarize the Instagram Reel at `$ARGUMENTS` using the sophrosyne MCP server
+(`sophrosyne_mcp`), NOT the local accismus pipeline.
 
-1. **Metadata** (~1-2s): `PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage metadata $ARGUMENTS`
-   → show the caption/author to the user immediately
+Use the `start_summarize_reel` MCP tool with the URL. It returns the author and
+caption immediately (~1-2s) and queues the heavy pipeline (download → transcribe →
+vision → summary) in the background. Then poll `get_reel_summary` with the returned
+job_id until status is `done`, and present the final summary to the user.
 
-2. **Download + extract** (~20-30s): `PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage download $ARGUMENTS`
-   → tell user "download done"
+Show the caption/author as soon as you have it, and keep the user informed while
+polling. Present the final summary as concise prose.
 
-3. **Process** (~1-2min): `PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize --stage process $ARGUMENTS`
-   → capture stdout as the summary and present it
-
-If phase 1 gets exit 3 (download failure), tell the user to refresh Instagram session in Zen browser. If exit 2 (missing model), run the download-llamacpp-models.sh script or ensure the GGUF files are in `~/.cache/llama.cpp/models/`.
+If `start_summarize_reel` returns an error mentioning download/auth failures, tell
+the user they may need to refresh the Instagram session (IG cookies are sourced from
+agenix on sophrosyne).

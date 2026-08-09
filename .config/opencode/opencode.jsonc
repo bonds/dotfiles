@@ -16,6 +16,13 @@
     }
   },
   "disabled_providers": [],
+  "mcp": {
+    "sophrosyne": {
+      "type": "remote",
+      "url": "http://sophrosyne:8892/sse",
+      "enabled": true
+    }
+  },
   "provider": {
     "sophrosyne": {
       "name": "Sophrosyne",
