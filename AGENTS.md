@@ -85,18 +85,18 @@ but is no longer managed.
   - NixOS/darwin module: `programs.what-changed.enable`.
   - `nix flake check` runs alejandra format check, Python syntax check, and pytest suite.
   - Supports ollama + OpenAI-compatible backends. Caches results in `~/.cache/what-changed/`.
-- `.config/nix/pkgs/reel-summarize/` — **`reel-summarize` tool** (v0.1.0) — Local Instagram Reel summarizer.
-  - Pipeline: yt-dlp download → ffmpeg frames+audio → whisper transcription → llava:7b per-frame OCR → qwen2.5 summary.
-  - Nix-managed via home-manager: `programs.reel-summarize.enable` (enabled on accismus).
-  - Runtime deps: `yt-dlp`+`ffmpeg` via nix, llama.cpp with `llava:7b`+`qwen2.5:7b`.
-  - CLI: `reel-summarize <url>` — concise prose summary to stdout.
-  - Opencode skill at `~/.config/opencode/skills/reel-summarize/SKILL.md`.
+- `.config/nix/pkgs/reel-summarize/` — **`reel-summarize` tool** (v0.2.0) — Local Instagram Reel summarizer (shared pipeline/CLI).
+  - Pipeline: yt-dlp download → ffmpeg frames+audio → transcribe-cpp (whisper `whisper-small-Q5_K_M.gguf`) → per-frame vision OCR → LLM final summary.
+  - Runtime deps: `yt-dlp`+`ffmpeg` via nix, llama.cpp OpenAI-compatible API (text `qwen2.5-7b` @ `:8080`, vision @ `:8081`), whisper via `transcribe-cpp` (`TRANSCRIBE_LIBRARY`).
+  - CLI: `reel-summarize <url>` — concise prose summary to stdout. Nix-managed on accismus via home-manager: `programs.reel-summarize.enable`.
+  - Config at `~/.config/reel-summarize/config.toml` (backend, host/vision_host, model, fps, max_frames, timeout). Backend defaults to `openai` (llama.cpp); `ollama`/`osaurus` also supported.
   - `nix flake check` runs format check, python syntax check, pytest suite.
-  - Config at `~/.config/reel-summarize/config.toml`.
-  - **Auto cookie extraction:** Automatically reads cookies from Zen browser's Personal workspace (userContextId=1) via `cookies.sqlite`. No manual cookie setup needed.
-  - **GPU acceleration:** All model layers offloaded to GPU via `options.num_gpu = 99` in vision API calls. On M2, `llava:7b` takes ~3-10s per frame.
-  - **Default settings (after nix rebuild):** `llava:7b`, `max_frames = 10`, `1 fps`, `timeout = 300s`. Total run: ~1-3 min for a 60s reel.
   - **Source overrides (without nix rebuild):** `PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize <url>` picks up uncommitted source changes.
+- `.config/nix/pkgs/reel-summarize-mcp/` — **`reel-summarize-mcp` server** (v0.1.0) — MCP wrapper exposing the pipeline to the Osaurus agent.
+  - Wraps `reel-summarize` (locally `callPackage`d, plus `transcribe-cpp`) with `mcp`/`httpx`/`starlette`/`uvicorn`; streamable HTTP at `/sse` (default port 8892), optional bearer token via `REEL_SUMMARIZE_MCP_TOKEN`.
+  - Runs on **sophrosyne** as `systemd.services.reel-summarize-mcp` (see `hosts/sophrosyne/configuration.nix`), as user `llamacpp` with `StateDirectory=reel-summarize-mcp`. Binds `0.0.0.0` — reached from accismus over **Tailscale** (firewall opens 8892 on `tailscale0` only, not LAN/public).
+  - Models: text `qwen2.5-7b` @ `127.0.0.1:8080`, vision **Qwen3-VL-2B** @ `127.0.0.1:8081` via `llamacpp-vision-server` (KV cache `q8_0`). IG cookies from agenix: `REEL_SUMMARIZE_COOKIES=/run/agenix/reel-ig-cookies`.
+  - Full spec + remaining steps in `reel-summarize-mcp/SPEC.md`.
 
 ### Haskell
 - `.config/ghc/ghci.conf` — GHCi config
