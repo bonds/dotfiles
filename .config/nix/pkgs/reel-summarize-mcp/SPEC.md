@@ -21,7 +21,10 @@ per this spec.
 ## Decisions (user-confirmed)
 
 1. Move the **vision model to sophrosyne** so the MCP server is independent of the Mac.
+   Implemented with **Qwen3-VL-2B** (Qwen2.5-VL-7B was tried, then dropped for the
+   faster 2B MoE — see deployment below).
 2. **IG cookies** deployed to sophrosyne via **agenix** (encrypted `.age` blob).
+   Implemented — live at `/run/agenix/reel-ig-cookies`.
 3. One MCP tool: `summarize_reel(url)` (sync first; async job-ID is a follow-up).
 4. Toolchain deps bundled into the MCP derivation (superset) so it installs on sophrosyne.
 
@@ -48,7 +51,7 @@ Python `buildPythonApplication` (mirrors `reel-summarize`'s style) that:
 - **Vision server:** `llamacpp-server.vision` (new option in
   `modules/llamacpp-server.nix`) spawns a second llama-server
   (`llamacpp-vision-server.service`, `127.0.0.1:8081`) for
-  `Qwen2.5-VL-7B` + mmproj, downloaded on first start under
+  `Qwen3-VL-2B-Instruct-Q4_K_M` + mmproj, downloaded on first start under
   `/dragon/servers/llamacpp/models`. KV cache set to `q8_0` to cut memory
   (`--cache-type-k/v q8_0`).
 - **Service:** `reel-summarize-mcp.service` runs as `llamacpp`, `wants`
@@ -58,7 +61,8 @@ Python `buildPythonApplication` (mirrors `reel-summarize`'s style) that:
   and is reachable from accismus via **Tailscale** (firewall allows port
   8892 on `tailscale0` only — not exposed on LAN or public internet).
 - **IG cookies:** `age.secrets.reel-ig-cookies` + `REEL_SUMMARIZE_COOKIES` —
-  pending a Netscape-format cookie blob from the user (see "Remaining steps").
+  implemented; a Netscape-format cookie blob is encrypted with agenix and
+  mounted at `/run/agenix/reel-ig-cookies`.
 
 ### Tokens / security
 - Existing sophrosyne MCP servers are unauthenticated on the LAN; first deploy
@@ -66,11 +70,11 @@ Python `buildPythonApplication` (mirrors `reel-summarize`'s style) that:
   recommended hardening follow-up once validated.
 
 ## Remaining steps
-- [ ] Create IG cookie blob → agenix: `age.encrypt` a Netscape `cookies.txt`,
+- [x] Create IG cookie blob → agenix: `age.encrypt` a Netscape `cookies.txt`,
       commit `secrets/reel-ig-cookies.age`, add `age.secrets.reel-ig-cookies`,
       uncomment `REEL_SUMMARIZE_COOKIES`.
-- [ ] `alejandra` + build (nixos-rebuild build on sophrosyne) + `nr --update`/switch.
-- [ ] Osaurus MCP provider (manual): name `sophrosyne mcp`,
+- [x] `alejandra` + build (nixos-rebuild build on sophrosyne) + `nr --update`/switch.
+- [x] Osaurus MCP provider (manual): name `sophrosyne mcp`,
       `http://sophrosyne:8892/sse` — reached directly over the **Tailscale**
       network (no SSH tunnel needed).
 - [ ] Follow-ups: async job-ID + poll; point/retire the old `reel-summarizer` skill.
