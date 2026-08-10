@@ -14,7 +14,10 @@
     settings = {
       servers.bouncer = {
         nickname = "scott";
-        username = "scott"; # soju user; bouncer-networks extension routes networks
+        # soju bouncer-networks: scoping the connection to a single network
+        # (scott/libera) makes plain /join and channel commands work directly
+        # instead of needing BouncerServ network-scoping gymnastics.
+        username = "scott/libera";
         realname = "Scott";
         server = "sophrosyne";
         port = 6667;
