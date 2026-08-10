@@ -299,11 +299,14 @@ in {
   # IRC bouncer. Holds the upstream connection to Libera.Chat open, buffers
   # messages while clients are offline, and replays them on reconnect (IRCv3
   # chathistory). Reachable from accismus over the tailnet — WireGuard already
-  # encrypts the wire, so plain irc:// on 6667 is fine.
+  # encrypts the wire, so plain IRC on 6667 is fine.
+  #
+  # soju's listen scheme defaults to ircs:// (TLS). Use irc+insecure://
+  # explicitly for plaintext — the tailnet provides the encrypted transport.
   services.soju = {
     enable = true;
     hostName = "sophrosyne";
-    listen = [":6667"];
+    listen = ["irc+insecure://:6667"];
     # Firewall opened on the tailnet interface only in ./networking.nix.
   };
 
@@ -315,9 +318,12 @@ in {
   # password on every switch so it always matches secrets/soju-password.age
   # (which accismus' Halloy also reads). `-realname` is only settable on the
   # current user, so it's omitted from `user create`.
+  #
+  # Use the full nix-store path for sojuctl — systemd units don't inherit
+  # environment.systemPackages PATH.
   systemd.services.soju-user = {
     description = "Seed soju bouncer user from agenix secret";
-    after = ["soju.service" "agenix.service"];
+    after = ["soju.service"];
     requires = ["soju.service"];
     wantedBy = ["multi-user.target"];
     serviceConfig = {
@@ -325,13 +331,12 @@ in {
       ExecStart = pkgs.writeShellScript "soju-seed-user" ''
         set -e
         SOJU_PW="$(cat ${config.age.secrets.soju-password.path})"
-        if sojuctl user status scott >/dev/null 2>&1; then
-          sojuctl user update scott -password "$SOJU_PW"
+        if ${pkgs.soju}/bin/sojuctl user status scott >/dev/null 2>&1; then
+          ${pkgs.soju}/bin/sojuctl user update scott -password "$SOJU_PW"
         else
-          sojuctl user create -username scott -password "$SOJU_PW" -nick scott
+          ${pkgs.soju}/bin/sojuctl user create -username scott -password "$SOJU_PW" -nick scott
         fi
       '';
-      # sojuctl is placed on PATH by the soju module.
     };
   };
 }
