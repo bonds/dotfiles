@@ -331,10 +331,11 @@ in {
       ExecStart = pkgs.writeShellScript "soju-seed-user" ''
         set -e
         SOJU_PW="$(cat ${config.age.secrets.soju-password.path})"
-        if ${pkgs.soju}/bin/sojuctl user status scott >/dev/null 2>&1; then
-          ${pkgs.soju}/bin/sojuctl user update scott -password "$SOJU_PW"
+        SOJUCTL="${pkgs.soju}/bin/sojuctl -config ${config.services.soju.configFile}"
+        if $SOJUCTL user status scott >/dev/null 2>&1; then
+          $SOJUCTL user update scott -password "$SOJU_PW"
         else
-          ${pkgs.soju}/bin/sojuctl user create -username scott -password "$SOJU_PW" -nick scott
+          $SOJUCTL user create -username scott -password "$SOJU_PW" -nick scott
         fi
       '';
     };
