@@ -48,12 +48,14 @@ end
 function nr
     set -l _nr_old_system
     set -l _nr_new_system
+    set -l _nr_update no
     if test "$_os" = darwin
         set _nr_old_system (command readlink -f /nix/var/nix/profiles/system 2>/dev/null)
     else
         set _nr_old_system (command readlink -f /run/current-system 2>/dev/null)
     end
     if contains -- --update $argv
+        set _nr_update yes
         if test "$_os" = darwin
             set -l _pwd $PWD
             cd $HOME/.config/nix
@@ -77,6 +79,34 @@ function nr
         nh darwin switch $HOME/.config/nix $argv
     else
         nh os switch $HOME/.config/nix $argv -e auto
+    end
+    if test "$_nr_update" = yes
+        # Commit the version bumps the update scripts + nh generated, then push.
+        set -l _nr_files .config/nix/flake.lock
+        if test "$_os" = darwin
+            set -a _nr_files \
+                .config/nix/pkgs/oxillama/default.nix \
+                .config/nix/modules/overlays/zen-browser/default.nix \
+                .config/nix/modules/overlays/opencode/default.nix \
+                .config/nix/modules/overlays/daisydisk-overlay/default.nix \
+                .config/nix/modules/overlays/osaurus/default.nix
+        else
+            set -a _nr_files \
+                .config/nix/pkgs/bedrock-server/default.nix \
+                .config/nix/pkgs/rsync-tmbackup/default.nix
+        end
+        config add $_nr_files
+        if config diff --cached --quiet
+            echo "nr: no dependency bumps to commit"
+        else
+            config commit -m "nr --update: bump nightly dependency versions"
+            if test "$_os" = darwin
+                config push origin
+                config push sophrosyne
+            else
+                config push origin
+            end
+        end
     end
     if test "$_os" = darwin
         set _nr_new_system (command readlink -f /nix/var/nix/profiles/system 2>/dev/null)
