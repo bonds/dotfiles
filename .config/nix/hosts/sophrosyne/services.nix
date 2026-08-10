@@ -295,4 +295,43 @@ in {
       ReadWritePaths = ["/sys/devices/platform/dell_smm_hwmon"];
     };
   };
+
+  # IRC bouncer. Holds the upstream connection to Libera.Chat open, buffers
+  # messages while clients are offline, and replays them on reconnect (IRCv3
+  # chathistory). Reachable from accismus over the tailnet — WireGuard already
+  # encrypts the wire, so plain irc:// on 6667 is fine.
+  services.soju = {
+    enable = true;
+    hostName = "sophrosyne";
+    listen = [":6667"];
+    # Firewall opened on the tailnet interface only in ./networking.nix.
+  };
+
+  # Seed/keep in sync the soju bouncer user `scott` with the agenix secret.
+  # soju stores the bouncer password in its SQLite DB (set via `sojuctl`, not
+  # a config file), so we drive sojuctl over its unix admin socket after
+  # soju.service is up. Runs as root (root can reach the socket regardless of
+  # soju's dynamic-user uid). Idempotent: if the user exists, update the
+  # password on every switch so it always matches secrets/soju-password.age
+  # (which accismus' Halloy also reads). `-realname` is only settable on the
+  # current user, so it's omitted from `user create`.
+  systemd.services.soju-user = {
+    description = "Seed soju bouncer user from agenix secret";
+    after = ["soju.service" "agenix.service"];
+    requires = ["soju.service"];
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = pkgs.writeShellScript "soju-seed-user" ''
+        set -e
+        SOJU_PW="$(cat ${config.age.secrets.soju-password.path})"
+        if sojuctl user status scott >/dev/null 2>&1; then
+          sojuctl user update scott -password "$SOJU_PW"
+        else
+          sojuctl user create -username scott -password "$SOJU_PW" -nick scott
+        fi
+      '';
+      # sojuctl is placed on PATH by the soju module.
+    };
+  };
 }

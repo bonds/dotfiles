@@ -90,5 +90,5 @@
   };
 
   # Allow services on Tailscale interface only (not LAN or public)
-  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [8080 8384 8892];
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [8080 6667 8384 8892];
 }

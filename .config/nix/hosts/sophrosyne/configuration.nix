@@ -113,6 +113,12 @@ in {
       group = "llamacpp";
       mode = "0400";
     };
+    soju-password = {
+      file = ../../secrets/soju-password.age;
+      owner = "scott";
+      group = "root";
+      mode = "0400";
+    };
   };
 
   services.minecraft-bedrock = {

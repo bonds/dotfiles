@@ -133,6 +133,15 @@ in {
       group = "staff";
       mode = "0400";
     };
+    # soju bouncer password on sophrosyne. macOS agenix mounts it at
+    # /run/agenix/soju-password, which Halloy reads via password_file. Same
+    # secret seeds soju's user on sophrosyne (see hosts/sophrosyne).
+    soju-password = {
+      file = ../../secrets/soju-password.age;
+      owner = "scott";
+      group = "staff";
+      mode = "0400";
+    };
   };
 
   system.activationScripts = {
@@ -262,6 +271,7 @@ in {
       imports = [
         ../../modules/home/base.nix
         ../../modules/home/direnv.nix
+        ../../modules/home/halloy.nix
         ../../modules/home/ice.nix
         ../../modules/home/polyptych.nix
         ../../modules/home/reel-summarize.nix
