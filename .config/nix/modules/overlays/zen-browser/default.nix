@@ -5,11 +5,11 @@ in
   final: prev: {
     zen-browser = final.mkDarwinPackage rec {
       pname = "zen-browser";
-      version = "1.21.12b";
+      version = "1.21.13b";
 
       src = prev.fetchurl {
         url = "https://github.com/zen-browser/desktop/releases/download/${version}/zen.macos-universal.dmg";
-        hash = "sha256-26apZ00xmaybHqh1PF8ISG/pHeNv8RP3M580Qj/+XqA=";
+        hash = "sha256-bufrCa4/ku9W0UNArMeUi0XXaAbSMqVN4jqM00g2Gwk=";
       };
 
       nativeBuildInputs = [prev.undmg];
