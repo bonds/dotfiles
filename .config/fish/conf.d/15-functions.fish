@@ -80,7 +80,8 @@ function nr
     else
         nh os switch $HOME/.config/nix $argv -e auto
     end
-    if test "$_nr_update" = yes
+    set -l _nr_switch_ok $status
+    if test "$_nr_update" = yes; and test "$_nr_switch_ok" -eq 0
         # Commit the version bumps the update scripts + nh generated, then push.
         set -l _nr_files .config/nix/flake.lock
         if test "$_os" = darwin
@@ -107,6 +108,9 @@ function nr
                 config push origin
             end
         end
+    else if test "$_nr_update" = yes
+        echo "nr: nh switch failed (exit $_nr_switch_ok); skipping commit and push"
+        echo "nr: working tree has uncommitted bumps — fix the build, then re-run nr"
     end
     if test "$_os" = darwin
         set _nr_new_system (command readlink -f /nix/var/nix/profiles/system 2>/dev/null)
