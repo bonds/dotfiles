@@ -10,6 +10,15 @@ import httpx
 from what_changed.config import Config
 from what_changed.spellfix import fix as _spellfix
 
+
+class SummaryError(Exception):
+    """Raised when the LLM summary cannot be produced (backend unreachable,
+    model unavailable, non-200, or timeout). Carries a user-facing message."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
 KNOWN_MERGES = {
     "mimallocator": "mimalloc allocator",
     "backendriver": "backend driver",
@@ -163,16 +172,30 @@ async def _call_ollama(prompt: str, cfg: Config) -> str | None:
         "stream": False,
         "options": {"num_predict": 512},
     })
+    url = f"{cfg.host}/api/generate"
+    last_err = ""
     for attempt in range(2):
         try:
             async with httpx.AsyncClient(timeout=cfg.timeout) as c:
-                resp = await c.post(f"{cfg.host}/api/generate", content=data, headers={"Content-Type": "application/json"})
-                resp.raise_for_status()
+                resp = await c.post(url, content=data, headers={"Content-Type": "application/json"})
+                try:
+                    resp.raise_for_status()
+                except httpx.HTTPStatusError as e:
+                    raise SummaryError(
+                        f"ollama backend {cfg.host} -> HTTP {resp.status_code} for model {cfg.model!r} "
+                        f"({resp.text[:120]!r}). Check that the right model is pulled/served."
+                    ) from e
                 return resp.json().get("response", "")
-        except Exception:
+        except SummaryError:
+            raise
+        except Exception as exc:
+            last_err = f"{type(exc).__name__}: {exc}"
             if attempt < 1:
                 await asyncio.sleep(2)
-    return None
+    raise SummaryError(
+        f"could not reach ollama backend at {cfg.host} (model {cfg.model!r}): {last_err}. "
+        f"Run `curl {cfg.host}/api/tags` to check availability."
+    )
 
 
 async def _call_openai(prompt: str, cfg: Config) -> str | None:
@@ -182,16 +205,31 @@ async def _call_openai(prompt: str, cfg: Config) -> str | None:
         "max_tokens": 512,
     })
     host = cfg.host.rstrip("/")
+    url = f"{host}/chat/completions"
+    last_err = ""
     for attempt in range(2):
         try:
             async with httpx.AsyncClient(timeout=cfg.timeout) as c:
-                resp = await c.post(f"{host}/chat/completions", content=data, headers={"Content-Type": "application/json"})
-                resp.raise_for_status()
+                resp = await c.post(url, content=data, headers={"Content-Type": "application/json"})
+                try:
+                    resp.raise_for_status()
+                except httpx.HTTPStatusError as e:
+                    raise SummaryError(
+                        f"OpenAI-compatible backend {host} -> HTTP {resp.status_code} for model {cfg.model!r} "
+                        f"({resp.text[:120]!r}). Verify the model name and that the server is the right "
+                        f"one (config model={cfg.model!r}, host={cfg.host!r})."
+                    ) from e
                 return resp.json()["choices"][0]["message"]["content"]
-        except Exception:
+        except SummaryError:
+            raise
+        except Exception as exc:
+            last_err = f"{type(exc).__name__}: {exc}"
             if attempt < 1:
                 await asyncio.sleep(2)
-    return None
+    raise SummaryError(
+        f"could not reach OpenAI-compatible backend at {host} (model {cfg.model!r}): {last_err}. "
+        f"Check that the server is running and reachable (config host={cfg.host!r})."
+    )
 
 
 async def _call_llm(prompt: str, cfg: Config) -> str | None:

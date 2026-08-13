@@ -291,25 +291,25 @@ async def main():
 
         sem = asyncio.Semaphore(4)
 
-        async def run(c: PackageChange, cl_url: str | None, idx: int):
+        async def run(c: PackageChange, cl_url: str | None, idx: int) -> tuple[int, list[str] | None, str | None]:
             async with sem:
-                return await _fetch_for(c, cl_url, idx)
+                try:
+                    return idx, (await _fetch_for(c, cl_url, idx))[1], None
+                except summarize.SummaryError as e:
+                    return idx, None, str(e)
+                except Exception as e:
+                    return idx, None, f"{type(e).__name__}: {e}"
 
-        tasks = [
-            asyncio.create_task(run(c, metas[i][1], i))
-            for i, c in enumerate(changes)
-        ]
+        tasks = {i: asyncio.create_task(run(c, metas[i][1], i))
+                 for i, c in enumerate(changes)}
         results: dict[int, list[str] | None] = {}
         errors: dict[int, str | None] = {}
 
-        for coro in asyncio.as_completed(tasks):
-            try:
-                idx, bullets = await coro
-                results[idx] = bullets
-            except Exception as e:
-                idx = next(i for i, t in enumerate(tasks) if t is coro)
-                results[idx] = None
-                errors[idx] = str(e)[:60]
+        for task in asyncio.as_completed(tasks.values()):
+            idx, bullets, err = await task
+            results[idx] = bullets
+            if err:
+                errors[idx] = err
             update(advance=1, desc=changes[idx].name)
 
     if output_json:
