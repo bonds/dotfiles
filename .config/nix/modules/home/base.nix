@@ -11,7 +11,7 @@
     enable = true;
     settings = {
       backend = "openai";
-      host = "http://sophrosyne.local:8080";
+      host = "http://100.85.189.110:8080";
       model = "qwen2.5-7b";
     };
   };
