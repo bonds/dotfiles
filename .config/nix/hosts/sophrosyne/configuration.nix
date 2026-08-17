@@ -172,7 +172,7 @@ in {
     extraArgs = ["--webui-mcp-proxy"];
     router = {
       enable = true;
-      modelsMax = 1;
+      modelsMax = 2;
       sleepIdleSeconds = -1;
       models = {
         "gemma-4-31b-it" = {
