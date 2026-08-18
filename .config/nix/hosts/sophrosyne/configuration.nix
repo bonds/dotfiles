@@ -194,7 +194,8 @@ in {
         };
         "qwen2.5-7b" = {
           url = "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf";
-          args = {ctx-size = "102400";};
+          # smaller ctx: faster CPU cold-load; what-changed summaries are short
+          args = {ctx-size = "8192";};
         };
       };
     };
