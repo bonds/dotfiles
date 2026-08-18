@@ -116,9 +116,19 @@ def _make_github_release_url(owner: str, repo: str):
     return make
 
 
+def _make_github_release_url_nov(owner: str, repo: str):
+    """Like _make_github_release_url but the release tag has no 'v' prefix."""
+    def make(new_ver: str) -> str:
+        return f"https://github.com/{owner}/{repo}/releases/tag/{new_ver}"
+    return make
+
+
 KNOWN_URLS["neocode"] = _make_github_release_url("bonds", "NeoCode")
 KNOWN_URLS["opencode"] = _make_github_release_url("anomalyco", "opencode")
 KNOWN_URLS["opencode-desktop"] = _make_github_release_url("anomalyco", "opencode")
+KNOWN_URLS["osaurus"] = _make_github_release_url_nov("osaurus-ai", "osaurus")
+KNOWN_URLS["oxillama"] = _make_github_release_url("cool-japan", "oxillama")
+KNOWN_URLS["zen-browser"] = _make_github_release_url_nov("zen-browser", "desktop")
 
 
 KNOWN_URLS["polyptych"] = _make_polyptych_url

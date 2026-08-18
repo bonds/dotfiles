@@ -49,6 +49,15 @@ def test_known_urls_present():
     assert "neocode" in urls.KNOWN_URLS
     assert "opencode" in urls.KNOWN_URLS
     assert "opencode-desktop" in urls.KNOWN_URLS
+    assert "osaurus" in urls.KNOWN_URLS
+    assert "oxillama" in urls.KNOWN_URLS
+    assert "zen-browser" in urls.KNOWN_URLS
+
+
+def test_known_url_tag_formats():
+    assert urls.KNOWN_URLS["osaurus"]("0.22.22") == "https://github.com/osaurus-ai/osaurus/releases/tag/0.22.22"
+    assert urls.KNOWN_URLS["oxillama"]("0.1.4") == "https://github.com/cool-japan/oxillama/releases/tag/v0.1.4"
+    assert urls.KNOWN_URLS["zen-browser"]("1.21.14b") == "https://github.com/zen-browser/desktop/releases/tag/1.21.14b"
 
 
 def test_known_url_precedence():

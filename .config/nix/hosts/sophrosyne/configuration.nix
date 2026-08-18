@@ -194,8 +194,9 @@ in {
         };
         "qwen2.5-7b" = {
           url = "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf";
-          # smaller ctx: faster CPU cold-load; what-changed summaries are short
-          args = {ctx-size = "8192";};
+          # 16K ctx: still loads much faster on CPU than 102400, but big enough
+          # for 15KB changelog inputs + output without context exhaustion
+          args = {ctx-size = "16384";};
         };
       };
     };
