@@ -185,7 +185,8 @@ in {
         };
         "qwen3.6-35b-a3b" = {
           url = "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf";
-          args = {ctx-size = "102400";};
+          # smaller ctx: faster CPU load; summary requests are short
+          args = {ctx-size = "8192";};
         };
         "ornith-1.0-35b" = {
           url = "https://huggingface.co/deepreinforce-ai/Ornith-1.0-35B-GGUF/resolve/main/ornith-1.0-35b-Q4_K_M.gguf";

@@ -12,7 +12,7 @@
     settings = {
       backend = "openai";
       host = "http://sophrosyne:8080";
-      model = "qwen2.5-7b";
+      model = "qwen3.6-35b-a3b";
       timeout = 300;
     };
   };
