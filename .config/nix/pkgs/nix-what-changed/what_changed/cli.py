@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sys
+import time
 
 from what_changed import cache, config, display, fetch, metadata, summarize, urls
 from what_changed.differ import PackageChange, run_diff
@@ -71,6 +72,46 @@ def _gen_for_date(date_str: str) -> tuple[str, int, float]:
                 best_ts = os.lstat(entry.path).st_mtime
                 best_path = os.readlink(entry.path)
     return best_path, best_gen, best_ts
+
+
+async def _resolve_or_guess(pkg: str, new_ver: str, info: dict, cfg: config.Config) -> tuple[str | None, dict]:
+    """Return (changelog_url, info) for a package without a metadata changelog.
+
+    Prefers a cached/guessed URL while it remains valid; re-guesses when the
+    cached URL goes dead (changelog moved) or the guess is stale (TTL expired),
+    so we don't keep hammering the network every run but do recover when a
+    changelog appears or moves.
+    """
+    now = time.time()
+    use_cache = not no_cache
+
+    cached_url = None if not use_cache else info.get("guessed_url")
+    cached_at = int(info.get("guessed_at") or 0) if use_cache else 0
+    fresh = (now - cached_at) < cache.GUESS_TTL
+
+    # Fresh cached URL: verify it still resolves before trusting it.
+    if cached_url and fresh:
+        if await urls._http_ok(cached_url, cfg):
+            return cached_url, info
+        _v(f"{pkg}: cached changelog URL dead ({cached_url}), re-guessing")
+        if use_cache:
+            cache.invalidate_metadata_guess(pkg, cfg)
+        info = dict(info)
+        info.pop("guessed_url", None)
+        info.pop("guessed_at", None)
+
+    # A fresh cached "no changelog found" result: don't keep searching each run.
+    if cached_url is None and fresh:
+        return None, info
+
+    # Otherwise (no cache, stale, or dead) -> guess (or re-guess) and cache.
+    url = await urls.guess_url(pkg, new_ver, cfg)
+    if use_cache:
+        info = dict(info)
+        info["guessed_url"] = url
+        info["guessed_at"] = int(now)
+        cache.set_metadata(pkg, info, cfg)
+    return url, info
 
 
 async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[int, list[str] | None]:
@@ -278,14 +319,7 @@ async def main():
             if cl_url:
                 cl_url = await urls.patch_release_tag(cl_url, c.new_version, cfg)
             if not cl_url:
-                guessed = None if no_cache else info.get("guessed_url")
-                if guessed is None:
-                    cl_url = await urls.guess_url(c.name, c.new_version, cfg)
-                    if not no_cache:
-                        info["guessed_url"] = cl_url
-                        cache.set_metadata(c.name, info, cfg)
-                else:
-                    cl_url = guessed
+                cl_url, info = await _resolve_or_guess(c.name, c.new_version, info, cfg)
             metas[i] = (desc, cl_url)
             update(advance=1, desc=c.name)
 

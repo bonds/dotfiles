@@ -109,6 +109,13 @@ def _make_polyptych_url(new_ver: str) -> str | None:
     return "https://api.github.com/repos/bonds/polyptych/commits?per_page=10"
 
 
+def _make_clamav_url(new_ver: str) -> str | None:
+    return f"https://github.com/Cisco-Talos/clamav/releases/tag/clamav-{new_ver}"
+
+
+KNOWN_URLS["clamav"] = _make_clamav_url
+
+
 def _make_github_release_url(owner: str, repo: str):
     """Build a URL maker that points to GitHub releases tagged v{version}."""
     def make(new_ver: str) -> str:

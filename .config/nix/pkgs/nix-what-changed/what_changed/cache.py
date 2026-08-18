@@ -8,6 +8,11 @@ from what_changed.config import Config
 
 CACHE_VERSION = 2
 
+# How long (seconds) a discovered/guessed changelog URL is trusted before we
+# re-guess, and how long a "no changelog found" result is trusted before we
+# try again (e.g. a changelog may appear later).
+GUESS_TTL = 7 * 24 * 3600  # 7 days
+
 
 def _dir(cfg: Config) -> str:
     d = os.path.expanduser(cfg.cache_dir)
@@ -67,23 +72,52 @@ def set_changelog(url: str, text: str | None, cfg: Config):
 
 
 def get_metadata(pkg: str, cfg: Config) -> dict[str, str | None] | None:
-    """Get cached (changelog_url, description, homepage) for a package."""
+    """Get cached (changelog_url, description, homepage, guessed_url) for a package."""
     key = f"meta:{pkg}"
     fp = _path(key, cfg)
     if os.path.exists(fp):
         with open(fp) as f:
             data = json.load(f)
         if data.get("version") == CACHE_VERSION:
-            return {k: (None if v == "null" or not v else v) for k, v in data["meta"].items()}
+            meta = dict(data["meta"])
+            # Normalize stored strings back; keep guessed_at as int.
+            for k, v in list(meta.items()):
+                if k == "guessed_at":
+                    try:
+                        meta[k] = int(v)
+                    except (TypeError, ValueError):
+                        meta[k] = 0
+                else:
+                    meta[k] = None if v in ("null", None, "") else v
+            return meta
     return None
 
 
 def set_metadata(pkg: str, meta: dict[str, str | None], cfg: Config):
     key = f"meta:{pkg}"
     fp = _path(key, cfg)
+    stored = {}
+    for k, v in meta.items():
+        if k == "guessed_at":
+            stored[k] = int(v or 0)
+        else:
+            stored[k] = v or "null"
     with open(fp, "w") as f:
         json.dump({
             "version": CACHE_VERSION,
             "pkg": pkg,
-            "meta": {k: (v or "null") for k, v in meta.items()},
+            "meta": stored,
         }, f)
+
+
+def invalidate_metadata_guess(pkg: str, cfg: Config):
+    """Forget a cached guessed changelog URL for a package so it gets re-searched.
+
+    Keeps description/homepage/metadata-changelog intact; only clears the
+    auto-discovered URL (and its timestamp).
+    """
+    meta = get_metadata(pkg, cfg)
+    if meta:
+        meta.pop("guessed_url", None)
+        meta.pop("guessed_at", None)
+        set_metadata(pkg, meta, cfg)
