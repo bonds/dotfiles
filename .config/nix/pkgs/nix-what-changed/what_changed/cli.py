@@ -7,6 +7,7 @@ import os
 import re
 import sys
 import time
+from importlib import metadata as _pkg_metadata
 
 from what_changed import cache, config, display, fetch, metadata, summarize, urls
 from what_changed.differ import PackageChange, run_diff
@@ -18,6 +19,14 @@ verbose = False
 
 Profile = "/nix/var/nix/profiles/system"
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _version() -> str:
+    """Return the installed version (from package metadata), else 'unknown'."""
+    try:
+        return _pkg_metadata.version("what-changed")
+    except Exception:
+        return "unknown"
 
 
 def _usage_gen():
@@ -240,6 +249,9 @@ async def main():
         parser.add_argument("--brief", action="store_true", help="Compact output, no bullet points")
         parser.add_argument("--no-cache", action="store_true", help="Skip cache, fetch fresh summaries")
         parser.add_argument("--verbose", action="store_true", help="Show per-package debug info")
+        parser.add_argument("--version", action="version",
+                            version=f"what-changed {_version()}",
+                            help="Show the installed version and exit")
         args = parser.parse_args()
         no_cache = args.no_cache
         output_json = args.json

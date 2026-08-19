@@ -120,6 +120,30 @@ def test_guess_result_is_cached(monkeypatch, tmp_path):
     assert isinstance(out_info["guessed_at"], int)
 
 
+def test_version_returns_string():
+    """_version() should always return a non-empty string (real or fallback)."""
+    assert isinstance(cli._version(), str)
+    assert cli._version().strip() != ""
+
+
+def test_version_flag_prints_program_name():
+    """what-changed --version should print 'what-changed <version>' and exit 0."""
+    import argparse
+    import contextlib
+    import io
+
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--version", action="version",
+                        version=f"what-changed {cli._version()}")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf), pytest.raises(SystemExit) as exc:
+        parser.parse_args(["--version"])
+    assert exc.value.code == 0
+    out = buf.getvalue().strip()
+    assert out.startswith("what-changed ")
+    assert out != "what-changed "
+
+
 def _ok(ok: bool):
     async def _inner(*a, **k):
         return ok
