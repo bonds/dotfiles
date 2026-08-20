@@ -11,6 +11,9 @@ in [
     transcribe-cpp-python = final.callPackage ../../pkgs/transcribe-cpp-python {};
   })
   (import ./osxphotos/default.nix)
+  (final: _prev: {
+    photo-export = final.callPackage ../../pkgs/photokit-export {mkDarwinPackage = final.mkDarwinPackage;};
+  })
   (import ./zen-browser/default.nix)
   (import ./ghostty/default.nix)
   (import ./opencode/default.nix inputs.nixpkgs)

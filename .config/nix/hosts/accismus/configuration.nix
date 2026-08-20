@@ -273,6 +273,7 @@ in {
         ../../modules/home/direnv.nix
         ../../modules/home/halloy.nix
         ../../modules/home/ice.nix
+        ../../modules/home/photo-export.nix
         ../../modules/home/polyptych.nix
         ../../modules/home/reel-summarize.nix
       ];
@@ -308,6 +309,7 @@ in {
       };
 
       programs.reel-summarize.enable = true;
+      programs.photo-export.enable = true;
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
 
       home.file.".stignore".text = ''

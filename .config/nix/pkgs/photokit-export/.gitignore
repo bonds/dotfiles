@@ -1,0 +1,6 @@
+# Build artifacts — the .app bundle is a signed binary that shouldn't be
+# version-controlled (codesign identity/signature is machine-specific and
+# re-built from photo-export.swift anyway).
+probe/*.app/
+probe/*.app/**
+*.log
