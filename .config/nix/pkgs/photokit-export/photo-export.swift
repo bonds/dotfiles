@@ -228,6 +228,21 @@ if mounted {
     }
 }
 
+// SAFETY GUARD: if dest is the SMB-mount path (default or config) but not
+// actually mounted, do NOT silently export to a local dir at that path.
+// This is the "silent local writes" failure mode — without the guard, a
+// mission-mode run dumps the whole library onto local disk (134GB+).
+// Only when we own the mount (--mount) can dest be written before mounting,
+// and mountMode already handles that above.
+if !mounted {
+    let cfgDest = configValue("dest")
+    let destIsDefaultSMB = destDir == "/tmp/sophrosyne-photos" || (cfgDest != nil && destDir == cfgDest)
+    if destIsDefaultSMB && !isMounted(destDir) {
+        log("FATAL: dest \(destDir) is the SMB mount path but is NOT mounted. Refusing to export to local disk (prevents silent local writes). Mount the share or pass an explicit local dest.")
+        exit(1)
+    }
+}
+
 do {
     try FileManager.default.createDirectory(atPath: useDest, withIntermediateDirectories: true)
 } catch {

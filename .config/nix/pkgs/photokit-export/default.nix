@@ -2,7 +2,7 @@
   lib,
   mkDarwinPackage,
 }: let
-  version = "0.2.2";
+  version = "0.2.3";
   bundleId = "com.ggr.photo-export";
 in
   mkDarwinPackage rec {
