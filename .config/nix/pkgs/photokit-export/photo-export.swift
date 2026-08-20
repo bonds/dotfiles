@@ -62,7 +62,7 @@ func opt(_ name: String, _ cfgKey: String, _ fallback: String) -> String {
     return argValue(name) ?? configValue(cfgKey) ?? fallback
 }
 
-var destDir: String = args.count > 1 ? args[1] : "/tmp/sophrosyne-photos"
+var destDir: String = args.count > 1 ? args[1] : opt("--dest", "dest", "/tmp/sophrosyne-photos")
 let limit = Int(opt("--limit", "limit", "0")) ?? 0
 let dryRun = args.contains("--dry-run")
 
