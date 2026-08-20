@@ -39,7 +39,6 @@
     osaurus # native macOS AI agent harness (binary overlay, nr --update)
     oxillama # pure Rust LLM inference engine (experimental, pkgs/oxillama/update.sh, nr --update)
     openssh # macos ssh doesn't come with resident ssh support
-    osxphotos # export photos from Apple Photos app
     passage # age-based password manager
     (pkgs.callPackage ../../pkgs/ghosttile {}) # hide apps from Dock/Cmd+Tab
     (python3.withPackages (p:

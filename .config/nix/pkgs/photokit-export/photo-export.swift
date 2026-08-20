@@ -211,7 +211,51 @@ do {
     exit(1)
 }
 
-// ---------- enumerate + export cloud-only ----------
+// ---------- basic XMP sidecar (description + dates from PhotoKit) ----------
+func writeXmpSidecar(_ finalPath: String, _ photo: PHAsset) {
+    // Minimal XMP sidecar: description + create/modify dates (what PhotoKit
+    // exposes). Title/keywords/persons/GPS need Photos.sqlite parsing — skipped
+    // (photos themselves are the backup priority; sidecar is a nice-to-have).
+    let desc = photo.description
+    var dateStr = ""
+    if let cd = photo.creationDate {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        dateStr = f.string(from: cd)
+    }
+
+    let ext = finalPath.split(separator: ".").last.map(String.init) ?? ""
+    let xmpPath = finalPath + ".xmp"
+
+    var xml = "<?xpacket begin=\"\u{FEFF}\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n"
+    xml += "<x:xmpmeta xmlns:x=\"adobe:ns:meta/\" x:xmptk=\"photo-export\">\n"
+    xml += "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n"
+    xml += "<rdf:Description rdf:about=\"\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:photoshop=\"http://ns.adobe.com/photoshop/1.0/\">\n"
+    xml += " <photoshop:SidecarForExtension>" + ext + "</photoshop:SidecarForExtension>\n"
+    xml += " <dc:description>\n  <rdf:Alt>\n"
+    if desc.isEmpty {
+        xml += "   <rdf:li xml:lang='x-default'/>\n"
+    } else {
+        xml += "   <rdf:li xml:lang='x-default'>" + desc + "</rdf:li>\n"
+    }
+    xml += "  </rdf:Alt>\n </dc:description>\n"
+    xml += " <dc:title>\n  <rdf:Alt>\n   <rdf:li xml:lang='x-default'/>\n  </rdf:Alt>\n </dc:title>\n"
+    xml += "</rdf:Description>\n"
+    xml += "<rdf:Description rdf:about=\"\" xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">\n"
+    if !dateStr.isEmpty {
+        xml += " <xmp:CreateDate>" + dateStr + "</xmp:CreateDate>\n"
+        xml += " <xmp:ModifyDate>" + dateStr + "</xmp:ModifyDate>\n"
+    }
+    xml += "</rdf:Description>\n"
+    xml += "</rdf:RDF>\n</x:xmpmeta>\n<?xpacket end=\"w\"?>"
+
+    do {
+        try xml.write(toFile: xmpPath, atomically: true, encoding: .utf8)
+    } catch {
+        log("WARN: could not write sidecar \(xmpPath): \(error)")
+    }
+    log("SIDECAR \(xmpPath)")
+}
 let all = PHAsset.fetchAssets(with: nil)
 log("assets=\(all.count) dryRun=\(dryRun) limit=\(limit)")
 
@@ -225,17 +269,6 @@ all.enumerateObjects { asset, index, stop in
 
     let uuid = asset.localIdentifier
     if done.contains(uuid) { skipped += 1; return }
-
-    // cloud-only detection
-    var isCloud = true
-    let res = PHAssetResource.assetResources(for: asset)
-    for r in res {
-        if r.type == PHAssetResourceType.fullSizePhoto || r.type == PHAssetResourceType.fullSizeVideo {
-            isCloud = false
-            break
-        }
-    }
-    if !isCloud { skipped += 1; return }
 
     // date schema yyyy/mm
     var yearStr = "unknown"; var monthStr = "xx"
@@ -282,6 +315,8 @@ all.enumerateObjects { asset, index, stop in
                 try FileManager.default.moveItem(atPath: tmp, toPath: final)
                 ok = true
                 log("EXPORTED \(final) (\(img.count) bytes)" + (attempt > 0 ? " (retry \(attempt))" : ""))
+                // basic XMP sidecar (description + dates) — nice-to-have
+                writeXmpSidecar(final, asset)
             } catch {
                 log("ERR write \(final): \(error)")
                 try? FileManager.default.removeItem(atPath: tmp)

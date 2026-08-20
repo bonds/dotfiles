@@ -1,18 +1,18 @@
 # photokit-export
 
-PhotoKit-native iCloud photo export for macOS, bypassing osxphotos' fragile
-AppleScript path.
+PhotoKit-native photo export for macOS — single binary, no osxphotos.
+Exports ALL assets (local + iCloud-only) directly to an SMB mount.
 
 ## Status
 
-Phase 4 (integration): **in progress**. Scope decided:
-- **Narrow:** PhotoKit is used ONLY for the `--download-missing` iCloud fetch
-  path (the ~65.8k optimized-out originals). osxphotos keeps doing local-file
-  export, XMP sidecars, albums, export DB, and rsync integration.
-- **No Developer ID:** ad-hoc stable identity (see "Identifier").
-- Phase 2/3 probe **fully passed** (2026-08-20): auth + enumeration +
-  cloud-only detection + real PhotoKit download all verified.
-  Production CLI: `photo-export.swift`.
+**Mono-architecture (v0.2.0):** photo-export is the sole exporter.
+- osxphotos fully removed (overlay, package list, bin/photos-smb-backup phase)
+- All-assets export: no cloud-only gate; each PHAsset fetched via PhotoKit
+- Basic XMP sidecar (description + create/modify dates) written next to each
+  photo — title/keywords/persons/GPS intentionally skipped (requires
+  Photos.sqlite parsing; photos themselves are the backup priority)
+- Manifest (`~/.cache/photo-export-manifest.txt`) makes runs resumable
+- Scope decisions unchanged: no Developer ID (`com.ggr.photo-export` ad-hoc),
 
 ## Identifier
 
