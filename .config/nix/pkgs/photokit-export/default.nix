@@ -2,7 +2,7 @@
   lib,
   mkDarwinPackage,
 }: let
-  version = "0.2.4";
+  version = "0.2.5";
   bundleId = "com.ggr.photo-export";
 in
   mkDarwinPackage rec {
@@ -36,10 +36,20 @@ in
       # If MacOSX.sdk doesn't resolve, ask xcrun (rare)
       [ -d "$SDKROOT" ] || SDKROOT="$(/usr/bin/xcrun --sdk macosx --show-sdk-path 2>/dev/null)"
 
+      # The CLI (photo-export.swift) has top-level executable code, which Swift
+      # only allows in a file literally named "main.swift" when compiling more
+      # than one source file (photoexport_core.swift is the shared pure-logic
+      # module). So copy it to main.swift before compiling, in a work dir
+      # (source store path is read-only).
+      WORKDIR="$TMPDIR/pe-build"
+      mkdir -p "$WORKDIR"
+      cp "$src/photo-export.swift" "$WORKDIR/main.swift"
+      cp "$src/photoexport_core.swift" "$WORKDIR/photoexport_core.swift"
+
       "$SWIFTC" -module-cache-path "$MODCACHE" \
         -sdk "$SDKROOT" -resource-dir "$RESDIR" \
         -o "$out/libexec/app/Contents/MacOS/photo-export" \
-        "$src/photo-export.swift"
+        "$WORKDIR/photoexport_core.swift" "$WORKDIR/main.swift"
 
       # Bundle Info.plist — REQUIRED for PhotoKit authorization prompt
       cat > "$out/libexec/app/Contents/Info.plist" <<'PLIST'

@@ -46,16 +46,8 @@ func argValue(_ name: String) -> String? {
 // precedence over config values (for direct exec / testing).
 let configPath = NSHomeDirectory() + "/Library/Application Support/photo-export/config.toml"
 func configValue(_ key: String) -> String? {
-    guard let raw = try? String(contentsOfFile: configPath, encoding: .utf8) else { return nil }
-    for lineObj in raw.split(separator: "\n") {
-        let line = String(lineObj).trimmingCharacters(in: .whitespacesAndNewlines)
-        if line.isEmpty || line.hasPrefix("#") { continue }
-        let parts = line.split(separator: "=")
-        if parts.count >= 2 && parts[0].trimmingCharacters(in: .whitespacesAndNewlines) == key {
-            return parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-    }
-    return nil
+    let raw = try? String(contentsOfFile: configPath, encoding: .utf8)
+    return parseConfigValue(raw, key) // from photoexport_core.swift
 }
 func opt(_ name: String, _ cfgKey: String, _ fallback: String) -> String {
     // CLI arg wins; then config file; then default.
@@ -148,27 +140,6 @@ func appendManifest(_ uuid: String) {
 }
 var done = loadManifestTxt()
 
-// ---------- UTI -> extension ----------
-func extForUTI(_ uti: String?) -> String {
-    guard let uti = uti, !uti.isEmpty else { return "jpg" }
-    switch uti {
-    case "public.png": return "png"
-    case "public.jpeg", "public.jpg": return "jpg"
-    case "public.heic", "public.heif": return "heic"
-    case "com.compuserve.gif": return "gif"
-    case "public.tiff": return "tiff"
-    case "public.mpeg-4", "com.apple.quicktime-movie": return "mov"
-    case "public.mpeg-4-video": return "mp4"
-    case "com.adobe.raw-image": return "dng"
-    default:
-        // try UTI preferred extension via UTType
-        if let type = UTType(uti), let ext = type.preferredFilenameExtension {
-            return ext
-        }
-        return "jpg"
-    }
-}
-
 // ---------- auth ----------
 func authStatus() -> Int {
     return PHPhotoLibrary.authorizationStatus(for: .readWrite).rawValue
@@ -228,16 +199,14 @@ if mounted {
     }
 }
 
-// SAFETY GUARD: if dest is the SMB-mount path (default or config) but not
-// actually mounted, do NOT silently export to a local dir at that path.
-// This is the "silent local writes" failure mode — without the guard, a
-// mission-mode run dumps the whole library onto local disk (134GB+).
-// Only when we own the mount (--mount) can dest be written before mounting,
-// and mountMode already handles that above.
+// SAFETY GUARD (logic in photoexport_core.swift): if dest is the SMB-mount
+// path (default or config) but not actually mounted, do NOT silently export
+// to a local dir at that path. Without this, a run dumps the whole library
+// onto local disk (139GB+). Only when we own the mount (--mount) can dest be
+// written before mounting, and mountMode already handles that above.
 if !mounted {
     let cfgDest = configValue("dest")
-    let destIsDefaultSMB = destDir == "/tmp/sophrosyne-photos" || (cfgDest != nil && destDir == cfgDest)
-    if destIsDefaultSMB && !isMounted(destDir) {
+    if shouldRefuseToExport(destDir: destDir, configDest: cfgDest, isMounted: isMounted(destDir)) {
         log("FATAL: dest \(destDir) is the SMB mount path but is NOT mounted. Refusing to export to local disk (prevents silent local writes). Mount the share or pass an explicit local dest.")
         exit(1)
     }

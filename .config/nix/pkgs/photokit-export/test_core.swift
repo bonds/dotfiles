@@ -1,76 +1,103 @@
-// test_core.swift — self-contained unit tests for photo-export pure logic
-// (UTI map, manifest parse, date-dir, safe basename). Compiled as ONE file
-// because Swift 6 only allows top-level script code in a single primary
-// source. Keep these mirrors in sync with photoexport_core.swift.
+// test_core.swift — comprehensive tests for photoexport_core.swift.
+// Compiled with photoexport_core.swift as `main.swift` (top-level code legal
+// there in multi-file builds), e.g.:
+//   swiftc photoexport_core.swift test_core.swift -o test  # fails (name)
+//   cp test_core.swift main.swift && swiftc photoexport_core.swift main.swift
+// Exercises the REAL core functions (single source of truth), not copies.
+// Exit 0 if all pass, 1 otherwise.
+
 import Foundation
 
-// ---- mirrors of photoexport_core.swift ----
-func extForUTI(_ uti: String?) -> String {
-    guard let uti = uti, !uti.isEmpty else { return "jpg" }
-    switch uti {
-    case "public.png": return "png"
-    case "public.jpeg", "public.jpg": return "jpg"
-    case "public.heic", "public.heif": return "heic"
-    case "com.compuserve.gif": return "gif"
-    case "public.tiff": return "tiff"
-    case "public.mpeg-4", "com.apple.quicktime-movie": return "mov"
-    case "public.mpeg-4-video": return "mp4"
-    case "com.adobe.raw-image": return "dng"
-    default: return "jpg"
-    }
-}
-
-func parseManifest(_ raw: String?) -> Set<String> {
-    guard let raw = raw, !raw.isEmpty else { return [] }
-    return Set(raw.split(separator: "\n").map { String($0) })
-}
-
-func dateDirPath(_ destRoot: String, _ year: String, _ month: String) -> String {
-    return "\(destRoot)/\(year)/\(month)"
-}
-
-func safeBaseName(_ original: String?) -> String? {
-    guard let original, !original.isEmpty else { return nil }
-    let parts = original.split(separator: ".")
-    if parts.count > 1 {
-        return parts[0..<parts.count - 1].joined(separator: ".")
-    }
-    return original
-}
-
-// ---- test helpers ----
 var failures = 0
-func check(_ name: String, _ got: String, _ want: String) {
-    let ok = got == want
-    print((ok ? "PASS " : "FAIL ") + name + " — got=" + got + " want=" + want)
-    if !ok { failures += 1 }
+var passed = 0
+func check(_ name: String, _ cond: Bool, _ detail: String = "") {
+    if cond {
+        passed += 1
+        print("PASS \(name)")
+    } else {
+        failures += 1
+        print("FAIL \(name)\(detail.isEmpty ? "" : " — \(detail)")")
+    }
+}
+func checkEq(_ name: String, _ got: String, _ want: String) {
+    check(name, got == want, "got=\"\(got)\" want=\"\(want)\"")
 }
 func checkCount(_ name: String, _ got: Int, _ want: Int) {
-    let ok = got == want
-    print((ok ? "PASS " : "FAIL ") + name + " — got=" + String(got) + " want=" + String(want))
-    if !ok { failures += 1 }
+    check(name, got == want, "got=\(got) want=\(want)")
 }
 
-// ---- tests ----
-check("UTI png", extForUTI("public.png"), "png")
-check("UTI jpeg", extForUTI("public.jpeg"), "jpg")
-check("UTI heic", extForUTI("public.heic"), "heic")
-check("UTI mov", extForUTI("com.apple.quicktime-movie"), "mov")
-check("UTI unknown -> jpg", extForUTI("com.example.weird"), "jpg")
-check("UTI nil -> jpg", extForUTI(nil), "jpg")
+// ================= config parsing =================
+let cfg1 = """
+# comment
+dest = "/tmp/sophrosyne-photos"
+limit = 0
+manifest = "~/.cache/photo-export-manifest.txt"
 
-let m1 = parseManifest("AAA\nBBB\nCCC\n")
-checkCount("manifest 3 lines", m1.count, 3)
-check("manifest contains BBB", m1.contains("BBB") ? "yes" : "no", "yes")
-checkCount("manifest empty", parseManifest("").count, 0)
+"""
+checkEq("cfg dest", parseConfigValue(cfg1, "dest") ?? "", "/tmp/sophrosyne-photos")
+checkEq("cfg limit", parseConfigValue(cfg1, "limit") ?? "", "0")
+checkEq("cfg manifest quoted", parseConfigValue(cfg1, "manifest") ?? "", "~/.cache/photo-export-manifest.txt")
+check("cfg missing key", parseConfigValue(cfg1, "nope") == nil)
+check("cfg nil raw", parseConfigValue(nil, "dest") == nil)
+check("cfg empty raw", parseConfigValue("", "dest") == nil)
+
+// ================= the guard (regression: 139GB silent local writes) =================
+// REFUSE when dest is the default SMB path and NOT mounted
+check("guard: default SMB dest, not mounted -> refuse",
+      shouldRefuseToExport(destDir: "/tmp/sophrosyne-photos", configDest: nil, isMounted: false))
+// REFUSE when dest == config dest (a mount path) and NOT mounted
+check("guard: config dest, not mounted -> refuse",
+      shouldRefuseToExport(destDir: "/mnt/photos", configDest: "/mnt/photos", isMounted: false))
+// ALLOW when the mount IS present
+check("guard: default SMB dest, mounted -> allow",
+      !shouldRefuseToExport(destDir: "/tmp/sophrosyne-photos", configDest: nil, isMounted: true))
+check("guard: config dest, mounted -> allow",
+      !shouldRefuseToExport(destDir: "/mnt/photos", configDest: "/mnt/photos", isMounted: true))
+// ALLOW for a plain local dest that is NOT the SMB path (legit local run)
+check("guard: local dest, not mounted -> allow",
+      !shouldRefuseToExport(destDir: "/tmp/photokit-local", configDest: nil, isMounted: false))
+check("guard: local dest even if config points at SMB -> allow (dest differs)",
+      !shouldRefuseToExport(destDir: "/tmp/photokit-local", configDest: "/tmp/sophrosyne-photos", isMounted: false))
+// Config dest present + custom dest that matches config but isn't a mount
+check("guard: dest equals non-default config dest, unmounted -> refuse",
+      shouldRefuseToExport(destDir: "/Volumes/backups/photos", configDest: "/Volumes/backups/photos", isMounted: false))
+
+// ================= UTI -> extension =================
+checkEq("uti png", extForUTI("public.png"), "png")
+checkEq("uti jpeg", extForUTI("public.jpeg"), "jpg")
+checkEq("uti jpg", extForUTI("public.jpg"), "jpg")
+checkEq("uti heic", extForUTI("public.heic"), "heic")
+checkEq("uti heif", extForUTI("public.heif"), "heic")
+checkEq("uti gif", extForUTI("com.compuserve.gif"), "gif")
+checkEq("uti tiff", extForUTI("public.tiff"), "tiff")
+checkEq("uti mov", extForUTI("com.apple.quicktime-movie"), "mov")
+checkEq("uti mp4", extForUTI("public.mpeg-4-video"), "mp4")
+checkEq("uti dng", extForUTI("com.adobe.raw-image"), "dng")
+checkEq("uti unknown -> jpg", extForUTI("com.example.weird"), "jpg")
+checkEq("uti nil -> jpg", extForUTI(nil), "jpg")
+
+// ================= manifest =================
+let m = parseManifest("AAA\nBBB\nCCC\n")
+checkCount("manifest 3 lines", m.count, 3)
+check("manifest has BBB", m.contains("BBB"))
+checkCount("manifest empty str", parseManifest("").count, 0)
 checkCount("manifest nil", parseManifest(nil).count, 0)
+check("manifest dedups", parseManifest("X\nX\n").count == 1)
+checkCount("manifest trailing newline only", parseManifest("\n").count, 0)
 
-check("date dir 2026/08", dateDirPath("/tmp/photos", "2026", "08"), "/tmp/photos/2026/08")
+// ================= date dir =================
+checkEq("date dir", dateDirPath("/tmp/photos", "2026", "08"), "/tmp/photos/2026/08")
+checkEq("date dir empty month", dateDirPath("/x", "2026", ""), "/x/2026/")
 
-check("base no ext", safeBaseName("IMG_1234") ?? "", "IMG_1234")
-check("base dotted", safeBaseName("IMG_1234.HEIC") ?? "", "IMG_1234")
-check("base multi-dot", safeBaseName("IMG.2024.JPG") ?? "", "IMG.2024")
-check("base nil", safeBaseName(nil) ?? "", "")
+// ================= safe basename =================
+checkEq("base no ext", safeBaseName("IMG_1234") ?? "", "IMG_1234")
+checkEq("base dotted", safeBaseName("IMG_1234.HEIC") ?? "", "IMG_1234")
+checkEq("base multi-dot", safeBaseName("IMG.2024.JPG") ?? "", "IMG.2024")
+checkEq("base nil", safeBaseName(nil) ?? "", "")
+checkEq("base empty", safeBaseName("") ?? "", "")
+checkEq("base leading dot", safeBaseName(".hidden") ?? "", ".hidden")
 
-print(failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED: \(failures)")
-Foundation.exit(failures == 0 ? 0 : 1)
+// ================= summary =================
+print("")
+print("\(passed) passed, \(failures) failed")
+exit(failures == 0 ? 0 : 1)

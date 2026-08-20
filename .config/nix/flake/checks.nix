@@ -52,6 +52,26 @@
           echo "Evaluating accismus darwin config..." >&2
           nix eval --raw .#darwinConfigurations.accismus.config.system.build.toplevel.drvPath 2>&1 || (echo "FAIL" >&2 && exit 1)
         '';
+
+        photo-export-test = mkCheck "photo-export-test" [] ''
+          # Unit tests for photokit-export's pure logic. Needs Xcode's swiftc
+          # (system SDK), not nixpkgs `swift`. The CLI has top-level code, so
+          # copy the test to main.swift for multi-file compile.
+          TOOLCHAIN="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain"
+          SWIFTC="$TOOLCHAIN/usr/bin/swiftc"
+          RESDIR="$TOOLCHAIN/usr/lib/swift"
+          SDKROOT="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+          modcache="$TMPDIR/swiftmodule-cache"
+          mkdir -p "$modcache"
+          tmpdir="$TMPDIR/petest"
+          mkdir -p "$tmpdir"
+          cp ${self}/pkgs/photokit-export/photoexport_core.swift "$tmpdir/photoexport_core.swift"
+          cp ${self}/pkgs/photokit-export/test_core.swift "$tmpdir/main.swift"
+          "$SWIFTC" -module-cache-path "$modcache" -sdk "$SDKROOT" -resource-dir "$RESDIR" \
+            -o "$tmpdir/test" "$tmpdir/photoexport_core.swift" "$tmpdir/main.swift" \
+            || (echo "compile failed" >&2 && exit 1)
+          "$tmpdir/test"
+        '';
       };
   };
 }
