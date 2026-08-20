@@ -84,6 +84,29 @@ def test_fresh_none_cached_skips_guess(monkeypatch, tmp_path):
     assert out_info["guessed_url"] is None
 
 
+def test_fresh_none_with_known_url_re_guesses(monkeypatch, tmp_path):
+    """A fresh cached 'no changelog' must not suppress a known URL mapping.
+
+    KNOWN_URLS are resolved without network, so once a mapping exists for a
+    package, always use it even if 'None' was cached fresh (so new mappings
+    take effect without waiting out the TTL).
+    """
+    cfg = _cfg(tmp_path)
+    info = {"guessed_url": None, "guessed_at": int(time.time())}
+
+    monkeypatch.setattr(cli, "no_cache", False)
+    monkeypatch.setattr(urls, "KNOWN_URLS", {"glib": lambda v: "https://gitlab.gnome.org/GNOME/glib/-/raw/main/NEWS"})
+
+    async def fake_guess(*a, **k):
+        return urls.KNOWN_URLS["glib"]("2.88.3")
+
+    monkeypatch.setattr(urls, "guess_url", fake_guess)
+
+    url, out_info = _run(cli._resolve_or_guess("glib", "2.88.3", dict(info), cfg))
+    assert url == "https://gitlab.gnome.org/GNOME/glib/-/raw/main/NEWS"
+    assert out_info["guessed_url"] == url
+
+
 def test_stale_cached_re_guesses(monkeypatch, tmp_path):
     """A stale cached guess (expired TTL) should trigger a re-guess."""
     cfg = _cfg(tmp_path)

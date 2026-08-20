@@ -53,6 +53,10 @@ def test_known_urls_present():
     assert "oxillama" in urls.KNOWN_URLS
     assert "zen-browser" in urls.KNOWN_URLS
     assert "clamav" in urls.KNOWN_URLS
+    assert "gdk-pixbuf" in urls.KNOWN_URLS
+    assert "glib" in urls.KNOWN_URLS
+    assert "libssh" in urls.KNOWN_URLS
+    assert "libmpg123" in urls.KNOWN_URLS
 
 
 def test_known_url_tag_formats():
@@ -60,6 +64,10 @@ def test_known_url_tag_formats():
     assert urls.KNOWN_URLS["oxillama"]("0.1.4") == "https://github.com/cool-japan/oxillama/releases/tag/v0.1.4"
     assert urls.KNOWN_URLS["zen-browser"]("1.21.14b") == "https://github.com/zen-browser/desktop/releases/tag/1.21.14b"
     assert urls.KNOWN_URLS["clamav"]("1.4.6") == "https://github.com/Cisco-Talos/clamav/releases/tag/clamav-1.4.6"
+    assert urls.KNOWN_URLS["gdk-pixbuf"]("2.44.7") == "https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/raw/master/NEWS"
+    assert urls.KNOWN_URLS["glib"]("2.88.3") == "https://gitlab.gnome.org/GNOME/glib/-/raw/main/NEWS"
+    assert urls.KNOWN_URLS["libssh"]("0.12.2") == "https://github.com/libssh/libssh-mirror/blob/master/CHANGELOG"
+    assert urls.KNOWN_URLS["libmpg123"]("1.33.7") == "https://github.com/libsdl-org/mpg123/blob/master/NEWS"
 
 
 def test_known_url_precedence():

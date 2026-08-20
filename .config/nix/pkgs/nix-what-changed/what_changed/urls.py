@@ -152,6 +152,19 @@ KNOWN_URLS["rustc"] = _make_github_blob("rust-lang", "rust", "RELEASES.md")
 KNOWN_URLS["coreutils"] = _make_github_blob("coreutils", "coreutils", "NEWS")
 KNOWN_URLS["msmtp"] = _make_github_blob("marlam", "msmtp", "NEWS")
 KNOWN_URLS["rsync"] = _make_github_blob("WayneD", "rsync", "NEWS.md")
+KNOWN_URLS["libssh"] = _make_github_blob("libssh", "libssh-mirror", "CHANGELOG")
+KNOWN_URLS["libmpg123"] = _make_github_blob("libsdl-org", "mpg123", "NEWS")
+
+
+def _make_gitlab_raw_url(host: str, group: str, repo: str, path: str, ref: str = "master"):
+    """Point at a raw file on a GitLab instance (e.g. gitlab.gnome.org)."""
+    def make(new_ver: str) -> str:
+        return f"https://{host}/{group}/{repo}/-/raw/{ref}/{path}"
+    return make
+
+
+KNOWN_URLS["gdk-pixbuf"] = _make_gitlab_raw_url("gitlab.gnome.org", "GNOME", "gdk-pixbuf", "NEWS", "master")
+KNOWN_URLS["glib"] = _make_gitlab_raw_url("gitlab.gnome.org", "GNOME", "glib", "NEWS", "main")
 
 
 def _make_gimp_url(new_ver: str) -> str | None:

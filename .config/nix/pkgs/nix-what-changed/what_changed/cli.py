@@ -110,7 +110,10 @@ async def _resolve_or_guess(pkg: str, new_ver: str, info: dict, cfg: config.Conf
         info.pop("guessed_at", None)
 
     # A fresh cached "no changelog found" result: don't keep searching each run.
-    if cached_url is None and fresh:
+    # But if the package now has a known URL mapping (or a guesser could find
+    # one without network), re-run the guesser — known mappings are cheap and
+    # we want new mappings to take effect without waiting for the TTL.
+    if cached_url is None and fresh and pkg not in urls.KNOWN_URLS:
         return None, info
 
     # Otherwise (no cache, stale, or dead) -> guess (or re-guess) and cache.
