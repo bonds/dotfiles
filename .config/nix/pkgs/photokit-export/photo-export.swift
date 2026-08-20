@@ -300,7 +300,10 @@ all.enumerateObjects { asset, index, stop in
     var ok = false
     let retries = 3
     for attempt in 0..<retries {
-        if !isMounted(mountPath) {
+        // Abort-on-dismount only when WE own the mount (--mount passed).
+        // When running against an external/local dir, don't require it to be
+        // a mount at all — just let the write fail and retry if it's broken.
+        if mountMode && !isMounted(mountPath) {
             log("SMB: mount disconnected mid-run — aborting cleanly (manifest preserved)")
             stop.pointee = true
             return

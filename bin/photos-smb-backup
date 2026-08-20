@@ -62,11 +62,11 @@ fi
 echo "$(date) — mount OK, exporting via photo-export..." >> "$LOGFILE"
 
 # MUST launch via `open` so macOS registers the app identity with TCC (direct
-# exec of the binary gets PHAuthorizationStatusDenied). `open` returns
-# immediately; photo-export writes its own progress to /tmp/photo-export.log.
-# The manifest makes reruns resumable. We launch with --limit 0 (no limit)
-# so the full set exports each night; the nightly window is roomy.
-open -j -a photo-export --args "$MNT" --manifest "$HOME/.cache/photo-export-manifest.txt" 2>>"$ERRFILE" >>"$LOGFILE"
+# exec of the binary gets PHAuthorizationStatusDenied). Use the EXPLICIT app
+# path — `open -a photo-export` can resolve to the Home Manager Apps copy
+# (stale) instead of the nix-store symlink. -W blocks until photo-export
+# exits, so we don't unmount mid-export; the manifest makes reruns resumable.
+open -j -W "$APP" --args "$MNT" --manifest "$HOME/.cache/photo-export-manifest.txt" 2>>"$ERRFILE" >>"$LOGFILE"
 
 umount "$MNT" 2>/dev/null || true
-echo "$(date) — launch ack sent, backup complete" >> "$LOGFILE"
+echo "$(date) — backup complete" >> "$LOGFILE"
