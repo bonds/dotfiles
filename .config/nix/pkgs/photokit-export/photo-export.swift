@@ -39,8 +39,31 @@ func argValue(_ name: String) -> String? {
     if i + 1 < args.count { return args[i + 1] }
     return nil
 }
-var destDir: String = args.count > 1 ? args[1] : "/tmp/photokit-export"
-let limit = Int(argValue("--limit") ?? "0") ?? 0
+
+// Config file override — `open --args` doesn't reliably forward args to a
+// LaunchServices-registered app, so the nightly writes config here instead.
+// Simple KEY = VALUE lines (no sections). CLI args, when present, take
+// precedence over config values (for direct exec / testing).
+let configPath = NSHomeDirectory() + "/Library/Application Support/photo-export/config.toml"
+func configValue(_ key: String) -> String? {
+    guard let raw = try? String(contentsOfFile: configPath, encoding: .utf8) else { return nil }
+    for lineObj in raw.split(separator: "\n") {
+        let line = String(lineObj).trimmingCharacters(in: .whitespacesAndNewlines)
+        if line.isEmpty || line.hasPrefix("#") { continue }
+        let parts = line.split(separator: "=")
+        if parts.count >= 2 && parts[0].trimmingCharacters(in: .whitespacesAndNewlines) == key {
+            return parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+    return nil
+}
+func opt(_ name: String, _ cfgKey: String, _ fallback: String) -> String {
+    // CLI arg wins; then config file; then default.
+    return argValue(name) ?? configValue(cfgKey) ?? fallback
+}
+
+var destDir: String = args.count > 1 ? args[1] : "/tmp/sophrosyne-photos"
+let limit = Int(opt("--limit", "limit", "0")) ?? 0
 let dryRun = args.contains("--dry-run")
 
 // ---------- SMB mount lifecycle (owned by this process) ----------
@@ -110,11 +133,11 @@ func isMounted(_ mountPath: String) -> Bool {
     return out.contains(mountPath)
 }
 
-let mountPath = argValue("--mount") ?? "/tmp/sophrosyne-photos"
+let mountPath = opt("--mount", "mount", "/tmp/sophrosyne-photos")
 var mounted = false
 
 // ---------- manifest (resume support, plain text UUID-per-line) ----------
-let manifestPath = (argValue("--manifest") ?? "/tmp/photo-export-manifest.txt")
+let manifestPath = opt("--manifest", "manifest", NSHomeDirectory() + "/.cache/photo-export-manifest.txt")
 func loadManifestTxt() -> Set<String> {
     guard let raw = try? String(contentsOfFile: manifestPath, encoding: .utf8) else { return [] }
     return Set(raw.split(separator: "\n").map { String($0) })

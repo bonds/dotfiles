@@ -66,7 +66,7 @@ echo "$(date) — mount OK, exporting via photo-export..." >> "$LOGFILE"
 # path — `open -a photo-export` can resolve to the Home Manager Apps copy
 # (stale) instead of the nix-store symlink. -W blocks until photo-export
 # exits, so we don't unmount mid-export; the manifest makes reruns resumable.
-open -j -W "$APP" --args "$MNT" --manifest "$HOME/.cache/photo-export-manifest.txt" 2>>"$ERRFILE" >>"$LOGFILE"
+open -j -W "$APP" 2>>"$ERRFILE" >>"$LOGFILE"
 
 umount "$MNT" 2>/dev/null || true
 echo "$(date) — backup complete" >> "$LOGFILE"
