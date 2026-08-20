@@ -1,18 +1,19 @@
-// photo-export.swift — PhotoKit CLI for iCloud-original export (Phase 3, v8)
-// Target: replace osxphotos' --download-missing AppleScript path with PhotoKit-native.
+// photo-export.swift — PhotoKit CLI for macOS photo backup (v0.2.0, mono-arch)
+// Sole exporter for the nightly backup: fetches ALL assets (local + iCloud-
+// only) via PhotoKit and writes them to an SMB mount. No osxphotos.
 //
 // Usage:
 //   photo-export <dest-dir> [--limit N] [--dry-run] [--manifest /path/state.json]
 //
 // Behavior:
 //   1. Request/resolve PhotoKit auth (once; user clicks Allow on first prompt)
-//   2. Enumerate all assets; detect cloud-only (no .fullSizePhoto/.fullSizeVideo resource)
-//   3. For each cloud-only asset: download original via
-//      PHImageManager.requestImageDataAndOrientation (proven path from Phase 2)
-//   4. Write to <dest>/<yyyy>/<mm>/<SafeFilename>.<utiext> (matches osxphotos date schema)
-//   5. Append localIdentifier to the manifest JSON so re-runs skip already-downloaded
-//
-// Logs to stdout AND /tmp/photos-export.log (lines "photo-export: ..." for grepping).
+//   2. Enumerate all assets via PHAsset (local + iCloud-optimized)
+//   3. For each asset: fetch original via
+//      PHImageManager.requestImageDataAndOrientation (proven path from probe)
+//   4. Write to <dest>/<yyyy>/<mm>/<SafeFilename>.<utiext> (atomic .part+rename)
+//   5. Write a basic XMP sidecar (description + create/modify dates)
+//   6. Append localIdentifier to the manifest so re-runs skip completed files
+// Logs to /tmp/photo-export.log (lines "photo-export: ..." for grepping).
 
 import Photos
 import Foundation

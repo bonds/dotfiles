@@ -97,11 +97,11 @@ but is no longer managed.
   - Runs on **sophrosyne** as `systemd.services.reel-summarize-mcp` (see `hosts/sophrosyne/configuration.nix`), as user `llamacpp` with `StateDirectory=reel-summarize-mcp`. Binds `0.0.0.0` — reached from accismus over **Tailscale** (firewall opens 8892 on `tailscale0` only, not LAN/public).
   - Models: text `qwen2.5-7b` @ `127.0.0.1:8080`, vision **Qwen3-VL-2B** @ `127.0.0.1:8081` via `llamacpp-vision-server` (KV cache `q8_0`). IG cookies from agenix: `REEL_SUMMARIZE_COOKIES=/run/agenix/reel-ig-cookies`.
   - Full spec + remaining steps in `reel-summarize-mcp/SPEC.md`.
-- `.config/nix/pkgs/photokit-export/` — **`photo-export` package + Swift CLI** (v0.1.0) — PhotoKit-native iCloud original downloader. Replaces osxphotos' broken `--download-missing` AppleScript path (AppleScript "export has failed" looping since 2026-07-26).
-  - **How it works**: Swift against the system SDK (Xcode-only; Photos.framework isn't in nixpkgs), bundled in `.app` with `NSPhotoLibraryUsageDescription`, ad-hoc signed `com.ggr.photo-export`. Downloads iCloud originals via `PHImageManager.requestImageDataAndOrientation`, no Applescript.
-  - **First-run / grant-time:** one-time "Allow" click for Photos access (see `FIRST-RUN.md`). Must launch via `open` (direct exec = denied). Binary byte change (Swift / nix rebuild) re-grants — click again.
+- `.config/nix/pkgs/photokit-export/` — **`photo-export` package + Swift CLI** (v0.2.0) — PhotoKit-native photo export, sole exporter for the nightly backup. Replaced osxphotos entirely (broken `--download-missing` AppleScript path since 2026-07-26; osxphotos overlay removed).
+  - **How it works**: Swift against the system SDK (Xcode-only; Photos.framework isn't in nixpkgs), bundled in `.app` with `NSPhotoLibraryUsageDescription`, ad-hoc signed `com.ggr.photo-export`. Exports ALL assets (local + iCloud-only) via `PHImageManager.requestImageDataAndOrientation` + writes a basic XMP sidecar (description + dates) — no AppleScript, no osxphotos.
   - **Robustness:** SMB mount via NetFS, mount probe, atomic `.part`+rename writes, 3× retry, resumable manifest `~/.cache/photo-export-manifest.txt`, `yyyy/mm` dirs.
-  - **Integration:** `bin/photos-smb-backup` two-phase — osxphotos (no `--download-missing`) then `photo-export` for iCloud-only. Home-manager `programs.photo-export.enable` symlinks `.app` to `~/Applications` + lsregister.
+  - **First-run / grant-time:** one-time "Allow" click for Photos access (see `FIRST-RUN.md`). Must launch via `open` (direct exec = denied). Binary byte change (Swift / nix rebuild) re-grants — click again.
+  - **Integration:** `bin/photos-smb-backup` mounts the SMB share, launches `photo-export` via `open --args` (TCC grant), unmounts. Home-manager `programs.photo-export.enable` symlinks `.app` to `~/Applications` + lsregister.
   - **Tests:** `test_core.swift` — 15/15 (UTI map, manifest, date-dir, basename). Run: `swiftc -module-cache-path /tmp/swiftcache -o /tmp/test_core test_core.swift && /tmp/test_core`.
 
 ### Haskell
