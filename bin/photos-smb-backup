@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Nightly photo backup to sophrosyne.
+#
+# Two-phase:
+#   1. osxphotos export (local originals + metadata, XMP sidecars) — no
+#      --download-missing (that path is broken: AppleScript loops since
+#      2026-07-26).
+#   2. photo-export (PhotoKit-native) fetches iCloud-only originals via
+#      PhotoKit, bypassing AppleScript entirely. Skipped if the binary is
+#      missing (graceful degrade to local-only).
+#
+# Mount lifecycle stays in bash (battle-tested expect+mount_smbfs) until the
+# NetFS-inside-photo-export path is runtime-verified against a live server.
+
 MNT="/tmp/sophrosyne-photos"
 LOCKDIR="/tmp/photos-backup.lock"
 LOGFILE="$HOME/Library/Logs/photos-backup.out.log"
@@ -10,6 +23,8 @@ if ! mkdir "$LOCKDIR" 2>/dev/null; then
   echo "$(date) — backup already running, skipping" >> "$LOGFILE"
   exit 0
 fi
+trap 'rm -rf "$LOCKDIR"' EXIT
+
 PASS=$(security find-internet-password -s sophrosyne.local -a "photo-backup" -w 2>/dev/null)
 if [ -z "$PASS" ]; then
   echo "$(date) — no Keychain entry for sophrosyne.local/photo-backup" >> "$LOGFILE"
@@ -44,12 +59,42 @@ if ! mount | grep -qF "$MNT"; then
   exit 0
 fi
 
+echo "$(date) — mount OK, exporting..." >> "$LOGFILE"
+
+# Phase 1: osxphotos — local originals + metadata, NO --download-missing
+# (that flag drives the broken AppleScript path). --update only processes
+# new/changed. Keeps the export DB for idempotent resumes.
 PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH" osxphotos export \
   --exportdb "$HOME/.cache/osxphotos-export.db" \
   --retry 3 \
-  --download-missing --sidecar XMP --skip-edited --skip-live --update \
+  --sidecar XMP --skip-edited --skip-live --update \
   --directory "{created.year}/{created.month:02d}" \
-  "$MNT/" 2>>"$ERRFILE" >>"$LOGFILE"
+  "$MNT/" 2>>"$ERRFILE" >>"$LOGFILE" || {
+    echo "$(date) — osxphotos export failed (exit $?)" >> "$LOGFILE"
+  }
+
+# Phase 2: photo-export — fetch iCloud-only originals via PhotoKit.
+# Only cloud-only assets (missing .fullSizePhoto/.fullSizeVideo) are fetched;
+# the manifest makes re-runs idempotent. Uses the same date schema + dir.
+MANIFEST="$HOME/.cache/photo-export-manifest.txt"
+if command -v photo-export >/dev/null 2>&1; then
+  # Needs GUI launch context (TCC Photos auth is per app identity); the
+  # expected entrypoint is the .app bundle. Fall back gracefully if absent.
+  APP="/Users/scott/Applications/photo-export.app"
+  if [ -x "$APP/Contents/MacOS/photo-export" ]; then
+    echo "$(date) — photo-export: fetching iCloud originals..." >> "$LOGFILE"
+    # MUST launch via `open` so macOS registers the app identity with TCC
+    # (direct exec gets PHAuthorizationStatusDenied). `open` returns
+    # immediately; photo-export writes its own log to /tmp/photo-export.log.
+    open -j -a photo-export --args "$MNT" --manifest "$MANIFEST" --limit 50 2>>"$ERRFILE" >>"$LOGFILE"
+    # Give it a moment to start downloading (manifest makes it resumable).
+    # The 2am window is roomy; we don't wait for completion (background).
+  else
+    echo "$(date) — photo-export skipped (no .app found at $APP)" >> "$LOGFILE"
+  fi
+else
+  echo "$(date) — photo-export not on PATH — iCloud originals NOT fetched this run" >> "$LOGFILE"
+fi
 
 umount "$MNT" 2>/dev/null || true
 echo "$(date) — backup complete" >> "$LOGFILE"

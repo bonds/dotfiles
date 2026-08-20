@@ -69,6 +69,10 @@ in
       /usr/bin/codesign -s - -f --identifier "${bundleId}" \
         "$out/libexec/app"
 
+      # Also expose the app at a stable-ish path for LaunchServices/open
+      mkdir -p "$out/Applications"
+      ln -sfn "$out/libexec/app" "$out/Applications/photo-export.app"
+
       # CLI wrapper (tracked file, matches osxphotos overlay pattern)
       mkdir -p $out/bin
       cat > $out/bin/photo-export <<'WRAPPER'
