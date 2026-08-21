@@ -1,0 +1,4 @@
+module PhotoSftpHelper {
+    header "sftp_helper.h"
+    export *
+}

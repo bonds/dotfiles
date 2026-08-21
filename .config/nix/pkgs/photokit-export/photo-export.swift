@@ -22,6 +22,7 @@ import UniformTypeIdentifiers
 import NetFS
 import CoreFoundation
 import AppKit
+import PhotoSftpHelper
 
 // ---------- logging ----------
 let logStdout = stdout
@@ -253,6 +254,59 @@ do {
     exit(1)
 }
 
+// ---------- SFTP transport (Option A) ----------
+// When remoteHost is configured, stream originals in-memory to the remote over
+// SFTP (no local temp copy / SSD wear) using the restricted id_photo_rsync key,
+// which sophrosyne's rrsync-photos wrapper confines to /dragon/media/photos/.
+let remoteHost = opt("--remote-host", "remoteHost", "")
+let remoteUser = opt("--remote-user", "remoteUser", "scott")
+let remoteKey = opt("--remote-key", "remoteKey", NSHomeDirectory() + "/.ssh/id_photo_rsync")
+let useSFTP = !remoteHost.isEmpty
+
+// Box to stream a Data buffer in-memory through the C reader callback.
+final class SFTPStream {
+    let data: Data
+    var offset = 0
+    init(_ d: Data) { data = d }
+}
+
+var sftpSession: OpaquePointer? = nil
+if useSFTP {
+    log("SFTP: opening session to \(remoteHost) as \(remoteUser)")
+    if photo_sftp_open(&sftpSession, remoteHost, 22, remoteUser, remoteKey) != 0 {
+        log("FATAL: cannot open SFTP session to \(remoteHost) — aborting")
+        exit(1)
+    }
+    // sftp-server -d chroots to /dragon/media/photos/, so '' is photos root.
+    if photo_sftp_mkdir(sftpSession, "") != 0 {
+        log("WARN: sftp mkdir base failed (continuing)")
+    }
+    log("SFTP: session ready")
+}
+
+// Stream-upload an in-memory Data to remotePath via the C helper. Returns success.
+func sftpPutData(_ remotePath: String, _ data: Data) -> Bool {
+    let box = SFTPStream(data)
+    let boxPtr = Unmanaged.passRetained(box).toOpaque()
+    let reader: @convention(c) (UnsafeMutableRawPointer?, UnsafeMutablePointer<UInt8>?, Int) -> Int = { c, buf, max in
+        guard let c = c, let buf = buf else { return -1 }
+        let b = Unmanaged<SFTPStream>.fromOpaque(c).takeUnretainedValue()
+        let remaining = b.data.count - b.offset
+        if remaining <= 0 { return 0 }
+        let n = max > remaining ? remaining : max
+        b.data.withUnsafeBytes { raw in
+            if let base = raw.baseAddress {
+                memcpy(buf, base + b.offset, n)
+            }
+        }
+        b.offset += n
+        return n
+    }
+    let rc = photo_sftp_put(sftpSession, remotePath, reader, boxPtr)
+    Unmanaged<SFTPStream>.fromOpaque(boxPtr).release()
+    return rc == 0
+}
+
 // ---------- basic XMP sidecar (description + dates from PhotoKit) ----------
 func writeXmpSidecar(_ finalPath: String, _ photo: PHAsset) {
     // Minimal XMP sidecar: description + create/modify dates (what PhotoKit
@@ -367,20 +421,49 @@ all.enumerateObjects { asset, index, stop in
 
     if dryRun { log("DRYRUN \(uuid)"); exported += 1; appendManifest(uuid); return }
 
-    // request + write (atomic: write .part then rename, so interrupted
-    // downloads leave no corrupt file and aren't recorded in the manifest)
     let opts = PHImageRequestOptions()
     opts.version = .original
     opts.deliveryMode = .highQualityFormat
     opts.isNetworkAccessAllowed = true
     opts.isSynchronous = true
 
+    // Remote relative path from the confined base (yyyy/mm/name). When SFTP,
+    // sftp-server -d chroots to /dragon/media/photos/, so dirPath is just the
+    // yyyy/mm relative path; for local we keep the absolute dest path.
+    let relDir = yearStr + "/" + monthStr
+    if useSFTP {
+        var ok = false
+        // remote skip: stat the target
+        if photo_sftp_stat(sftpSession, relDir + "/" + writeName) >= 0 {
+            log("SKIP-EXISTS \(uuid) \(relDir)/\(writeName)")
+            appendManifest(uuid)
+            skipped += 1
+            return
+        }
+        if photo_sftp_mkdir(sftpSession, relDir) != 0 {
+            log("ERR sftp mkdir \(relDir)")
+            failed += 1
+            return
+        }
+        mgr.requestImageDataAndOrientation(for: asset, options: opts, resultHandler: { imageData, dataUTI, orientation, info in
+            guard let img = imageData else { log("ERR no data for \(uuid)"); return }
+            if sftpPutData(relDir + "/" + writeName, img) {
+                ok = true
+                log("EXPORTED-SFTP \(relDir)/\(writeName) (\(img.count) bytes)")
+            } else {
+                log("ERR sftp put \(relDir)/\(writeName) (\(img.count) bytes)")
+            }
+        })
+        if ok { exported += 1; appendManifest(uuid) } else if !dryRun { failed += 1 }
+        return
+    }
+
+    // Local/SMB: request + write (atomic: write .part then rename, so
+    // interrupted downloads leave no corrupt file and aren't recorded)
     var ok = false
     let retries = 3
     for attempt in 0..<retries {
         // Abort-on-dismount only when WE own the mount (--mount passed).
-        // When running against an external/local dir, don't require it to be
-        // a mount at all — just let the write fail and retry if it's broken.
         if mountMode && !isMounted(mountPath) {
             log("SMB: mount disconnected mid-run — aborting cleanly (manifest preserved)")
             stop.pointee = true
@@ -396,7 +479,6 @@ all.enumerateObjects { asset, index, stop in
                 try FileManager.default.moveItem(atPath: tmp, toPath: final)
                 ok = true
                 log("EXPORTED \(final) (\(img.count) bytes)" + (attempt > 0 ? " (retry \(attempt))" : ""))
-                // basic XMP sidecar (description + dates) — nice-to-have
                 writeXmpSidecar(final, asset)
             } catch {
                 log("ERR write \(final): \(error)")
@@ -407,6 +489,9 @@ all.enumerateObjects { asset, index, stop in
     }
 
     if ok { exported += 1; appendManifest(uuid) } else if !dryRun { failed += 1 }
+}
+if useSFTP && sftpSession != nil {
+    photo_sftp_close(sftpSession)
 }
 log("SUMMARY exported=\(exported) skipped=\(skipped) failed=\(failed)")
 exit(0)

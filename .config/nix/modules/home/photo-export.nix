@@ -33,6 +33,30 @@ in {
             default = false;
             description = "Let photo-export mount the SMB share itself (NetFS) when dest is the mount path, instead of requiring an external expect mount. Enables launching via `open` with no wrapper.";
           };
+          # SFTP transport (Option A): stream originals in-memory to a remote
+          # host over SFTP (no local temp copy, no SSD wear). When remoteHost is
+          # set, photo-export uses the restricted id_photo_rsync key to stream to
+          # the remote base (the rrsync-photos wrapper confines it to
+          # /dragon/media/photos/). Mutually exclusive with SMB mount.
+          remoteHost = lib.mkOption {
+            type = lib.types.str;
+            default = "";
+            description = "Set to push over SFTP instead of SMB (e.g. \"sophrosyne.local\" or MagicDNS). Empty = SMB transport.";
+          };
+          remoteUser = lib.mkOption {
+            type = lib.types.str;
+            default = "scott";
+          };
+          remoteKey = lib.mkOption {
+            type = lib.types.path;
+            default = "${config.home.homeDirectory}/.ssh/id_photo_rsync";
+            description = "No-passphrase SSH key authorized on the remote for the rrsync-photos wrapper.";
+          };
+          remoteBase = lib.mkOption {
+            type = lib.types.str;
+            default = "";
+            description = "Base path on the remote (relative to the wrapper's confined /dragon/media/photos). Empty = photos root.";
+          };
         };
       };
       default = {};
@@ -60,6 +84,10 @@ in {
         dest = s.destDir;
         limit = s.limit;
         selfmount = s.selfmount;
+        remoteHost = s.remoteHost;
+        remoteUser = s.remoteUser;
+        remoteKey = s.remoteKey;
+        remoteBase = s.remoteBase;
       };
   });
 }

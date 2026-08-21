@@ -1,6 +1,7 @@
 {
   lib,
   mkDarwinPackage,
+  libssh2,
 }: let
   version = "0.2.5";
   bundleId = "com.ggr.photo-export";
@@ -14,7 +15,11 @@ in
     # Build the Swift CLI against the system SDK (Photos.framework is not
     # in nixpkgs). stdenvNoCC from mkDarwinPackage means no strip/fixup,
     # preserving the code signature we apply below.
-    nativeBuildInputs = [];
+    #
+    # libssh2 provides the SFTP transport (no temp files on disk — originals
+    # are streamed in-memory via the C helper). head -c include/libssh2.h
+    # is found via the -I flags below.
+    nativeBuildInputs = [libssh2];
 
     installPhase = ''
       runHook preInstall
@@ -45,9 +50,28 @@ in
       mkdir -p "$WORKDIR"
       cp "$src/photo-export.swift" "$WORKDIR/main.swift"
       cp "$src/photoexport_core.swift" "$WORKDIR/photoexport_core.swift"
+      cp "$src/module.modulemap" "$WORKDIR/module.modulemap"
+      cp "$src/sftp_helper.h" "$WORKDIR/sftp_helper.h"
 
+      # Compile the libssh2 SFTP bridge C helper (with the system clang) so Swift
+      # can import its narrow module. Use the toolchain's absolute clang (xcrun
+      # isn't on PATH / fails inside the nix sandbox's sandbox-exec), and pass
+      # -isysroot so the macOS system headers (netdb.h etc.) resolve exactly like
+      # the swiftc -sdk below. LIBSH2_DEV identifies the nix libssh2 include dir
+      # so `#include <libssh2.h>` resolves.
+      LIBSH2_DEV="${libssh2.dev}"
+      "$TOOLCHAIN/usr/bin/clang" -c "$src/sftp_helper.c" \
+        -isysroot "$SDKROOT" \
+        -I"$LIBSH2_DEV/include" -o "$WORKDIR/sftp_helper.o"
+
+      # swiftc compiles core+main, imports the C module (module map), links the
+      # prebuilt helper object + libssh2.
       "$SWIFTC" -module-cache-path "$MODCACHE" \
         -sdk "$SDKROOT" -resource-dir "$RESDIR" \
+        -Xcc -I"$WORKDIR" \
+        -Xcc -fmodule-map-file="$WORKDIR/module.modulemap" \
+        "$WORKDIR/sftp_helper.o" \
+        -L"${libssh2}/lib" -lssh2 \
         -o "$out/libexec/app/Contents/MacOS/photo-export" \
         "$WORKDIR/photoexport_core.swift" "$WORKDIR/main.swift"
 

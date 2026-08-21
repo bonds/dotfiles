@@ -51,14 +51,29 @@ in {
 
   system.activationScripts.photoRsyncWrapper.text = ''
     mkdir -p /usr/local/bin
+    # Note: quoted heredoc delimiter ('WRAPPER') so $SSH_ORIGINAL_COMMAND below is
+    # NOT expanded by the activation shell — it must reach the wrapper verbatim and
+    # expand only at runtime (when ssh invokes the wrapper on the server).
+    # The sftp-server path is nix-interpolated (${pkgs.openssh}) at eval time.
     cat > /usr/local/bin/rrsync-photos << 'WRAPPER'
     #!/bin/sh
-    case "$SSH_ORIGINAL_COMMAND" in
+    # Restricted transport for the photo backup key (photo-rsync@accismus).
+    # Allows ONLY:
+    #   1. rsync to /dragon/media/photos/   (the nightly's rsync path)
+    #   2. sftp confined to /dragon/media/photos/ (photo-export streaming upload,
+    #      launchd at 2am; libssh2 requests the sftp subsystem, arriving here as
+    #      SSH_ORIGINAL_COMMAND="sftp")
+    # Everything else is rejected.
+    case "''$SSH_ORIGINAL_COMMAND" in
       *rsync*--server*/dragon/media/photos/*)
-        exec $SSH_ORIGINAL_COMMAND
+        exec "''$SSH_ORIGINAL_COMMAND"
+        ;;
+      sftp)
+        # -d confines sftp to the photos dir (removes relative-up escapes)
+        exec "${pkgs.openssh}/libexec/sftp-server" -d /dragon/media/photos
         ;;
       *)
-        echo "REJECTED: this key is restricted to rsync /dragon/media/photos/ only" >&2
+        echo "REJECTED: this key is restricted to rsync/sftp /dragon/media/photos/ only" >&2
         exit 1
         ;;
     esac
