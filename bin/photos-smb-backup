@@ -12,9 +12,40 @@ MNT="/tmp/sophrosyne-photos"
 LOCKDIR="/tmp/photos-backup.lock"
 LOGFILE="$HOME/Library/Logs/photos-backup.out.log"
 ERRFILE="$HOME/Library/Logs/photos-backup.err.log"
-APP="/Users/scott/Applications/photo-export.app"
+# The app is installed by home-manager into "Applications/Home Manager Apps/"
+# (that's what LaunchServices/`open` resolve). Fall back to a plain
+# ~/Applications copy if it exists.
+if [ -d "$HOME/Applications/Home Manager Apps/photo-export.app" ]; then
+  APP="$HOME/Applications/Home Manager Apps/photo-export.app"
+elif [ -d "$HOME/Applications/photo-export.app" ]; then
+  APP="$HOME/Applications/photo-export.app"
+else
+  APP=""
+fi
 
-if ! mkdir "$LOCKDIR" 2>/dev/null; then
+# Robust lock: store our PID inside the lock dir. If the lock exists but the
+# PID inside it is no longer a live photo-backup process, the previous run was
+# killed (SIGKILL/power loss bypasses `trap ... EXIT`) — reclaim the stale
+# lock instead of skipping forever.
+acquire_lock() {
+  if mkdir "$LOCKDIR" 2>/dev/null; then
+    echo $$ > "$LOCKDIR/pid"
+    return 0
+  fi
+  local oldpid
+  oldpid=$(cat "$LOCKDIR/pid" 2>/dev/null || echo "")
+  if [ -n "$oldpid" ] && kill -0 "$oldpid" 2>/dev/null; then
+    return 1   # genuinely still running
+  fi
+  # stale lock — remove and retry once
+  echo "$(date) — stale lock (pid $oldpid) from a killed run; reclaiming" >> "$LOGFILE"
+  rm -rf "$LOCKDIR"
+  mkdir "$LOCKDIR" 2>/dev/null || return 1
+  echo $$ > "$LOCKDIR/pid"
+  return 0
+}
+
+if ! acquire_lock; then
   echo "$(date) — backup already running, skipping" >> "$LOGFILE"
   exit 0
 fi
