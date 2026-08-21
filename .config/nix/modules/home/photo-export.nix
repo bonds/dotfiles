@@ -28,6 +28,11 @@ in {
             default = 0;
             description = "Max assets to export per run (0 = unlimited)";
           };
+          selfmount = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = "Let photo-export mount the SMB share itself (NetFS) when dest is the mount path, instead of requiring an external expect mount. Enables launching via `open` with no wrapper.";
+          };
         };
       };
       default = {};
@@ -54,6 +59,7 @@ in {
       format.generate "config.toml" {
         dest = s.destDir;
         limit = s.limit;
+        selfmount = s.selfmount;
       };
   });
 }

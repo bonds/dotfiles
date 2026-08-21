@@ -73,6 +73,29 @@ func dateDirPath(_ destRoot: String, _ year: String, _ month: String) -> String 
     return "\(destRoot)/\(year)/\(month)"
 }
 
+// ---- on-disk dedup ----
+// Examine a dir listing (metadata strings only — never file contents, so no
+// SSD wear) and classify how the target filename relates to what's on disk.
+// Returns whether a plain (case-insensitive) name match exists, and how many
+// osxphotos-style suffix variants ("name (1)", "name (2)", …) already exist.
+// Used to (a) skip photos already in the old tree, and (b) write same-name
+// collisions under a free " (N)" suffix instead of overwriting or dropping.
+func existingNameStatus(_ existing: [String], _ wantName: String) -> (plainExists: Bool, variantCount: Int) {
+    let base = wantName.lowercased()
+    var plain = false
+    var variants = 0
+    for e in existing {
+        let el = e.lowercased()
+        if el == base { plain = true; continue }
+        // osxphotos-style suffix: "name (1)", "name (12)" — digits only
+        if el.hasPrefix(base + " (") && el.hasSuffix(")") {
+            let inner = String(el.dropFirst(base.count + 2).dropLast())
+            if !inner.isEmpty, inner.allSatisfy({ $0.isNumber }) { variants += 1 }
+        }
+    }
+    return (plain, variants)
+}
+
 // ---- safe basename (strip trailing extension) ----
 func safeBaseName(_ original: String?) -> String? {
     guard let original, !original.isEmpty else { return nil }

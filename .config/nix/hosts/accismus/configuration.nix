@@ -106,6 +106,14 @@ in {
   security.pam.services.sudo_local.touchIdAuth = true;
   security.pam.services.sudo_local.reattach = false;
 
+  # Passwordless sudo for scott on the rebuild tools — lets `nr` / nh darwin
+  # switch run unattended (no sudo password prompt). Mirrors the NOPASSWD
+  # pattern already granted to the same commands on sophrosyne via doas.
+  # darwin-rebuild must run as root to update /nix/var/nix/profiles/system.
+  security.sudo.extraConfig = ''
+    scott ALL = NOPASSWD: /run/current-system/sw/bin/darwin-rebuild, /run/current-system/sw/bin/nh
+  '';
+
   age.identityPaths = ["/etc/age/identity"];
 
   system.activationScripts.agenixIdentity = {
@@ -310,6 +318,7 @@ in {
 
       programs.reel-summarize.enable = true;
       programs.photo-export.enable = true;
+      programs.photo-export.settings.selfmount = true;
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
 
       home.file.".stignore".text = ''

@@ -65,13 +65,25 @@ let dryRun = args.contains("--dry-run")
 // Robustness model: resumable (manifest) + verifiable (probe mount before
 // writes, .part+rename so only complete files are recorded).
 
-// Over the tailnet, `sophrosyne` resolves (sophrosyne.local is LAN-only and
-// not resolvable from my sandbox). Keychain service stays sophrosyne.local to
-// match the existing `security find-internet-password -s sophrosyne.local`.
-let smbHost = argValue("--smb-host") ?? "sophrosyne"
+// Over the LAN, `sophrosyne.local` (mDNS) is the stable SMB name — matches the
+// nightly bin/photos-smb-backup mount_smbfs URL. When the Mac is away from the
+// LAN, fall back to the Tailscale MagicDNS name (stable, not an IP literal), so
+// the share still mounts over the tailnet. NetFS called with no mount options
+// fails (EINVAL), and calling with an unreachable-happy host just times out.
+let smbHost = argValue("--smb-host") ?? "sophrosyne.local"
 let smbShare = argValue("--smb-share") ?? "photos"
 let smbUser = argValue("--smb-user") ?? "photo-backup"
 let keychainService = argValue("--keychain-service") ?? "sophrosyne.local"
+
+// Ordered SMB host candidates tried for self-mount: the configured host / .local
+// (LAN) first, then the Tailscale MagicDNS name (remote). First to mount wins.
+let smbHostCandidates: [String] = {
+    var hosts = [smbHost]
+    let magicDNS = "sophrosyne.taileafac.ts.net"
+    let local = "sophrosyne.local"
+    for h in [local, magicDNS] where !hosts.contains(h) { hosts.append(h) }
+    return hosts
+}()
 
 func keychainPassword() -> String? {
     // security find-internet-password -s <service> -a <user> -w
@@ -101,17 +113,34 @@ func mountViaProcess(mountPath: String) -> Bool {
 }
 
 func mountViaNetFS(mountPath: String, pass: String) -> Bool {
-    guard let urlObj = NSURL.init(string: "smb://\(smbHost)/\(smbShare)") else { return false }
-    let url = urlObj as CFURL
-    let mountPathURL = URL(fileURLWithPath: mountPath) as NSURL as CFURL
-    let userCF = NSString(string: smbUser) as CFString
-    let passCF = NSString(string: pass) as CFString
-    let opts = NSMutableDictionary() as CFMutableDictionary
-    let mopts = NSMutableDictionary() as CFMutableDictionary
-    var mountpoints: Unmanaged<CFArray>? = nil
-    let stat = NetFSMountURLSync(url, mountPathURL, userCF, passCF, opts, mopts, &mountpoints)
-    log("SMB: NetFSMountURLSync status=\(stat) mountpoints=\(String(describing: mountpoints))")
-    return stat == 0
+    // Try each host candidate in order (LAN .local first, then MagicDNS) until
+    // one mounts. First success wins; stop on the first that returns 0.
+    for host in smbHostCandidates {
+        guard let urlObj = NSURL(string: "smb://\(host)/\(smbShare)") else { continue }
+        let url = urlObj as CFURL
+        let mountPathURL = URL(fileURLWithPath: mountPath) as NSURL as CFURL
+        let userCF = NSString(string: smbUser) as CFString
+        let passCF = NSString(string: pass) as CFString
+        // NetFS needs explicit open + mount options, or NetFSMountURLSync can fail
+        // (EINVAL) or try to present auth UI. SuppressAllUI forces the provided
+        // credentials; MountAtMountDir pins the mount to our path instead of
+        // defaulting under /Volumes. These are the options verified to work.
+        let opts = NSMutableDictionary()
+        opts["UIOption"] = "SuppressAllUI"
+        let mopts = NSMutableDictionary()
+        mopts["MountAtMountDir"] = true
+        mopts["SoftMount"] = false
+        var mountpoints: Unmanaged<CFArray>? = nil
+        let stat = NetFSMountURLSync(url, mountPathURL, userCF, passCF, opts, mopts, &mountpoints)
+        log("SMB: NetFSMountURLSync host=\(host) status=\(stat) mountpoints=\(String(describing: mountpoints))")
+        if stat == 0 {
+            return true
+        }
+        // Mount failed for this host — unmount any partial mount before retrying
+        // another candidate so we don't collide on the destination path.
+        log("SMB: retrying next host (last: \(host) status \(stat))")
+    }
+    return false
 }
 
 func isMounted(_ mountPath: String) -> Bool {
@@ -166,7 +195,12 @@ if status != 3 {
 log("authorized")
 
 // ---------- output dir (optionally an SMB mount owned by this process) ----------
-let mountMode = args.contains("--mount")   // give --mount → we own the mount
+// We own the mount when the user passes --mount, OR when config selfmount is
+// true and dest IS the SMB mount path. `open` (LaunchServices) doesn't forward
+// args, so config is the way the nightly / agent launches get self-mounting
+// without the external expect wrapper.
+let wantSelfMount = (configValue("selfmount")?.lowercased() == "true")
+let mountMode = args.contains("--mount") || (wantSelfMount && destDir == mountPath)
 mounted = isMounted(mountPath)
 
 if mountMode && !isMounted(mountPath) {
@@ -264,6 +298,16 @@ func writeXmpSidecar(_ finalPath: String, _ photo: PHAsset) {
     }
     log("SIDECAR \(xmpPath)")
 }
+// On-disk dedup: cache dir listings so the exists-check doesn't re-read the
+// tree per asset. Keys are the yyyy/mm dir paths we actually write into.
+var dirListCache: [String: [String]] = [:]
+func dirListing(_ dir: String) -> [String] {
+    if let l = dirListCache[dir] { return l }
+    let l = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
+    dirListCache[dir] = l
+    return l
+}
+
 let all = PHAsset.fetchAssets(with: nil)
 log("assets=\(all.count) dryRun=\(dryRun) limit=\(limit)")
 
@@ -294,6 +338,33 @@ all.enumerateObjects { asset, index, stop in
         base = (r0.originalFilename as NSString).deletingPathExtension
     }
 
+    // On-disk dedup (metadata-only — dir listing strings, never file bytes, so
+    // no SSD wear): if the original is already present in the target month dir
+    // (case-insensitive — the renamed-tree originals use ".HEIC", we target
+    // ".heic"), it's already backed up. Record it in the manifest and skip the
+    // download entirely ("backup only what we don't have"). If instead a
+    // DIFFERENT photo already occupies our plain name (osxphotos-style " (N)"
+    // suffix exists), we still download but write under a free " (N)" suffix so
+    // no photo is ever overwritten or dropped.
+    var writeName = ""
+    if let r0 = resFirst.first, !r0.uniformTypeIdentifier.isEmpty {
+        let ext = extForUTI(r0.uniformTypeIdentifier)
+        let wantName = base + "." + ext
+        let st = existingNameStatus(dirListing(dirPath), wantName)
+        if st.plainExists {
+            log("SKIP-EXISTS \(uuid) \(dirPath)/\(wantName)")
+            appendManifest(uuid)
+            skipped += 1
+            return
+        }
+        writeName = st.variantCount > 0
+            ? base + " (" + String(st.variantCount + 1) + ")." + ext
+            : wantName
+    } else {
+        // No resource metadata (rare): fall back to old naming, no dedup.
+        writeName = base + "." + extForUTI(nil)
+    }
+
     if dryRun { log("DRYRUN \(uuid)"); exported += 1; appendManifest(uuid); return }
 
     // request + write (atomic: write .part then rename, so interrupted
@@ -317,8 +388,7 @@ all.enumerateObjects { asset, index, stop in
         }
         mgr.requestImageDataAndOrientation(for: asset, options: opts, resultHandler: { imageData, dataUTI, orientation, info in
             guard let img = imageData else { log("ERR no data for \(uuid) attempt \(attempt)"); return }
-            let ext = extForUTI(dataUTI)
-            let final = dirPath + "/" + base + "." + ext
+            let final = dirPath + "/" + writeName
             let tmp = final + ".part"
             do {
                 try img.write(to: URL(fileURLWithPath: tmp), options: [])

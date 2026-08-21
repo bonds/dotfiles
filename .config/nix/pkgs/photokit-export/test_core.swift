@@ -89,6 +89,28 @@ checkCount("manifest trailing newline only", parseManifest("\n").count, 0)
 checkEq("date dir", dateDirPath("/tmp/photos", "2026", "08"), "/tmp/photos/2026/08")
 checkEq("date dir empty month", dateDirPath("/x", "2026", ""), "/x/2026/")
 
+// ================= on-disk dedup (consolidation to numbered months) =================
+// photo-export targets lowercase ext, osxphotos wrote uppercase -> match ignoring case
+// plain name exists -> already backed up
+let d1 = ["IMG_0173.HEIC", "IMG_0172.MOV"]
+let s1 = existingNameStatus(d1, "IMG_0173.heic")
+check("dedup: plain lower vs upper", s1.plainExists && s1.variantCount == 0)
+check("dedup: exact name", existingNameStatus(["IMG_0001.JPG"], "IMG_0001.JPG").plainExists)
+check("dedup: lower existing, upper target", existingNameStatus(["img_0001.jpg"], "IMG_0001.JPG").plainExists)
+check("dedup: sidecar doesn't count as plain", !existingNameStatus(["IMG_0173.HEIC.xmp"], "IMG_0173.HEIC").plainExists)
+check("dedup: different base", !existingNameStatus(["IMG_0001.jpg"], "IMG_0002.jPg").plainExists)
+check("dedup: different ext", !existingNameStatus(["IMG_0173.MOV"], "IMG_0173.heic").plainExists)
+check("dedup: empty listing", !existingNameStatus([], "IMG_0173.heic").plainExists)
+// suffix variants are counted, not plain
+let s2 = existingNameStatus(["IMG_5134.heic", "IMG_5134.heic (1)", "IMG_5134.heic (2)"], "IMG_5134.heic")
+check("dedup: plain + 2 variants", s2.plainExists && s2.variantCount == 2)
+let s3 = existingNameStatus(["IMG_5134.heic (1)"], "IMG_5134.heic")
+check("dedup: variant only, no plain", !s3.plainExists && s3.variantCount == 1)
+// non-numeric or partial suffix not counted
+check("dedup: dotted name not suffix", existingNameStatus(["IMG_1.heic (a)"], "IMG_1.heic").variantCount == 0)
+check("dedup: sibling different family", existingNameStatus(["IMG_2.heic (1)"], "IMG_1.heic").variantCount == 0)
+check("dedup: multi-digit suffix", existingNameStatus(["IMG_1.heic (12)"], "IMG_1.heic").variantCount == 1)
+
 // ================= safe basename =================
 checkEq("base no ext", safeBaseName("IMG_1234") ?? "", "IMG_1234")
 checkEq("base dotted", safeBaseName("IMG_1234.HEIC") ?? "", "IMG_1234")
