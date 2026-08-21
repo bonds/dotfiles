@@ -97,12 +97,14 @@ but is no longer managed.
   - Runs on **sophrosyne** as `systemd.services.reel-summarize-mcp` (see `hosts/sophrosyne/configuration.nix`), as user `llamacpp` with `StateDirectory=reel-summarize-mcp`. Binds `0.0.0.0` — reached from accismus over **Tailscale** (firewall opens 8892 on `tailscale0` only, not LAN/public).
   - Models: text `qwen2.5-7b` @ `127.0.0.1:8080`, vision **Qwen3-VL-2B** @ `127.0.0.1:8081` via `llamacpp-vision-server` (KV cache `q8_0`). IG cookies from agenix: `REEL_SUMMARIZE_COOKIES=/run/agenix/reel-ig-cookies`.
   - Full spec + remaining steps in `reel-summarize-mcp/SPEC.md`.
-- `.config/nix/pkgs/photokit-export/` — **`photo-export` package + Swift CLI** (v0.2.0) — PhotoKit-native photo export, sole exporter for the nightly backup. Replaced osxphotos entirely (broken `--download-missing` AppleScript path since 2026-07-26; osxphotos overlay removed).
+- `.config/nix/pkgs/photokit-export/` — **`photo-export` package + Swift CLI** (v0.2.5) — PhotoKit-native photo export, sole exporter for the nightly backup. Replaced osxphotos entirely (broken `--download-missing` AppleScript path since 2026-07-26; osxphotos overlay removed).
   - **How it works**: Swift against the system SDK (Xcode-only; Photos.framework isn't in nixpkgs), bundled in `.app` with `NSPhotoLibraryUsageDescription`, ad-hoc signed `com.ggr.photo-export`. Exports ALL assets (local + iCloud-only) via `PHImageManager.requestImageDataAndOrientation` + writes a basic XMP sidecar (description + dates) — no AppleScript, no osxphotos.
+  - **Config is source of truth**: `~/Library/Application Support/photo-export/config.toml` (dest, limit, manifest) — `open --args` doesn't reliably forward args to LaunchServices-registered apps. Args (when they arrive) override config. Home-manager `programs.photo-export.enable` writes the config.
+  - **Safety guard**: refuses to export when dest is the SMB mount path but not actually mounted (prevents silent local writes — this dumped 139GB once). Logic in `photoexport_core.swift`, unit-tested.
   - **Robustness:** SMB mount via NetFS, mount probe, atomic `.part`+rename writes, 3× retry, resumable manifest `~/.cache/photo-export-manifest.txt`, `yyyy/mm` dirs.
   - **First-run / grant-time:** one-time "Allow" click for Photos access (see `FIRST-RUN.md`). Must launch via `open` (direct exec = denied). Binary byte change (Swift / nix rebuild) re-grants — click again.
-  - **Integration:** `bin/photos-smb-backup` mounts the SMB share, launches `photo-export` via `open --args` (TCC grant), unmounts. Home-manager `programs.photo-export.enable` symlinks `.app` to `~/Applications` + lsregister.
-  - **Tests:** `test_core.swift` — 15/15 (UTI map, manifest, date-dir, basename). Run: `swiftc -module-cache-path /tmp/swiftcache -o /tmp/test_core test_core.swift && /tmp/test_core`.
+  - **Transport is SMB** (not rsync): `bin/photos-smb-backup` mounts `//photo-backup@sophrosyne.local/photos` (samba `[photos]` share → `/dragon/media/photos`), launches `photo-export` via `open`, unmounts. Samba user `photo-backup` managed via `pdbedit` on sophrosyne.
+  - **Tests:** pure logic in `photoexport_core.swift` (single source of truth) + 39 unit tests in `test_core.swift`; wired into `nix flake check` as `photo-export-test` (runs in sandbox via Xcode toolchain). Run manually: copy `test_core.swift` → `main.swift`, `swiftc photoexport_core.swift main.swift`. End-to-end smoke test planned but not implemented: `INTEGRATION_TEST_PLAN.md`.
 
 ### Haskell
 - `.config/ghc/ghci.conf` — GHCi config
@@ -143,11 +145,11 @@ Three machines managed from this repo:
 - **accismus** — macOS laptop (aarch64-darwin, nix-darwin)
   - **Dotfiles** use the bare-repo approach described above (`~/.config/dotfiles`). The `config` fish alias is defined in `~/.config/fish/conf.d/10-aliases.fish`.
   - **Syncthing** managed via nix-darwin launchd agent (not standalone app). Declarative `config.xml` generated and deployed by activation script. Config dir at `~/Library/Application Support/Syncthing/`. Preserves `key.pem`, `cert.pem`, `index-v2/` across rebuilds.
-  - **Photos backup** via `photos-backup` launchd agent (daily at 2am). Two-step pipeline: (1) `osxphotos export --export-as-hardlink --sidecar XMP` creates date-organized hardlinks in `~/Pictures/Syncthing-Photos/` (near-zero extra disk on APFS), (2) `rsync` transfers the export to `sophrosyne:/dragon/media/photos/` over SSH LAN. No Syncthing involved for photos.
-    - **⚠️ Prerequisite:** In Photos → Settings → General, set "Download Originals to this Mac" (not "Optimize Mac Storage"). If set to Optimize, the export silently gets low-resolution thumbnails and the backup copies are useless. Easy to miss on a fresh account since Photos defaults to Optimize.
-    - **`--delete` on rsync:** rsync uses `--delete` so the server mirrors Photos exactly. Deleted photos are still preserved in the firesafe backup's `.deleted/` directory on the USB drive.
-    - **Auto-generated SSH key:** A no-passphrase key `~/.ssh/id_photo_rsync` is generated by the nix activation script if missing. The public key is synced to sophrosyne via `~/Documents/.config/photo-rsync-key.pub` (Syncthing Documents folder). On sophrosyne, it gets deployed with `restrict,from="192.168.4.*",command="/usr/local/bin/rrsync-photos"` — only usable from LAN, only for rsync to `/dragon/media/photos/`. The `rrsync-photos` wrapper script enforces the path restriction.
-    - **Metadata sidecars:** `--sidecar XMP` writes XMP sidecar files alongside each photo (keywords, GPS, dates, titles), giving browsable metadata on the server.
+  - **Photos backup** via `photos-backup` launchd agent (daily at 2am). Single step: `bin/photos-smb-backup` mounts the samba `[photos]` share (`//photo-backup@sophrosyne.local/photos` → `/dragon/media/photos`) and runs **`photo-export`** (PhotoKit-native Swift) to export ALL assets (local + iCloud-only) with basic XMP sidecars. No osxphotos, no rsync, no Syncthing for photos.
+    - **⚠️ Prerequisite:** Photos access grant — see `pkgs/photokit-export/FIRST-RUN.md`. One-time "Allow" click via `open`; re-grant after any binary change (new nix build / version bump).
+    - **iCloud originals:** with "Optimize Mac Storage" enabled, originals are iCloud-only; `photo-export` fetches them via PhotoKit (`PHImageManager.requestImageDataAndOrientation`), no AppleScript.
+    - **Resumable:** `~/.cache/photo-export-manifest.txt` tracks completed UUIDs; `yyyy/mm` date dirs; atomic `.part`+rename.
+    - **Safety guard:** `photo-export` refuses to write when dest is the SMB mount path but isn't actually mounted (prevents silent local-disk writes).
 - **metanoia** — NixOS workstation (x86_64-linux)
   - **Dotfiles:** Should be migrated to the bare-repo approach when back online (same as accismus/sophrosyne).
 - **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
@@ -169,11 +171,11 @@ Three machines managed from this repo:
     - **First-time setup:** Label ext4 drive `firesafe` (`e2label`), create `.firesafe-id`, plug in to trigger backup. Drive must be 4.5TB+ to hold Archive + Backups + Documents + selected Media subdirs.
     - **Drive I/O note:** The WD Game Drive USB bridge (1058:262f) is BOT-only, QD=1, no UASP — USB-native PCB, cannot shuck. Random I/O ~1 MB/s; sequential ~40-90 MB/s ext4. ext4 journal vs exFAT speed tradeoffs, dirty page flush hang on umount. See `firesafe-backup.nix` header comment for full details.
   - **Photos pipeline:**
-    - Mac (accismus): `photos-backup` launchd agent runs nightly at 2am — `osxphotos export --export-as-hardlink --sidecar XMP` creates hardlinks, then `rsync --delete` sends them to sophrosyne (server mirrors Photos; deleted files preserved in firesafe `.deleted/`)
-    - SSH key: `~/.ssh/id_photo_rsync` (no passphrase, auto-generated by nix) used for the rsync. Restricted on sophrosyne to LAN + rsync-to-photos only.
-    - Storage: `/dragon/media/photos` on sophrosyne (still the same destination, no longer syncthing-managed)
+    - Mac (accismus): `photos-backup` launchd agent runs nightly at 2am — `bin/photos-smb-backup` mounts the samba `[photos]` share and runs **`photo-export`** (PhotoKit-native) to export ALL assets. No osxphotos, no rsync, no syncthing for photos.
+    - SMB share: `[photos]` in `services.samba` (see `hosts/sophrosyne/networking.nix`) → `valid users = photo-backup`, path `/dragon/media/photos`. Samba user `photo-backup` (uid 973) has a password in `pdbedit`; not a shell login.
+    - Storage: `/dragon/media/photos` on sophrosyne (ZFS dataset `dragon/photos`, `atime=off`)
     - Firesafe: `Photos` source picks up `/dragon/media/photos` during backup
-    - ZFS dataset: `dragon/photos` mounted at `/dragon/media/photos`, `atime=off`
+    - ZFS dataset: `dragon/photos` mounted at `/dragon/media/photos`, `atime=off`. Files are upserted by UUID manifest (no `--delete` mirroring; deleted originals in Photos are not "deleted" from the backup — firesafe `.deleted/` note no longer applies to photos).
     - **Archived plan:** A larger restructure (promoting `/dragon/media` itself to a dataset) was researched but deferred — see `.config/nix/media-dataset-restructure-plan.md` for context.
   - **Minecraft Bedrock server: Native (no container) via `modules/minecraft-bedrock.nix`.
     - Binary packaged at `pkgs/bedrock-server/` — `fetchurl` from Mojang, `autoPatchelfHook` for glibc compat.
