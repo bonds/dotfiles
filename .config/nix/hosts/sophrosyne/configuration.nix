@@ -56,7 +56,7 @@ in {
     group = "users"; # server reality: photo-backup is gid 100 (users)
     home = "/home/photo-backup";
     description = "Photo backup service account (owns /dragon/media/photos)";
-    shell = "/sbin/nologin";
+    shell = "/run/current-system/sw/bin/nologin"; # NixOS nologin (sshd rejects users with a nonexistent shell)
     initialPassword = "";
   };
 
