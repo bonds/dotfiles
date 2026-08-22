@@ -59,6 +59,10 @@ in {
     PB_KEYS="/home/photo-backup/.ssh/authorized_keys"
     if [ -f "''$PHOTO_KEY" ]; then
       mkdir -p /home/photo-backup/.ssh
+      # OpenSSH strict-mode requires the user to own their home/.ssh, or it
+      # rejects authorized_keys ("Username/PublicKey combination invalid").
+      chown photo-backup:users /home/photo-backup /home/photo-backup/.ssh
+      chmod 0700 /home/photo-backup/.ssh
       KEY_CONTENT="''$(cat ''$PHOTO_KEY)"
       # remove old photo-rsync lines and append fresh (idempotent)
       if [ -f "''$PB_KEYS" ]; then
