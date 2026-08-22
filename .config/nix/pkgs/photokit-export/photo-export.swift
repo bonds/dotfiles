@@ -455,6 +455,51 @@ all.enumerateObjects { asset, index, stop in
             failed += 1
             return
         }
+        let resFirst2 = PHAssetResource.assetResources(for: asset)
+        let r0b = resFirst2.first
+        let uti = r0b?.uniformTypeIdentifier ?? ""
+        let isVideo = uti.hasPrefix("com.apple.quicktime") ||
+                      uti.hasPrefix("public.mpeg") ||
+                      uti.hasPrefix("com.apple.m4v") ||
+                      uti.hasPrefix("public.avi") ||
+                      uti.hasPrefix("public.3gpp")
+        if isVideo {
+            // Video: fetch in-memory chunks via PHAssetResourceManager.request,
+            // streaming each NSData chunk straight to the SFTP socket (no temp
+            // file, no SSD write). Options with network access fetches iCloud-only.
+            let vOpts = PHAssetResourceRequestOptions()
+            vOpts.isNetworkAccessAllowed = true
+            let importHandle = photo_sftp_put_begin(sftpSession, relDir + "/" + writeName)
+            if importHandle < 0 {
+                log("ERR sftp open(video) \(relDir)/\(writeName)")
+                failed += 1
+                return
+            }
+            let vidMgr = PHAssetResourceManager.default()
+            var vok = false
+            var vbytes = 0
+            vidMgr.requestData(for: r0b!, options: vOpts, dataReceivedHandler: { data in
+                vbytes += data.count
+                data.withUnsafeBytes { raw in
+                    if let base = raw.baseAddress, data.count > 0 {
+                        let rc = photo_sftp_put_chunk(importHandle, base, data.count)
+                        if rc != 0 { vok = false }
+                    }
+                }
+            }, completionHandler: { err in
+                if err == nil { vok = true }
+                photo_sftp_put_end(importHandle)
+            })
+            if vok {
+                exported += 1
+                log("EXPORTED-SFTP \(relDir)/\(writeName) (video \(vbytes) bytes)")
+                appendManifest(uuid)
+            } else if !dryRun {
+                failed += 1
+                log("ERR no data for \(uuid)")
+            }
+            return
+        }
         mgr.requestImageDataAndOrientation(for: asset, options: opts, resultHandler: { imageData, dataUTI, orientation, info in
             guard let img = imageData else { log("ERR no data for \(uuid)"); return }
             if sftpPutData(relDir + "/" + writeName, img) {

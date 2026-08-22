@@ -136,6 +136,43 @@ int photo_sftp_put(PhotoSftp *s, const char *remote_path, PhotoReader reader, vo
   return rc;
 }
 
+// ---- Chunked in-memory upload for LARGE assets (videos) ----
+// For photos we use requestImageDataAndOrientation (single in-memory Data) and
+// stream via photo_sftp_put's reader callback. Videos arrive as NSData chunks
+// via PHAssetResourceManager.requestData(dataReceivedHandler:). We open the
+// remote file once (photo_sftp_put_begin), stream each chunk
+// (photo_sftp_put_chunk), then close (photo_sftp_put_close). No temp file, no
+// SSD write — chunk data goes straight to the SFTP socket.
+int photo_sftp_put_begin(PhotoSftp *s, const char *remote_path) {
+  if (s == NULL || s->sftp == NULL || remote_path == NULL) return -1;
+  LIBSSH2_SFTP_HANDLE *h = libssh2_sftp_open(s->sftp, remote_path,
+                                             LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE,
+                                             LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR |
+                                             LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IROTH);
+  if (h == NULL) return -1;
+  // stash the handle as a long so Swift can pass it back to put_chunk/close.
+  return (int)(long)h;
+}
+
+// Append one chunk at the current position. `handle` is the int token from
+// photo_sftp_put_begin. Returns 0 on success, 1 on failure.
+int photo_sftp_put_chunk(int handle, const unsigned char *data, size_t count) {
+  LIBSSH2_SFTP_HANDLE *h = (LIBSSH2_SFTP_HANDLE *)(long)handle;
+  if (h == NULL) return 1;
+  size_t off = 0;
+  while (off < count) {
+    ssize_t w = libssh2_sftp_write(h, (const char *)(data + off), count - off);
+    if (w < 0) return 1;
+    off += (size_t)w;
+  }
+  return 0;
+}
+
+void photo_sftp_put_end(int handle) {
+  LIBSSH2_SFTP_HANDLE *h = (LIBSSH2_SFTP_HANDLE *)(long)handle;
+  if (h != NULL) { libssh2_sftp_close(h); }
+}
+
 // Ensure a remote directory exists (idempotent). 0 on success, 1 on failure.
 int photo_sftp_mkdir(PhotoSftp *s, const char *remote_dir) {
   if (s == NULL || s->sftp == NULL || remote_dir == NULL) return 0;
