@@ -86,7 +86,7 @@ in {
     if [ -f "$PHOTO_KEY" ]; then
       KEY_CONTENT=$(cat "$PHOTO_KEY")
       grep -v "photo-rsync@accismus" /etc/ssh/authorized_keys.d/scott > /tmp/authorized_keys_clean 2>/dev/null || true
-      echo "restrict,from=\"192.168.4.*\",command=\"/usr/local/bin/rrsync-photos\" $KEY_CONTENT" >> /tmp/authorized_keys_clean
+      echo "restrict,command=\"/usr/local/bin/rrsync-photos\" $KEY_CONTENT" >> /tmp/authorized_keys_clean
       install -m 0444 -o root -g root /tmp/authorized_keys_clean /etc/ssh/authorized_keys.d/scott
       rm -f /tmp/authorized_keys_clean
       echo "photo-rsync: deployed restricted key from accismus" >&2
