@@ -37,3 +37,30 @@ end
 
 alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
 alias noise='play -n synth pinknoise vol 0.5 bass +3 treble -6'
+
+function newpost --description "Create a new dated Hugo blog post in ~/Documents/undated/repos/blog"
+    set -l blogdir $HOME/Documents/undated/repos/blog
+    set -l argc (count $argv)
+    if test $argc -lt 1
+        echo "usage: newpost <title>"
+        return 1
+    end
+    if not test -d $blogdir
+        echo "newpost: blog dir not found: $blogdir"
+        return 1
+    end
+    # slugify: lowercase, collapse non-alphanumerics to hyphens, trim edges
+    set -l title (string join " " $argv)
+    set -l slug (echo $title | string lower | string replace -r -a "[^a-z0-9]+" "-" | string trim -l -r -c "-")
+    if test -z "$slug"
+        echo "newpost: could not derive a slug from the title"
+        return 1
+    end
+    set -l fname (date "+%Y-%m-%d")-$slug.md
+    set -l old $PWD
+    cd $blogdir
+    hugo new content/posts/$fname
+    set -l st $status
+    cd $old
+    return $st
+end
