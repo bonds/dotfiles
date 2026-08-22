@@ -248,7 +248,9 @@ if mounted {
 // to a local dir at that path. Without this, a run dumps the whole library
 // onto local disk (139GB+). Only when we own the mount (--mount) can dest be
 // written before mounting, and mountMode already handles that above.
-if !mounted {
+// Skipped for SFTP: SFTP streams to the remote and never writes the local
+// dest path, so this guard doesn't apply.
+if !useSFTP && !mounted {
     let cfgDest = configValue("dest")
     if shouldRefuseToExport(destDir: destDir, configDest: cfgDest, isMounted: isMounted(destDir)) {
         log("FATAL: dest \(destDir) is the SMB mount path but is NOT mounted. Refusing to export to local disk (prevents silent local writes). Mount the share or pass an explicit local dest.")
