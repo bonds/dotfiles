@@ -319,6 +319,12 @@ in {
       programs.reel-summarize.enable = true;
       programs.photo-export.enable = true;
       programs.photo-export.settings.selfmount = true;
+      # Use SFTP transport: stream originals in-memory to sophrosyne as
+      # photo-backup (owner of /dragon/media/photos). LAN host first; the tailnet
+      # MagicDNS name works too (the key has no from= restriction). swap
+      # .local for the MagicDNS name when away from the LAN.
+      programs.photo-export.settings.remoteHost = "sophrosyne.local";
+      programs.photo-export.settings.remoteUser = "photo-backup";
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
 
       home.file.".stignore".text = ''
