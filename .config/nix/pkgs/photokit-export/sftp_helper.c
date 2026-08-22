@@ -110,7 +110,11 @@ int photo_sftp_put(PhotoSftp *s, const char *remote_path, PhotoReader reader, vo
                                              LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE,
                                              LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR |
                                              LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IROTH);
-  if (h == NULL) return 1;
+  if (h == NULL) {
+    long code = libssh2_sftp_last_error(s->sftp);
+    fprintf(stderr, "photo-export: sftp: open-for-write failed (sftp status %ld)\n", code);
+    return 1;
+  }
 
   unsigned char buf[128 * 1024];
   int rc = 0;

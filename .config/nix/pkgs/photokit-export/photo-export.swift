@@ -259,7 +259,7 @@ do {
 // SFTP (no local temp copy / SSD wear) using the restricted id_photo_rsync key,
 // which sophrosyne's rrsync-photos wrapper confines to /dragon/media/photos/.
 let remoteHost = opt("--remote-host", "remoteHost", "")
-let remoteUser = opt("--remote-user", "remoteUser", "scott")
+let remoteUser = opt("--remote-user", "remoteUser", "photo-backup")
 let remoteKey = opt("--remote-key", "remoteKey", NSHomeDirectory() + "/.ssh/id_photo_rsync")
 let useSFTP = !remoteHost.isEmpty
 

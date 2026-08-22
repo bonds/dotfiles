@@ -43,6 +43,23 @@ in {
     packages = with pkgs; [];
   };
 
+  # Service account for photo backup. Owns /dragon/media/photos (created
+  # imperatively for the samba 'photos' share; uid 973 must stay stable).
+  # The photo-rsync key (~/.ssh/id_photo_rsync.pub on accismus) is deployed to
+  # ~/.ssh/authorized_keys via activationScript (security.nix), restricted with
+  # command=sftp-server -d /dragon/media/photos so it can only write photos.
+  # Kept nologin: SSH key auth still works (forced command overrides shell);
+  # samba photos share uses 'valid users = photo-backup'.
+  users.users.photo-backup = {
+    uid = 973;
+    isSystemUser = true; # like the current imperative user (no login)
+    group = "users"; # server reality: photo-backup is gid 100 (users)
+    home = "/home/photo-backup";
+    description = "Photo backup service account (owns /dragon/media/photos)";
+    shell = "/sbin/nologin";
+    initialPassword = "";
+  };
+
   environment.systemPackages = with pkgs;
     [
       pkgs-unstable.python313Packages.huggingface-hub

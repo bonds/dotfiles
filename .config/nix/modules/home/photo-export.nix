@@ -45,7 +45,8 @@ in {
           };
           remoteUser = lib.mkOption {
             type = lib.types.str;
-            default = "scott";
+            default = "photo-backup";
+            description = "SFTP user to write /dragon/media/photos (photo-backup owns the tree; its authorized_keys holds the SFTP-restricted photo-rsync key).";
           };
           remoteKey = lib.mkOption {
             type = lib.types.path;
