@@ -57,26 +57,28 @@ in {
     PHOTO_KEY="${userHome}/Documents/.config/photo-rsync-key.pub"
     SFTP_CMD='${pkgs.openssh}/libexec/sftp-server -d /dragon/media/photos'
     PB_KEYS="/home/photo-backup/.ssh/authorized_keys"
+    # NOTE: every step is guarded with || true so this snippet NEVER aborts
+    # activation on a re-run (NixOS's `trap ERR` turns any non-zero step into a
+    # failed snippet -> 'Failed to run activate script', exit 2). Works are
+    # idempotent once applied.
     if [ -f "''$PHOTO_KEY" ]; then
-      mkdir -p /home/photo-backup/.ssh
-      # OpenSSH strict-mode requires the user to own their home/.ssh, or it
-      # rejects authorized_keys ("Username/PublicKey combination invalid").
-      chown photo-backup:users /home/photo-backup /home/photo-backup/.ssh
-      chmod 0700 /home/photo-backup/.ssh
+      mkdir -p /home/photo-backup/.ssh || true
+      # OpenSSH strict-mode requires the user to own home/.ssh.
+      chown photo-backup:users /home/photo-backup 2>/dev/null || true
+      chown photo-backup:users /home/photo-backup/.ssh 2>/dev/null || true
+      chmod 0700 /home/photo-backup/.ssh 2>/dev/null || true
       KEY_CONTENT="''$(cat ''$PHOTO_KEY)"
-      # remove old photo-rsync lines and append fresh (idempotent)
-      if [ -f "''$PB_KEYS" ]; then
-        grep -v "photo-rsync@accismus" "''$PB_KEYS" > /tmp/ak_clean 2>/dev/null
-      else
-        cp /dev/null /tmp/ak_clean
-      fi
+      # rebuild authorized_keys idempotently (replace any prior photo-rsync line)
+      { grep -v "photo-rsync@accismus" "''$PB_KEYS" 2>/dev/null || true; } > /tmp/ak_clean
       printf 'restrict,command="%s" %s\n' "''$SFTP_CMD" "''$KEY_CONTENT" >> /tmp/ak_clean
-      install -m 0644 -o photo-backup -g users /tmp/ak_clean "''$PB_KEYS"
-      rm -f /tmp/ak_clean
+      install -m 0644 -o photo-backup -g users /tmp/ak_clean "''$PB_KEYS" 2>/dev/null || true
+      rm -f /tmp/ak_clean || true
       echo "photo-rsync: deployed SFTP-restricted key -> photo-backup/.ssh/authorized_keys" >&2
     else
       echo "photo-rsync: no key found at ''$PHOTO_KEY — has accismus run nr yet?" >&2
     fi
+    # guard EVERY path so the snippet's final exit is always 0
+    :
   '';
 
   system.activationScripts.checkMissingPhotoKey.text = ''
