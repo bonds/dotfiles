@@ -47,6 +47,13 @@
       url = "github:ryantm/agenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Hermes Agent (Nous Research) — home-manager module for accismus.
+    # Deliberately NO `inputs.nixpkgs.follows = "nixpkgs"`: this input pins
+    # its own nixos-unstable nixpkgs (uv2nix builds need newer nixpkgs APIs
+    # than our stable nixos-26.05 channel provides). See AGENTS.md gotcha
+    # about `inputs.nixpkgs.follows` breaking inputs on stable channels.
+    hermes-agent.url = "github:NousResearch/hermes-agent";
   };
   outputs = inputs:
     inputs.flake-parts.lib.mkFlake {inherit inputs;} {

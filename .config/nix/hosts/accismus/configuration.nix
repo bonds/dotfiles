@@ -284,6 +284,7 @@ in {
         ../../modules/home/photo-export.nix
         ../../modules/home/polyptych.nix
         ../../modules/home/reel-summarize.nix
+        inputs.hermes-agent.homeManagerModules.default
       ];
 
       services.syncthing = {
@@ -326,6 +327,17 @@ in {
       programs.photo-export.settings.remoteHost = "sophrosyne.local";
       programs.photo-export.settings.remoteUser = "photo-backup";
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
+
+      # Hermes Agent (Nous Research) — use local models via Ollama/llama.cpp.
+      # Enable the CLI now; the gateway service and model/provider are set up
+      # interactively via `hermes setup` / `hermes config` (the module writes
+      # the initial config declaratively, so pick a provider there).
+      programs.hermes-agent.enable = true;
+      services.hermes-agent = {
+        enable = true;
+        # browser dashboard at 127.0.0.1:9119 (interactive setup/first-run)
+        backend.mode = "dashboard";
+      };
 
       home.file.".stignore".text = ''
         # Specific excludes within included dirs
