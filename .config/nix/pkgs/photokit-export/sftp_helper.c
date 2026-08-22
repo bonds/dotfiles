@@ -143,21 +143,23 @@ int photo_sftp_put(PhotoSftp *s, const char *remote_path, PhotoReader reader, vo
 // remote file once (photo_sftp_put_begin), stream each chunk
 // (photo_sftp_put_chunk), then close (photo_sftp_put_close). No temp file, no
 // SSD write — chunk data goes straight to the SFTP socket.
-int photo_sftp_put_begin(PhotoSftp *s, const char *remote_path) {
-  if (s == NULL || s->sftp == NULL || remote_path == NULL) return -1;
+// Open a remote file for write, returning the raw LIBSSH2_SFTP_HANDLE pointer.
+// Must NOT be cast through an int — the handle is a 64-bit pointer and would be
+// truncated, corrupting it (→ SIGSEGV inside libssh2_sftp_write).
+void *photo_sftp_put_begin(PhotoSftp *s, const char *remote_path) {
+  if (s == NULL || s->sftp == NULL || remote_path == NULL) return NULL;
   LIBSSH2_SFTP_HANDLE *h = libssh2_sftp_open(s->sftp, remote_path,
                                              LIBSSH2_FXF_CREAT | LIBSSH2_FXF_WRITE,
                                              LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR |
                                              LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IROTH);
-  if (h == NULL) return -1;
-  // stash the handle as a long so Swift can pass it back to put_chunk/close.
-  return (int)(long)h;
+  if (h == NULL) return NULL;
+  return h;
 }
 
-// Append one chunk at the current position. `handle` is the int token from
+// Append one chunk at the current position. `handle` is the pointer from
 // photo_sftp_put_begin. Returns 0 on success, 1 on failure.
-int photo_sftp_put_chunk(int handle, const unsigned char *data, size_t count) {
-  LIBSSH2_SFTP_HANDLE *h = (LIBSSH2_SFTP_HANDLE *)(long)handle;
+int photo_sftp_put_chunk(void *handle, const unsigned char *data, size_t count) {
+  LIBSSH2_SFTP_HANDLE *h = (LIBSSH2_SFTP_HANDLE *)handle;
   if (h == NULL) return 1;
   size_t off = 0;
   while (off < count) {
@@ -168,8 +170,8 @@ int photo_sftp_put_chunk(int handle, const unsigned char *data, size_t count) {
   return 0;
 }
 
-void photo_sftp_put_end(int handle) {
-  LIBSSH2_SFTP_HANDLE *h = (LIBSSH2_SFTP_HANDLE *)(long)handle;
+void photo_sftp_put_end(void *handle) {
+  LIBSSH2_SFTP_HANDLE *h = (LIBSSH2_SFTP_HANDLE *)handle;
   if (h != NULL) { libssh2_sftp_close(h); }
 }
 

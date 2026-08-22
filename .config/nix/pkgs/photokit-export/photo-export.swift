@@ -526,8 +526,8 @@ all.enumerateObjects { asset, index, stop in
             // (which owns the SFTP session) drain it into the socket.
             let vOpts = PHAssetResourceRequestOptions()
             vOpts.isNetworkAccessAllowed = true
-            let importHandle = photo_sftp_put_begin(sftpSession, relDir + "/" + writeName)
-            if importHandle < 0 {
+            // Returns NULL on failure (remote open-for-write failed).
+            guard let importHandle = photo_sftp_put_begin(sftpSession, relDir + "/" + writeName) else {
                 log("ERR sftp open(video) \(relDir)/\(writeName)")
                 failed += 1
                 return

@@ -32,13 +32,15 @@ int64_t photo_sftp_stat(PhotoSftp *s, const char *remote_path);
 int photo_sftp_put(PhotoSftp *s, const char *remote_path, PhotoReader reader, void *ctx);
 
 // --- Chunked in-memory upload (for large video assets, no temp file) ---
-// Open a remote file for write, returning an opaque handle int (Swift keeps it).
+// Open a remote file for write, returning an opaque handle pointer (Swift keeps it).
+// The remote file handle is a 64-bit pointer on arm64, so it must NOT be squeezed
+// through an `int` (truncation corrupts the handle → SIGSEGV in libssh2_sftp_write).
 // Stream each inbound NSData chunk with photo_sftp_put_chunk, then photo_sftp_put_end.
-int photo_sftp_put_begin(PhotoSftp *s, const char *remote_path);
-// Append one chunk. handle = the int returned by put_begin. 0 ok / 1 fail.
-int photo_sftp_put_chunk(int handle, const unsigned char *data, size_t count);
+void *photo_sftp_put_begin(PhotoSftp *s, const char *remote_path);
+// Append one chunk. handle = the pointer returned by put_begin. 0 ok / 1 fail.
+int photo_sftp_put_chunk(void *handle, const unsigned char *data, size_t count);
 // Close the remote file opened by put_begin.
-void photo_sftp_put_end(int handle);
+void photo_sftp_put_end(void *handle);
 
 // Ensure a remote directory exists (idempotent). Returns 0 on success, 1 on failure.
 int photo_sftp_mkdir(PhotoSftp *s, const char *remote_dir);
