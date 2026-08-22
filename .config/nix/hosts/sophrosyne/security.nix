@@ -49,47 +49,21 @@ in {
     fi
   '';
 
-  system.activationScripts.photoRsyncWrapper.text = ''
-    mkdir -p /usr/local/bin
-    # Note: quoted heredoc delimiter ('WRAPPER') so $SSH_ORIGINAL_COMMAND below is
-    # NOT expanded by the activation shell — it must reach the wrapper verbatim and
-    # expand only at runtime (when ssh invokes the wrapper on the server).
-    # The sftp-server path is nix-interpolated (${pkgs.openssh}) at eval time.
-    cat > /usr/local/bin/rrsync-photos << 'WRAPPER'
-    #!/bin/sh
-    # Restricted transport for the photo backup key (photo-rsync@accismus).
-    # Allows ONLY:
-    #   1. rsync to /dragon/media/photos/   (the nightly's rsync path)
-    #   2. sftp confined to /dragon/media/photos/ (photo-export streaming upload,
-    #      launchd at 2am; libssh2 requests the sftp subsystem, arriving here as
-    #      SSH_ORIGINAL_COMMAND="sftp")
-    # Everything else is rejected.
-    case "''$SSH_ORIGINAL_COMMAND" in
-      *rsync*--server*/dragon/media/photos/*)
-        exec "''$SSH_ORIGINAL_COMMAND"
-        ;;
-      sftp)
-        # -d confines sftp to the photos dir (removes relative-up escapes)
-        exec "${pkgs.openssh}/libexec/sftp-server" -d /dragon/media/photos
-        ;;
-      *)
-        echo "REJECTED: this key is restricted to rsync/sftp /dragon/media/photos/ only" >&2
-        exit 1
-        ;;
-    esac
-    WRAPPER
-    chmod 755 /usr/local/bin/rrsync-photos
-  '';
-
   system.activationScripts.photoRsyncKey.text = ''
+    # SFTP-only restricted key: command points AT sftp-server itself (OpenSSH
+    # only services the sftp subsystem through a forced command that is the
+    # sftp-server binary; a wrapper script breaks the subsystem channel).
+    # -d confines writes to /dragon/media/photos. restrict disables forwarding.
     PHOTO_KEY="${userHome}/Documents/.config/photo-rsync-key.pub"
+    SFTP_CMD="${pkgs.openssh}/libexec/sftp-server -d /dragon/media/photos"
     if [ -f "$PHOTO_KEY" ]; then
-      KEY_CONTENT=$(cat "$PHOTO_KEY")
+      KEY_CONTENT="$(cat $PHOTO_KEY)"
       grep -v "photo-rsync@accismus" /etc/ssh/authorized_keys.d/scott > /tmp/authorized_keys_clean 2>/dev/null || true
-      echo "restrict,command=\"/usr/local/bin/rrsync-photos\" $KEY_CONTENT" >> /tmp/authorized_keys_clean
+      # escape the command for authorized_keys (spaces are fine in command=)
+      echo "restrict,command=\"''${SFTP_CMD}\" ''${KEY_CONTENT}" >> /tmp/authorized_keys_clean
       install -m 0444 -o root -g root /tmp/authorized_keys_clean /etc/ssh/authorized_keys.d/scott
       rm -f /tmp/authorized_keys_clean
-      echo "photo-rsync: deployed restricted key from accismus" >&2
+      echo "photo-rsync: deployed SFTP-restricted key -> /dragon/media/photos" >&2
     else
       echo "photo-rsync: no key found at $PHOTO_KEY — has accismus run nr yet?" >&2
     fi
