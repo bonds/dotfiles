@@ -100,7 +100,9 @@ int64_t photo_sftp_stat(PhotoSftp *s, const char *remote_path) {
   LIBSSH2_SFTP_ATTRIBUTES attrs;
   int rc = libssh2_sftp_stat(s->sftp, remote_path, &attrs);
   if (rc == 0) return (int64_t)attrs.filesize;
-  return 0; // absent/unreadable → skip-check "not present" → upload
+  // absent/unreadable → -1 (Swift's skip-check uses >0 to mean "present", so
+  // a missing file is never treated as present).
+  return -1;
 }
 
 // Stream-upload memory to remote_path via reader callback. 0 success, 1 failure.

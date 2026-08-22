@@ -441,8 +441,10 @@ all.enumerateObjects { asset, index, stop in
     let relDir = yearStr + "/" + monthStr
     if useSFTP {
         var ok = false
-        // remote skip: stat the target
-        if photo_sftp_stat(sftpSession, relDir + "/" + writeName) >= 0 {
+        // remote skip: stat the target. photo_sftp_stat returns the file size
+        // (>0 present) or -1 (absent). ONLY present files are skipped — a
+        // missing file must be uploaded, never silently dropped.
+        if photo_sftp_stat(sftpSession, relDir + "/" + writeName) > 0 {
             log("SKIP-EXISTS \(uuid) \(relDir)/\(writeName)")
             appendManifest(uuid)
             skipped += 1
