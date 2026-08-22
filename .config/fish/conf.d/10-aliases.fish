@@ -61,6 +61,9 @@ function newpost --description "Create a new dated Hugo blog post in ~/Documents
     cd $blogdir
     hugo new content/posts/$fname
     set -l st $status
+    if test $st -eq 0
+        $EDITOR content/posts/$fname
+    end
     cd $old
     return $st
 end
