@@ -67,7 +67,7 @@ let dryRun = args.contains("--dry-run")
 // writes, .part+rename so only complete files are recorded).
 
 // Over the LAN, `sophrosyne.local` (mDNS) is the stable SMB name — matches the
-// nightly bin/photos-smb-backup mount_smbfs URL. When the Mac is away from the
+// nightly bin/photos-backup URL. When the Mac is away from the
 // LAN, fall back to the Tailscale MagicDNS name (stable, not an IP literal), so
 // the share still mounts over the tailnet. NetFS called with no mount options
 // fails (EINVAL), and calling with an unreachable-happy host just times out.

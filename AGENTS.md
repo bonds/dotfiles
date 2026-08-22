@@ -108,8 +108,8 @@ but is no longer managed.
     `photo-backup` (owner of `/dragon/media/photos`) using
     `~/.ssh/id_photo_rsync` (deployed to `/home/photo-backup/.ssh/authorized_keys`
     with `command=sftp-server -d /dragon/media/photos`). No local temp copies
-    (no SSD wear), works over LAN or tailnet. `bin/photos-smb-backup` remains as
-    the SMB fallback path.
+    (no SSD wear), works over LAN or tailnet. `bin/photos-backup` is the nightly
+    wrapper (launches the app; the SFTP transport needs no mount).
   - **Tests:** pure logic in `photoexport_core.swift` (single source of truth) + 39 unit tests in `test_core.swift`; wired into `nix flake check` as `photo-export-test` (runs in sandbox via Xcode toolchain). Run manually: copy `test_core.swift` → `main.swift`, `swiftc photoexport_core.swift main.swift`. End-to-end smoke test planned but not implemented: `INTEGRATION_TEST_PLAN.md`.
 
 ### Haskell

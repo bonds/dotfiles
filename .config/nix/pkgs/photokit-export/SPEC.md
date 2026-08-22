@@ -15,7 +15,7 @@ over SFTP as the active path.
 - **Skip-verify by remote SFTP stat:** present-with-size ⇒ skip; missing ⇒
   upload. Never treats a missing remote file as "already done" (a correctness
   regression, once a real data-loss bug, is unit-guarded).
-- osxphotos fully removed (overlay, package list, bin/photos-smb-backup phase).
+- osxphotos fully removed (overlay, package list, bin/photos-backup phase).
 - All-assets export: each PHAsset fetched via PhotoKit.
 - Basic XMP sidecar (description + create/modify dates) written next to each
   photo — title/keywords/persons/GPS skipped (photos themselves are the backup

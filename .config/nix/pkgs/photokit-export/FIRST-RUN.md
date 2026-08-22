@@ -31,7 +31,7 @@ so doing this once should cover every future build that keeps that identity
    # or just run photo-export and look for 'AUTH CALLBACK: 3' / 'authorized'
    ```
 
-4. **Nightly job (already wired in bin/photos-smb-backup):**
+4. **Nightly job (already wired in bin/photos-backup):**
    Uses `open` to launch the .app after osxphotos (Phase 1) completes; the
    manifest makes iCloud-original downloads resumable.
 

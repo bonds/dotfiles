@@ -251,7 +251,7 @@ in {
           };
         };
         photos-backup = {
-          command = "${userHome}/bin/photos-smb-backup";
+          command = "${userHome}/bin/photos-backup";
           serviceConfig = {
             StartCalendarInterval = [
               {
