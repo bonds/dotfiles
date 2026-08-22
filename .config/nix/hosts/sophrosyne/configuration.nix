@@ -56,7 +56,11 @@ in {
     group = "users"; # server reality: photo-backup is gid 100 (users)
     home = "/home/photo-backup";
     description = "Photo backup service account (owns /dragon/media/photos)";
-    shell = "/run/current-system/sw/bin/nologin"; # NixOS nologin (sshd rejects users with a nonexistent shell)
+    # shell must NOT be nologin: its "This account is currently not available."
+    # banner is printed to stdout and corrupts the SFTP protocol handshake. A
+    # plain /bin/sh emits nothing; the key's restrict,command= confines this
+    # account to sftp /dragon/media/photos (no password, no interactive login).
+    shell = "/bin/sh";
     initialPassword = "";
   };
 
