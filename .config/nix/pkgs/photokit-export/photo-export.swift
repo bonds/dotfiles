@@ -195,13 +195,22 @@ if status != 3 {
 }
 log("authorized")
 
+// ---------- transport selection ----------
+// Decide SFTP vs SMB FIRST so the SMB-mount section below can be skipped when
+// using SFTP. When remoteHost is configured (config.toml), we stream originals
+// in-memory over SFTP (no SMB mount at all).
+let remoteHost = opt("--remote-host", "remoteHost", "")
+let remoteUser = opt("--remote-user", "remoteUser", "photo-backup")
+let remoteKey = opt("--remote-key", "remoteKey", NSHomeDirectory() + "/.ssh/id_photo_rsync")
+let useSFTP = !remoteHost.isEmpty
+
 // ---------- output dir (optionally an SMB mount owned by this process) ----------
 // We own the mount when the user passes --mount, OR when config selfmount is
 // true and dest IS the SMB mount path. `open` (LaunchServices) doesn't forward
 // args, so config is the way the nightly / agent launches get self-mounting
-// without the external expect wrapper.
+// without the external expect wrapper. Skipped entirely for the SFTP transport.
 let wantSelfMount = (configValue("selfmount")?.lowercased() == "true")
-let mountMode = args.contains("--mount") || (wantSelfMount && destDir == mountPath)
+let mountMode = !useSFTP && (args.contains("--mount") || (wantSelfMount && destDir == mountPath))
 mounted = isMounted(mountPath)
 
 if mountMode && !isMounted(mountPath) {
@@ -255,13 +264,10 @@ do {
 }
 
 // ---------- SFTP transport (Option A) ----------
-// When remoteHost is configured, stream originals in-memory to the remote over
-// SFTP (no local temp copy / SSD wear) using the restricted id_photo_rsync key,
-// which sophrosyne's rrsync-photos wrapper confines to /dragon/media/photos/.
-let remoteHost = opt("--remote-host", "remoteHost", "")
-let remoteUser = opt("--remote-user", "remoteUser", "photo-backup")
-let remoteKey = opt("--remote-key", "remoteKey", NSHomeDirectory() + "/.ssh/id_photo_rsync")
-let useSFTP = !remoteHost.isEmpty
+// When remoteHost is configured (decided above, before the SMB-mount section),
+// stream originals in-memory to the remote over SFTP (no local temp copy / SSD
+// wear) using the restricted id_photo_rsync key, which sophrosyne's sftp-server
+// -d confines to /dragon/media/photos/.
 
 // Box to stream a Data buffer in-memory through the C reader callback.
 final class SFTPStream {
