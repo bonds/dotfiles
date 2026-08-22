@@ -315,6 +315,59 @@ func sftpPutData(_ remotePath: String, _ data: Data) -> Bool {
     return rc == 0
 }
 
+// Bounded blocking Producer–Consumer queue bridging PhotoKit's background
+// callback queue (dataReceivedHandler) to the main thread that owns the SFTP
+// socket. libssh2 is NOT thread-safe, so the SFTP session and every
+// photo_sftp_put_chunk call must happen on the thread that opened the session.
+// The producer (background) enqueues each video chunk; the main thread drains
+// and drives libssh2. Bounded (capacity-cap) so we never buffer an entire large
+// video in RAM — backpressure throttles the producer, no temp file, no SSD wear.
+final class VideoTransferStream {
+    enum Item { case chunk(Data), end, error(Error) }
+
+    private var buffer: [Data] = []
+    private var closed = false
+    private var producerError: Error?
+    private let capacity = 16
+    private let cv = NSCondition()
+
+    // Producer (background PhotoKit queue): enqueue one chunk, blocking while
+    // the buffer is full. A closed stream silently drops further chunks (the
+    // main thread is already draining and will see .end / .error next).
+    func enqueue(_ data: Data) {
+        cv.lock(); defer { cv.unlock() }
+        while buffer.count >= capacity && !closed { cv.wait() }
+        guard !closed else { return }
+        buffer.append(data)
+        cv.signal()
+    }
+
+    // Producer (background queue): mark the stream done, optionally with error.
+    // The completionHandler fires after the last dataReceivedHandler on the same
+    // queue, so this always follows the final enqueue (no lost-chunk race).
+    func finish(_ err: Error?) {
+        cv.lock(); defer { cv.unlock() }
+        producerError = err
+        if !closed {
+            closed = true
+            cv.broadcast()
+        }
+    }
+
+    // Consumer (main thread): block until the next item, then return it.
+    func next() -> Item {
+        cv.lock(); defer { cv.unlock() }
+        while buffer.isEmpty && !closed { cv.wait() }
+        if !buffer.isEmpty {
+            let d = buffer.removeFirst()
+            cv.signal() // wake a producer blocked on a full buffer
+            return .chunk(d)
+        }
+        if let err = producerError { return .error(err) }
+        return .end
+    }
+}
+
 // ---------- basic XMP sidecar (description + dates from PhotoKit) ----------
 func writeXmpSidecar(_ finalPath: String, _ photo: PHAsset) {
     // Minimal XMP sidecar: description + create/modify dates (what PhotoKit
@@ -465,8 +518,12 @@ all.enumerateObjects { asset, index, stop in
                       uti.hasPrefix("public.3gpp")
         if isVideo {
             // Video: fetch in-memory chunks via PHAssetResourceManager.request,
-            // streaming each NSData chunk straight to the SFTP socket (no temp
-            // file, no SSD write). Options with network access fetches iCloud-only.
+            // streaming each chunk to the SFTP socket (no temp file, no SSD
+            // write) with network access to fetch iCloud-only originals.
+            // PhotoKit delivers dataReceivedHandler + completionHandler on a
+            // background serial queue, and libssh2 is NOT thread-safe, so we
+            // hand chunks to a bounded blocking queue and let the main thread
+            // (which owns the SFTP session) drain it into the socket.
             let vOpts = PHAssetResourceRequestOptions()
             vOpts.isNetworkAccessAllowed = true
             let importHandle = photo_sftp_put_begin(sftpSession, relDir + "/" + writeName)
@@ -475,21 +532,39 @@ all.enumerateObjects { asset, index, stop in
                 failed += 1
                 return
             }
+            let stream = VideoTransferStream()
             let vidMgr = PHAssetResourceManager.default()
-            var vok = false
+            vidMgr.requestData(for: r0b!, options: vOpts,
+                               dataReceivedHandler: { data in
+                                   stream.enqueue(data)
+                               },
+                               completionHandler: { err in
+                                   stream.finish(err)
+                               })
+            // Main thread drains the queue and writes chunks to the SFTP
+            // socket (same thread that opened the session — libssh2-safe).
+            var vok = true
             var vbytes = 0
-            vidMgr.requestData(for: r0b!, options: vOpts, dataReceivedHandler: { data in
-                vbytes += data.count
-                data.withUnsafeBytes { raw in
-                    if let base = raw.baseAddress, data.count > 0 {
-                        let rc = photo_sftp_put_chunk(importHandle, base, data.count)
+            drainLoop: while true {
+                switch stream.next() {
+                case .chunk(let data):
+                    vbytes += data.count
+                    if data.count > 0 {
+                        let rc = data.withUnsafeBytes { raw -> Int32 in
+                            guard let base = raw.baseAddress else { return 1 }
+                            return photo_sftp_put_chunk(importHandle, base.assumingMemoryBound(to: UInt8.self), data.count)
+                        }
                         if rc != 0 { vok = false }
                     }
+                case .end:
+                    photo_sftp_put_end(importHandle)
+                    break drainLoop
+                case .error:
+                    vok = false
+                    photo_sftp_put_end(importHandle)
+                    break drainLoop
                 }
-            }, completionHandler: { err in
-                if err == nil { vok = true }
-                photo_sftp_put_end(importHandle)
-            })
+            }
             if vok {
                 exported += 1
                 log("EXPORTED-SFTP \(relDir)/\(writeName) (video \(vbytes) bytes)")
