@@ -1,18 +1,28 @@
 # photokit-export
 
 PhotoKit-native photo export for macOS — single binary, no osxphotos.
-Exports ALL assets (local + iCloud-only) directly to an SMB mount.
+Exports ALL assets (local + iCloud-only) over **SFTP** (no local copies, no
+SMB mount). PhotoKit streams each original in-memory to sophrosyne.
 
 ## Status
 
-**Mono-architecture (v0.2.0):** photo-export is the sole exporter.
-- osxphotos fully removed (overlay, package list, bin/photos-smb-backup phase)
-- All-assets export: no cloud-only gate; each PHAsset fetched via PhotoKit
+**SFTP transport (v0.2.5+, current):** photo-export streams originals in-memory
+over SFTP as the active path.
+- **Active = SFTP** (`remoteHost` in config.toml). Each asset is fetched by
+  PhotoKit into RAM, then streamed via libssh2 to sophrosyne as `photo-backup`
+  (owner of `/dragon/media/photos`). No temp file on accismus → zero SSD wear
+  from photo data. NetFS/SMB remains only as a fallback if `remoteHost` is unset.
+- **Skip-verify by remote SFTP stat:** present-with-size ⇒ skip; missing ⇒
+  upload. Never treats a missing remote file as "already done" (a correctness
+  regression, once a real data-loss bug, is unit-guarded).
+- osxphotos fully removed (overlay, package list, bin/photos-smb-backup phase).
+- All-assets export: each PHAsset fetched via PhotoKit.
 - Basic XMP sidecar (description + create/modify dates) written next to each
-  photo — title/keywords/persons/GPS intentionally skipped (requires
-  Photos.sqlite parsing; photos themselves are the backup priority)
-- Manifest (`~/.cache/photo-export-manifest.txt`) makes runs resumable
-- Scope decisions unchanged: no Developer ID (`com.ggr.photo-export` ad-hoc),
+  photo — title/keywords/persons/GPS skipped (photos themselves are the backup
+  priority).
+- Manifest (`~/.cache/photo-export-manifest.txt`) makes runs resumable; it
+  tracks UUIDs uploaded successfully (not "expected on disk").
+- Scope decisions unchanged: no Developer ID (`com.ggr.photo-export` ad-hoc).
 
 ## Identifier
 
@@ -21,31 +31,41 @@ scott@ggr.com is his email, he owns ggr.com). TCC treats a renamed bundle as
 a new app, so expect ONE more "Allow" click on first install of the
 production bundle. Worth it to lock in a correct stable identity early.
 
-## SMB + mount architecture (decision)
+## Transport: SFTP (current, primary)
 
-**Do NOT implement a raw SMB2/3 client in Swift.** Multi-week protocol work
-(dialect negotiation, auth, signing, session state) for zero reliability gain —
-macOS's own SMB stack is battle-tested. Instead:
+Stream originals in-memory to sophrosyne over SSH/SFTP — no local temp copy,
+no SMB mount, works over LAN *or* tailnet.
 
-1. **Bring the mount lifecycle INTO the app** using Apple's frameworks:
-   - `NetFS.NetFSMountURLSync()` — mount SMB URL programmatically with
-     proper error codes / cancellation (`NetFSMountURLCancel`)
-   - `NSWorkspace.mountVolume()` (AppKit) as the higher-level alternative
-   - This removes the fragile `mount_smbfs` + expect-script password dance.
-2. **Robustness model: resumable + verifiable, not in-process SMB.**
-   - Manifest (UUID-per-line) already gives resume: re-runs skip completed files.
-   - Verify the mount is real (probe the target dir) before writing — prevents
-     the "silent local writes" failure mode that bit osxphotos.
-   - On disconnect/dismount mid-run: **abort cleanly, keep manifest, resume
-     next run.** Optionally mark the incomplete file in the manifest.
-   - Optional per-file retry loop with backoff *inside* photo-export
-     (application-level, on top of the OS SMB stack).
-3. **Alternative transport (keep in mind): rsync-over-SSH to sophrosyne** —
-   the `rrsync-photos` wrapper + `id_photo_rsync` key already exist, rsync
-   handles partial transfers + delta. Trade-off: needs local staging space
-   (~200-400 GB); SMB direct-to-server is why we're bleeding edge only on
-   mount lifecycle, which is the right shape for "Optimize Mac Storage"
-   constraints.
+- **SSH key:** `~/.ssh/id_photo_rsync` (no passphrase, auto-generated). Its public
+  key is deployed on sophrosyne to `/home/photo-backup/.ssh/authorized_keys` with
+  `restrict,command="<sftp-server> -d /dragon/media/photos"` — confined to SFTP
+  writes in the photos dir.
+- **Why `photo-backup`:** it is the owner/user for `/dragon/media/photos`
+  (uid 973, in `users`). Authenticating SFTP as it avoids giving scott write
+  access or loosening the tree ownership.
+- **Config (`config.toml`):** `remoteHost`, `remoteUser=photo-backup`,
+  `remoteKey=~/.ssh/id_photo_rsync`. `remoteHost` = `sophrosyne.local` (LAN) or
+  the MagicDNS `sophrosyne.<tailnet>.ts.net` when away.
+- **Skip-verify (correctness critical):** before upload, photo-export calls
+  `stat` on the remote path. Present (size > 0) ⇒ skip. Missing ⇒ upload. The
+  C helper returns `-1` for absent and the Swift check requires `> 0`, so a
+  missing file is never wrongly skipped.
+- **libssh2:** linked via `sftp_helper.c` bridge; Swift `import Photo
+  Helper`. One session per run (no per-file reconnect churn).
+- **No local originals kept** — matches "Optimize Mac Storage". Each original
+  streams through RAM to the socket, freed afterward.
+- **Manifest semantics:** records UUIDs uploaded successfully. Re-running then
+  skips only those; the remote `stat` re-checks anything not in the manifest.
+  (This is why clearing the manifest after the skip bug let the fix re-verify.)
+
+## SMB + mount architecture (legacy / fallback)
+
+This was the original design; still present as a fallback when `remoteHost` is
+_empty_ (SMB transport). SFTP is preferred. No raw SMB2/3 client in Swift:
+1. `NetFSMountURLSync()` mount with error codes/cancel; removes the
+   `mount_smbfs` + expect password dance.
+2. Resumable + verifiable (manifest, probe the mount, `.part`.
+3. On disconnect mid-run: abort cleanly, keep manifest, resume next run.
 
 ## Why
 
@@ -63,59 +83,58 @@ so PhotoKit cannot even present an authorization prompt. A proper signed
         ┌─────────────────────────── accismus ───────────────────────────┐
         │                                                                │
         │  nix package: photokit-export                                  │
-        │  .app bundle (ad-hoc signed, stable identifier)                 │
-        │  Contents/MacOS/osxphotos   ← from osxphotos-0.76.1 (re-signed) │
-        │  Contents/Info.plist        ← NSPhotoLibraryUsageDescription    │
-        │  Contents/MacOS/photos-export  (Swift CLI, PhotoKit fetch path)  │
+        │  .app bundle (ad-hoc signed, stable identity)                  │
+        │  Contents/MacOS/photo-export  (Swift CLI, PhotoKit fetch)      │
+        │  + sftp_helper (libssh2) for SFTP streaming                    │
+        │  Contents/Info.plist ← NSPhotoLibraryUsageDescription          │
         │                                                                │
-        │  osxphotos: local originals + metadata (unchanged)              │
-        │  photo-export: iCloud-original fetch (PhotoKit, no AppleScript) │
-        │                                                                │
+        │  PhotoKit fetch → in-memory Data → SFTP stream → freed         │
+        │  (no temp file, no SMB mount)                                  │
         └────────────────────────────────────────────────────────────────┘
+                            │
+                            ▼  ssh/sftp (photo-backup key)
+                    ┌────────────── sophrosyne ──────────────┐
+                    │ sftp-server -d /dragon/media/photos     │
+                    │ (restricted key; photo-backup owns dir) │
+                    └─────────────────────────────────────────┘
 ```
 
 ## Key API surface (macOS 15.7, Photos 10.0) — verified working
 
 From `Photos.bridgesupport` (framework v770.0.177) + live probe:
 
-- `PHPhotoLibrary.requestAuthorization(for:handler:)` — auth prompt; poll `authorizationStatus(for:)` after (callback is unreliable on first prompt; osxphotos retries 3×). **VERIFIED** status 3 (authorized)
-- `PHAsset.fetchAssets(with: PHFetchOptions?)` + `result.enumerateObjects` — **VERIFIED** 68,333 assets
-- Cloud-only detection: `PHAssetResource.assetResources(for: asset)` then check for `r.type == .fullSizePhoto || .fullSizeVideo` — **VERIFIED** 65,791 cloud-only / 2,542 local
-- **Export (the one that works):** `PHImageManager.default().requestImageDataAndOrientation(for: asset, options: opts, resultHandler: { imageData, dataUTI, orientation, info })`
-  - opts: `version = .original`, `deliveryMode = .highQualityFormat`, `isNetworkAccessAllowed = true`, `isSynchronous = true`
-  - handler unwraps `imageData!` (Data), writes with `data.write(to: URL)` — **VERIFIED** downloaded 801,219 bytes valid PNG of a cloud-only original
-- Filename extension from UTI: `dataUTI` → `public.png` → use preferred extension for the UTI (my probe hardcoded `.jpg`; real tool must map UTI→ext, e.g. `public.png`→`.png`, `public.jpeg`→`.jpg`)
-- Note: `writeData(for:toFile:...)` (resource manager) does NOT fire its completion handler reliably in a CLI; the `requestImageDataAndOrientation` image path is the proven one.
-- Swift module cache must be writable (`-module-cache-path`), else `import Photos` fails in the default `~/Library/Caches/...` (TCC).
-- Launch MUST be via `open`/LaunchServices (dock bounce is expected; headless CLI in an .app). Direct binary exec gets `status 2` (denied) because TCC keys the grant to the registered app identity.
+- `PHPhotoLibrary.requestAuthorization(...)` — **VERIFIED** status 3 (authorized)
+- `PHAsset.fetchAssets(with:)` — **VERIFIED** 68,333 assets
+- **Export (the working one):**
+  `PHImageManager.default().requestImageDataAndOrientation(for: asset, options: opts, resultHandler:...)` — returns in-memory `Data`.
+- Extension from `dataUTI` → UTI preferred ext.
+- `writeData(for:toFile:...)` does NOT fire reliably in a CLI; the image path is the proven one.
+- Swift module cache be writable (TCC); launch via `open`/LaunchServices for
+  the Photos grant (direct exec gets status 2 denied).
 
 ## Milestones
 
-- [x] SPEC written (this doc)
-- [x] Swift probe compiles: `import Photos`, fetch, auth status
-- [x] Signed `.app` probe triggers auth prompt → `authorizationStatus == authorized`
-- [x] Single PhotoKit export of a known-missing photo lands on disk (VERIFIED 2026-08-20)
-      - `image data callback, uti=public.png count=801219` → valid PNG on disk
-- [x] Production CLI `photo-export.swift` compiles + works end-to-end (2026-08-20)
-      - VERIFIED: 3,166 files / 5.3 GB real HEIC+JPG+PNG originals in `yyyy/mm` dirs,
-        resumable manifest, correct UTI extensions
-- [x] nix `default.nix` packaging — sandboxed `nix build` SUCCEEDS (codesign included)
-- [ ] Switch identifier to `com.ggr.photo-export` in default.nix bundle
-- [ ] Wrap SMB mount lifecycle in the app (NetFS/NSWorkspace) + verifiable mount
-- [ ] Integration: `bin/photos-smb-backup` uses PhotoKit path for `--download-missing`
-- [ ] Burn-in: 10 → 100 → full missing set
-- [ ] Rebuild persistence check (2× `nr switch`)
+- [x] SPEC (this doc)
+- [x] Swift probe: import Photos, fetch, auth status
+- [x] Signed `.app` probe auth prompt → authorized
+- [x] Single PhotoKit export (VERIFIED 2026-08-20, 801,219-byte PNG)
+- [x] Production CLI compiles + works end-to-end (2026-08-20) — HEIC/JPG/PNG
+- [x] nix `default.nix` packaging, sandboxed `nix build` SUCCEEDS
+- [x] Identifier → `com.ggr.photo-export` in bundle (Info.plist + codesign)
+- [x] **SFTP transport (Option A)** — libssh2, in-memory streaming, photo-backup key
+- [x] Skip-verify by remote stat; fixed the "skip missing file" data-loss bug
+- [x] Burn-in: first real SFTP backup (uploaded gaps, skipped present)
 
 ## Toil / risks
 
-- PhotoKit authorization prompt appears per-binary until granted; the grant
-  is per signed identity, so the FIRST run after each ad-hoc re-sign needs
-  a human click. Acceptable (no paid Developer ID).
-- Swift 6.2/Photos 6/Photos 10 API names differ from docs; method names must
-  be matched against the local framework's Swift overlay.
+- PhotoKit auth prompt per signed identity; ad-hoc re-sign = one Allow click.
+- Swift/Photos API names differ from docs; match against local overlay.
+- SMB path (legacy) requires the mount to be present; SFTP avoids it.
+- `nr` activation runs a snippet each switch; keep it idempotent || true so
+  switch never aborts (regression: earlier switch failed with exit 2).
 
 ## Logging / audit
 
-- `photos-export` writes its own date-stamped log line to
-  `<out>.log` after osxphotos completes: `photokit: exported N, skipped M already-on-disk, failed K`
-- no AppleScript involvement — grep for `"AppleScript"` should return nothing in new runs.
+- `photo-export: SFTP opening/session ready/SKIP-EXISTS/EXPORTED-SFTP` lines to
+  `/tmp/photo-export.log`.
+- grep for `"AppleScript"` should return nothing in new runs.

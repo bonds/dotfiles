@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Nightly photo backup to sophrosyne — single-binary pipeline.
+# Nightly photo backup to sophrosyne — SFTP transport.
 #
-# photo-export (PhotoKit-native Swift CLI) exports ALL assets directly to the
-# SMB mount, handling both iCloud-only and local originals. No osxphotos, no
-# AppleScript, no XMP-rich sidecar (photo-export writes a minimal description +
-# date sidecar). Manifest + atomic .part/rename writes make it resumable.
+# photo-export (PhotoKit-native Swift CLI) streams ALL assets (local + iCloud-only)
+# in-memory over SFTP to /dragon/media/photos as photo-backup. No SMB mount, no
+# local temp copies (no SSD wear). Config (remoteHost/remoteUser) is written by
+# home-manager; the app reads it because `open --args` doesn't forward args.
+# Manifest (~/.cache/photo-export-manifest.txt) makes runs resumable; each file
+# is verified against the server (size stat) so only genuinely-missing files are
+# uploaded.
 
-MNT="/tmp/sophrosyne-photos"
 LOCKDIR="/tmp/photos-backup.lock"
 LOGFILE="$HOME/Library/Logs/photos-backup.out.log"
 ERRFILE="$HOME/Library/Logs/photos-backup.err.log"
+
 # The app is installed by home-manager into "Applications/Home Manager Apps/"
 # (that's what LaunchServices/`open` resolve). Fall back to a plain
 # ~/Applications copy if it exists.
@@ -51,53 +54,24 @@ if ! acquire_lock; then
 fi
 trap 'rm -rf "$LOCKDIR"' EXIT
 
-PASS=$(security find-internet-password -s sophrosyne.local -a "photo-backup" -w 2>/dev/null)
-if [ -z "$PASS" ]; then
-  echo "$(date) — no Keychain entry for sophrosyne.local/photo-backup" >> "$LOGFILE"
-  exit 0
-fi
-
 if [ ! -x "$APP/Contents/MacOS/photo-export" ]; then
   echo "$(date) — photo-export.app missing at $APP; nothing to run" >> "$LOGFILE"
   exit 0
 fi
 
-mkdir -p "$MNT"
-
-EXPECT_SCRIPT=$(mktemp /tmp/photos-backup-expect.XXXXXX)
-trap 'rm -rf "$LOCKDIR"; rm -f "$EXPECT_SCRIPT"' EXIT
-
-cat > "$EXPECT_SCRIPT" << 'EXPECTEOF'
-set pass [lindex $argv 0]
-set mnt [lindex $argv 1]
-spawn /sbin/mount_smbfs //photo-backup@sophrosyne.local/photos $mnt
-expect "assword:"
-send "$pass\r"
-expect eof
-catch wait result
-exit [lindex $result 3]
-EXPECTEOF
-
-if ! expect "$EXPECT_SCRIPT" "$PASS" "$MNT" >> "$LOGFILE" 2>> "$ERRFILE"; then
-  echo "$(date) — mount failed" >> "$LOGFILE"
-  rmdir "$MNT" 2>/dev/null || true
+# Confirm SFTP is configured (not accidentally falling back to a nonexistent SMB mount).
+if [ ! -f "$HOME/Library/Application Support/photo-export/config.toml" ] || \
+   ! grep -q '^remoteHost' "$HOME/Library/Application Support/photo-export/config.toml"; then
+  echo "$(date) — config.toml missing remoteHost (SFTP not configured); refusing to run" >> "$LOGFILE"
   exit 0
 fi
 
-if ! mount | grep -qF "$MNT"; then
-  echo "$(date) — mount verification failed, $MNT not mounted" >> "$LOGFILE"
-  rmdir "$MNT" 2>/dev/null || true
-  exit 0
-fi
-
-echo "$(date) — mount OK, exporting via photo-export..." >> "$LOGFILE"
+echo "$(date) — launching photo-export over SFTP..." >> "$LOGFILE"
 
 # MUST launch via `open` so macOS registers the app identity with TCC (direct
 # exec of the binary gets PHAuthorizationStatusDenied). Use the EXPLICIT app
 # path — `open -a photo-export` can resolve to the Home Manager Apps copy
-# (stale) instead of the nix-store symlink. -W blocks until photo-export
-# exits, so we don't unmount mid-export; the manifest makes reruns resumable.
+# (stale) instead of the nix-store symlink. -W blocks until photo-export exits.
 open -j -W "$APP" 2>>"$ERRFILE" >>"$LOGFILE"
 
-umount "$MNT" 2>/dev/null || true
 echo "$(date) — backup complete" >> "$LOGFILE"
