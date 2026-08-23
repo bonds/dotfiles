@@ -341,6 +341,7 @@ in {
       # The agenix-mount env file (content: OPENROUTER_API_KEY=<key>) is loaded
       # into $HERMES_HOME/.env by services.hermes-agent.environmentFiles.
       programs.hermes-agent.enable = true;
+      programs.hermes-agent.desktop.enable = true;
       services.hermes-agent = {
         enable = true;
         # browser dashboard at 127.0.0.1:9119 (interactive setup/first-run)

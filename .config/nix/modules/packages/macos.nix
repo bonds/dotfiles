@@ -1,8 +1,60 @@
 {
   pkgs,
+  lib,
   inputs,
   ...
-}: {
+}: let
+  inherit (pkgs) stdenvNoCC;
+  hermesDesktopApp = stdenvNoCC.mkDerivation rec {
+    pname = "hermes-desktop-app";
+    version = "0.17.0";
+    phases = ["installPhase"];
+    hermesDesktop = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.desktop;
+    iconPng = "${hermesDesktop}/share/hermes-desktop/dist/hermes.png";
+    installPhase = ''
+      mkdir -p "$out/Applications/Hermes Desktop.app/Contents/MacOS"
+      mkdir -p "$out/Applications/Hermes Desktop.app/Contents/Resources"
+
+      # Launcher script
+      cat > "$out/Applications/Hermes Desktop.app/Contents/MacOS/Hermes Desktop" <<'LAUNCHER'
+      #!/bin/bash
+      exec "${hermesDesktop}/bin/hermes-desktop" "$@"
+      LAUNCHER
+      chmod +x "$out/Applications/Hermes Desktop.app/Contents/MacOS/Hermes Desktop"
+
+      # Generate .icns from hermes.png using macOS built-in tools
+      ICONSET="$TMPDIR/hermes.iconset"
+      mkdir -p "$ICONSET"
+      for size in 16 32 128 256 512; do
+        /usr/bin/sips -z ''$size ''$size "${iconPng}" --out "$ICONSET/icon_''${size}x''${size}.png" > /dev/null
+        /usr/bin/sips -z $((size*2)) $((size*2)) "${iconPng}" --out "$ICONSET/icon_''${size}x''${size}@2x.png" > /dev/null
+      done
+      /usr/bin/iconutil -c icns -o "$out/Applications/Hermes Desktop.app/Contents/Resources/icon.icns" "$ICONSET"
+      cat > "$out/Applications/Hermes Desktop.app/Contents/Info.plist" <<'PLIST'
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+        <key>CFBundleDisplayName</key><string>Hermes Desktop</string>
+        <key>CFBundleExecutable</key><string>Hermes Desktop</string>
+        <key>CFBundleIdentifier</key><string>com.nousresearch.hermes-desktop</string>
+        <key>CFBundleName</key><string>Hermes Desktop</string>
+        <key>CFBundleIconFile</key><string>icon</string>
+        <key>CFBundleShortVersionString</key><string>${version}</string>
+        <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+        <key>CFBundlePackageType</key><string>APPL</string>
+        <key>LSBackgroundOnly</key><false/>
+      </dict>
+      </plist>
+      PLIST
+    '';
+    meta = {
+      description = "Hermes Desktop - Electron desktop app for Hermes Agent";
+      platforms = ["aarch64-darwin"];
+      license = lib.licenses.mit;
+    };
+  };
+in {
   environment.systemPackages = with pkgs; [
     age-plugin-yubikey # age encryption with YubiKey support
     angband # best cli game ever
@@ -41,6 +93,7 @@
     openssh # macos ssh doesn't come with resident ssh support
     passage # age-based password manager
     (pkgs.callPackage ../../pkgs/ghosttile {}) # hide apps from Dock/Cmd+Tab
+    hermesDesktopApp # Hermes Desktop .app wrapper for Spotlight/LaunchServices
     (python3.withPackages (p:
       with p; [
         python-kasa # control TP-Link smart home devices
