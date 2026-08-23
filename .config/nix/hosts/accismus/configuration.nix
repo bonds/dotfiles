@@ -98,6 +98,15 @@
     set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
     current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
   '';
+
+  hermesIcon = ../../modules/overlays/hermes-icon.icns;
+  setHermesIconScript = pkgs.writeText "set-hermes-icon.applescript" ''
+    use framework "Cocoa"
+    set appPath to "/Applications/Nix Apps/Hermes.app"
+    set iconPath to "${hermesIcon}"
+    set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
+    current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
+  '';
 in {
   imports = [
     ../../modules/packages/macos.nix
@@ -220,6 +229,9 @@ in {
 
     echo "osaurus-icon: setting custom icon on osaurus.app" >&2
     /usr/bin/osascript "${setOsaurusIconScript}" 2>&1 || true
+
+    echo "hermes-icon: setting custom icon on Hermes.app" >&2
+    /usr/bin/osascript "${setHermesIconScript}" 2>&1 || true
   '';
 
   # https://www.danielcorin.com/til/nix-darwin/launch-agents/
