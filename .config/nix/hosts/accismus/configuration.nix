@@ -141,6 +141,15 @@ in {
       group = "staff";
       mode = "0400";
     };
+    # OpenRouter API key for Hermes Agent. Content is the OpenRouter key
+    # line (`OPENROUTER_API_KEY=<key>`), which Hermes loads via
+    # services.hermes-agent.environmentFiles into $HERMES_HOME/.env.
+    hermes-openrouter = {
+      file = ../../secrets/hermes-openrouter.age;
+      owner = "scott";
+      group = "staff";
+      mode = "0400";
+    };
     # soju bouncer password on sophrosyne. macOS agenix mounts it at
     # /run/agenix/soju-password, which Halloy reads via password_file. Same
     # secret seeds soju's user on sophrosyne (see hosts/sophrosyne).
@@ -328,15 +337,19 @@ in {
       programs.photo-export.settings.remoteUser = "photo-backup";
       programs.fish.plugins = with pkgs.fishPlugins; [fzf-fish];
 
-      # Hermes Agent (Nous Research) — use local models via Ollama/llama.cpp.
-      # Enable the CLI now; the gateway service and model/provider are set up
-      # interactively via `hermes setup` / `hermes config` (the module writes
-      # the initial config declaratively, so pick a provider there).
+      # Hermes Agent (Nous Research) — OpenRouter provider via agenix secret.
+      # The agenix-mount env file (content: OPENROUTER_API_KEY=<key>) is loaded
+      # into $HERMES_HOME/.env by services.hermes-agent.environmentFiles.
       programs.hermes-agent.enable = true;
       services.hermes-agent = {
         enable = true;
         # browser dashboard at 127.0.0.1:9119 (interactive setup/first-run)
         backend.mode = "dashboard";
+        # OpenRouter API key lives in agenix, decrypted to /run/agenix/ on
+        # accismus (active generation dir). Hermes merges it into
+        # $HERMES_HOME/.env at activation.
+        environmentFiles = ["/run/agenix/hermes-openrouter"];
+        settings.model.provider = "openrouter";
       };
 
       home.file.".stignore".text = ''
