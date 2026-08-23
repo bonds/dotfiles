@@ -350,6 +350,8 @@ in {
         # $HERMES_HOME/.env at activation.
         environmentFiles = ["/run/agenix/hermes-openrouter"];
         settings.model.provider = "openrouter";
+        # Default model on OpenRouter (DeepSeek V4 Flash)
+        settings.model.default = "deepseek/deepseek-v4-flash";
       };
 
       home.file.".stignore".text = ''
