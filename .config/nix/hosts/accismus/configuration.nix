@@ -364,7 +364,7 @@ in {
         environmentFiles = ["/run/agenix/hermes-openrouter"];
         settings.model.provider = "openrouter";
         # Default model on OpenRouter (DeepSeek V4 Flash)
-        settings.model.default = "deepseek/deepseek-v4-flash";
+        settings.model.default = "deepseek/deepseek-v4-flash-0731";
       };
 
       home.file.".stignore".text = ''
