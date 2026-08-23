@@ -27,7 +27,7 @@
     version = "0.17.0";
     phases = ["installPhase"];
     hermesDesktop = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.desktop;
-    iconPng = "${hermesDesktop}/share/hermes-desktop/dist/nous-girl.jpg";
+    iconPng = "${hermesDesktop}/share/hermes-desktop/dist/apple-touch-icon.png";
     inherit electronPkg;
     installPhase = ''
       # Copy the renamed Electron.app structure
@@ -56,14 +56,12 @@
       </plist>
       PLIST
 
-      # Generate .icns from nous-girl.jpg using macOS built-in tools
-      # sips needs png input for iconset, so convert first
-      /usr/bin/sips -s format png "${iconPng}" --out "$TMPDIR/nous-girl.png" > /dev/null
+      # Generate .icns from apple-touch-icon.png using macOS built-in tools
       ICONSET="$TMPDIR/hermes.iconset"
       mkdir -p "$ICONSET"
       for size in 16 32 128 256 512; do
-        /usr/bin/sips -z ''$size ''$size "$TMPDIR/nous-girl.png" --out "$ICONSET/icon_''${size}x''${size}.png" > /dev/null
-        /usr/bin/sips -z $((size*2)) $((size*2)) "$TMPDIR/nous-girl.png" --out "$ICONSET/icon_''${size}x''${size}@2x.png" > /dev/null
+        /usr/bin/sips -z ''$size ''$size "${iconPng}" --out "$ICONSET/icon_''${size}x''${size}.png" > /dev/null
+        /usr/bin/sips -z $((size*2)) $((size*2)) "${iconPng}" --out "$ICONSET/icon_''${size}x''${size}@2x.png" > /dev/null
       done
       /usr/bin/iconutil -c icns -o "$out/Applications/Hermes.app/Contents/Resources/icon.icns" "$ICONSET"
 
