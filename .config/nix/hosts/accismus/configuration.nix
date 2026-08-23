@@ -352,27 +352,6 @@ in {
         settings.model.provider = "openrouter";
         # Default model on OpenRouter (DeepSeek V4 Flash)
         settings.model.default = "deepseek/deepseek-v4-flash";
-        # Self-expiring keyboard fix: request modifyOtherKeys level 1 instead
-        # of level 2, so Shift+letter produces the capital instead of literal
-        # CSI escape sequences like [27;2;87~ (<https://github.com/NousResearch/hermes-agent/issues/87390>).
-        # Remove this line when upstream ships the fix (level 1 default).
-        # You'll know because `nix build` fails with "substitute: WARNING: ..."
-        # or "cli.py not found" — both mean `>4;2m` is gone from the source.
-        package = inputs.hermes-agent.packages.${pkgs.system}.default.overrideAttrs (old: {
-          postInstall =
-            (old.postInstall or "")
-            + ''
-              echo "hermes-keyboard-fix: patching modifyOtherKeys level 2 -> level 1..."
-              cli_file="$out/lib/python3.12/site-packages/cli.py"
-              if [ -f "$cli_file" ]; then
-                substituteInPlace "$cli_file" --replace-fail '>4;2m' '>4;1m'
-              else
-                echo "ERROR: hermes-keyboard-fix: cli.py not found at $cli_file"
-                echo "The upstream may have already fixed this issue — delete the 'package =' line!"
-                exit 1
-              fi
-            '';
-        });
       };
 
       home.file.".stignore".text = ''
