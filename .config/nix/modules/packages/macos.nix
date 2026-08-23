@@ -5,48 +5,77 @@
   ...
 }: let
   inherit (pkgs) stdenvNoCC;
+  electronPkg = pkgs.symlinkJoin {
+    name = "electron-hermes";
+    paths = [pkgs.electron];
+    buildInputs = [pkgs.electron];
+    postBuild = ''
+      # Make a writable copy of Electron.app with the executable renamed
+      # so macOS shows "Hermes" in the menu bar instead of "Electron".
+      mkdir -p "$out/Applications/Hermes.app/Contents/MacOS"
+      cp "${pkgs.electron}/Applications/Electron.app/Contents/Info.plist" "$out/Applications/Hermes.app/Contents/Info.plist"
+      cp "${pkgs.electron}/Applications/Electron.app/Contents/PkgInfo" "$out/Applications/Hermes.app/Contents/PkgInfo" 2>/dev/null || true
+      cp -r "${pkgs.electron}/Applications/Electron.app/Contents/Frameworks" "$out/Applications/Hermes.app/Contents/Frameworks"
+      cp -r "${pkgs.electron}/Applications/Electron.app/Contents/Resources" "$out/Applications/Hermes.app/Contents/Resources"
+      # Rename the executable to match the app name
+      cp "${pkgs.electron}/Applications/Electron.app/Contents/MacOS/Electron" \
+        "$out/Applications/Hermes.app/Contents/MacOS/Hermes"
+    '';
+  };
   hermesDesktopApp = stdenvNoCC.mkDerivation rec {
     pname = "hermes-desktop-app";
     version = "0.17.0";
     phases = ["installPhase"];
     hermesDesktop = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.desktop;
-    iconPng = "${hermesDesktop}/share/hermes-desktop/dist/hermes.png";
+    iconPng = "${hermesDesktop}/share/hermes-desktop/dist/nous-girl.jpg";
+    inherit electronPkg;
     installPhase = ''
-      mkdir -p "$out/Applications/Hermes Desktop.app/Contents/MacOS"
-      mkdir -p "$out/Applications/Hermes Desktop.app/Contents/Resources"
+      # Copy the renamed Electron.app structure
+      mkdir -p "$out/Applications"
+      cp -r "${electronPkg}/Applications/Hermes.app" "$out/Applications/Hermes.app"
+      # Make the bundle writable (nix store files are read-only)
+      chmod -R u+w "$out/Applications/Hermes.app"
 
-      # Launcher script
-      cat > "$out/Applications/Hermes Desktop.app/Contents/MacOS/Hermes Desktop" <<'LAUNCHER'
-      #!/bin/bash
-      exec "${hermesDesktop}/bin/hermes-desktop" "$@"
-      LAUNCHER
-      chmod +x "$out/Applications/Hermes Desktop.app/Contents/MacOS/Hermes Desktop"
-
-      # Generate .icns from hermes.png using macOS built-in tools
-      ICONSET="$TMPDIR/hermes.iconset"
-      mkdir -p "$ICONSET"
-      for size in 16 32 128 256 512; do
-        /usr/bin/sips -z ''$size ''$size "${iconPng}" --out "$ICONSET/icon_''${size}x''${size}.png" > /dev/null
-        /usr/bin/sips -z $((size*2)) $((size*2)) "${iconPng}" --out "$ICONSET/icon_''${size}x''${size}@2x.png" > /dev/null
-      done
-      /usr/bin/iconutil -c icns -o "$out/Applications/Hermes Desktop.app/Contents/Resources/icon.icns" "$ICONSET"
-      cat > "$out/Applications/Hermes Desktop.app/Contents/Info.plist" <<'PLIST'
+      # Override Info.plist with our own
+      cat > "$out/Applications/Hermes.app/Contents/Info.plist" <<'PLIST'
       <?xml version="1.0" encoding="UTF-8"?>
       <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
       <plist version="1.0">
       <dict>
-        <key>CFBundleDisplayName</key><string>Hermes Desktop</string>
-        <key>CFBundleExecutable</key><string>Hermes Desktop</string>
+        <key>CFBundleDisplayName</key><string>Hermes</string>
+        <key>CFBundleExecutable</key><string>Hermes</string>
         <key>CFBundleIdentifier</key><string>com.nousresearch.hermes-desktop</string>
-        <key>CFBundleName</key><string>Hermes Desktop</string>
+        <key>CFBundleName</key><string>Hermes</string>
         <key>CFBundleIconFile</key><string>icon</string>
         <key>CFBundleShortVersionString</key><string>${version}</string>
         <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
         <key>CFBundlePackageType</key><string>APPL</string>
         <key>LSBackgroundOnly</key><false/>
+        <key>NSHighResolutionCapable</key><true/>
       </dict>
       </plist>
       PLIST
+
+      # Generate .icns from nous-girl.jpg using macOS built-in tools
+      # sips needs png input for iconset, so convert first
+      /usr/bin/sips -s format png "${iconPng}" --out "$TMPDIR/nous-girl.png" > /dev/null
+      ICONSET="$TMPDIR/hermes.iconset"
+      mkdir -p "$ICONSET"
+      for size in 16 32 128 256 512; do
+        /usr/bin/sips -z ''$size ''$size "$TMPDIR/nous-girl.png" --out "$ICONSET/icon_''${size}x''${size}.png" > /dev/null
+        /usr/bin/sips -z $((size*2)) $((size*2)) "$TMPDIR/nous-girl.png" --out "$ICONSET/icon_''${size}x''${size}@2x.png" > /dev/null
+      done
+      /usr/bin/iconutil -c icns -o "$out/Applications/Hermes.app/Contents/Resources/icon.icns" "$ICONSET"
+
+      # Remove Electron's default icon to avoid conflicts
+      rm -f "$out/Applications/Hermes.app/Contents/Resources/electron.icns"
+
+      # Symlink the app resources into the .app bundle
+      mkdir -p "$out/Applications/Hermes.app/Contents/Resources/app"
+      ln -sfn "${hermesDesktop}/share/hermes-desktop/dist" \
+        "$out/Applications/Hermes.app/Contents/Resources/app/dist"
+      ln -sfn "${hermesDesktop}/share/hermes-desktop/package.json" \
+        "$out/Applications/Hermes.app/Contents/Resources/app/package.json"
     '';
     meta = {
       description = "Hermes Desktop - Electron desktop app for Hermes Agent";
