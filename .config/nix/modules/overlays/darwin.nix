@@ -17,6 +17,7 @@ in [
   (import ./ghostty/default.nix)
   (import ./opencode/default.nix inputs.nixpkgs)
   (import ./daisydisk-overlay/default.nix inputs.nixpkgs)
+  (import ./openfang/default.nix inputs.nixpkgs)
   (import ./lix/default.nix)
   (import ./osaurus/default.nix)
   (final: _prev: {

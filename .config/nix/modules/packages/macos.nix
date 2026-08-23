@@ -117,6 +117,7 @@ in {
     opencode # AI coding agent (CLI, binary overlay, nr --update)
     opencode-desktop # OpenCode Electron desktop app (binary overlay, auto-updater disabled)
     osaurus # native macOS AI agent harness (binary overlay, nr --update)
+    openfang-desktop # OpenFang desktop app (agent OS, Tauri binary overlay, nr --update)
     (pkgs-unstable.openspec) # Fission-AI spec-driven development CLI (unstable tracks @latest that the Hermes openspec skills expect)
     oxillama # pure Rust LLM inference engine (experimental, pkgs/oxillama/update.sh, nr --update)
     openssh # macos ssh doesn't come with resident ssh support

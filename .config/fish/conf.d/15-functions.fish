@@ -64,7 +64,8 @@ function nr
             bash modules/overlays/opencode/update.sh
             bash modules/overlays/daisydisk-overlay/update.sh
             bash modules/overlays/osaurus/update.sh
-            alejandra pkgs/oxillama/default.nix modules/overlays/zen-browser/default.nix modules/overlays/opencode/default.nix modules/overlays/daisydisk-overlay/default.nix modules/overlays/osaurus/default.nix
+            bash modules/overlays/openfang/update.sh
+            alejandra pkgs/oxillama/default.nix modules/overlays/zen-browser/default.nix modules/overlays/opencode/default.nix modules/overlays/daisydisk-overlay/default.nix modules/overlays/osaurus/default.nix modules/overlays/openfang/default.nix
             cd $_pwd
         else
             set -l _pwd $PWD
@@ -90,7 +91,8 @@ function nr
                 .config/nix/modules/overlays/zen-browser/default.nix \
                 .config/nix/modules/overlays/opencode/default.nix \
                 .config/nix/modules/overlays/daisydisk-overlay/default.nix \
-                .config/nix/modules/overlays/osaurus/default.nix
+                .config/nix/modules/overlays/osaurus/default.nix \
+                .config/nix/modules/overlays/openfang/default.nix
         else
             set -a _nr_files \
                 .config/nix/pkgs/bedrock-server/default.nix \
