@@ -365,6 +365,9 @@ in {
         settings.model.provider = "openrouter";
         # Default model on OpenRouter (DeepSeek V4 Flash)
         settings.model.default = "deepseek/deepseek-v4-flash-0731";
+        # Enable the "session-cost" user plugin backend (sums state.db) so the
+        # desktop status-bar chip can read per-session spend.
+        settings.plugins.enabled = ["session-cost"];
       };
 
       home.file.".stignore".text = ''
