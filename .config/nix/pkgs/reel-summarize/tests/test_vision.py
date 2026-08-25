@@ -96,11 +96,26 @@ class TestVisionTimeline(unittest.TestCase):
     def test_format_timeline(self):
         frames = ["f1.jpg", "f2.jpg"]
         results = [
-            {"text": ["Hello"], "scene": "person talking"},
-            {"text": ["Buy now"], "scene": "product shown"},
+            {"text": ["Hello"], "scene": "person talking", "objects": [{"name": "microphone", "detail": "on a stand"}]},
+            {"text": ["Buy now"], "scene": "product shown", "objects": []},
         ]
         timeline = format_vision_timeline(frames, results, fps=1)
         self.assertIn("[t=0s]", timeline)
         self.assertIn("Hello", timeline)
+        self.assertIn("microphone: on a stand", timeline)
         self.assertIn("[t=1s]", timeline)
         self.assertIn("Buy now", timeline)
+
+    def test_objects_normalization(self):
+        # Flat-string objects and a missing objects key both normalize safely.
+        from reel_summarize.stages.vision import _normalize_vision
+        res = _normalize_vision({"text": ["Buy now"], "scene": "shop", "objects": ["camera", "clock"]})
+        self.assertEqual(
+            res["objects"],
+            [{"name": "camera", "detail": ""}, {"name": "clock", "detail": ""}],
+        )
+        res2 = _normalize_vision({"text": ["x"], "scene": "y"})
+        self.assertEqual(res2["objects"], [])
+        res3 = _normalize_vision("raw text fallback")
+        self.assertEqual(res3["text"], ["raw text fallback"])
+        self.assertEqual(res3["objects"], [])

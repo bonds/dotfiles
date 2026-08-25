@@ -10,11 +10,11 @@ _FINAL_PROMPT = (
     "- Author: {author}\n"
     "- Original caption: {caption}\n"
     "- Spoken audio transcript: {transcript}\n"
-    "- Per-frame on-screen text + scene descriptions:\n"
+    "- Per-frame on-screen text, scene descriptions, and recognized objects:\n"
     "{vision_timeline}\n"
     "\n"
     "Write a concise prose summary (5-10 sentences) of what the reel is about. "
-    "Include both what's said and what's shown on screen. "
+    "Include both what's said, what's shown on screen, and any key objects/people visible. "
     'Do not use headers or bullet points \u2014 just prose.'
 )
 

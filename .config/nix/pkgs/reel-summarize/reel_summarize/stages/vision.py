@@ -13,10 +13,38 @@ def _encode_image(path: str) -> str:
 
 
 _VISION_PROMPT = (
-    "Extract all visible on-screen text verbatim from this image, "
-    "then describe the scene in one sentence. "
-    'Output JSON with keys "text" (array of strings) and "scene" (string).'
+    'Analyze this image and output JSON with keys "text", "scene", and "objects". '
+    '"text" (array of strings): extract all visible on-screen text/overlays/labels verbatim; '
+    "empty array if none. "
+    '"scene" (string): a one-sentence description of the scene. '
+    '"objects" (array): the recognizable objects, people, animals, products, logos, or text props '
+    "visible in the frame; each item is an object with a \"name\" (string) and optional "
+    "\"detail\" (string), e.g. {\"name\":\"microphone\",\"detail\":\"on a stand\"}. "
+    'Provide all three keys; use empty values where nothing applies.'
 )
+
+
+def _normalize_vision(result) -> dict:
+    """Ensure a vision result always has text/scene/objects keys with sane types."""
+    if not isinstance(result, dict):
+        if isinstance(result, list):
+            result = {"text": result}
+        else:
+            result = {"text": [str(result)]}
+    out = {
+        "text": result.get("text") or [],
+        "scene": result.get("scene") or "",
+        "objects": result.get("objects") or [],
+    }
+    # Allow objects as a flat list of strings OR a list of {"name", "detail"} dicts.
+    objs = []
+    for o in out["objects"]:
+        if isinstance(o, str):
+            objs.append({"name": o, "detail": ""})
+        elif isinstance(o, dict) and o.get("name"):
+            objs.append({"name": str(o["name"]), "detail": str(o.get("detail") or "")})
+    out["objects"] = objs
+    return out
 
 
 def _call_ollama_vision(image_b64: str, cfg: Config) -> dict:
@@ -198,11 +226,12 @@ def analyze_frames(frames: list[str], cfg: Config) -> list[dict]:
         caller = _call_ollama_vision
     for i, path in enumerate(frames):
         img_b64 = _encode_image(path)
-        result = caller(img_b64, cfg)
+        result = _normalize_vision(caller(img_b64, cfg))
         results.append({
             "frame": path,
             "text": result.get("text", []),
             "scene": result.get("scene", ""),
+            "objects": result.get("objects", []),
         })
         print(f"  scanned frame {i+1}/{total}", file=sys.stderr, flush=True)
     return results
@@ -214,11 +243,17 @@ def format_vision_timeline(frames: list[str], vision_results: list[dict], fps: i
         timestamp = i / fps
         text_lines = vr.get("text", [])
         scene = vr.get("scene", "")
+        objects = vr.get("objects", [])
         parts = []
         if text_lines:
             parts.append(f"text: {text_lines}")
         if scene:
             parts.append(f"scene: {scene}")
+        if objects:
+            objs_desc = ", ".join(
+                (f"{o.get('name')}{': ' + o['detail'] if o.get('detail') else ''}" for o in objects)
+            )
+            parts.append(f"objects: {objs_desc}")
         if parts:
             lines.append(f"    [t={timestamp:.0f}s] {'; '.join(parts)}")
     return "\n".join(lines)
