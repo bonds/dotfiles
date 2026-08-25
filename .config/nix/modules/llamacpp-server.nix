@@ -44,6 +44,7 @@
       lib.mapAttrsToList (name: modelCfg: ''
         [${name}]
         m = ${cfg.router.modelsDir}/${builtins.baseNameOf modelCfg.url}
+        ${lib.concatStringsSep "\n" (lib.optional (modelCfg.mmproj != null) "mmproj = ${modelCfg.mmproj}")}
         ${lib.concatStringsSep "\n" (lib.mapAttrsToList (k: v: "${k} = ${v}") modelCfg.args)}
       '')
       cfg.router.models;
@@ -57,6 +58,10 @@
       lib.concatStringsSep "\n" (lib.mapAttrsToList (name: modelCfg: let
           filename = builtins.baseNameOf modelCfg.url;
           dest = "${cfg.router.modelsDir}/${filename}";
+          projDest =
+            if modelCfg.mmproj != null
+            then "${cfg.router.modelsDir}/${builtins.baseNameOf modelCfg.mmprojUrl}"
+            else null;
         in ''
           if ! [ -f "${dest}" ]; then
             echo "→ ${name}: downloading..."
@@ -65,6 +70,19 @@
             mv "${dest}.tmp" "${dest}"
             echo "✓ ${name}: downloaded"
           fi
+          ${
+            if projDest != null
+            then ''
+              if ! [ -f "${projDest}" ]; then
+                echo "→ ${name}: downloading mmproj..."
+                mkdir -p "${cfg.router.modelsDir}"
+                ${pkgs.curl}/bin/curl -fSL -o "${projDest}.tmp" "${modelCfg.mmprojUrl}" --retry 3 --retry-delay 5
+                mv "${projDest}.tmp" "${projDest}"
+                echo "✓ ${name}: mmproj downloaded"
+              fi
+            ''
+            else ""
+          }
         '')
         cfg.router.models)
     else if (cfg.model != null && cfg.modelUrl != null)
@@ -168,6 +186,16 @@ in {
             url = mkOption {
               type = types.str;
               description = "URL to download the model GGUF from";
+            };
+            mmproj = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = "Path to multimodal projector GGUF for vision (multimodal) models";
+            };
+            mmprojUrl = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = "URL to download the mmproj GGUF from when it doesn't exist on disk";
             };
             args = mkOption {
               type = types.attrsOf types.str;

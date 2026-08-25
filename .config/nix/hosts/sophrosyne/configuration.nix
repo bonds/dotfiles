@@ -193,7 +193,7 @@ in {
     extraArgs = ["--webui-mcp-proxy"];
     router = {
       enable = true;
-      modelsMax = 2;
+      modelsMax = 3;
       sleepIdleSeconds = -1;
       models = {
         "gemma-4-31b-it" = {
@@ -219,18 +219,18 @@ in {
           # for 15KB changelog inputs + output without context exhaustion
           args = {ctx-size = "16384";};
         };
+        "qwen3vl-2b" = {
+          url = "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/resolve/main/Qwen3VL-2B-Instruct-Q4_K_M.gguf";
+          mmproj = "/dragon/servers/llamacpp/models/mmproj-Qwen3VL-2B-Instruct-F16.gguf";
+          mmprojUrl = "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/resolve/main/mmproj-Qwen3VL-2B-Instruct-F16.gguf";
+          # small ctx: frame OCR requests are short; q8_0 KV cuts memory
+          args = {
+            ctx-size = "8192";
+            cache-type-k = "q8_0";
+            cache-type-v = "q8_0";
+          };
+        };
       };
-    };
-    vision = {
-      enable = true;
-      host = "127.0.0.1";
-      port = 8081;
-      model = "/dragon/servers/llamacpp/models/Qwen3VL-2B-Instruct-Q4_K_M.gguf";
-      modelUrl = "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/resolve/main/Qwen3VL-2B-Instruct-Q4_K_M.gguf";
-      mmproj = "/dragon/servers/llamacpp/models/mmproj-Qwen3VL-2B-Instruct-F16.gguf";
-      mmprojUrl = "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/resolve/main/mmproj-Qwen3VL-2B-Instruct-F16.gguf";
-      # KV cache in q8_0 cuts vision-server memory; quality impact is negligible
-      extraArgs = ["--cache-type-k" "q8_0" "--cache-type-v" "q8_0"];
     };
   };
   networking.firewall.allowedTCPPorts = [8080 8890 8891];
@@ -281,10 +281,12 @@ in {
       StateDirectory = "reel-summarize-mcp";
       Environment = [
         "REEL_SUMMARIZE_HOST=http://127.0.0.1:8080"
-        "REEL_SUMMARIZE_VISION_HOST=http://127.0.0.1:8081"
+        "REEL_SUMMARIZE_VISION_HOST=http://127.0.0.1:8080"
         "REEL_SUMMARIZE_BACKEND=openai"
         # 3B-active MoE: fast enough on CPU for final summary generation
         "REEL_SUMMARIZE_MODEL=qwen2.5-7b"
+        # Multimodal model served by the router (was the separate 8081 server)
+        "REEL_SUMMARIZE_VISION_MODEL=qwen3vl-2b"
         # Headroom for CPU cold-starts (router model load + vision frames)
         "REEL_SUMMARIZE_TIMEOUT=600"
         # Listen on all interfaces (reached from accismus via Tailscale)

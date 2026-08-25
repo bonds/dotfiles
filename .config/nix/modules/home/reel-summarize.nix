@@ -14,8 +14,13 @@ in {
         options = {
           host = lib.mkOption {
             type = lib.types.str;
-            default = "http://localhost:8080";
+            default = "http://sophrosyne:8080";
             description = "LLM API host (http://localhost:8080 = llama.cpp, http://localhost:11434 = ollama)";
+          };
+          visionHost = lib.mkOption {
+            type = lib.types.str;
+            default = "http://sophrosyne:8080";
+            description = "Vision (multimodal) LLM API host. Same router as host when the vision model is served by the llamacpp router.";
           };
           backend = lib.mkOption {
             type = lib.types.enum ["openai" "ollama" "osaurus"];
@@ -24,12 +29,12 @@ in {
           };
           visionModel = lib.mkOption {
             type = lib.types.str;
-            default = "qwen2.5:7b";
-            description = "Vision model for per-frame OCR (use 'qwen2.5:7b' for text-only, need multimodal GGUF for actual vision)";
+            default = "qwen3vl-2b";
+            description = "Vision model for per-frame OCR (multimodal GGUF served by the llamacpp router)";
           };
           summarizeModel = lib.mkOption {
             type = lib.types.str;
-            default = "qwen2.5:7b";
+            default = "qwen2.5-7b";
             description = "Model for final summary";
           };
           whisperModel = lib.mkOption {
@@ -67,6 +72,7 @@ in {
     in
       format.generate "config.toml" {
         host = s.host;
+        vision_host = s.visionHost;
         backend = s.backend;
         vision_model = s.visionModel;
         summarize_model = s.summarizeModel;
