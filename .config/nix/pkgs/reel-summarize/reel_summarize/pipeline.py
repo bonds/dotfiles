@@ -146,7 +146,7 @@ def run_structured(
 
         vision_results = []
         if frames:
-            _vmodel = resolve_model_name(cfg.vision_host, cfg)
+            _vmodel = cfg.vision_model
             p(f"→ scanning {len(frames)} frames ({_vmodel})...")
             vision_results = analyze_frames(frames, cfg)
 

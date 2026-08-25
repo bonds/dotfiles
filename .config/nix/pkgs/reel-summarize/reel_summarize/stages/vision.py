@@ -152,16 +152,8 @@ def _call_osaurus_vision(image_b64: str, cfg: Config) -> dict:
     if cfg.osaurus_api_key:
         headers["Authorization"] = f"Bearer {cfg.osaurus_api_key}"
 
-    # Auto-detect the actual model from the server
+    # Use the configured vision model explicitly
     model = cfg.vision_model
-    try:
-        resp = httpx.get(f"{host}/v1/models", headers=headers, timeout=5)
-        resp.raise_for_status()
-        models = resp.json().get("data", [])
-        if models:
-            model = models[0].get("id", model)
-    except Exception:
-        pass
 
     payload = {
         "model": model,
