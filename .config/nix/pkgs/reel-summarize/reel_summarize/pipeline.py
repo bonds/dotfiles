@@ -279,8 +279,7 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
 
             vision_results = []
             if frames:
-                _vhost = cfg.host if cfg.backend == "osaurus" else cfg.vision_host
-                _vmodel = resolve_model_name(_vhost, cfg)
+                _vmodel = cfg.vision_model
                 p(f"→ scanning {len(frames)} frames ({_vmodel})...")
                 vision_results = analyze_frames(frames, cfg)
 
