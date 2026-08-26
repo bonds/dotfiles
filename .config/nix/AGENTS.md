@@ -22,7 +22,24 @@ Accismus dotfiles use a **bare repo at `~/.config/dotfiles/`** with **worktree `
 
 ## Commands
 
-**Always use `nr` for rebuilds.** The `nr` fish function (in `~/.config/fish/config.fish`) wraps `nh` and auto-detects the host to pick the right flake target. Do not recommend raw `nixos-rebuild` or `darwin-rebuild` commands unless `nr` is broken.
+**Always use `nr` for rebuilds** when you're at a fish shell (interactive use). The `nr` fish function (in `~/.config/fish/config.fish`) wraps `nh` and auto-detects the host to pick the right flake target. Do not recommend raw `nixos-rebuild` or `darwin-rebuild` commands to a person unless `nr` is broken.
+
+**Agents / non-fish shells: do NOT call `nr`.** `nr` is fish-only; from bash it fails with `command not found` but still exits 0 with empty output and creates **no** new generation (silent no-op — easy to mistake for success). An agent (e.g. Hermes) running a rebuild must call the underlying command directly:
+
+```bash
+# accismus
+nh darwin switch ~/.config/nix
+# sophrosyne
+nh os switch ~/.config/nix -e auto
+```
+
+Verify the switch actually landed, don't trust the exit code alone. Confirm the symlink advanced and the new binary/version is present:
+
+```bash
+readlink -f /nix/var/nix/profiles/system   # should differ from before the switch
+# on accismus, the thing you bumped should report the new version, e.g.:
+opencode --version
+```
 
 ```fish
 # Rebuild current machine
