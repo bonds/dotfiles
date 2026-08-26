@@ -76,7 +76,7 @@ echo "Desktop SRI hash: $desktop_hash"
 #   - hash lines:           only the two `hash = "sha256-…";` in fetchurl
 awk -v ver="$version" -v cli_hash="$cli_hash" -v desktop_hash="$desktop_hash" '
 /targetVersion = ".*";/ { sub(/targetVersion = ".*";/, "targetVersion = \"" ver "\";") }
-/version = targetVersion;/ { sub(/version = targetVersion;/, "version = \"" ver "\";") }
+/version = "[0-9.]+";/ { sub(/version = "[0-9.]+";/, "version = \"" ver "\";") }
 /hash = "sha256-[^"]*";/ {
   count++
   if (count == 1) sub(/hash = "[^"]*";/, "hash = \"" cli_hash "\";")

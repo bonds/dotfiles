@@ -7,7 +7,7 @@
 # because referencing prev.opencode inside the overlay that defines
 # opencode creates an infinite recursion through nixpkgs' by-name overlay.
 nixpkgs: final: prev: let
-  targetVersion = "1.18.18";
+  targetVersion = "1.18.23";
   basePkgs = import nixpkgs {
     system = "aarch64-darwin";
     config.allowUnfree = true;
@@ -23,11 +23,11 @@ in
       else
         final.mkDarwinPackage rec {
           pname = "opencode";
-          version = "1.18.18";
+          version = "1.18.23";
 
           src = prev.fetchurl {
             url = "https://github.com/anomalyco/opencode/releases/download/v${version}/opencode-darwin-arm64.zip";
-            hash = "sha256-fWaL8mSW/shobU5R67GsK9Ljk/DBYgqmlsTCQqnlgGo=";
+            hash = "sha256-NzzzZnODbyzohHKVoLss0kR9A8dptE2EGFkWvUcbQnQ=";
           };
 
           nativeBuildInputs = [prev.unzip];
@@ -50,11 +50,11 @@ in
       else
         final.mkDarwinPackage rec {
           pname = "opencode-desktop";
-          version = "1.18.18";
+          version = "1.18.23";
 
           src = prev.fetchurl {
             url = "https://github.com/anomalyco/opencode/releases/download/v${version}/opencode-desktop-mac-arm64.zip";
-            hash = "sha256-2Mme1sVDO7oEHL9hz8AROkvovNvkTwh/VjYstY6EckI=";
+            hash = "sha256-YzdX9GAqq4W9ljdrbr4KxaDst7XdtYfKazUwZUnrxYA=";
           };
 
           nativeBuildInputs = [prev.unzip];
