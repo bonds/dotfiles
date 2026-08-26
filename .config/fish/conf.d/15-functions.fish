@@ -84,19 +84,22 @@ function nr
     set -l _nr_switch_ok $status
     if test "$_nr_update" = yes; and test "$_nr_switch_ok" -eq 0
         # Commit the version bumps the update scripts + nh generated, then push.
-        set -l _nr_files .config/nix/flake.lock
+        # Use home-absolute pathspecs so this block is cwd-independent
+        # (running `nr --update` from ~/.config/nix would otherwise make
+        # git resolve `.config/nix/...` against the cwd and fail the add).
+        set -l _nr_files $HOME/.config/nix/flake.lock
         if test "$_os" = darwin
             set -a _nr_files \
-                .config/nix/pkgs/oxillama/default.nix \
-                .config/nix/modules/overlays/zen-browser/default.nix \
-                .config/nix/modules/overlays/opencode/default.nix \
-                .config/nix/modules/overlays/daisydisk-overlay/default.nix \
-                .config/nix/modules/overlays/osaurus/default.nix \
-                .config/nix/modules/overlays/openfang/default.nix
+                $HOME/.config/nix/pkgs/oxillama/default.nix \
+                $HOME/.config/nix/modules/overlays/zen-browser/default.nix \
+                $HOME/.config/nix/modules/overlays/opencode/default.nix \
+                $HOME/.config/nix/modules/overlays/daisydisk-overlay/default.nix \
+                $HOME/.config/nix/modules/overlays/osaurus/default.nix \
+                $HOME/.config/nix/modules/overlays/openfang/default.nix
         else
             set -a _nr_files \
-                .config/nix/pkgs/bedrock-server/default.nix \
-                .config/nix/pkgs/rsync-tmbackup/default.nix
+                $HOME/.config/nix/pkgs/bedrock-server/default.nix \
+                $HOME/.config/nix/pkgs/rsync-tmbackup/default.nix
         end
         config add $_nr_files
         if config diff --cached --quiet
