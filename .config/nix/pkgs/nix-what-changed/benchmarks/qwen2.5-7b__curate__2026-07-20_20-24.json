@@ -1,0 +1,110 @@
+{
+  "timestamp": "2026-07-20 20:24",
+  "system": {
+    "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "machine": "arm64"
+  },
+  "prompt_style": "curate",
+  "reference_samples": [
+    "capstone",
+    "hugo",
+    "ollama",
+    "nixpkgs-2605"
+  ],
+  "config": {
+    "model": "qwen2.5:7b",
+    "timeout": 180,
+    "prompt_style": "curate"
+  },
+  "results": [
+    {
+      "sample": "capstone",
+      "model": "qwen2.5:7b",
+      "time_s": 12.27,
+      "raw_bullets": 2,
+      "post_bullets": 2,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 1.0,
+      "expected": 2,
+      "raw_text": [
+        "Backports of CVE fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937",
+        "Set correct version number in CS_VERSION_EXTRA"
+      ],
+      "post_text": [
+        "Backports of CVE fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937",
+        "Set correct version number in CS_VERSION_EXTRA"
+      ]
+    },
+    {
+      "sample": "hugo",
+      "model": "qwen2.5:7b",
+      "time_s": 9.92,
+      "raw_bullets": 3,
+      "post_bullets": 3,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 1.0,
+      "expected": 3,
+      "raw_text": [
+        "modules/npm: Fix false stale warning after npm pack",
+        "Revert \"tpl/collections: Make dict return nil when no values are provided\"",
+        "tpl/time: Fix locale-specific month abbreviations"
+      ],
+      "post_text": [
+        "modules/npm: Fix false stale warning after npm pack",
+        "Revert \"tpl/collections: Make dict return nil when no values are provided\"",
+        "tpl/time: Fix locale-specific month abbreviations"
+      ]
+    },
+    {
+      "sample": "ollama",
+      "model": "qwen2.5:7b",
+      "time_s": 15.68,
+      "raw_bullets": 4,
+      "post_bullets": 4,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 1.0,
+      "expected": 4,
+      "raw_text": [
+        "Fixed gemma4:12b floating point exception crash on x86, CUDA, Linux, and Windows systems.",
+        "ollama launch hermes-desktop now launches Hermes Desktop and skips rebuilding when a packaged app is already installed.",
+        "Native Windows installation support via Hermes Power Shell installer added.",
+        "Cline CLI integration docs were added."
+      ],
+      "post_text": [
+        "Fixed gemma4:12b floating point exception crash on x86, CUDA, Linux, and Windows systems.",
+        "ollama launch hermes-desktop now launches Hermes Desktop and skips rebuilding when a packaged app is already installed.",
+        "Native Windows installation support via Hermes Power Shell installer added.",
+        "Cline CLI integration docs were added."
+      ]
+    },
+    {
+      "sample": "nixpkgs-2605",
+      "model": "qwen2.5:7b",
+      "time_s": 17.99,
+      "raw_bullets": 5,
+      "post_bullets": 5,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [
+        "New Feature: Tranquil is an ATProto PDS implementation.",
+        "New Feature: Flap detects BGP flapping events.",
+        "Breaking Change: The boot package is removed.",
+        "Breaking Change: The Python 2 interpreter is exclusively housed within the resholve package.",
+        "Important Bug Fix: The old scripted initrd implementation is deprecated."
+      ],
+      "post_text": [
+        "New Feature: Tranquil is an ATProto PDS implementation.",
+        "New Feature: Flap detects BGP flapping events.",
+        "Breaking Change: The boot package is removed.",
+        "Breaking Change: The Python 2 interpreter is exclusively housed within the resholve package.",
+        "Important Bug Fix: The old scripted initrd implementation is deprecated."
+      ]
+    }
+  ]
+}

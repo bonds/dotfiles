@@ -1,0 +1,200 @@
+{
+  "timestamp": "2026-07-20 19:35",
+  "system": {
+    "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "machine": "arm64"
+  },
+  "prompt_style": "curate",
+  "reference_samples": [
+    "capstone",
+    "hugo",
+    "ollama",
+    "nixpkgs-2605"
+  ],
+  "config": {
+    "model": "qwen2.5:7b",
+    "timeout": 180,
+    "prompt_style": "curate"
+  },
+  "results": [
+    {
+      "sample": "capstone",
+      "model": "qwen2.5:1.5b",
+      "time_s": 2.81,
+      "raw_bullets": 2,
+      "post_bullets": 2,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 1.0,
+      "expected": 2,
+      "raw_text": [
+        "Backports of CVE fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937",
+        "New version: v5.0.9"
+      ],
+      "post_text": [
+        "Backports of CVE fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937",
+        "New version: v5.0.9"
+      ]
+    },
+    {
+      "sample": "hugo",
+      "model": "qwen2.5:1.5b",
+      "time_s": 1.41,
+      "raw_bullets": 3,
+      "post_bullets": 3,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 1.0,
+      "expected": 3,
+      "raw_text": [
+        "modules/npm: Fix false stale warning after npm pack (commit id: 59f35cd9)",
+        "Revert \"tpl/collections: Make dict return nil when no values are provided\" (commit id: c2709750)",
+        "tpl/time: Fix locale-specific month abbreviations (commit id: 481b5c5)"
+      ],
+      "post_text": [
+        "modules/npm: Fix false stale warning after npm pack (commit id: 59f35cd9)",
+        "Revert \"tpl/collections: Make dict return nil when no values are provided\" (commit id: c2709750)",
+        "tpl/time: Fix locale-specific month abbreviations (commit id: 481b5c5)"
+      ]
+    },
+    {
+      "sample": "ollama",
+      "model": "qwen2.5:1.5b",
+      "time_s": 4.96,
+      "raw_bullets": 4,
+      "post_bullets": 4,
+      "raw_merges": 2,
+      "post_merges": 2,
+      "quality": 1.0,
+      "expected": 4,
+      "raw_text": [
+        "Fixes Floating Point Exception on Linux, Windows, CUDA: The issue where gemma4:12b caused a crash due to floating point exceptions has been resolved across x86, CUDA, Linux, and Windows systems.",
+        "New Hermes Desktop Launching Ability: Users can now launch the Hermes desktop by running ollama launch hermes-desktop, skipping the need for manual app installation.",
+        "Hermes Power Shell Installer Added: A new installer option is available via Hermes PowerShell to support native Windows installations of apps packaged with Hermes.",
+        "Integration Documentation Updated: Comprehensive instructions on integrating the CLI with Cline have been added in the documentation."
+      ],
+      "post_text": [
+        "Fixes Floating Point Exception on Linux, Windows, CUDA: The issue where gemma4:12b caused a crash due to floating point exceptions has been resolved across x86, CUDA, Linux, and Windows systems.",
+        "New Hermes Desktop Launching Ability: Users can now launch the Hermes desktop by running ollama launch hermes-desktop, skipping the need for manual app installation.",
+        "Hermes Power Shell Installer Added: A new installer option is available via Hermes PowerShell to support native Windows installations of apps packaged with Hermes.",
+        "Integration Documentation Updated: Comprehensive instructions on integrating the CLI with Cline have been added in the documentation."
+      ]
+    },
+    {
+      "sample": "nixpkgs-2605",
+      "model": "qwen2.5:1.5b",
+      "time_s": 1.5,
+      "raw_bullets": 6,
+      "post_bullets": 6,
+      "raw_merges": 2,
+      "post_merges": 2,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [
+        "New Features:",
+        "Stage 1 (a.k.a. initrd) is now based on systemd by default, enhancing system boot and initialization processes.",
+        "The old scripted initrd implementation is deprecated.",
+        "Breaking Changes:",
+        "The boot package has been removed, potentially affecting users who rely on or use it in their setups.",
+        "Important Bug Fixes:"
+      ],
+      "post_text": [
+        "New Features:",
+        "Stage 1 (a.k.a. initrd) is now based on systemd by default, enhancing system boot and initialization processes.",
+        "The old scripted initrd implementation is deprecated.",
+        "Breaking Changes:",
+        "The boot package has been removed, potentially affecting users who rely on or use it in their setups.",
+        "Important Bug Fixes:"
+      ]
+    },
+    {
+      "sample": "capstone",
+      "model": "qwen2.5:7b",
+      "time_s": 8.51,
+      "raw_bullets": 2,
+      "post_bullets": 2,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 1.0,
+      "expected": 2,
+      "raw_text": [
+        "Set correct version number in CS_VERSION_EXTRA.",
+        "Backports of CVE fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937"
+      ],
+      "post_text": [
+        "Set correct version number in CS_VERSION_EXTRA.",
+        "Backports of CVE fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937"
+      ]
+    },
+    {
+      "sample": "hugo",
+      "model": "qwen2.5:7b",
+      "time_s": 4.76,
+      "raw_bullets": 3,
+      "post_bullets": 3,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 1.0,
+      "expected": 3,
+      "raw_text": [
+        "* modules/npm: Fix false stale warning after npm pack 59f35cd9 @jmooring",
+        "* Revert \"tpl/collections: Make dict return nil when no values are provided\" c2709750 @bep",
+        "* tpl/time: Fix locale-specific month abbreviations 481b5c5 @jmooring"
+      ],
+      "post_text": [
+        "* modules/npm: Fix false stale warning after npm pack 59f35cd9 @jmooring",
+        "* Revert \"tpl/collections: Make dict return nil when no values are provided\" c2709750 @bep",
+        "* tpl/time: Fix locale-specific month abbreviations 481b5c5 @jmooring"
+      ]
+    },
+    {
+      "sample": "ollama",
+      "model": "qwen2.5:7b",
+      "time_s": 4.63,
+      "raw_bullets": 4,
+      "post_bullets": 4,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 1.0,
+      "expected": 4,
+      "raw_text": [
+        "Fixed the gemma4:12b floating point exception crash on x86, CUDA, Linux, and Windows systems.",
+        "ollama launch hermes-desktop now launches Hermes Desktop and can skip rebuilding when a packaged app is already installed.",
+        "Native Windows installation support via Hermes Power Shell installer added.",
+        "Cline CLI integration docs were added."
+      ],
+      "post_text": [
+        "Fixed the gemma4:12b floating point exception crash on x86, CUDA, Linux, and Windows systems.",
+        "ollama launch hermes-desktop now launches Hermes Desktop and can skip rebuilding when a packaged app is already installed.",
+        "Native Windows installation support via Hermes Power Shell installer added.",
+        "Cline CLI integration docs were added."
+      ]
+    },
+    {
+      "sample": "nixpkgs-2605",
+      "model": "qwen2.5:7b",
+      "time_s": 4.48,
+      "raw_bullets": 5,
+      "post_bullets": 5,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [
+        "Stage 1 (a.k.a. initrd) is now based on systemd by default.",
+        "The old scripted initrd implementation is deprecated.",
+        "The boot package has been removed.",
+        "Python 2 interpreter is now exclusively housed within the resholve package.",
+        "tranquil: ATProto PDS implementation."
+      ],
+      "post_text": [
+        "Stage 1 (a.k.a. initrd) is now based on systemd by default.",
+        "The old scripted initrd implementation is deprecated.",
+        "The boot package has been removed.",
+        "Python 2 interpreter is now exclusively housed within the resholve package.",
+        "tranquil: ATProto PDS implementation."
+      ]
+    }
+  ]
+}

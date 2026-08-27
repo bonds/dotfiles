@@ -1,0 +1,116 @@
+{
+  "timestamp": "2026-07-20 20:32",
+  "system": {
+    "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "machine": "arm64"
+  },
+  "prompt_style": "curate",
+  "reference_samples": [
+    "capstone",
+    "hugo",
+    "ollama",
+    "nixpkgs-2605"
+  ],
+  "config": {
+    "model": "qwen2.5:7b",
+    "timeout": 180,
+    "prompt_style": "curate"
+  },
+  "results": [
+    {
+      "sample": "capstone",
+      "model": "qwen2.5:7b",
+      "time_s": 12.34,
+      "raw_bullets": 2,
+      "post_bullets": 2,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 1.0,
+      "expected": 2,
+      "raw_text": [
+        "Set correct version number in CS_VERSION_EXTRA.",
+        "Backports of CVE fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937"
+      ],
+      "post_text": [
+        "Set correct version number in CS_VERSION_EXTRA.",
+        "Backports of CVE fixes and #2935 by @Rot127 in https://github.com/capstone-engine/capstone/pull/2937"
+      ]
+    },
+    {
+      "sample": "hugo",
+      "model": "qwen2.5:7b",
+      "time_s": 12.36,
+      "raw_bullets": 5,
+      "post_bullets": 5,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [
+        "modules/npm: Fix false stale warning after npm pack.",
+        "tpl/collections: Make dict return nil when no values are provided.",
+        "tpl/time: Fix locale-specific month abbreviations.",
+        "modules/npm: Fix false stale warning after npm pack.",
+        "tpl/collections: Make dict return nil when no values are provided."
+      ],
+      "post_text": [
+        "modules/npm: Fix false stale warning after npm pack.",
+        "tpl/collections: Make dict return nil when no values are provided.",
+        "tpl/time: Fix locale-specific month abbreviations.",
+        "modules/npm: Fix false stale warning after npm pack.",
+        "tpl/collections: Make dict return nil when no values are provided."
+      ]
+    },
+    {
+      "sample": "ollama",
+      "model": "qwen2.5:7b",
+      "time_s": 13.28,
+      "raw_bullets": 4,
+      "post_bullets": 4,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 1.0,
+      "expected": 4,
+      "raw_text": [
+        "Fixed gemma4:12b floating point exception crash on x86, CUDA, Linux, and Windows systems.",
+        "ollama launch hermes-desktop now launches Hermes Desktop and can skip rebuilding when a packaged app is already installed.",
+        "Native Windows installation support via Hermes Power Shell installer added.",
+        "Cline CLI integration docs were added."
+      ],
+      "post_text": [
+        "Fixed gemma4:12b floating point exception crash on x86, CUDA, Linux, and Windows systems.",
+        "ollama launch hermes-desktop now launches Hermes Desktop and can skip rebuilding when a packaged app is already installed.",
+        "Native Windows installation support via Hermes Power Shell installer added.",
+        "Cline CLI integration docs were added."
+      ]
+    },
+    {
+      "sample": "nixpkgs-2605",
+      "model": "qwen2.5:7b",
+      "time_s": 14.85,
+      "raw_bullets": 6,
+      "post_bullets": 6,
+      "raw_merges": 1,
+      "post_merges": 1,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [
+        "tranquil: ATProto PDS implementation.",
+        "flap: BGP flapping event detection.",
+        "Stage 1 (a.k.a. initrd) is now based on systemd by default.",
+        "The old scripted initrd implementation is deprecated.",
+        "Python 2 interpreter is now exclusively housed within the resholve package.",
+        "boot package has been removed."
+      ],
+      "post_text": [
+        "tranquil: ATProto PDS implementation.",
+        "flap: BGP flapping event detection.",
+        "Stage 1 (a.k.a. initrd) is now based on systemd by default.",
+        "The old scripted initrd implementation is deprecated.",
+        "Python 2 interpreter is now exclusively housed within the resholve package.",
+        "boot package has been removed."
+      ]
+    }
+  ]
+}

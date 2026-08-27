@@ -1,0 +1,74 @@
+{
+  "timestamp": "2026-07-20 20:23",
+  "system": {
+    "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "machine": "arm64"
+  },
+  "prompt_style": "curate",
+  "reference_samples": [
+    "capstone",
+    "hugo",
+    "ollama",
+    "nixpkgs-2605"
+  ],
+  "config": {
+    "model": "qwen2.5:7b",
+    "timeout": 180,
+    "prompt_style": "curate"
+  },
+  "results": [
+    {
+      "sample": "capstone",
+      "model": "qwen2.5:7b",
+      "time_s": 2.06,
+      "raw_bullets": 0,
+      "post_bullets": 0,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 0.0,
+      "expected": 2,
+      "raw_text": [],
+      "post_text": []
+    },
+    {
+      "sample": "hugo",
+      "model": "qwen2.5:7b",
+      "time_s": 2.03,
+      "raw_bullets": 0,
+      "post_bullets": 0,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [],
+      "post_text": []
+    },
+    {
+      "sample": "ollama",
+      "model": "qwen2.5:7b",
+      "time_s": 2.02,
+      "raw_bullets": 0,
+      "post_bullets": 0,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 0.0,
+      "expected": 4,
+      "raw_text": [],
+      "post_text": []
+    },
+    {
+      "sample": "nixpkgs-2605",
+      "model": "qwen2.5:7b",
+      "time_s": 2.02,
+      "raw_bullets": 0,
+      "post_bullets": 0,
+      "raw_merges": 0,
+      "post_merges": 0,
+      "quality": 0.0,
+      "expected": 3,
+      "raw_text": [],
+      "post_text": []
+    }
+  ]
+}
