@@ -338,7 +338,7 @@ async def main():
             metas[i] = (desc, cl_url)
             update(advance=1, desc=c.name)
 
-        sem = asyncio.Semaphore(4)
+        sem = asyncio.Semaphore(1)
 
         async def run(c: PackageChange, cl_url: str | None, idx: int) -> tuple[int, list[str] | None, str | None]:
             async with sem:

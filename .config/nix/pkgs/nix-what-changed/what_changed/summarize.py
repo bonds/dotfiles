@@ -170,7 +170,7 @@ async def _call_ollama(prompt: str, cfg: Config) -> str | None:
         "model": cfg.model,
         "prompt": prompt,
         "stream": False,
-        "options": {"num_predict": 512},
+        "options": {"num_predict": 128},
     })
     url = f"{cfg.host}/api/generate"
     last_err = ""
@@ -202,7 +202,7 @@ async def _call_openai(prompt: str, cfg: Config) -> str | None:
     data = json.dumps({
         "model": cfg.model,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 512,
+        "max_tokens": 128,
     })
     host = cfg.host.rstrip("/")
     url = f"{host}/chat/completions"
