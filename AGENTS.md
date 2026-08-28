@@ -26,6 +26,25 @@ alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
 `config add`, `config commit`, `config push`, `config log`, etc.  Only the
 alias changes; the subcommands are the same git you already know.
 
+> **⚠️ `config` is a fish-ONLY alias.** It does not exist in bash/zsh/sh, and it
+> is **not** available in Hermes' `terminal` tool or any non-fish shell; there
+> it errors with `config: command not found` (and, worse, a script invoking it
+> can silently no-op, as with `nr`). From any shell use the full invocation
+> instead:
+>
+> ```bash
+> # always `cd ~` first so relative paths resolve
+> cd ~ && git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME status
+> git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME add <path>
+> git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME commit -m "..."
+> git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME push origin main
+> git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME push sophrosyne main
+> ```
+>
+> Every `config` example below works with this `git --git-dir=... --work-tree=...`
+> prefix substituted for `config`. (Prefer `cd ~` first; relative paths in the
+> dotfiles worktree otherwise fail to resolve.)
+
 **To see tracked files:** `config ls-files`
 **To add new files to tracking:** `config add <path>` (the bare repo config
 hides untracked files from status, so `git add` won't accidentally stage
