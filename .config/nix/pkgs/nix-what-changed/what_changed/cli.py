@@ -98,8 +98,8 @@ async def _resolve_or_guess(pkg: str, new_ver: str, info: dict, cfg: config.Conf
     cached_at = int(info.get("guessed_at") or 0) if use_cache else 0
     fresh = (now - cached_at) < cache.GUESS_TTL
 
-    # Fresh cached URL: verify it still resolves before trusting it.
-    if cached_url and fresh:
+    # Fresh cached URL: verify it's still valid for this version and resolves.
+    if cached_url and fresh and urls.cached_url_matches_version(cached_url, new_ver):
         if await urls._http_ok(cached_url, cfg):
             return cached_url, info
         _v(f"{pkg}: cached changelog URL dead ({cached_url}), re-guessing")
@@ -108,6 +108,15 @@ async def _resolve_or_guess(pkg: str, new_ver: str, info: dict, cfg: config.Conf
         info = dict(info)
         info.pop("guessed_url", None)
         info.pop("guessed_at", None)
+    elif cached_url and not urls.cached_url_matches_version(cached_url, new_ver):
+        # A version-keyed resolver URL (resolve_version query) cached for an
+        # older version; re-guess so a double bump within the TTL isn't served
+        # the previous release's notes.
+        _v(f"{pkg}: cached changelog URL is for an older version, re-guessing")
+        info = dict(info)
+        info.pop("guessed_url", None)
+        info.pop("guessed_at", None)
+        cached_url = None
 
     # A fresh cached "no changelog found" result: don't keep searching each run.
     # But if the package now has a known URL mapping (or a guesser could find
@@ -117,7 +126,7 @@ async def _resolve_or_guess(pkg: str, new_ver: str, info: dict, cfg: config.Conf
         return None, info
 
     # Otherwise (no cache, stale, or dead) -> guess (or re-guess) and cache.
-    url = await urls.guess_url(pkg, new_ver, cfg)
+    url = await urls.guess_url(pkg, new_ver, cfg, info)
     if use_cache:
         info = dict(info)
         info["guessed_url"] = url

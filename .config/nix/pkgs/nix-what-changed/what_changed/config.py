@@ -20,6 +20,9 @@ class Config:
     cache_dir: str = "~/.cache/what-changed"
     gh_timeout: int = 15
     http_timeout: int = 8
+    # Path to the config flake whose flake.lock is used to resolve owner/repo for
+    # packages that are flake inputs (not nixpkgs packages).
+    flake_path: str = "~/.config/nix"
 
 
 def load(path: str | None = None) -> Config:

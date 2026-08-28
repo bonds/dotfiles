@@ -61,6 +61,50 @@ async def _guess_from_name(pkg: str, new_ver: str, cfg: Config) -> str | None:
     return None
 
 
+def _owner_repo_from_src_url(src_url: str | None) -> tuple[str, str] | None:
+    """Pull (owner, repo) out of a GitHub source tarball URL, e.g.
+    https://github.com/htop-dev/htop/archive/refs/tags/3.5.1.tar.gz -> ('htop-dev','htop')."""
+    if not src_url:
+        return None
+    m = re.match(r"^https://github\.com/([^/]+)/([^/]+)/", src_url)
+    if not m:
+        return None
+    return m.group(1), m.group(2)
+
+
+def cached_url_matches_version(url: str | None, new_ver: str) -> bool:
+    """True when a cached changelog URL is still valid for *new_ver*.
+
+    Plain URLs (release tags, CHANGELOG blobs) are fine to reuse regardless of
+    version. Only the API resolver URL carries its desired version in the query
+    string, so it must match — otherwise a package bumped twice within the guess
+    TTL would still be served the older release's notes."""
+    if not url:
+        return True
+    m = re.search(r"resolve_version=([^&]+)", url)
+    if not m:
+        return True
+    from urllib.parse import unquote
+
+    return unquote(m.group(1)) == new_ver
+
+
+async def guess_from_repo(pkg: str, owner: str, repo: str, new_ver: str, cfg: Config) -> str | None:
+    """Best-effort changelog URL for a package whose upstream is GitHub.
+
+    Tries the conventional v{ver}/{ver}/{pkg}-{ver} release tags first, then
+    falls back to the releases API resolver (handles projects that tag releases
+    by date or otherwise not by the package version, e.g. hermes-agent). The
+    fallback always returns a URL; fetch_changelog yields None if no release
+    title actually names *new_ver*."""
+    gh_url = f"https://github.com/{owner}/{repo}"
+    for tag in (f"v{new_ver}", new_ver, f"{pkg}-{new_ver}"):
+        url = f"{gh_url}/releases/tag/{tag}"
+        if await _http_ok(url, cfg):
+            return url
+    return f"{gh_url}/releases?per_page=50&resolve_version={new_ver}"
+
+
 KNOWN_URLS: dict[str, Callable[[str], str | None]] = {}
 
 
@@ -248,7 +292,23 @@ async def patch_release_tag(url: str, new_ver: str, cfg: Config) -> str:
     return url
 
 
-async def guess_url(pkg: str, new_ver: str, cfg: Config) -> str | None:
+async def guess_url(pkg: str, new_ver: str, cfg: Config, info: dict[str, str | None] | None = None) -> str | None:
+    """Resolve a changelog URL for *pkg* based on the Nix package facts we have.
+
+    Precedence:
+      1. Custom KNOWN_URLS mapping (hardcoded special cases).
+      2. nixos-system- special case.
+      3. The package's real source URL (src.url) — unambiguously identifies the
+         upstream GitHub owner/repo, straight from the fetcher.
+      4. flake.lock — a package that is a flake input (not in nixpkgs) maps by
+         name to its locked github input.
+      5. meta.homepage.
+      6. Best-effort name-guess (last resort).
+    *info* may carry pre-fetched src_url/homepage from a metadata batch; when
+    absent, each is evaluated on demand.
+    """
+    info = info or {}
+
     if pkg in KNOWN_URLS:
         url = KNOWN_URLS[pkg](new_ver)
         if url:
@@ -263,7 +323,15 @@ async def guess_url(pkg: str, new_ver: str, cfg: Config) -> str | None:
                 f"nixos/doc/manual/release-notes/rl-{ver_no_dot}.section.md"
             )
 
-    homepage = metadata.get_homepage(pkg)
+    owner_repo = _owner_repo_from_src_url(info.get("src_url") or metadata.get_src_url(pkg))
+    if not owner_repo:
+        owner_repo = metadata.get_flake_repo(pkg, cfg.flake_path)
+    if owner_repo:
+        url = await guess_from_repo(pkg, owner_repo[0], owner_repo[1], new_ver, cfg)
+        if url:
+            return url
+
+    homepage = info.get("homepage") or metadata.get_homepage(pkg)
     if homepage:
         url = await _guess_from_homepage(pkg, homepage, new_ver, cfg)
         if url:

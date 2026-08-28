@@ -97,3 +97,46 @@ def test_custom_package_urls():
     assert urls.KNOWN_URLS["neocode"]("0.8.1") == "https://github.com/bonds/NeoCode/releases/tag/v0.8.1"
     assert urls.KNOWN_URLS["opencode"]("1.17.14") == "https://github.com/anomalyco/opencode/releases/tag/v1.17.14"
     assert urls.KNOWN_URLS["opencode-desktop"]("1.17.14") == "https://github.com/anomalyco/opencode/releases/tag/v1.17.14"
+
+
+def test_owner_repo_from_src_url():
+    assert urls._owner_repo_from_src_url(
+        "https://github.com/htop-dev/htop/archive/refs/tags/3.5.1.tar.gz"
+    ) == ("htop-dev", "htop")
+    assert urls._owner_repo_from_src_url(
+        "https://github.com/moby/moby/archive/refs/tags/v29.7.2.tar.gz"
+    ) == ("moby", "moby")
+    # non-GitHub sources (gitlab, tarball mirrors, etc.) yield nothing
+    assert urls._owner_repo_from_src_url("https://gitlab.gnome.org/GNOME/gimp/-/archive/master.tar.gz") is None
+    assert urls._owner_repo_from_src_url("https://example.com/src.tar.gz") is None
+    assert urls._owner_repo_from_src_url(None) is None
+    assert urls._owner_repo_from_src_url("") is None
+
+
+def test_cached_url_matches_version():
+    # Plain URLs (release tags / blobs) don't key on version -> always reusable.
+    assert urls.cached_url_matches_version("https://github.com/moby/moby/releases/tag/docker-v29.7.2", "1.0") is True
+    assert urls.cached_url_matches_version(None, "1.0") is True
+    # Resolver URL keys on its resolve_version query.
+    api = "https://api.github.com/repos/NousResearch/hermes-agent/releases?per_page=50&resolve_version=0.20.6"
+    assert urls.cached_url_matches_version(api, "0.20.6") is True
+    assert urls.cached_url_matches_version(api, "0.20.7") is False
+
+
+def _run(coro):
+    import asyncio
+
+    return asyncio.run(coro)
+
+
+def test_guess_from_repo_falls_back_to_api_resolver(monkeypatch):
+    # No conventional v{ver}/{ver} tag exists -> the API title-resolver is used.
+    async def no_ok(*a, **k):
+        return False
+
+    from what_changed.config import Config
+
+    monkeypatch.setattr(urls, "_http_ok", no_ok)
+    cfg = Config()
+    url = _run(urls.guess_from_repo("hermes-agent", "NousResearch", "hermes-agent", "0.20.6", cfg))
+    assert url == "https://github.com/NousResearch/hermes-agent/releases?per_page=50&resolve_version=0.20.6"
