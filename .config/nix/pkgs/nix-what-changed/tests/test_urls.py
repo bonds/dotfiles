@@ -46,9 +46,6 @@ def test_known_urls_present():
     assert "obsidian" in urls.KNOWN_URLS
     assert "discord" in urls.KNOWN_URLS
     assert "dwarf-fortress" in urls.KNOWN_URLS
-    assert "neocode" in urls.KNOWN_URLS
-    assert "opencode" in urls.KNOWN_URLS
-    assert "opencode-desktop" in urls.KNOWN_URLS
     assert "osaurus" in urls.KNOWN_URLS
     assert "oxillama" in urls.KNOWN_URLS
     assert "zen-browser" in urls.KNOWN_URLS
@@ -58,7 +55,6 @@ def test_known_urls_present():
     assert "libssh" in urls.KNOWN_URLS
     assert "libmpg123" in urls.KNOWN_URLS
     assert "docker" in urls.KNOWN_URLS
-    assert "hermes-agent" in urls.KNOWN_URLS
 
 
 def test_known_url_tag_formats():
@@ -72,10 +68,6 @@ def test_known_url_tag_formats():
     assert urls.KNOWN_URLS["libmpg123"]("1.33.7") == "https://github.com/libsdl-org/mpg123/blob/master/NEWS"
     assert urls.KNOWN_URLS["docker"]("29.7.2") == "https://github.com/moby/moby/releases/tag/docker-v29.7.2"
     assert urls.KNOWN_URLS["docker"]("26.1.4") == "https://github.com/moby/moby/releases/tag/docker-v26.1.4"
-    assert (
-        urls.KNOWN_URLS["hermes-agent"]("0.20.6")
-        == "https://api.github.com/repos/NousResearch/hermes-agent/releases?per_page=50&resolve_version=0.20.6"
-    )
 
 
 def test_known_url_precedence():
@@ -94,9 +86,7 @@ def test_github_release_url():
 
 
 def test_custom_package_urls():
-    assert urls.KNOWN_URLS["neocode"]("0.8.1") == "https://github.com/bonds/NeoCode/releases/tag/v0.8.1"
-    assert urls.KNOWN_URLS["opencode"]("1.17.14") == "https://github.com/anomalyco/opencode/releases/tag/v1.17.14"
-    assert urls.KNOWN_URLS["opencode-desktop"]("1.17.14") == "https://github.com/anomalyco/opencode/releases/tag/v1.17.14"
+    assert urls.KNOWN_URLS["osaurus"]("0.22.22") == "https://github.com/osaurus-ai/osaurus/releases/tag/0.22.22"
 
 
 def test_owner_repo_from_src_url():
@@ -139,4 +129,4 @@ def test_guess_from_repo_falls_back_to_api_resolver(monkeypatch):
     monkeypatch.setattr(urls, "_http_ok", no_ok)
     cfg = Config()
     url = _run(urls.guess_from_repo("hermes-agent", "NousResearch", "hermes-agent", "0.20.6", cfg))
-    assert url == "https://github.com/NousResearch/hermes-agent/releases?per_page=50&resolve_version=0.20.6"
+    assert url == "https://api.github.com/repos/NousResearch/hermes-agent/releases?per_page=50&resolve_version=0.20.6"

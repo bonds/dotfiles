@@ -93,16 +93,18 @@ async def guess_from_repo(pkg: str, owner: str, repo: str, new_ver: str, cfg: Co
     """Best-effort changelog URL for a package whose upstream is GitHub.
 
     Tries the conventional v{ver}/{ver}/{pkg}-{ver} release tags first, then
-    falls back to the releases API resolver (handles projects that tag releases
-    by date or otherwise not by the package version, e.g. hermes-agent). The
-    fallback always returns a URL; fetch_changelog yields None if no release
-    title actually names *new_ver*."""
+    falls back to the GitHub releases API URL carrying the desired version in a
+    resolve_version query. fetch_changelog resolves that API form by picking the
+    release body whose title names the version, which handles projects that tag
+    releases by date or otherwise not by the package version (e.g. hermes-agent).
+    The API form is preferred over a github.com HTML scrape so the change log is
+    the clean release body, not the rendered releases page."""
     gh_url = f"https://github.com/{owner}/{repo}"
     for tag in (f"v{new_ver}", new_ver, f"{pkg}-{new_ver}"):
         url = f"{gh_url}/releases/tag/{tag}"
         if await _http_ok(url, cfg):
             return url
-    return f"{gh_url}/releases?per_page=50&resolve_version={new_ver}"
+    return f"https://api.github.com/repos/{owner}/{repo}/releases?per_page=50&resolve_version={new_ver}"
 
 
 KNOWN_URLS: dict[str, Callable[[str], str | None]] = {}
@@ -160,17 +162,6 @@ def _make_clamav_url(new_ver: str) -> str | None:
 KNOWN_URLS["clamav"] = _make_clamav_url
 
 
-def _make_hermes_agent_url(new_ver: str) -> str:
-    """Hermes Agent GitHub releases are tagged by DATE (e.g. v2026.8.27), NOT by
-    the package version (e.g. 0.20.6), so a derived v{ver} release tag 404s.
-    Point at the GitHub releases API and resolve the release whose title names
-    this version (see fetch_changelog's api.github.com/releases handling)."""
-    return f"https://api.github.com/repos/NousResearch/hermes-agent/releases?per_page=50&resolve_version={new_ver}"
-
-
-KNOWN_URLS["hermes-agent"] = _make_hermes_agent_url
-
-
 def _make_github_release_url(owner: str, repo: str):
     """Build a URL maker that points to GitHub releases tagged v{version}."""
     def make(new_ver: str) -> str:
@@ -194,9 +185,6 @@ def _make_moby_docker_url(new_ver: str) -> str | None:
 KNOWN_URLS["docker"] = _make_moby_docker_url
 
 
-KNOWN_URLS["neocode"] = _make_github_release_url("bonds", "NeoCode")
-KNOWN_URLS["opencode"] = _make_github_release_url("anomalyco", "opencode")
-KNOWN_URLS["opencode-desktop"] = _make_github_release_url("anomalyco", "opencode")
 KNOWN_URLS["osaurus"] = _make_github_release_url_nov("osaurus-ai", "osaurus")
 KNOWN_URLS["oxillama"] = _make_github_release_url("cool-japan", "oxillama")
 KNOWN_URLS["zen-browser"] = _make_github_release_url_nov("zen-browser", "desktop")
