@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import subprocess
 from html.parser import HTMLParser
@@ -102,6 +103,32 @@ async def _fetch_github_release(owner: str, repo: str, tag: str, cfg: Config) ->
     return None
 
 
+def _resolve_release_body(json_text: str | None, want: str) -> str | None:
+    """From a GitHub releases API JSON response, return the body of the release
+    whose title names `want` (e.g. version '0.20.6' matches 'v0.20.6' in
+    'Hermes Agent v0.20.6 (v2026.8.27)'). Returns None when nothing matches.
+
+    Used for packages whose release tags do NOT equal their package version
+    (e.g. hermes-agent tags releases by date: v2026.8.27). The regex's negative
+    lookahead keeps a want of '0.20.6' from matching a longer 'v0.20.60'."""
+    if not json_text or not want:
+        return None
+    try:
+        releases = json.loads(json_text)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(releases, list):
+        return None
+    pat = re.compile(re.escape(f"v{want}") + r"(?![0-9.])")
+    for rel in releases:
+        name = rel.get("name") or ""
+        if pat.search(name):
+            body = (rel.get("body") or "").strip()
+            if body:
+                return body
+    return None
+
+
 async def fetch_changelog(url: str, cfg: Config) -> str | None:
     m = re.match(r"^https://github\.com/([^/]+)/([^/]+)/blob/([^/]+)/(.+)", url)
     if m:
@@ -111,6 +138,19 @@ async def fetch_changelog(url: str, cfg: Config) -> str | None:
     m = re.match(r"^https://github\.com/([^/]+)/([^/]+)/releases/tag/(.+)", url)
     if m:
         return await _fetch_github_release(m.group(1), m.group(2), m.group(3), cfg)
+
+    # GitHub releases API (resolve_version query): a package whose release tags
+    # don't match its version (e.g. hermes-agent) pins the API list URL + the
+    # desired version; pick the release body whose title names that version.
+    m = re.search(r"^https://api\.github\.com/repos/[^/]+/[^/]+/releases\?", url)
+    if m:
+        raw = await _fetch(url, cfg)
+        if not raw:
+            return None
+        from urllib.parse import parse_qs, unquote, urlparse
+
+        want = unquote(parse_qs(urlparse(url).query).get("resolve_version", [""])[0])
+        return _resolve_release_body(raw, want)
 
     html = await _fetch(url, cfg)
     if not html:

@@ -58,6 +58,7 @@ def test_known_urls_present():
     assert "libssh" in urls.KNOWN_URLS
     assert "libmpg123" in urls.KNOWN_URLS
     assert "docker" in urls.KNOWN_URLS
+    assert "hermes-agent" in urls.KNOWN_URLS
 
 
 def test_known_url_tag_formats():
@@ -71,6 +72,10 @@ def test_known_url_tag_formats():
     assert urls.KNOWN_URLS["libmpg123"]("1.33.7") == "https://github.com/libsdl-org/mpg123/blob/master/NEWS"
     assert urls.KNOWN_URLS["docker"]("29.7.2") == "https://github.com/moby/moby/releases/tag/docker-v29.7.2"
     assert urls.KNOWN_URLS["docker"]("26.1.4") == "https://github.com/moby/moby/releases/tag/docker-v26.1.4"
+    assert (
+        urls.KNOWN_URLS["hermes-agent"]("0.20.6")
+        == "https://api.github.com/repos/NousResearch/hermes-agent/releases?per_page=50&resolve_version=0.20.6"
+    )
 
 
 def test_known_url_precedence():

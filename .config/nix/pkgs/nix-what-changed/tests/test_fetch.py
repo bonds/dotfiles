@@ -1,4 +1,6 @@
-from what_changed.fetch import _extract_text, _HTMLTextExtractor
+import json
+
+from what_changed.fetch import _extract_text, _HTMLTextExtractor, _resolve_release_body
 
 
 def test_extract_text_plain():
@@ -43,7 +45,7 @@ def test_extract_text_handles_mw_parser_output():
 
 
 def test_extract_text_nested_skip():
-    html = '<html><body><header><nav><p>skip</p></nav></header><p>keep</p></body></html>'
+    html = "<html><body><header><nav><p>skip</p></nav></header><p>keep</p></body></html>"
     result = _extract_text(html)
     assert result is not None
     assert "keep" in result
@@ -68,3 +70,46 @@ def test_html_extractor_newlines():
     parser.handle_endtag("p")
     result = "".join(parser.text)
     assert "text" in result
+
+
+# --- hermes-agent: resolve a release body when the git tag != package version ---
+
+BODY = "Hermes Agent v0.20.6 (v2026.8.27)\n\nPatch release. The summary."
+
+
+def _releases():
+    return [
+        {"tag_name": "v2026.8.27", "name": "Hermes Agent v0.20.6 (v2026.8.27)", "body": BODY},
+        {"tag_name": "v2026.8.19", "name": "Hermes Agent v0.20.5 (v2026.8.19)", "body": "older"},
+    ]
+
+
+def test_resolve_release_body_matches_version():
+    assert _resolve_release_body(json.dumps(_releases()), "0.20.6") == BODY
+
+
+def test_resolve_release_body_returns_none_when_no_match():
+    assert _resolve_release_body(json.dumps(_releases()), "0.99.0") is None
+
+
+def test_resolve_release_body_does_not_partial_match_longer_versions():
+    # A 0.20.6 ask must not match a hypothetical release titled v0.20.60.
+    text = json.dumps([{"tag_name": "x", "name": "App v0.20.60 (x)", "body": "wrong"}])
+    assert _resolve_release_body(text, "0.20.6") is None
+
+
+def test_resolve_release_body_does_not_fall_through_to_wrong_version():
+    # An empty body on the matched release must NOT fall through to a release
+    # naming a DIFFERENT version (0.20.5 is not 0.20.6).
+    releases = [
+        {"tag_name": "v2026.8.27", "name": "App v0.20.6 (x)", "body": "  "},
+        {"tag_name": "v2026.8.19", "name": "App v0.20.5 (x)", "body": "real"},
+    ]
+    assert _resolve_release_body(json.dumps(releases), "0.20.6") is None
+
+
+def test_resolve_release_body_handles_bad_input():
+    assert _resolve_release_body("not json", "0.20.6") is None
+    assert _resolve_release_body("{}", "0.20.6") is None
+    assert _resolve_release_body(None, "0.20.6") is None
+    assert _resolve_release_body(json.dumps(_releases()), None) is None

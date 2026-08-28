@@ -116,6 +116,17 @@ def _make_clamav_url(new_ver: str) -> str | None:
 KNOWN_URLS["clamav"] = _make_clamav_url
 
 
+def _make_hermes_agent_url(new_ver: str) -> str:
+    """Hermes Agent GitHub releases are tagged by DATE (e.g. v2026.8.27), NOT by
+    the package version (e.g. 0.20.6), so a derived v{ver} release tag 404s.
+    Point at the GitHub releases API and resolve the release whose title names
+    this version (see fetch_changelog's api.github.com/releases handling)."""
+    return f"https://api.github.com/repos/NousResearch/hermes-agent/releases?per_page=50&resolve_version={new_ver}"
+
+
+KNOWN_URLS["hermes-agent"] = _make_hermes_agent_url
+
+
 def _make_github_release_url(owner: str, repo: str):
     """Build a URL maker that points to GitHub releases tagged v{version}."""
     def make(new_ver: str) -> str:
