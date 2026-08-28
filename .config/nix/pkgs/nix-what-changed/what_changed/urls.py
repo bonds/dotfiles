@@ -130,6 +130,15 @@ def _make_github_release_url_nov(owner: str, repo: str):
     return make
 
 
+def _make_moby_docker_url(new_ver: str) -> str | None:
+    """Docker Engine (Moby) releases use 'docker-v{ver}' tags on moby/moby
+    (docker/docker redirects to moby/moby)."""
+    return f"https://github.com/moby/moby/releases/tag/docker-v{new_ver}"
+
+
+KNOWN_URLS["docker"] = _make_moby_docker_url
+
+
 KNOWN_URLS["neocode"] = _make_github_release_url("bonds", "NeoCode")
 KNOWN_URLS["opencode"] = _make_github_release_url("anomalyco", "opencode")
 KNOWN_URLS["opencode-desktop"] = _make_github_release_url("anomalyco", "opencode")

@@ -57,6 +57,7 @@ def test_known_urls_present():
     assert "glib" in urls.KNOWN_URLS
     assert "libssh" in urls.KNOWN_URLS
     assert "libmpg123" in urls.KNOWN_URLS
+    assert "docker" in urls.KNOWN_URLS
 
 
 def test_known_url_tag_formats():
@@ -68,6 +69,8 @@ def test_known_url_tag_formats():
     assert urls.KNOWN_URLS["glib"]("2.88.3") == "https://gitlab.gnome.org/GNOME/glib/-/raw/main/NEWS"
     assert urls.KNOWN_URLS["libssh"]("0.12.2") == "https://github.com/libssh/libssh-mirror/blob/master/CHANGELOG"
     assert urls.KNOWN_URLS["libmpg123"]("1.33.7") == "https://github.com/libsdl-org/mpg123/blob/master/NEWS"
+    assert urls.KNOWN_URLS["docker"]("29.7.2") == "https://github.com/moby/moby/releases/tag/docker-v29.7.2"
+    assert urls.KNOWN_URLS["docker"]("26.1.4") == "https://github.com/moby/moby/releases/tag/docker-v26.1.4"
 
 
 def test_known_url_precedence():
