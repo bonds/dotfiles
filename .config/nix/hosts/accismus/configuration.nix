@@ -115,12 +115,14 @@ in {
   security.pam.services.sudo_local.touchIdAuth = true;
   security.pam.services.sudo_local.reattach = false;
 
-  # Passwordless sudo for scott on the rebuild tools — lets `nr` / nh darwin
-  # switch run unattended (no sudo password prompt). Mirrors the NOPASSWD
-  # pattern already granted to the same commands on sophrosyne via doas.
+  # Passwordless sudo for scott on the rebuild tool — lets `nr` run unattended
+  # (no sudo password prompt / no TouchID). Mirrors the NOPASSWD pattern on
+  # sophrosyne via doas. `nr` calls `sudo darwin-rebuild switch` directly
+  # (deliberately NOT nh: nh wraps elevated commands in `sudo env … <cmd>`,
+  # which cannot be scoped by sudoers to anything narrower than full root).
   # darwin-rebuild must run as root to update /nix/var/nix/profiles/system.
   security.sudo.extraConfig = ''
-    scott ALL = NOPASSWD: /run/current-system/sw/bin/darwin-rebuild, /run/current-system/sw/bin/nh
+    scott ALL = NOPASSWD: /run/current-system/sw/bin/darwin-rebuild
   '';
 
   age.identityPaths = ["/etc/age/identity"];

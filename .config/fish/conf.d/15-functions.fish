@@ -49,13 +49,36 @@ function nr
     set -l _nr_old_system
     set -l _nr_new_system
     set -l _nr_update no
+    set -l _nr_args
+    set -l _nr_inputs
+    set -l _nr_switch_ok 0
     if test "$_os" = darwin
         set _nr_old_system (command readlink -f /nix/var/nix/profiles/system 2>/dev/null)
     else
         set _nr_old_system (command readlink -f /run/current-system 2>/dev/null)
     end
-    if contains -- --update $argv
-        set _nr_update yes
+    # Peel off nr-specific flags. --update and -U/--update-input are handled
+    # here (update scripts + `nix flake update`); everything else is passed
+    # through to darwin-rebuild / nixos-rebuild.
+    set -l i 1
+    while test $i -le (count $argv)
+        switch "$argv[$i]"
+            case --update
+                set _nr_update yes
+            case -U --update-input
+                set -l _nr_input $argv[(math $i + 1)]
+                if test -z "$_nr_input"
+                    echo "nr: $argv[$i] requires an input name" >&2
+                    return 1
+                end
+                set -a _nr_inputs $_nr_input
+                set i (math $i + 1)
+            case '*'
+                set -a _nr_args $argv[$i]
+        end
+        set i (math $i + 1)
+    end
+    if test "$_nr_update" = yes
         if test "$_os" = darwin
             set -l _pwd $PWD
             cd $HOME/.config/nix
@@ -76,12 +99,48 @@ function nr
             cd $_pwd
         end
     end
-    if test "$_os" = darwin
-        nh darwin switch $HOME/.config/nix $argv
-    else
-        nh os switch $HOME/.config/nix $argv -e auto
+    # Refresh flake inputs as the invoking user (never as root, so flake.lock
+    # stays owned by scott), then switch with direct sudo/doas elevation.
+    if test "$_nr_update" = yes; or set -q _nr_inputs[1]
+        set -l _pwd $PWD
+        cd $HOME/.config/nix
+        if test "$_nr_update" = yes
+            nix flake update
+        else
+            nix flake update $_nr_inputs
+        end
+        cd $_pwd
     end
-    set -l _nr_switch_ok $status
+    # Split build from activation, each as its least-privileged user:
+    #   1. `nh build` — full nh/nix-output-monitor output (pretty bars,
+    #      eval/build) running as scott. NEVER as root: build hooks and
+    #      provider flags would all run privileged.
+    #   2. exact-path sudo/doas switch — same cached build, only the
+    #      profile-set + activation step elevates. Matches the scoped
+    #      NOPASSWD/noPass rules (nh can't be scoped safely: it wraps
+    #      elevated commands in `sudo env … <cmd>`).
+    # `darwin-rebuild`/`nixos-rebuild` re-use nh's cached build, so the
+    # switch phase is near-instant.
+    if test "$_os" = darwin
+        nh darwin build $HOME/.config/nix $_nr_args
+        set _nr_build_ok $status
+        if test $_nr_build_ok -eq 0
+            sudo /run/current-system/sw/bin/darwin-rebuild switch --flake $HOME/.config/nix $_nr_args
+            set _nr_switch_ok $status
+        else
+            # Build failed — treat as a failed switch (skips commit/push)
+            set _nr_switch_ok 1
+        end
+    else
+        nh os build $HOME/.config/nix $_nr_args
+        set _nr_build_ok $status
+        if test $_nr_build_ok -eq 0
+            doas /run/current-system/sw/bin/nixos-rebuild switch --flake $HOME/.config/nix $_nr_args
+            set _nr_switch_ok $status
+        else
+            set _nr_switch_ok 1
+        end
+    end
     if test "$_nr_update" = yes; and test "$_nr_switch_ok" -eq 0
         # Commit the version bumps the update scripts + nh generated, then push.
         # Use home-absolute pathspecs so this block is cwd-independent
