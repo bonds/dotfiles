@@ -152,7 +152,7 @@ in {
     tools = mkOption {
       type = types.listOf types.str;
       default = [];
-      description = "Built-in tools to enable (e.g., exec_shell_command, read_file, get_datetime). Use with caution — exec_shell_command runs arbitrary commands.";
+      description = "Built-in tools to enable (e.g., exec_shell_command, read_file, get_info). Use with caution — exec_shell_command runs arbitrary commands.";
     };
 
     user = mkOption {

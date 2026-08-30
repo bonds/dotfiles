@@ -192,7 +192,7 @@ in {
     package = pkgs-unstable.llama-cpp; # 10133 — fixes router proxy500 + connection timeout
     host = "0.0.0.0";
     port = 8080;
-    tools = ["read_file" "get_datetime"];
+    tools = ["read_file" "get_info"];
     extraArgs = ["--webui-mcp-proxy"];
     router = {
       enable = true;
