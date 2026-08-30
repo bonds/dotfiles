@@ -21,7 +21,10 @@
         '';
 
         deadnix-check = mkCheck "deadnix-check" [pkgs.deadnix] ''
-          deadnix --fail . 2>&1 || (echo "Run: deadnix -w ." && exit 1)
+          # -L: don't check lambda attrset pattern names (breaks nixpkgs
+          # callPackage name-resolution, e.g. transcribe-cpp explicit arg).
+          # Unused *let bindings* are still checked.
+          deadnix -L --fail . 2>&1 || (echo "Run: deadnix -w ." && exit 1)
         '';
 
         statix-check = mkCheck "statix-check" [pkgs.statix] ''
