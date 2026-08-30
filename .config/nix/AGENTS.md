@@ -22,15 +22,20 @@ Accismus dotfiles use a **bare repo at `~/.config/dotfiles/`** with **worktree `
 
 ## Commands
 
-**Always use `nr` for rebuilds** when you're at a fish shell (interactive use). The `nr` fish function (in `~/.config/fish/config.fish`) wraps `nh` and auto-detects the host to pick the right flake target. Do not recommend raw `nixos-rebuild` or `darwin-rebuild` commands to a person unless `nr` is broken.
+**Always use `nr` for rebuilds.** The `nr` fish function (in `~/.config/fish/conf.d/15-functions.fish`) wraps `nh`, auto-detects the host to pick the right flake target, and handles the split build/activation (nh as user, then exact-path sudo/doas switch). Do not recommend raw `nixos-rebuild` or `darwin-rebuild` commands unless `nr` is broken.
 
-**Agents / non-fish shells: do NOT call `nr`.** `nr` is fish-only; from bash it fails with `command not found` but still exits 0 with empty output and creates **no** new generation (silent no-op — easy to mistake for success). An agent (e.g. Hermes) running a rebuild must call the underlying command directly:
+`nr` is fish-only — from bash it fails with `command not found` but can still exit 0 with empty output and creates **no** new generation (silent no-op — easy to mistake for success). From any non-fish shell (agents, scripts, CI) run it through fish:
 
 ```bash
-# accismus
-nh darwin switch ~/.config/nix
-# sophrosyne
-nh os switch ~/.config/nix -e auto
+# Agent / script use (non-interactive fish → the tmux wrapper kicks in, so
+# the build runs detached in tmux session 'nr-build'). Don't trust the exit
+# code alone; poll the pane for completion:
+fish -c 'nr'
+tmux capture-pane -e -t nr-build -p | tail -30
+
+# When the agent must wait for the result: force interactive status so nr
+# runs in the foreground and propagates the real exit code:
+fish -i -c 'nr'
 ```
 
 Verify the switch actually landed, don't trust the exit code alone. Confirm the symlink advanced and the new binary/version is present:
