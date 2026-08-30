@@ -24,7 +24,6 @@
     options = lib.mkDefault "--delete-older-than 7d";
   };
   nix.channel.enable = lib.mkDefault false;
-  nixpkgs.config.allowUnfree = lib.mkDefault true;
 
   nix.registry = {
     nixpkgs = lib.mkDefault {flake = inputs.nixpkgs;};

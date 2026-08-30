@@ -25,6 +25,11 @@ in {
     ../../modules/llamacpp-server.nix
   ];
 
+  # allowUnfree moved here from modules/nix.nix (shared) — see that module's
+  # history: metanoia sets nixpkgs.pkgs externally and the NixOS nixpkgs module
+  # asserts nixpkgs.config is empty when pkgs is set.
+  nixpkgs.config.allowUnfree = true;
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.systemd-boot.configurationLimit = 10;
   boot.loader.efi.canTouchEfiVariables = true;

@@ -134,6 +134,11 @@ in {
   # The platform the configuration will be used on.
   nixpkgs.hostPlatform = "aarch64-darwin";
 
+  # allowUnfree moved here from modules/nix.nix (shared) — metanoia sets
+  # nixpkgs.pkgs externally and the NixOS nixpkgs module asserts nixpkgs.config
+  # is empty when pkgs is set.
+  nixpkgs.config.allowUnfree = true;
+
   networking.hostName = "accismus";
   networking.computerName = "Scott's MacBook Air";
 
