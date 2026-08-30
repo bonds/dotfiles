@@ -1,8 +1,4 @@
-{
-  lib,
-  pkgs,
-  ...
-}: {
+{pkgs, ...}: {
   programs.appimage = {
     enable = true;
     binfmt = true;

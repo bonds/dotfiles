@@ -4,8 +4,6 @@
   pkgs-unstable,
   ...
 }: let
-  userHome = import ../../lib/user-home.nix pkgs;
-
   mcpSearchServer = pkgs.writers.writePython3Bin "mcp-searxng-search" {
     libraries = with pkgs.python3Packages; [mcp httpx uvicorn];
     flakeIgnore = ["E501" "E402" "W503"];

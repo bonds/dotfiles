@@ -2,7 +2,6 @@
   lib,
   python3,
   fetchFromGitHub,
-  transcribe-cpp,
 }:
 python3.pkgs.buildPythonPackage {
   pname = "transcribe-cpp-python";

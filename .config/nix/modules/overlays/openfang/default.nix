@@ -4,7 +4,7 @@
 # Distributed as a prebuilt `OpenFang_aarch64.app.tar.gz` from GitHub releases
 # (not in nixpkgs — project is pre-1.0 and shipping fast, so we pin to a release
 # and bump via `nr --update` + update.sh, matching the other binary overlays).
-nixpkgs: final: prev: {
+_nixpkgs: final: prev: {
   openfang-desktop = final.mkDarwinPackage rec {
     pname = "openfang-desktop";
     version = "0.6.9";

@@ -1,7 +1,6 @@
 {
   config,
   pkgs,
-  lib,
   ...
 }: let
   rsync-tmbackup = pkgs.callPackage ../../pkgs/rsync-tmbackup {};

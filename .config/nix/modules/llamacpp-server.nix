@@ -4,7 +4,7 @@
   pkgs,
   ...
 }: let
-  inherit (lib) mkOption mkIf mkEnableOption mkDefault types literalExpression;
+  inherit (lib) mkOption mkEnableOption types literalExpression;
   cfg = config.services.llamacpp-server;
   isRouter = cfg.router.enable;
 

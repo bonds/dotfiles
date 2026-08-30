@@ -15,7 +15,7 @@
 # This keeps `doInstallCheck = true` and only disables the meson-level test
 # timeout for the installcheck suite, so the tests still run. pytest-timeout
 # inside the harness still catches genuinely-hung tests individually.
-final: prev: {
+_final: prev: {
   lixPackageSets =
     prev.lixPackageSets
     // {

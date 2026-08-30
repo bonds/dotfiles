@@ -2,7 +2,6 @@
   pkgs,
   lib,
   inputs,
-  config,
   ...
 }: let
   userHome = import ../../lib/user-home.nix pkgs;
