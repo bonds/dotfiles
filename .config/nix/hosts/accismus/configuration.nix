@@ -7,7 +7,7 @@
   userHome = import ../../lib/user-home.nix pkgs;
   pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
 
-  zenIcon = ../../modules/icons/zen-icon.icns;
+  zenIcon = ../../modules/zen-icon.icns;
   setZenIconScript = pkgs.writeText "set-zen-icon.applescript" ''
     use framework "Cocoa"
     set appPath to "/Applications/Nix Apps/Zen.app"
