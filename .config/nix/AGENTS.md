@@ -156,6 +156,7 @@ modules/           # Shared modules
 - **`nixos-rebuild switch` needs sudo.** Remote deploy from laptop uses `--target-host scott@host --use-remote-sudo`. Passwordless sudo (`NOPASSWD` in sudoers) is needed for automated deploys.
 - **`flake.lock` is tracked.** Commit it after `nix flake update`.
 - **`warn-dirty = false`** is set in `nix.conf` — builds work fine with uncommitted changes.
+- **The flake's `nixConfig` block (`trusted-substituters`/`trusted-public-keys`) is ignored with warnings when building as an unprivileged user.** Those are restricted settings — only honored from trusted config. `~/.config/nix/nix.conf` (tracked in dotfiles) mirrors the block at user level so `nr` / `nh build` don't emit "Ignoring the client-specified setting…" warnings. Keep both in sync when adding/removing a binary cache.
 - **Uses `pkgs.lix`** as the nix package on all machines, not the default `pkgs.nix`.
 - **`allowUnfree = true`** — required for `helvetica-neue-lt-std` font on laptop.
 - **All machines use two nixpkgs:** `nixos-26.05` (stable) for most packages, `nixpkgs-unstable` for select packages (passed via `pkgs-unstable` specialArg).
