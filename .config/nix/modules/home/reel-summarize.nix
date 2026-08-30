@@ -71,15 +71,15 @@ in {
       s = cfg.settings;
     in
       format.generate "config.toml" {
-        host = s.host;
+        inherit (s) host;
         vision_host = s.visionHost;
-        backend = s.backend;
+        inherit (s) backend;
         vision_model = s.visionModel;
         summarize_model = s.summarizeModel;
         whisper_model = s.whisperModel;
         frames_per_second = s.framesPerSecond;
         max_frames = s.maxFrames;
-        timeout = s.timeout;
+        inherit (s) timeout;
       };
   };
 }

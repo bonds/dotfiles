@@ -11,7 +11,7 @@ in [
     transcribe-cpp-python = final.callPackage ../../pkgs/transcribe-cpp-python {};
   })
   (final: _prev: {
-    photo-export = final.callPackage ../../pkgs/photokit-export {mkDarwinPackage = final.mkDarwinPackage;};
+    photo-export = final.callPackage ../../pkgs/photokit-export {inherit (final) mkDarwinPackage;};
   })
   (import ./zen-browser/default.nix)
   (import ./ghostty/default.nix)

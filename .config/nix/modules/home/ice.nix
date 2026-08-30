@@ -5,7 +5,7 @@
 #
 # Defaults read from: com.jordanbaird.Ice (~/Library/Preferences)
 # Docs: https://github.com/jordanbaird/Ice
-{...}: {
+_: {
   targets.darwin.defaults = {
     "com.jordanbaird.Ice" = {
       # --- Ice Bar ---

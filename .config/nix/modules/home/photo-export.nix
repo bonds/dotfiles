@@ -83,12 +83,12 @@ in {
     in
       format.generate "config.toml" {
         dest = s.destDir;
-        limit = s.limit;
-        selfmount = s.selfmount;
-        remoteHost = s.remoteHost;
-        remoteUser = s.remoteUser;
-        remoteKey = s.remoteKey;
-        remoteBase = s.remoteBase;
+        inherit (s) limit;
+        inherit (s) selfmount;
+        inherit (s) remoteHost;
+        inherit (s) remoteUser;
+        inherit (s) remoteKey;
+        inherit (s) remoteBase;
       };
   });
 }

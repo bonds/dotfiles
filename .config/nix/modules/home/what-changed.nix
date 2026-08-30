@@ -15,10 +15,10 @@ in {
       s = cfg.settings;
     in
       format.generate "config.toml" {
-        backend = s.backend;
-        host = s.host;
-        model = s.model;
-        timeout = s.timeout;
+        inherit (s) backend;
+        inherit (s) host;
+        inherit (s) model;
+        inherit (s) timeout;
         max_input_bytes = s.maxInputBytes;
         max_bullets = s.maxBullets;
         prompt_style = s.promptStyle;

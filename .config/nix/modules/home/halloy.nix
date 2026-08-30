@@ -1,4 +1,4 @@
-{...}: {
+_: {
   # IRC client, connected to the soju bouncer on sophrosyne over the tailnet.
   #
   # soju acts as an IRCv3 bouncer: it holds the upstream connection to
