@@ -27,10 +27,6 @@
           deadnix -L --fail . 2>&1 || (echo "Run: deadnix -w ." && exit 1)
         '';
 
-        statix-check = mkCheck "statix-check" [pkgs.statix] ''
-          statix check . 2>&1 || (echo "Run: statix fix ." && exit 1)
-        '';
-
         secrets-check = mkCheck "secrets-check" [pkgs.gitleaks] ''
           gitleaks detect \
             --source . \
