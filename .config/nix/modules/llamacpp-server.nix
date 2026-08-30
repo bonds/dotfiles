@@ -332,7 +332,6 @@ in {
             ++ lib.optionals (cfg.model != null) [(builtins.dirOf cfg.model)];
           PrivateTmp = true;
           NoNewPrivileges = true;
-          IPAddressAllow = "127.0.0.0/8";
         };
       }
       // lib.optionalAttrs (preStartScript != "") {
@@ -382,7 +381,6 @@ in {
         ReadWritePaths = [(builtins.dirOf cfg.vision.model)];
         PrivateTmp = true;
         NoNewPrivileges = true;
-        IPAddressAllow = "127.0.0.0/8";
       };
       preStart = lib.mkBefore (let
         files = [

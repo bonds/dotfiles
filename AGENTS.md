@@ -98,12 +98,11 @@ but is no longer managed.
   - Lives at `pkgs/nix-what-changed/` inside the dotfiles flake.
   - Also publishable as a standalone flake: `github:bonds/dotfiles?dir=.config/nix/pkgs/nix-what-changed`.
   - Shows LLM-summarized changelogs after `nr` via `what-changed <old-closure> <new-closure>`.
-  - Model: `qwen2.5:1.5b` (ollama) — fastest acceptable quality. Only switch to models at **same speed or faster** with higher benchmark scores. Config at `~/.config/what-changed/config.toml`.
+  - Model: `qwen2.5-7b` via llama.cpp on sophrosyne (`http://sophrosyne:8080`). Config at `~/.config/what-changed/config.toml`.
 - Benchmark: `what-changed --benchmark [--models m1,m2]` compares speed, quality, bullet accuracy, and word merges. Run before switching default model.
   - Supports ollama + OpenAI-compatible backends. Caches results in `~/.cache/what-changed/`.
   - NixOS/darwin module: `programs.what-changed.enable`.
-  - `nix flake check` runs alejandra format check, Python syntax check, and pytest suite.
-  - Supports ollama + OpenAI-compatible backends. Caches results in `~/.cache/what-changed/`.
+  - `nix flake check` runs alejandra format check, Python syntax check, and pytest suite (for the standalone sub-flake only). The top-level flake's checks.nix does not include pytest — run `cd pkgs/nix-what-changed && nix flake check` for the full test suite.
 - `.config/nix/pkgs/reel-summarize/` — **`reel-summarize` tool** (v0.2.0) — Local Instagram Reel summarizer (shared pipeline/CLI).
   - Pipeline: yt-dlp download → ffmpeg frames+audio → transcribe-cpp (whisper `whisper-small-Q5_K_M.gguf`) → per-frame vision OCR → LLM final summary.
   - Runtime deps: `yt-dlp`+`ffmpeg` via nix, llama.cpp OpenAI-compatible API (text `qwen2.5-7b` @ `:8080`, vision @ `:8081`), whisper via `transcribe-cpp` (`TRANSCRIBE_LIBRARY`).

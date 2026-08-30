@@ -7,7 +7,6 @@ in {
   "/Users/scott/.config/nix/secrets/email-pass.age".publicKeys = [sophrosyne accismus-yubikey];
   "/Users/scott/.config/nix/secrets/dst-cluster-token.age".publicKeys = [sophrosyne accismus-yubikey];
   "/Users/scott/.config/nix/secrets/searx-secret-key.age".publicKeys = [sophrosyne accismus-yubikey];
-  "/Users/scott/.config/nix/secrets/llamacpp-api-key.age".publicKeys = [sophrosyne accismus-yubikey];
   "/Users/scott/.config/nix/secrets/osaurus-api-key.age".publicKeys = [sophrosyne accismus-yubikey accismus-host];
   "/Users/scott/.config/nix/secrets/soju-password.age".publicKeys = [sophrosyne accismus-yubikey accismus-host];
   "/Users/scott/.config/nix/secrets/hermes-openrouter.age".publicKeys = [sophrosyne accismus-yubikey accismus-host];

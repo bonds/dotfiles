@@ -10,7 +10,7 @@ remote="$1"
 url="$2"
 
 echo "pre-push: running nix flake check (format + secrets) for nix config..."
-if ! nix flake check --no-build 2>&1; then
+if ! nix flake check 2>&1; then
   echo "pre-push: nix flake check FAILED — push aborted." >&2
   echo "  Fix errors above or bypass with 'git push --no-verify'." >&2
   exit 1

@@ -233,7 +233,7 @@ in {
       };
     };
   };
-  networking.firewall.allowedTCPPorts = [8080 8890 8891];
+  networking.firewall.allowedTCPPorts = [8080];
 
   systemd.services.mcp-searxng-search = {
     description = "SearXNG MCP server for web search";
