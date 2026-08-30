@@ -46,9 +46,9 @@ function tping
 end
 
 function nr
-    # On linux, if not already inside tmux, re-exec inside a named session
-    # so the full build output is visible via `tmux attach -t nr-build`.
-    if test "$_os" != darwin; and not set -q TMUX; and not set -q NR_TMUX_GUARD
+    # If not already inside tmux, re-exec inside a named session so the
+    # full build output is visible via `tmux attach -t nr-build`.
+    if not set -q TMUX; and not set -q NR_TMUX_GUARD
         set -x NR_TMUX_GUARD 1
         set -l _nr_cmd "nr $argv"
         tmux new-session -d -s nr-build "fish -c '$_nr_cmd'"
