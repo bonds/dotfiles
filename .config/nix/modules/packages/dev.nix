@@ -9,11 +9,13 @@
       ast-grep # AST-aware code search and rewrite (for oh-my-openagent)
       (pkgs.writeShellScriptBin "ast" "exec ${pkgs.ast-grep}/bin/ast-grep \"$@\"") # ast alias for oh-my-openagent
       atuin # synced shell history database
+      deadnix # find dead Nix code (unused lets, args, etc.)
       gh # GitHub CLI
       helix # modal text editor (vim-like)
       nil # Nix language server
       ripgrep # fast grep for searching code
       rlwrap # readline wrapper for interactive programs
+      statix # Nix linting (antipatterns & suggestions)
       starship # customizable cross-shell prompt
       tokei # fast code line and language counter
     ]

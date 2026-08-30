@@ -1,0 +1,12 @@
+# statix lint configuration
+#
+# Lint 20 (repeated_keys) is intentionally disabled: NixOS module configs
+# idiomatically repeat attrset keys (e.g. multiple `systemd.services.X`,
+# `boot.loader.*`, `networking.*` assignments) that the module system merges.
+# Statix flags those as "repeated keys", which is noise here.
+#
+# NOTE: do NOT pass this file via `--config` in flake checks — statix
+# silently ignores config files inside /nix/store (oppiliappan/statix#71).
+# Auto-discovery requires the file to be named exactly `statix.toml` at the
+# directory root, which is why this file exists at the flake root.
+disabled = ["repeated_keys"]

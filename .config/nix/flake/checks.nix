@@ -27,6 +27,14 @@
           deadnix -L --fail . 2>&1 || (echo "Run: deadnix -w ." && exit 1)
         '';
 
+        statix-check = mkCheck "statix-check" [pkgs.statix] ''
+          # Auto-discovers statix.toml at the repo root (repeated_keys
+          # disabled there). Do NOT use --config: statix silently ignores
+          # config files inside /nix/store (oppiliappan/statix#71), and this
+          # check runs with cwd = ${self} which IS a store path.
+          statix check . 2>&1 || (echo "Run: statix check ." && exit 1)
+        '';
+
         secrets-check = mkCheck "secrets-check" [pkgs.gitleaks] ''
           gitleaks detect \
             --source . \
