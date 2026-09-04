@@ -90,6 +90,7 @@ in {
     caffeine # don't go to sleep
     clamav # antivirus
     cloc # count lines of code
+    cloudflared # cloudflare tunnel daemon/client
     coconutbattery # battery health monitor
     colima # docker for mac
     coreutils # for timeout for athome script
