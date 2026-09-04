@@ -122,6 +122,7 @@ in {
     oxillama # pure Rust LLM inference engine (experimental, pkgs/oxillama/update.sh, nr --update)
     openssh # macos ssh doesn't come with resident ssh support
     passage # age-based password manager
+    pnpm # fast, disk-space-efficient package manager
     (pkgs.callPackage ../../pkgs/ghosttile {}) # hide apps from Dock/Cmd+Tab
     hermesDesktopApp # Hermes Desktop .app wrapper for Spotlight/LaunchServices
     (python3.withPackages (p:
