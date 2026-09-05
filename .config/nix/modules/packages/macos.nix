@@ -90,7 +90,6 @@ in {
     caffeine # don't go to sleep
     clamav # antivirus
     cloc # count lines of code
-    cloudflared # cloudflare tunnel daemon/client
     coconutbattery # battery health monitor
     colima # docker for mac
     coreutils # for timeout for athome script
@@ -123,7 +122,6 @@ in {
     oxillama # pure Rust LLM inference engine (experimental, pkgs/oxillama/update.sh, nr --update)
     openssh # macos ssh doesn't come with resident ssh support
     passage # age-based password manager
-    pnpm # fast, disk-space-efficient package manager
     (pkgs.callPackage ../../pkgs/ghosttile {}) # hide apps from Dock/Cmd+Tab
     hermesDesktopApp # Hermes Desktop .app wrapper for Spotlight/LaunchServices
     (python3.withPackages (p:
