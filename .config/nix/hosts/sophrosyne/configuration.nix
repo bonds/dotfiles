@@ -170,6 +170,17 @@ in {
     };
   };
 
+  # The nitter module's unit does `LoadCredential=sessionsFile:/var/lib/nitter/sessions.jsonl`,
+  # and systemd refuses to mount a credential whose source file doesn't already exist
+  # ("Failed at step CREDENTIALS"). The module never creates the file, so provision an
+  # (initially empty) one via tmpfiles. Empty = no saved guest sessions; nitter still runs
+  # and acquires fresh guest tokens per request. The private path is the DynamicUser
+  # StateDirectory (/var/lib/nitter is a symlink → private/nitter).
+  systemd.tmpfiles.rules = [
+    "d /var/lib/private/nitter 0755 root root -"
+    "f /var/lib/private/nitter/sessions.jsonl 0644 root root -"
+  ];
+
   programs.nix-ld.enable = true;
 
   services.syncthing = let
