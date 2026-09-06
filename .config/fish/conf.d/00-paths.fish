@@ -13,3 +13,6 @@ set -x IDRIS2_PREFIX ~/.local/lib
 set -x NIXPKGS_ALLOW_UNFREE 1
 set -x PASSAGE_DIR $HOME/.config/passage/store
 set -x PASSAGE_IDENTITIES_FILE $HOME/.config/passage/identities
+
+# Force ANSI color everywhere, even when piped / non-interactive (@url:https://force-color.org/)
+set -x FORCE_COLOR 1
