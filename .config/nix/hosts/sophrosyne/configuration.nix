@@ -158,6 +158,18 @@ in {
     openFirewall = true;
   };
 
+  # Alternative Twitter/X frontend — reachable over the tailnet only.
+  # Port 8282 (8080 is llamacpp-server). No `openFirewall`: the tailnet
+  # interface rule in ./networking.nix opens the port instead.
+  services.nitter = {
+    enable = true;
+    server = {
+      port = 8282;
+      title = "sophrosyne nitter";
+      hostname = "sophrosyne";
+    };
+  };
+
   programs.nix-ld.enable = true;
 
   services.syncthing = let
