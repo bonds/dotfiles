@@ -33,10 +33,19 @@ Accismus dotfiles use a **bare repo at `~/.config/dotfiles/`** with **worktree `
 fish -c 'nr'
 tmux capture-pane -e -t nr-build -p | tail -30
 
+# RELIABLE agent recipe (Hermes terminal tool): a plain background
+# `fish -c 'nr'` can silently no-op (no tmux session, no log, exit 0, no new
+# generation). Create the tmux session explicitly and poll for a sentinel:
+tmux new-session -d -s nr-build 'fish -i -c "nr"; echo "NR_DONE rc=$status"'
+# then poll: tmux capture-pane -t nr-build -p | tail -30  until NR_DONE
+# (build ~6-10 min on accismus; activation adds a few more minutes)
+
 # When the agent must wait for the result: force interactive status so nr
 # runs in the foreground and propagates the real exit code:
 fish -i -c 'nr'
 ```
+
+**Terminal-tool timeout ≠ switch failure.** If a foreground `fish -i -c 'nr'` call times out, the `darwin-rebuild switch` keeps running as root — don't relaunch it. Poll `ps -p <pid>` / `readlink -f /nix/var/nix/profiles/system` until the generation advances (or the process exits). A switch that ends with the generation UNCHANGED is a failure; check the tmux pane for the error.
 
 Verify the switch actually landed, don't trust the exit code alone. Confirm the symlink advanced and the new binary/version is present:
 
@@ -168,7 +177,7 @@ modules/           # Shared modules
 - **All machines use two nixpkgs:** `nixos-26.05` (stable) for most packages, `nixpkgs-unstable` for select packages (passed via `pkgs-unstable` specialArg).
 - **`nix-index-database`** replaces the old `~/bin/nix-command-not-found` hand-rolled script with the upstream module.
 - **`nix fmt` is unreliable.** It sometimes fails on stdin ("unexpected end of file"). When it does, run alejandra directly on the changed files instead: `alejandra <file> <file>...`.
-- **Run alejandra after every nix file change.** Before building or deploying, always format any modified `.nix` files: `alejandra <file> <file>...` (from both `~/.config/nix` and `~/.config/nix-vudials`).
+- **Run alejandra after every nix file change.** Before building or deploying, always format any modified `.nix` files: `alejandra <file> <file>...` (from both `~/.config/nix` and `~/Documents/undated/repos/nix-vudials`).
 - **NEVER commit secrets to the repo.** All secrets (passwords, API tokens, private keys) must live outside git as local-only files on the target machine. The repo only references their paths. **Exception:** agenix-encrypted `.age` blobs are safe to track (encryption makes them non-secret; that's the agenix model).
 - **Secrets scanning runs via `nix flake check`** (not at build time). The `secrets-check` derivation lives in `flake/checks.nix` and runs `gitleaks detect`. The pre-push hook (`nix flake check --no-build` in `.config/git/hooks/pre-push`) evaluates all checks but doesn't build them — to run gitleaks, use `nix flake check` (without `--no-build`) or `nix build .#checks.aarch64-darwin.secrets-check`.
 - **Local-only secrets on the server must have a `warn_missing` check.** If a service reads a secret file that lives outside the repo (e.g. `/etc/ddns-token`, `/etc/email-pass`), add a corresponding `warn_missing` check in `system.activationScripts.checkSecrets` in `hosts/sophrosyne/configuration.nix`. This prints a clear warning at activation time telling the admin what the secret is for and where to find it (e.g. Bitwarden).
@@ -186,8 +195,10 @@ modules/           # Shared modules
 - **Nix `''…''` string interpolation traps.** In a nix `''…''` block, `$VAR` and `${VAR}` are nix interpolations. Shell variables must be written `''$VAR` to stay literal for the emitted script, while nix-package paths use `${pkgs...}` (interpolated). Getting the two mixed caused repeated "undefined variable" eval errors and activation-segment failures (e.g. `SFTP_CMD` in `photoRsyncKey`). When in doubt, `nix eval --raw` the rendered content to confirm what the script actually contains before relying on it.
 - **NixOS activation snippets are wrapped in a `trap ERR` that aborts the whole switch on any non-zero step.** Any `chown`/`install`/`chmod` in an `activationScripts` snippet that returns non-zero on a re-run (already-applied state) makes the switch fail with `Activation script snippet 'X' failed` + `Failed to run activate script` (exit 2). Make snippet steps idempotent with `|| true` and end with `:` so a re-run never aborts activation. Reproduced with the `photoRsyncKey` snippet; fixed by guarding every step.
 
-- **VU dials live in a separate flake** at `/Users/scott/.config/nix-vudials` (`github:bonds/nix-vudials`). It exports `overlays.default` (vuserver + vuclient packages), `nixosModules.default`, and `darwinModules.default`. Dial UIDs are configured in `modules/vudials-uids.nix` in this repo (shared by accismus + metanoia).
+- **VU dials live in a separate flake** at `~/Documents/undated/repos/nix-vudials` (`github:bonds/nix-vudials`). It exports `overlays.default` (vuserver + vuclient packages), `nixosModules.default`, and `darwinModules.default`. Dial UIDs are configured in `modules/vudials-uids.nix` in this repo (shared by accismus + metanoia).
 - **Launchd agents auto-restart on `darwin-rebuild switch`** via an activation script that detects package hash changes. To manually bounce them: `launchctl kickstart -k gui/501/org.nixos.vuserver && launchctl kickstart -k gui/501/org.nixos.vuclient`.
+- **The disk dial reads Finder-consistent "available" (free + purgeable), not `df` used.** `get_disk()` in `pkgs/vuclient/default.nix` shells out to `apfs_free` (a 27-line Swift tool from `luckman212/apfs-free`, installed at `/usr/local/bin/apfs_free`, **not in nixpkgs**) which calls Apple's public `URLResourceKey.volumeAvailableCapacityForImportantUsageKey` — the same number Finder/DaisyDisk show. It returns percent **used** (100 − available) to keep the dial's 0-100 used convention; falls back to `shutil.disk_usage("/")` on Linux. `df`/`diskutil` cannot report purgeable — it's a CacheDelete-computed value exposed only via that API. `apfs_free` runs in ~25ms, fine for the 1s poll.
+- **Deploying a change to a github-pinned flake input from an agent:** edit `flake.nix` to `git+file:///Users/scott/Documents/undated/repos/<repo>`, run `nix flake update <input>`, `nr`, verify, commit+push the repo, revert `flake.nix` to the github URL, `nix flake update <input>` again (same rev → narHash matches, **no rebuild needed**), commit `flake.lock`, push both remotes. Note: `nix build --expr` with `--override-input` does **not** propagate through `builtins.getFlake` — the URL edit + lock update is the reliable path.
 - **VU dials require the FTDI VCP driver (dext)** installed once manually from [ftdichip.com/drivers/vcp-drivers/](https://ftdichip.com/drivers/vcp-drivers/). On darwin the device path is `/dev/cu.usbserial-DQ0164KM`; on NixOS it's `/dev/vuserver-DQ0164KM` (managed by udev rules in the vudials module).
 
 - **The opencode overlay on accismus (`modules/overlays/opencode/default.nix`) is intentionally pinned.** nixpkgs-unstable lags behind upstream opencode releases. The overlay fetches the darwin arm64 binary directly from `anomalyco/opencode/releases`. Updated via `nr --update`. Do not replace with `pkgs.opencode` — it's pinned on purpose.
