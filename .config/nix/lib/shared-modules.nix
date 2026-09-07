@@ -5,4 +5,9 @@ self: [
   "${self}/modules/packages/dev.nix"
   "${self}/modules/packages/utils.nix"
   "${self}/modules/fish-command-not-found.nix"
+  {
+    # Use the module's comma-with-db wrapper so `,` reads the store-bundled
+    # nix-index database (no ~/.cache/nix-index/files required).
+    programs.nix-index-database.comma.enable = true;
+  }
 ]

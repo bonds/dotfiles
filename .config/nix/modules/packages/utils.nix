@@ -23,7 +23,7 @@
     sysbench # system performance benchmark suite
     units # unit conversion calculator
     unzip # extract ZIP archives
-    comma # run any nixpkgs program without installing (`, <cmd>`)
+    # comma is provided by nix-index-database (comma-with-db wrapper)
     watch # execute a command periodically
     weather # command-line weather forecast
   ];
