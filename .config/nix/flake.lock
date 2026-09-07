@@ -449,11 +449,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785039972,
-        "narHash": "sha256-2gFIt25kIBs+vKeaO/sG4KN9J6z8Ql0euFmAuJ22IoE=",
+        "lastModified": 1788753709,
+        "narHash": "sha256-cJO9Z/SV3naA4rzDWyCLHAsKnx5A2Zguf2xBaYuDo1A=",
         "owner": "bonds",
         "repo": "nix-vudials",
-        "rev": "a98cb00c4c66272c7b92989558fee5e6bede7e4b",
+        "rev": "37c9ebd5a3758242f9fd692fd8ad701c6055236a",
         "type": "github"
       },
       "original": {
