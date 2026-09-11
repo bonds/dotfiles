@@ -198,6 +198,13 @@ def _make_github_blob(owner: str, repo: str, path: str, ref: str = "master"):
         return f"https://github.com/{owner}/{repo}/blob/{ref}/{path}"
     return make
 
+# brotlicffi publishes no GitHub Releases (only tags); its changelog is HISTORY.rst.
+KNOWN_URLS["brotlicffi"] = _make_github_blob("python-hyper", "brotlicffi", "HISTORY.rst", "main")
+
+# hermes-desktop is a local derivation built from the hermes-agent flake input;
+# its changelog lives in the hermes-agent repo's releases page.
+KNOWN_URLS["hermes-desktop"] = lambda _new_ver: "https://github.com/NousResearch/hermes-agent/releases"
+
 
 KNOWN_URLS["cargo"] = _make_github_blob("rust-lang", "cargo", "CHANGELOG.md")
 KNOWN_URLS["rustc"] = _make_github_blob("rust-lang", "rust", "RELEASES.md")
