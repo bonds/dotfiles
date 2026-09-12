@@ -1,0 +1,4 @@
+.build/
+.smoketest/
+*.zip
+lib*.dylib
