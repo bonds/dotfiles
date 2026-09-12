@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Pre-push hook — tracked in .githooks/pre-push (not .git/hooks/).
 # Activated by core.hooksPath = ~/.githooks in git config.
-# Runs nix flake check --no-build (evaluates all checks: format, deadnix, gitleaks,
-# machine evals) plus explicit direct evals of each machine config, before pushing.
+# Runs nix flake check --no-build --all-systems (evaluates checks for every declared
+# system: format, deadnix, gitleaks, machine evals — not just the host's) plus explicit
+# direct evals of each machine config, before pushing. --all-systems avoids the
+# "omitted these incompatible systems" warning and covers both darwin and linux.
 # Bypass with: git push --no-verify
 set -euo pipefail
 
@@ -10,8 +12,8 @@ cd "$HOME/.config/nix"
 remote="$1"
 url="$2"
 
-echo "pre-push: nix flake check --no-build (evaluates format/deadnix/gitleaks/machine evals)..."
-if ! nix flake check --no-build 2>&1; then
+echo "pre-push: nix flake check --no-build --all-systems (evaluates format/deadnix/gitleaks/machine evals)..."
+if ! nix flake check --no-build --all-systems 2>&1; then
   echo "pre-push: nix flake check FAILED — push aborted." >&2
   echo "  Fix errors above or bypass with 'git push --no-verify'." >&2
   exit 1
