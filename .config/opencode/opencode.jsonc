@@ -8,11 +8,13 @@
       // "model": "opencode-go/deepseek-v4-flash-new"
       // "model": "opencode-go/glm-5.2"
       // "model": "opencode-go/qwen3.7-max"
-      "model": "opencode-go/mimo-v2.5"
+      // "model": "opencode-go/mimo-v2.5"
+      "model": "openrouter/deepseek/deepseek-v4-flash-0731"
     },
     "build": {
       // "model": "opencode-go/deepseek-v4-flash-new"
-      "model": "opencode-go/mimo-v2.5"
+      // "model": "opencode-go/mimo-v2.5"
+      "model": "openrouter/deepseek/deepseek-v4-flash-0731"
     }
   },
   "disabled_providers": [],
