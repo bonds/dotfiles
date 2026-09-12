@@ -201,8 +201,12 @@ def _make_github_blob(owner: str, repo: str, path: str, ref: str = "master"):
 # brotlicffi publishes no GitHub Releases (only tags); its changelog is HISTORY.rst.
 KNOWN_URLS["brotlicffi"] = _make_github_blob("python-hyper", "brotlicffi", "HISTORY.rst", "main")
 
-# hermes-desktop is a local derivation built from the hermes-agent flake input;
-# its changelog lives in the hermes-agent repo's releases page.
+# hermes-agent (and hermes-desktop, its local derivation) tag releases by DATE,
+# not by package version, so the version-keyed API resolver
+# (releases?resolve_version=...) is fragile: the unauthenticated call can fail or
+# rate-limit and then what-changed goes blank. Point both at the rendered
+# releases page, which always carries the latest release body at the top.
+KNOWN_URLS["hermes-agent"] = lambda _new_ver: "https://github.com/NousResearch/hermes-agent/releases"
 KNOWN_URLS["hermes-desktop"] = lambda _new_ver: "https://github.com/NousResearch/hermes-agent/releases"
 
 
