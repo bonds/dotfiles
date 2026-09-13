@@ -406,6 +406,28 @@ def _postprocess(bullets: list[str], cfg: Config) -> list[str]:
     return result
 
 
+_VERSION_TAG_RE = re.compile(r"\((?:v)?(\d+(?:\.\d+)+)\)")
+
+
+def _sort_bullets_by_version(bullets: list[str]) -> list[str]:
+    """Sort summary bullets newest-version-first.
+
+    A -N window can span several sub-releases and the model doesn't always
+    keep them ordered, so normalize to descending version-tag order.  Bullets
+    carrying a '(vX.Y.Z)' tag sort by that version; untagged bullets keep
+    their original relative order at the end (stable sort).
+    """
+    def key(b: str) -> tuple[int, tuple[int, ...]]:
+        m = _VERSION_TAG_RE.search(b)
+        if not m:
+            return (1, ())
+        nums = [int(p) for p in m.group(1).split(".")]
+        while len(nums) < 3:
+            nums.append(0)
+        return (0, tuple(-n for n in nums))
+    return sorted(bullets, key=key)
+
+
 def _smarter_truncate(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
@@ -523,5 +545,5 @@ async def summarize(
         return None
     bullets, _non_bullets = _parse_bullets(response)
     if bullets:
-        return _postprocess(bullets, cfg)
+        return _sort_bullets_by_version(_postprocess(bullets, cfg))
     return None

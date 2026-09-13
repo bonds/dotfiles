@@ -449,3 +449,34 @@ def test_version_scope_instruction_keeps_original_tags():
     # the whole point: don't relabel older items to the new version
     assert "do not relabel it to 0.21.5" in inst
     assert "(v0.21.2)" in inst
+
+
+def test_sort_bullets_by_version_newest_first():
+    bullets = [
+        "scope commit-feed changelogs to the version range (v0.21.4)",
+        "keep original version tags in summary bullets (v0.21.6)",
+        "generalize version-range scoping to bare-version changelogs (v0.21.5)",
+    ]
+    assert summarize._sort_bullets_by_version(bullets) == [
+        "keep original version tags in summary bullets (v0.21.6)",
+        "generalize version-range scoping to bare-version changelogs (v0.21.5)",
+        "scope commit-feed changelogs to the version range (v0.21.4)",
+    ]
+
+
+def test_sort_bullets_by_version_untagged_last():
+    bullets = [
+        "older tagged item (v0.20.0)",
+        "untagged misc note",
+        "newest tagged item (v0.21.6)",
+        "another untagged note",
+    ]
+    sorted_ = summarize._sort_bullets_by_version(bullets)
+    assert sorted_[0] == "newest tagged item (v0.21.6)"
+    assert sorted_[1] == "older tagged item (v0.20.0)"
+    assert sorted_[2:] == ["untagged misc note", "another untagged note"]
+
+
+def test_sort_bullets_by_version_no_tags_is_noop():
+    bullets = ["first", "second", "third"]
+    assert summarize._sort_bullets_by_version(bullets) == bullets
