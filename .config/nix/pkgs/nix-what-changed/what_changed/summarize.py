@@ -412,24 +412,36 @@ def _postprocess(bullets: list[str], cfg: Config) -> list[str]:
 
 
 _VERSION_TAG_RE = re.compile(r"\((?:v)?(\d+(?:\.\d+)+)\)")
+# Some subjects put the version inline (e.g. "what-changed v0.21.8: …")
+# instead of in a trailing tag — fall back to the last version-like token.
+_INLINE_VERSION_RE = re.compile(r"(?:v)?(\d+(?:\.\d+)+)")
+
+
+def _version_tuple(s: str) -> tuple[int, ...]:
+    nums = [int(p) for p in s.split(".")]
+    while len(nums) < 3:
+        nums.append(0)
+    return tuple(nums)
 
 
 def _sort_bullets_by_version(bullets: list[str]) -> list[str]:
     """Sort summary bullets newest-version-first.
 
     A -N window can span several sub-releases and the model doesn't always
-    keep them ordered, so normalize to descending version-tag order.  Bullets
-    carrying a '(vX.Y.Z)' tag sort by that version; untagged bullets keep
-    their original relative order at the end (stable sort).
+    keep them ordered, so normalize to descending version order.  A bullet
+    carrying a '(vX.Y.Z)' tag sorts by that version; otherwise fall back to
+    the last version-like token in the bullet (some subjects write the
+    version inline).  Untagged bullets keep their original relative order at
+    the end (stable sort).
     """
     def key(b: str) -> tuple[int, tuple[int, ...]]:
         m = _VERSION_TAG_RE.search(b)
-        if not m:
-            return (1, ())
-        nums = [int(p) for p in m.group(1).split(".")]
-        while len(nums) < 3:
-            nums.append(0)
-        return (0, tuple(-n for n in nums))
+        if m:
+            return (0, tuple(-n for n in _version_tuple(m.group(1))))
+        matches = list(_INLINE_VERSION_RE.finditer(b))
+        if matches:
+            return (0, tuple(-n for n in _version_tuple(matches[-1].group(1))))
+        return (1, ())
     return sorted(bullets, key=key)
 
 

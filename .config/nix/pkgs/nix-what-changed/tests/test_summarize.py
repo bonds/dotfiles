@@ -482,6 +482,28 @@ def test_sort_bullets_by_version_no_tags_is_noop():
     assert summarize._sort_bullets_by_version(bullets) == bullets
 
 
+def test_sort_bullets_by_version_inline_version():
+    """A subject with the version inline (not a trailing tag) must still sort."""
+    bullets = [
+        "sort summary bullets newest-version-first (v0.21.7)",
+        "what-changed v0.21.8: model selects commit-feed lines, code keeps them verbatim",
+    ]
+    sorted_ = summarize._sort_bullets_by_version(bullets)
+    assert sorted_[0].startswith("what-changed v0.21.8")
+    assert sorted_[1].endswith("(v0.21.7)")
+
+
+def test_sort_bullets_by_version_trailing_tag_beats_inline():
+    """When a bullet has both, the trailing tag is authoritative."""
+    bullets = [
+        "bump from 0.21.6 (v0.21.7)",
+        "work on the 0.21.7 branch (v0.21.6)",
+    ]
+    sorted_ = summarize._sort_bullets_by_version(bullets)
+    assert sorted_[0] == "bump from 0.21.6 (v0.21.7)"
+    assert sorted_[1] == "work on the 0.21.7 branch (v0.21.6)"
+
+
 def test_commit_feed_bullets_strips_sha_and_prefix():
     feed = (
         "cec2fb5 what-changed: sort summary bullets newest-version-first (v0.21.7)\n"
