@@ -85,6 +85,81 @@ def _detect_source_type(text: str) -> str:
     return "changelog"
 
 
+# ── Version-range trimming ──────────────────────────────────────────────
+#
+# Whole-file changelogs (CHANGELOG.md, NEWS, RELEASES.md, HISTORY.rst, …)
+# list every release newest-first.  Without trimming, older releases' entries
+# leak into the summary — the old prompt only said "pick the most recent
+# version", with no hard scope on the old→new window.  _slice_version_range
+# cuts the raw text to exactly the version range before the LLM sees it, and
+# the range is also spelled out in the prompt.
+
+_UNDERLINE_RE = re.compile(r"^[=\-~^!]{3,}$")
+_HEADER_PREFIX_RE = re.compile(r"^(Version |Release |Changes in |v?\d+(?:\.\d+)+)")
+
+
+def _find_section(text: str, version: str) -> tuple[int | None, int]:
+    """Locate the changelog section header for *version*.
+
+    Returns (start_offset, strength): strength 2 for an unambiguous header
+    (a markdown heading, or a line underlined with ===/--- like RELEASES.md /
+    HISTORY.rst), 1 for a weaker bare-version line, and (None, 0) when nothing
+    header-like is found.  The negative lookahead keeps e.g. "1.98.0" from
+    matching a longer "1.98.05" or a "1.98.0.1" section.
+    """
+    if not version:
+        return None, 0
+    needle = re.compile(re.escape(version) + r"(?![\d.])")
+    for m in needle.finditer(text):
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        line_end = text.find("\n", m.start())
+        if line_end == -1:
+            line_end = len(text)
+        s = text[line_start:line_end].strip()
+        if not s:
+            continue
+        if s.startswith("#"):  # markdown heading
+            return line_start, 2
+        rest = text[line_end + 1:]
+        nxt = rest.split("\n", 1)[0].strip() if rest else ""
+        if nxt and _UNDERLINE_RE.match(nxt):  # RST-style underlined heading
+            return line_start, 2
+        if _HEADER_PREFIX_RE.match(s) and len(s) < 100:  # bare-version line
+            return line_start, 1
+    return None, 0
+
+
+def _slice_version_range(
+    text: str,
+    old_version: str | None,
+    new_version: str | None,
+) -> str:
+    """Return *text* trimmed to the old_version..new_version changelog window.
+
+    Only unambiguous (strength 2) headers trigger trimming — a strong header
+    on a scraped page (e.g. a docs page title) still keeps the whole section,
+    and never truncates mid-content on a false match.  Falls back to the full
+    text when the range can't be located; the prompt still names the versions.
+    """
+    if not old_version or not new_version or old_version == new_version:
+        return text
+    n_start, n_strength = _find_section(text, new_version)
+    o_start, o_strength = _find_section(text, old_version)
+    if (
+        n_start is not None
+        and o_start is not None
+        and n_strength == 2
+        and o_strength == 2
+    ):
+        # normal newest-first order: keep the new section up to the old header
+        return text[n_start:o_start] if n_start < o_start else text[n_start:]
+    if n_start is not None and n_strength == 2:
+        return text[n_start:]
+    if o_start is not None and o_strength == 2:
+        return text[:o_start]
+    return text
+
+
 PROMPTS = {
     "release": (
         "Below are structured release notes. "
@@ -350,15 +425,30 @@ PROMPT_STYLES = {
 }
 
 
-async def summarize(pkg_name: str, changelog_text: str, cfg: Config) -> list[str] | None:
+async def summarize(
+    pkg_name: str,
+    changelog_text: str,
+    cfg: Config,
+    old_version: str | None = None,
+    new_version: str | None = None,
+) -> list[str] | None:
     if len(changelog_text) < 100:
         return None
-    text = _smarter_truncate(changelog_text, cfg.max_input_bytes)
+    text = _slice_version_range(changelog_text, old_version, new_version)
+    text = _smarter_truncate(text, cfg.max_input_bytes)
     stype = _detect_source_type(text)
     prompts = CURATE_PROMPTS if cfg.prompt_style == "curate" else PROMPTS
     style = PROMPT_STYLES.get(cfg.prompt_style, PROMPT_STYLES["default"])
+    source_prompt = prompts[stype]
+    if old_version and new_version:
+        source_prompt += (
+            f"This changelog covers {new_version} and possibly older entries. "
+            f"Summarize ONLY the changes introduced in {new_version} "
+            f"compared to the previous version {old_version}. "
+            f"Explicitly ignore anything belonging to another version. "
+        )
     prompt = style.format(
-        source_prompt=prompts[stype],
+        source_prompt=source_prompt,
         pkg=pkg_name,
         max=cfg.max_bullets,
         text=text,

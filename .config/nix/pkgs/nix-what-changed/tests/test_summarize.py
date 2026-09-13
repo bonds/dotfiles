@@ -119,3 +119,195 @@ def test_non_curate_postprocess_still_fixes():
     result = summarize._postprocess(["ssystemd configuration"], cfg)
     assert "ssystemd" not in result[0]
     assert result[0]
+
+
+# ── Version-range trimming tests ──────────────────────────────────────────
+# Whole-file changelogs (CHANGELOG.md, NEWS, RELEASES.md, HISTORY.rst) list
+# every release newest-first.  These tests pin down _find_section /
+# _slice_version_range so older releases' entries never reach the LLM.
+
+
+def test_find_section_markdown_heading():
+    text = (
+        "## v3.44.1\n"
+        "- Fix bug A\n"
+        "- Add feature B\n"
+        "\n"
+        "## v3.43.0\n"
+        "- Old change\n"
+    )
+    start, strength = summarize._find_section(text, "3.44.1")
+    assert start == 0
+    assert strength == 2
+    start, strength = summarize._find_section(text, "3.43.0")
+    assert strength == 2
+    assert text[start:].startswith("## v3.43.0")
+
+
+def test_find_section_rst_underline():
+    text = (
+        "Version 1.98.1 (2026-09-03)\n"
+        "===========================\n"
+        "\n"
+        "* fix miscompilation\n"
+        "\n"
+        "Version 1.98.0 (2026-08-20)\n"
+        "===========================\n"
+        "\n"
+        "Language\n"
+        "--------\n"
+        "- some change\n"
+    )
+    start, strength = summarize._find_section(text, "1.98.1")
+    assert strength == 2
+    assert text[start:].startswith("Version 1.98.1")
+    start, strength = summarize._find_section(text, "1.98.0")
+    assert strength == 2
+    assert text[start:].startswith("Version 1.98.0")
+
+
+def test_find_section_prefix_version_does_not_collide():
+    # "1.98" must not match the longer "1.98.0" / "1.98.1" sections
+    text = "Version 1.98.0 (2026-08-20)\n===========================\n"
+    assert summarize._find_section(text, "1.98") == (None, 0)
+
+
+def test_find_section_bare_version_is_weak():
+    text = "0.4.0\nSome body line without a version header.\n"
+    start, strength = summarize._find_section(text, "0.4.0")
+    assert strength == 1
+    assert start == 0
+
+
+def test_find_section_body_text_not_header():
+    text = "Update to v0.4.0 of the Brotli library.\nMore details here.\n"
+    assert summarize._find_section(text, "0.4.0") == (None, 0)
+
+
+def test_slice_version_range_markdown_keeps_only_new():
+    text = (
+        "## v3.44.1\n"
+        "- New fix for the new version\n"
+        "\n"
+        "## v3.43.0\n"
+        "- Old change from the previous version\n"
+        "\n"
+        "## v3.42.0\n"
+        "- Ancient change\n"
+    )
+    sliced = summarize._slice_version_range(text, "3.43.0", "3.44.1")
+    assert sliced.startswith("## v3.44.1")
+    assert "New fix for the new version" in sliced
+    assert "Old change from the previous version" not in sliced
+    assert "Ancient change" not in sliced
+
+
+def test_slice_version_range_rst_style():
+    text = (
+        "Version 1.98.1 (2026-09-03)\n"
+        "===========================\n"
+        "\n"
+        "* fix miscompilation in vtables\n"
+        "\n"
+        "Version 1.98.0 (2026-08-20)\n"
+        "===========================\n"
+        "\n"
+        "Language\n"
+        "--------\n"
+        "- shorten lifetimes\n"
+    )
+    sliced = summarize._slice_version_range(text, "1.98.0", "1.98.1")
+    assert "Version 1.98.1" in sliced
+    assert "fix miscompilation in vtables" in sliced
+    assert "Version 1.98.0" not in sliced
+    assert "shorten lifetimes" not in sliced
+
+
+def test_slice_version_range_old_above_new_keeps_new_down():
+    # unusual ordering (old listed above new) keeps the new section downward
+    text = (
+        "Version 3.43.0 (2025-12-01)\n"
+        "============================\n"
+        "old change\n"
+        "Version 3.44.1 (2026-01-15)\n"
+        "============================\n"
+        "new change\n"
+    )
+    sliced = summarize._slice_version_range(text, "3.43.0", "3.44.1")
+    assert "new change" in sliced
+    assert "old change" not in sliced
+
+
+def test_slice_version_range_no_headers_unchanged():
+    text = "Just some prose with no version sections.\nAnother line.\n"
+    assert summarize._slice_version_range(text, "3.43.0", "3.44.1") == text
+
+
+def test_slice_version_range_weak_headers_unchanged():
+    # bare-version lines (strength 1) never trigger slicing on their own
+    text = "3.44.1\nSome new change here.\n3.43.0\nSome old change.\n"
+    assert summarize._slice_version_range(text, "3.43.0", "3.44.1") == text
+
+
+def test_slice_version_range_missing_versions_unchanged():
+    text = "## v3.44.1\n- change\n"
+    assert summarize._slice_version_range(text, None, "3.44.1") == text
+    assert summarize._slice_version_range(text, "3.43.0", None) == text
+    assert summarize._slice_version_range(text, "3.44.1", "3.44.1") == text
+
+
+def test_summarize_prompt_names_version_range():
+    """The prompt must name old→new and the old section must be sliced out."""
+    import asyncio
+    from unittest.mock import patch
+
+    cfg = Config()
+    cfg.backend = "openai"
+    text = (
+        "## v3.44.1\n"
+        "- Fixed the thing users noticed in this new release\n"
+        "- Added the long-awaited feature flag toggle option\n"
+        "- Resolved several issues that affected performance in bulk operations\n"
+        "\n"
+        "## v3.43.0\n"
+        "- Old change that should be ignored entirely\n"
+    )
+    captured = {}
+
+    async def fake_call(prompt, cfg):
+        captured["prompt"] = prompt
+        return "- Fixed the thing users noticed in this new release"
+
+    with patch("what_changed.summarize._call_llm", side_effect=fake_call):
+        bullets = asyncio.run(summarize.summarize(
+            "slack-sdk", text, cfg, old_version="3.43.0", new_version="3.44.1"
+        ))
+
+    assert bullets
+    assert "3.44.1" in captured["prompt"]
+    assert "3.43.0" in captured["prompt"]
+    assert "Old change that should be ignored entirely" not in captured["prompt"]
+
+
+def test_summarize_without_versions_has_no_range_hint():
+    import asyncio
+    from unittest.mock import patch
+
+    cfg = Config()
+    cfg.backend = "openai"
+    text = (
+        "## v3.44.1\n"
+        "- Fixed the thing users noticed in this new release\n"
+        "- Added the long-awaited feature flag toggle option\n"
+        "- Resolved several issues that affected performance in bulk operations\n"
+    )
+    captured = {}
+
+    async def fake_call(prompt, cfg):
+        captured["prompt"] = prompt
+        return "- Some change"
+
+    with patch("what_changed.summarize._call_llm", side_effect=fake_call):
+        asyncio.run(summarize.summarize("slack-sdk", text, cfg))
+
+    assert "compared to the previous version" not in captured["prompt"]

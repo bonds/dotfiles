@@ -156,7 +156,11 @@ async def _fetch_for(c: PackageChange, cl_url: str | None, idx: int) -> tuple[in
                 cache.set_changelog(cl_url, raw, cfg)
         if raw:
             raw = _prettify_gh_commits(raw)
-            bullets = await summarize.summarize(c.name, raw, cfg)
+            bullets = await summarize.summarize(
+                c.name, raw, cfg,
+                old_version=c.old_version,
+                new_version=c.new_version,
+            )
             _v(f"{c.name}: bullets={'none' if bullets is None else str(len(bullets))}")
             if not no_cache:
                 cache.set_summary(c.name, c.old_version, c.new_version, bullets, cfg)
