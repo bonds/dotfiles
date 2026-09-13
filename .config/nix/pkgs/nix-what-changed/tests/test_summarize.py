@@ -243,10 +243,42 @@ def test_slice_version_range_no_headers_unchanged():
     assert summarize._slice_version_range(text, "3.43.0", "3.44.1") == text
 
 
-def test_slice_version_range_weak_headers_unchanged():
-    # bare-version lines (strength 1) never trigger slicing on their own
+def test_slice_version_range_weak_headers_slice_when_both_found():
+    # bare-version lines (strength 1) now slice when both markers are found —
+    # that's how obsidian-style changelogs ("1.14.1" on its own line) are scoped
     text = "3.44.1\nSome new change here.\n3.43.0\nSome old change.\n"
+    sliced = summarize._slice_version_range(text, "3.43.0", "3.44.1")
+    assert "3.44.1" in sliced
+    assert "new change" in sliced
+    assert "3.43.0" not in sliced
+    assert "old change" not in sliced
+
+
+def test_slice_version_range_single_weak_found_unchanged():
+    # a lone bare-version line isn't enough to trigger trimming
+    text = "3.44.1\nSome new change here.\n"
     assert summarize._slice_version_range(text, "3.43.0", "3.44.1") == text
+
+
+def test_slice_version_range_obsidian_style():
+    text = (
+        "September 8, 2026\n"
+        "1.14.1\n"
+        "- Fixed the thing users noticed\n"
+        "\n"
+        "September 2, 2026\n"
+        "1.14.0\n"
+        "- Old change from the previous release\n"
+        "\n"
+        "August 20, 2026\n"
+        "1.13.8\n"
+        "- Ancient change\n"
+    )
+    sliced = summarize._slice_version_range(text, "1.14.0", "1.14.1")
+    assert "1.14.1" in sliced
+    assert "Fixed the thing users noticed" in sliced
+    assert "1.14.0" not in sliced
+    assert "Ancient change" not in sliced
 
 
 def test_slice_version_range_missing_versions_unchanged():

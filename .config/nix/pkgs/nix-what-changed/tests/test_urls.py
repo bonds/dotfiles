@@ -184,3 +184,22 @@ def test_patch_release_tag_ignores_unrelated_url(monkeypatch):
     cfg = Config()
     url = _run(urls.patch_release_tag("https://obsidian.md/changelog/", "1.0.0", cfg))
     assert url == "https://obsidian.md/changelog/"
+
+
+def test_github_commits_url_helper():
+    f = urls._make_github_commits_url("bonds", "dotfiles", "pkgs/what-changed")
+    assert f("0.21.5") == (
+        "https://api.github.com/repos/bonds/dotfiles/commits?per_page=10&path=pkgs/what-changed"
+    )
+    f = urls._make_github_commits_url("bonds", "polyptych")
+    assert f("0.2.0") == "https://api.github.com/repos/bonds/polyptych/commits?per_page=10"
+
+
+def test_what_changed_and_polyptych_use_commit_feed():
+    assert urls.KNOWN_URLS["what-changed"]("0.21.5") == (
+        "https://api.github.com/repos/bonds/dotfiles/commits?per_page=10"
+        "&path=.config/nix/pkgs/nix-what-changed"
+    )
+    assert urls.KNOWN_URLS["polyptych"]("0.2.0") == (
+        "https://api.github.com/repos/bonds/polyptych/commits?per_page=10"
+    )

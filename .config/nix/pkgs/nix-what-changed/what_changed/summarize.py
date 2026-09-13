@@ -136,21 +136,18 @@ def _slice_version_range(
 ) -> str:
     """Return *text* trimmed to the old_version..new_version changelog window.
 
-    Only unambiguous (strength 2) headers trigger trimming — a strong header
-    on a scraped page (e.g. a docs page title) still keeps the whole section,
-    and never truncates mid-content on a false match.  Falls back to the full
-    text when the range can't be located; the prompt still names the versions.
+    When both the new and old version's section headers are found the text is
+    cut to the window — headers may be strong (markdown/underlined) or weak
+    (bare-version lines like obsidian's '1.14.1').  Single-header finds only
+    trigger on unambiguous (strength 2) headers, so a scraped page is never
+    truncated mid-content on a false match.  Falls back to the full text when
+    the range can't be located; the prompt still names the versions.
     """
     if not old_version or not new_version or old_version == new_version:
         return text
     n_start, n_strength = _find_section(text, new_version)
     o_start, o_strength = _find_section(text, old_version)
-    if (
-        n_start is not None
-        and o_start is not None
-        and n_strength == 2
-        and o_strength == 2
-    ):
+    if n_start is not None and o_start is not None:
         # normal newest-first order: keep the new section up to the old header
         return text[n_start:o_start] if n_start < o_start else text[n_start:]
     if n_start is not None and n_strength == 2:

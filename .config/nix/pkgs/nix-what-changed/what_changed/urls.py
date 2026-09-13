@@ -144,15 +144,28 @@ def _make_gcc_url(new_ver: str) -> str | None:
 KNOWN_URLS["gcc"] = _make_gcc_url
 
 
-def _make_what_changed_url(new_ver: str) -> str | None:
-    return "https://api.github.com/repos/bonds/dotfiles/commits?path=.config/nix/pkgs/nix-what-changed&per_page=10"
+def _make_github_commits_url(owner: str, repo: str, path: str | None = None):
+    """Point at the GitHub commits API feed for *repo* (optionally a subpath).
+
+    fetch_changelog prettifies the JSON into '<sha> <subject>' lines and
+    summarize scopes them to the version range using the (vX.Y.Z) markers in
+    the commit subjects — the right changelog source for packages whose own
+    repo history IS the changelog (like what-changed / polyptych), not for
+    upstream releases.  Add another such package with one line:
+        KNOWN_URLS["my-tool"] = _make_github_commits_url("me", "my-tool", "pkgs/my-tool")
+    """
+    def make(new_ver: str) -> str:
+        base = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=10"
+        return f"{base}&path={path}" if path else base
+    return make
 
 
-KNOWN_URLS["what-changed"] = _make_what_changed_url
-
-
-def _make_polyptych_url(new_ver: str) -> str | None:
-    return "https://api.github.com/repos/bonds/polyptych/commits?per_page=10"
+# These live in Scott's own repos, where version-bump commits carry a
+# (vX.Y.Z) subject marker — exactly what the commit-feed slicer keys on.
+KNOWN_URLS["what-changed"] = _make_github_commits_url(
+    "bonds", "dotfiles", ".config/nix/pkgs/nix-what-changed"
+)
+KNOWN_URLS["polyptych"] = _make_github_commits_url("bonds", "polyptych")
 
 
 def _make_clamav_url(new_ver: str) -> str | None:
@@ -188,9 +201,6 @@ KNOWN_URLS["docker"] = _make_moby_docker_url
 KNOWN_URLS["osaurus"] = _make_github_release_url_nov("osaurus-ai", "osaurus")
 KNOWN_URLS["oxillama"] = _make_github_release_url("cool-japan", "oxillama")
 KNOWN_URLS["zen-browser"] = _make_github_release_url_nov("zen-browser", "desktop")
-
-
-KNOWN_URLS["polyptych"] = _make_polyptych_url
 
 
 def _make_github_blob(owner: str, repo: str, path: str, ref: str = "master"):
