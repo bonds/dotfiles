@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import difflib
 import json
 import re
 import sys
@@ -223,6 +224,7 @@ PROMPTS = {
     "changelog": (
         "Below is a raw changelog. "
         "Pick the most recent version's changes and summarize them. "
+        "Never invent changes — only include items explicitly present in the text. "
     ),
     "generic": (
         "Below is the changelog. "
@@ -234,6 +236,7 @@ CURATE_PROMPTS = {
         "Below are structured release notes. "
         "Select the most important changes a user would notice — "
         "new features, breaking changes, and important bug fixes. "
+        "Never invent changes — only select items explicitly present in the text. "
     ),
     "wiki": (
         "Below is a wiki changelog. "
@@ -243,9 +246,11 @@ CURATE_PROMPTS = {
     "changelog": (
         "Below is a raw changelog. "
         "Select the most recent version's most important changes. "
+        "Never invent changes — only select items explicitly present in the text. "
     ),
     "generic": (
         "Below is the changelog. "
+        "Never invent changes — only select items explicitly present in the text. "
     ),
 }
 
@@ -514,6 +519,74 @@ def _version_scope_instruction(old_version: str, new_version: str) -> str:
     )
 
 
+def _commit_feed_bullets(text: str) -> list[str]:
+    """Deterministic canonical lines for a commit feed — the subject only.
+
+    These are the only strings that may appear as summary bullets for a
+    commit feed: strip the sha and any leading '<module>: ' prefix, keep the
+    subject and its (vX.Y.Z) tag.  Used as the verbatim vocabulary the model
+    is allowed to select from.
+    """
+    out = []
+    for line in text.splitlines():
+        parts = line.split(None, 1)
+        if len(parts) != 2 or not re.fullmatch(r"[0-9a-f]{7,12}", parts[0]):
+            continue
+        subj = re.sub(r"^[A-Za-z0-9_-]+:\s+", "", parts[1], count=1).strip()
+        if subj:
+            out.append(subj)
+    return out
+
+
+def _best_match(bullet: str, candidates: list[str]) -> str | None:
+    """Return the candidate line *bullet* most closely echoes, or None.
+
+    Verbatim contract: candidates (real changelog lines) are the only allowed
+    output, so an invented bullet must not survive.  Exact/substring
+    containment wins (handles the model trimming a line); otherwise fall back
+    to a difflib similarity threshold.
+    """
+    nb = bullet.strip().lower()
+    if nb:
+        for cand in candidates:
+            nc = cand.lower()
+            if nb == nc or nb in nc or nc in nb:
+                return cand
+    best, best_ratio = None, 0.0
+    for cand in candidates:
+        r = difflib.SequenceMatcher(None, nb, cand.lower()).ratio()
+        if r > best_ratio:
+            best, best_ratio = cand, r
+    return best if best_ratio >= 0.6 else None
+
+
+def _select_verbatim(
+    model_bullets: list[str], candidates: list[str], cfg: Config
+) -> list[str]:
+    """Emit the candidates the model selected, verbatim and newest-first.
+
+    The model's only job is choosing which lines are interesting — it must not
+    be the source of wording.  Drop bullets that don't echo any real line
+    (invented ones); then top up with any un-selected candidates the budget
+    still allows, so a short window never loses real changes because the model
+    under-selected.  If the model produced nothing usable, fall back to all
+    candidates rather than an empty or fabricated summary.
+    """
+    kept: list[str] = []
+    for b in model_bullets:
+        m = _best_match(b, candidates)
+        if m is not None and m not in kept:
+            kept.append(m)
+    if not kept:
+        kept = list(candidates)
+    for c in candidates:
+        if len(kept) >= cfg.max_bullets:
+            break
+        if c not in kept:
+            kept.append(c)
+    return _sort_bullets_by_version(kept)[:cfg.max_bullets]
+
+
 async def summarize(
     pkg_name: str,
     changelog_text: str,
@@ -528,6 +601,15 @@ async def summarize(
         text = _slice_commit_feed(text, old_version, new_version)
     text = _slice_version_range(text, old_version, new_version)
     text = _smarter_truncate(text, cfg.max_input_bytes)
+    is_commit_feed = _looks_like_commit_feed(text)
+    # For a commit feed the model only SELECTS the interesting lines — it must
+    # not be the source of wording — so cap the requested count at the number
+    # of commits (asking for EXACTLY 5 with 2 commits invites invented filler).
+    max_bullets = cfg.max_bullets
+    if is_commit_feed and cfg.prompt_style == "curate":
+        max_bullets = max(
+            1, min(max_bullets, sum(1 for l in text.splitlines() if l.strip()))
+        )
     stype = _detect_source_type(text)
     prompts = CURATE_PROMPTS if cfg.prompt_style == "curate" else PROMPTS
     style = PROMPT_STYLES.get(cfg.prompt_style, PROMPT_STYLES["default"])
@@ -537,13 +619,15 @@ async def summarize(
     prompt = style.format(
         source_prompt=source_prompt,
         pkg=pkg_name,
-        max=cfg.max_bullets,
+        max=max_bullets,
         text=text,
     )
     response = await _call_llm(prompt, cfg)
     if not response:
         return None
     bullets, _non_bullets = _parse_bullets(response)
-    if bullets:
-        return _sort_bullets_by_version(_postprocess(bullets, cfg))
-    return None
+    if not bullets:
+        return None
+    if is_commit_feed:
+        return _select_verbatim(bullets, _commit_feed_bullets(text), cfg)
+    return _sort_bullets_by_version(_postprocess(bullets, cfg))

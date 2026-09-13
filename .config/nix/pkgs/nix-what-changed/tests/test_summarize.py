@@ -480,3 +480,79 @@ def test_sort_bullets_by_version_untagged_last():
 def test_sort_bullets_by_version_no_tags_is_noop():
     bullets = ["first", "second", "third"]
     assert summarize._sort_bullets_by_version(bullets) == bullets
+
+
+def test_commit_feed_bullets_strips_sha_and_prefix():
+    feed = (
+        "cec2fb5 what-changed: sort summary bullets newest-version-first (v0.21.7)\n"
+        "5d111c2 what-changed: keep original version tags in summary bullets (v0.21.6)\n"
+    )
+    assert summarize._commit_feed_bullets(feed) == [
+        "sort summary bullets newest-version-first (v0.21.7)",
+        "keep original version tags in summary bullets (v0.21.6)",
+    ]
+
+
+def test_commit_feed_bullets_keeps_plain_subjects():
+    feed = "a1b2c3d fix a typo in the README\n"
+    assert summarize._commit_feed_bullets(feed) == ["fix a typo in the README"]
+
+
+def test_commit_feed_bullets_skips_non_commit_lines():
+    feed = "cec2fb5 sort summary bullets (v0.21.7)\nnot a commit line\n"
+    assert summarize._commit_feed_bullets(feed) == ["sort summary bullets (v0.21.7)"]
+
+
+
+def test_best_match_matches_trimmed_and_rejects_invented():
+    cands = ["sort summary bullets newest-version-first (v0.21.7)"]
+    # a trimmed echo of the real line matches (substring)
+    assert summarize._best_match("sort summary bullets", cands) == cands[0]
+    assert summarize._best_match(cands[0], cands) == cands[0]
+    # invented filler does not
+    assert summarize._best_match("Added support for new authentication methods.", cands) is None
+
+
+def test_select_verbatim_drops_inventions_and_tops_up():
+    from what_changed.config import Config
+    cfg = Config()
+    cfg.max_bullets = 5
+    cands = [
+        "sort summary bullets newest-version-first (v0.21.7)",
+        "keep original version tags in summary bullets (v0.21.6)",
+    ]
+    # model picks one real line and invents two more -> inventions dropped,
+    # and the un-picked real line is topped up (the budget allows it)
+    picked = summarize._select_verbatim(
+        [
+            "sort summary bullets",
+            "Added support for new authentication methods.",
+            "Performance optimizations for faster application startup.",
+        ],
+        cands,
+        cfg,
+    )
+    assert set(picked) == set(cands)
+    assert "authentication" not in " ".join(picked)
+    assert "Performance" not in " ".join(picked)
+    # model invents everything -> fall back to all candidates, verbatim
+    fell_back = summarize._select_verbatim(
+        ["Enhanced security measures to protect user data.", "Fixed a critical bug."],
+        cands,
+        cfg,
+    )
+    assert set(fell_back) == set(cands)
+    assert all(c in cands for c in fell_back)
+
+
+def test_select_verbatim_respects_budget():
+    from what_changed.config import Config
+    cfg = Config()
+    cfg.max_bullets = 3
+    cands = [f"commit {i} (v0.21.{i})" for i in range(6, 0, -1)]  # 6 candidates
+    picked = summarize._select_verbatim(
+        ["commit 6 (v0.21.6)", "commit 5 (v0.21.5)"], cands, cfg
+    )
+    assert len(picked) == 3  # capped at budget, newest-first
+    assert picked[0] == "commit 6 (v0.21.6)"
+    assert picked[1] == "commit 5 (v0.21.5)"
