@@ -4,7 +4,20 @@ import json
 import platform
 import subprocess
 
-SYSTEM = f"{platform.machine()}-darwin" if platform.system() == "Darwin" else "x86_64-linux"
+
+def _system_name(machine: str, system: str) -> str:
+    """Nix system string from Python's platform values.
+
+    nixpkgs keyed its darwin legacyPackages on 'aarch64-darwin' (Nix's canonical
+    name), while Python's platform.machine() reports Apple Silicon as 'arm64' —
+    an unmapped 'arm64-darwin' makes the whole batch metadata eval fail.
+    """
+    if system == "Darwin":
+        return f"{'aarch64' if machine in ('arm64', 'aarch64') else machine}-darwin"
+    return "x86_64-linux"
+
+
+SYSTEM = _system_name(platform.machine(), platform.system())
 
 
 def nix_eval(expr: str) -> str | None:
@@ -30,13 +43,22 @@ def _metadata_expr(pkgs: list[str]) -> str:
     let
       flake = builtins.getFlake "nixpkgs";
       pkgs = flake.legacyPackages.{SYSTEM};
+      py = pkgs.python3Packages;
+      # Some packages (mostly Python libraries: slack-sdk, tornado, ...) exist
+      # only as python3Packages.<name>, not as a top-level pkgs.<name> attr.
+      # Fall back so their src/homepage/changelog still resolve; {{}} keeps the
+      # `or null` below happy for genuinely unknown names.
+      pkg = name:
+        if pkgs ? ${{name}} then pkgs.${{name}}
+        else if py ? ${{name}} then py.${{name}}
+        else {{}};
       result = builtins.listToAttrs (map (name: {{
         name = name;
         value = {{
-          changelog = pkgs.${{name}}.meta.changelog or null;
-          description = pkgs.${{name}}.meta.description or null;
-          homepage = pkgs.${{name}}.meta.homepage or null;
-          srcUrl = pkgs.${{name}}.src.url or null;
+          changelog = (pkg name).meta.changelog or null;
+          description = (pkg name).meta.description or null;
+          homepage = (pkg name).meta.homepage or null;
+          srcUrl = (pkg name).src.url or null;
         }};
       }}) [ {attrs} ]);
     in builtins.toJSON result
@@ -47,7 +69,11 @@ def get_metadata_batch(pkgs: list[str], timeout: int = 60) -> dict[str, dict[str
     """Get changelog, description, homepage, srcUrl for all pkgs in a single nix eval call."""
     try:
         result = subprocess.run(
-            ["nix", "eval", "--impure", "--expr", _metadata_expr(pkgs)],
+            # --raw prints the toJSON string's contents verbatim; without it nix
+            # emits a quoted/escaped string and json.loads below gets a str, so
+            # the batch silently fell back to slow per-package evals (which also
+            # can't resolve python3Packages-only packages).
+            ["nix", "eval", "--impure", "--raw", "--expr", _metadata_expr(pkgs)],
             capture_output=True,
             text=True,
             timeout=timeout,

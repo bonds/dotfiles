@@ -136,3 +136,51 @@ def test_guess_from_repo_falls_back_to_api_resolver(monkeypatch):
     cfg = Config()
     url = _run(urls.guess_from_repo("hermes-agent", "NousResearch", "hermes-agent", "0.20.6", cfg))
     assert url == "https://api.github.com/repos/NousResearch/hermes-agent/releases?per_page=50&resolve_version=0.20.6"
+
+
+def test_patch_release_tag_retargets_tornado_docs_url(monkeypatch):
+    # Tornado's meta.changelog is a version-pinned docs page; retarget it to
+    # the new version so the notes match the installed version.
+    async def ok(*a, **k):
+        return True
+
+    monkeypatch.setattr(urls, "_http_ok", ok)
+    cfg = Config()
+    url = _run(urls.patch_release_tag(
+        "https://www.tornadoweb.org/en/stable/releases/v6.5.7.html", "6.5.8", cfg))
+    assert url == "https://www.tornadoweb.org/en/stable/releases/v6.5.8.html"
+
+
+def test_patch_release_tag_tornado_docs_url_kept_when_new_dead(monkeypatch):
+    # If the retargeted page doesn't exist, keep the original URL (don't break
+    # an otherwise-valid changelog source).
+    async def no(*a, **k):
+        return False
+
+    monkeypatch.setattr(urls, "_http_ok", no)
+    cfg = Config()
+    url = _run(urls.patch_release_tag(
+        "https://www.tornadoweb.org/en/stable/releases/v6.5.7.html", "6.5.8", cfg))
+    assert url == "https://www.tornadoweb.org/en/stable/releases/v6.5.7.html"
+
+
+def test_patch_release_tag_tornado_same_version_kept(monkeypatch):
+    async def no(*a, **k):
+        return False
+
+    monkeypatch.setattr(urls, "_http_ok", no)
+    cfg = Config()
+    url = _run(urls.patch_release_tag(
+        "https://www.tornadoweb.org/en/stable/releases/v6.5.8.html", "6.5.8", cfg))
+    assert url == "https://www.tornadoweb.org/en/stable/releases/v6.5.8.html"
+
+
+def test_patch_release_tag_ignores_unrelated_url(monkeypatch):
+    # Non-tornado / non-github-tag changelog URLs pass through untouched.
+    async def no(*a, **k):
+        return False
+
+    monkeypatch.setattr(urls, "_http_ok", no)
+    cfg = Config()
+    url = _run(urls.patch_release_tag("https://obsidian.md/changelog/", "1.0.0", cfg))
+    assert url == "https://obsidian.md/changelog/"

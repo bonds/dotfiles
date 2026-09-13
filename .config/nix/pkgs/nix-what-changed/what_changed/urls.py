@@ -277,6 +277,15 @@ KNOWN_URLS["dwarf-fortress"] = _make_dwarf_fortress_url
 
 
 async def patch_release_tag(url: str, new_ver: str, cfg: Config) -> str:
+    # Tornado's meta.changelog is a version-pinned docs page
+    # (https://www.tornadoweb.org/en/stable/releases/v6.5.7.html); retarget it
+    # to the new version so the notes match the installed version.
+    m = re.match(r"(https://www\.tornadoweb\.org/en/stable/releases/v)[\d.]+(\.html)$", url)
+    if m:
+        new_url = f"{m.group(1)}{new_ver}{m.group(2)}"
+        if new_url != url and await _http_ok(new_url, cfg):
+            return new_url
+        return url
     m = re.match(r"(https://github\.com/[^/]+/[^/]+/releases/tag/)(.*)", url)
     if not m:
         return url
