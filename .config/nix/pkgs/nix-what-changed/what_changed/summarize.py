@@ -160,6 +160,58 @@ def _slice_version_range(
     return text
 
 
+# Commit feeds (the changelog source for what-changed / polyptych) carry no
+# version sections — the version lives in the commit subject, e.g.
+# "17e5fdd what-changed: trim summaries (v0.21.3)".  Those markers delimit
+# releases (newest-first), so slice between the new version's marker and the
+# next older marker instead of looking for section headers.
+
+_COMMIT_SHA_RE = re.compile(r"^[0-9a-f]{7,12}\s+\S")
+
+
+def _looks_like_commit_feed(text: str) -> bool:
+    """True when *text* is a prettified GitHub commit list (one '<sha> <subject>'
+    per line, as produced by _prettify_gh_commits)."""
+    lines = [l for l in text.splitlines() if l.strip()]
+    return bool(lines) and all(_COMMIT_SHA_RE.match(l) for l in lines)
+
+
+def _slice_commit_feed(
+    text: str,
+    old_version: str | None,
+    new_version: str | None,
+) -> str:
+    """Trim a prettified commit feed to the old_version..new_version window.
+
+    Keeps the commits from the first subject mentioning the new version up to
+    the next subject mentioning an older version (unmarked commits between the
+    two markers are part of the new release and stay).  Falls back to the full
+    text when no marker for either version is found.
+    """
+    if not old_version or not new_version or old_version == new_version:
+        return text
+    new_pat = re.compile(r"v?" + re.escape(new_version) + r"(?![\d.])")
+    old_pat = re.compile(r"v?" + re.escape(old_version) + r"(?![\d.])")
+    ver_pat = re.compile(r"v?\d+(?:\.\d+)+")
+    lines = text.splitlines(keepends=True)
+    n_i = next((i for i, l in enumerate(lines) if new_pat.search(l)), None)
+    o_i = next((i for i, l in enumerate(lines) if old_pat.search(l)), None)
+    if n_i is None and o_i is None:
+        return text
+    if n_i is not None and o_i is not None:
+        # normal newest-first order: keep the new release up to the old marker
+        return "".join(lines[n_i:o_i]) if n_i < o_i else "".join(lines[n_i:])
+    if n_i is not None:
+        end = next(
+            (i for i in range(n_i + 1, len(lines))
+             if ver_pat.search(lines[i]) and not new_pat.search(lines[i])),
+            len(lines),
+        )
+        return "".join(lines[n_i:end])
+    # only the old marker found: keep everything above it (all newer commits)
+    return "".join(lines[:o_i])
+
+
 PROMPTS = {
     "release": (
         "Below are structured release notes. "
@@ -434,7 +486,10 @@ async def summarize(
 ) -> list[str] | None:
     if len(changelog_text) < 100:
         return None
-    text = _slice_version_range(changelog_text, old_version, new_version)
+    text = changelog_text
+    if _looks_like_commit_feed(text):
+        text = _slice_commit_feed(text, old_version, new_version)
+    text = _slice_version_range(text, old_version, new_version)
     text = _smarter_truncate(text, cfg.max_input_bytes)
     stype = _detect_source_type(text)
     prompts = CURATE_PROMPTS if cfg.prompt_style == "curate" else PROMPTS

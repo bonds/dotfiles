@@ -6,7 +6,7 @@ import os
 
 from what_changed.config import Config
 
-CACHE_VERSION = 4
+CACHE_VERSION = 5
 
 # How long (seconds) a discovered/guessed changelog URL is trusted before we
 # re-guess, and how long a "no changelog found" result is trusted before we

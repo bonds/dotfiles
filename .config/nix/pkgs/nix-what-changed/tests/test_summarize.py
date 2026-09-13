@@ -311,3 +311,100 @@ def test_summarize_without_versions_has_no_range_hint():
         asyncio.run(summarize.summarize("slack-sdk", text, cfg))
 
     assert "compared to the previous version" not in captured["prompt"]
+
+
+# ── Commit-feed trimming tests ────────────────────────────────────────────
+# what-changed / polyptych point their own changelog at a GitHub commits API
+# feed (no version sections — the version lives in the commit subject).  These
+# tests pin down the marker-based slicing for that source type.
+
+
+def test_looks_like_commit_feed():
+    feed = (
+        "17e5fdd what-changed: trim summaries to the window (v0.21.3)\n"
+        "e2f6d15 what-changed: fix blank changelogs for python3 (v0.21.2)\n"
+    )
+    assert summarize._looks_like_commit_feed(feed)
+    assert not summarize._looks_like_commit_feed("## v3.44.1\n- change\n")
+    assert not summarize._looks_like_commit_feed("")
+
+
+def test_slice_commit_feed_keeps_only_new_version():
+    feed = (
+        "17e5fdd what-changed: trim summaries to the old->new window (v0.21.3)\n"
+        "e2f6d15 what-changed: fix blank changelogs for python3Packages (v0.21.2)\n"
+        "98ed03c what-changed: add changelog resolution (v0.21.0)\n"
+        "b034d18 what-changed: add docker mapping, bump to 0.17.0\n"
+    )
+    sliced = summarize._slice_commit_feed(feed, "0.21.2", "0.21.3")
+    assert "17e5fdd" in sliced
+    assert "trim summaries" in sliced
+    assert "e2f6d15" not in sliced
+    assert "98ed03c" not in sliced
+    assert "b034d18" not in sliced
+
+
+def test_slice_commit_feed_keeps_unmarked_commits_between_markers():
+    # an unmarked commit between the new-version bump and the previous version
+    # marker belongs to the new release and stays
+    feed = (
+        "17e5fdd what-changed: trim summaries (v0.21.3)\n"
+        "9a1b2c3 what-changed: fix a follow-up typo\n"
+        "e2f6d15 what-changed: fix blank changelogs (v0.21.2)\n"
+    )
+    sliced = summarize._slice_commit_feed(feed, "0.21.2", "0.21.3")
+    assert "17e5fdd" in sliced
+    assert "9a1b2c3" in sliced
+    assert "e2f6d15" not in sliced
+
+
+def test_slice_commit_feed_only_old_marker_keeps_above():
+    feed = (
+        "17e5fdd what-changed: trim summaries (v0.21.3)\n"
+        "ac5a288 what-changed: fix hermes-agent changelog\n"
+        "e2f6d15 what-changed: fix blank changelogs (v0.21.2)\n"
+    )
+    sliced = summarize._slice_commit_feed(feed, "0.21.2", "9.9.9")
+    assert "17e5fdd" in sliced
+    assert "ac5a288" in sliced
+    assert "e2f6d15" not in sliced
+
+
+def test_slice_commit_feed_no_markers_unchanged():
+    feed = "17e5fdd some commit without a version marker\nac5a288 another commit\n"
+    assert summarize._slice_commit_feed(feed, "0.21.2", "0.21.3") == feed
+
+
+def test_slice_commit_feed_missing_versions_unchanged():
+    feed = "17e5fdd what-changed: trim summaries (v0.21.3)\n"
+    assert summarize._slice_commit_feed(feed, None, "0.21.3") == feed
+    assert summarize._slice_commit_feed(feed, "0.21.2", None) == feed
+
+
+def test_summarize_commit_feed_scoped_in_prompt():
+    """The old version's commit must be sliced out of the prompt."""
+    import asyncio
+    from unittest.mock import patch
+
+    cfg = Config()
+    cfg.backend = "openai"
+    feed = (
+        "17e5fdd what-changed: trim summaries to the old->new window (v0.21.3)\n"
+        "e2f6d15 what-changed: fix blank changelogs for python3Packages (v0.21.2)\n"
+        "98ed03c what-changed: add changelog resolution for brotlicffi (v0.21.0)\n"
+    )
+    captured = {}
+
+    async def fake_call(prompt, cfg):
+        captured["prompt"] = prompt
+        return "- trim summaries to the old->new window"
+
+    with patch("what_changed.summarize._call_llm", side_effect=fake_call):
+        bullets = asyncio.run(summarize.summarize(
+            "what-changed", feed, cfg, old_version="0.21.2", new_version="0.21.3"
+        ))
+
+    assert bullets
+    assert "17e5fdd" in captured["prompt"]
+    assert "e2f6d15" not in captured["prompt"]
+    assert "98ed03c" not in captured["prompt"]
