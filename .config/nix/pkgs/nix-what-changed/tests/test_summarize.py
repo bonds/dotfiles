@@ -440,3 +440,12 @@ def test_summarize_commit_feed_scoped_in_prompt():
     assert "17e5fdd" in captured["prompt"]
     assert "e2f6d15" not in captured["prompt"]
     assert "98ed03c" not in captured["prompt"]
+
+
+def test_version_scope_instruction_keeps_original_tags():
+    inst = summarize._version_scope_instruction("0.21.2", "0.21.5")
+    assert "Summarize ONLY the changes introduced in 0.21.5" in inst
+    assert "previous version 0.21.2" in inst
+    # the whole point: don't relabel older items to the new version
+    assert "do not relabel it to 0.21.5" in inst
+    assert "(v0.21.2)" in inst

@@ -4,7 +4,7 @@
 }:
 python3.pkgs.buildPythonApplication {
   pname = "what-changed";
-  version = "0.21.5";
+  version = "0.21.6";
   src = ./.;
   format = "pyproject";
   nativeBuildInputs = with python3.pkgs; [setuptools];

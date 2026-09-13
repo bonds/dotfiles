@@ -474,6 +474,24 @@ PROMPT_STYLES = {
 }
 
 
+def _version_scope_instruction(old_version: str, new_version: str) -> str:
+    """Prompt suffix scoping the summary to the old→new window.
+
+    Asks the model to ignore other versions AND to keep each item's original
+    version tag (e.g. '(v0.21.3)' in a commit subject) as-is instead of
+    relabelling everything to the new version — a -N window often spans
+    several sub-releases, so the tags are the only way to tell them apart.
+    """
+    return (
+        f"This changelog covers {new_version} and possibly older entries. "
+        f"Summarize ONLY the changes introduced in {new_version} "
+        f"compared to the previous version {old_version}. "
+        f"Explicitly ignore anything belonging to another version. "
+        f"Keep each item's original version tag (like \"(v{old_version})\") as-is "
+        f"when one is present; do not relabel it to {new_version}. "
+    )
+
+
 async def summarize(
     pkg_name: str,
     changelog_text: str,
@@ -493,12 +511,7 @@ async def summarize(
     style = PROMPT_STYLES.get(cfg.prompt_style, PROMPT_STYLES["default"])
     source_prompt = prompts[stype]
     if old_version and new_version:
-        source_prompt += (
-            f"This changelog covers {new_version} and possibly older entries. "
-            f"Summarize ONLY the changes introduced in {new_version} "
-            f"compared to the previous version {old_version}. "
-            f"Explicitly ignore anything belonging to another version. "
-        )
+        source_prompt += _version_scope_instruction(old_version, new_version)
     prompt = style.format(
         source_prompt=source_prompt,
         pkg=pkg_name,
