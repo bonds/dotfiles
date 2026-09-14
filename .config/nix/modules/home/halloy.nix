@@ -19,7 +19,7 @@ _: {
         # instead of needing BouncerServ network-scoping gymnastics.
         username = "scott/libera";
         realname = "Scott";
-        server = "sophrosyne";
+        server = "sophrosyne.taileafac.ts.net";
         port = 6667;
         use_tls = false; # tailnet (WireGuard) already encrypts the wire
         # Read the soju password from the agenix-decrypted file (not this TOML).

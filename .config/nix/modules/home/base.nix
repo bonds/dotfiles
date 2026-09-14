@@ -11,7 +11,7 @@
     enable = true;
     settings = {
       backend = "openai";
-      host = "http://sophrosyne:8080";
+      host = "http://sophrosyne.taileafac.ts.net:8080";
       model = "qwen2.5-7b";
       timeout = 240;
       maxInputBytes = 4000;

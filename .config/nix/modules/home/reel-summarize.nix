@@ -14,12 +14,12 @@ in {
         options = {
           host = lib.mkOption {
             type = lib.types.str;
-            default = "http://sophrosyne:8080";
+            default = "http://sophrosyne.taileafac.ts.net:8080";
             description = "LLM API host (http://localhost:8080 = llama.cpp, http://localhost:11434 = ollama)";
           };
           visionHost = lib.mkOption {
             type = lib.types.str;
-            default = "http://sophrosyne:8080";
+            default = "http://sophrosyne.taileafac.ts.net:8080";
             description = "Vision (multimodal) LLM API host. Same router as host when the vision model is served by the llamacpp router.";
           };
           backend = lib.mkOption {
