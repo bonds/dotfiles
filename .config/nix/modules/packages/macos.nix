@@ -27,7 +27,8 @@
     pname = "hermes-desktop-app";
     version = "0.17.0";
     phases = ["installPhase"];
-    hermesDesktop = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.desktop;
+    # BUG-001 workaround (upstream #61443) — see ./hermes-desktop-fixed.nix
+    hermesDesktop = import ./hermes-desktop-fixed.nix {inherit pkgs inputs;};
     iconPng = "${hermesDesktop}/share/hermes-desktop/dist/apple-touch-icon.png";
     inherit electronPkg;
     installPhase = ''

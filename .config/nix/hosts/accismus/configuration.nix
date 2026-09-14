@@ -287,6 +287,12 @@ in {
       # into $HERMES_HOME/.env by services.hermes-agent.environmentFiles.
       programs.hermes-agent.enable = true;
       programs.hermes-agent.desktop.enable = true;
+      # BUG-001 workaround (upstream #61443): the desktop's pinned
+      # electron-headers hash is stale — see
+      # modules/packages/hermes-desktop-fixed.nix (remove with PR #69458).
+      programs.hermes-agent.desktop.package = import ../../modules/packages/hermes-desktop-fixed.nix {
+        inherit pkgs inputs;
+      };
       services.hermes-agent = {
         enable = true;
         # browser dashboard at 127.0.0.1:9119 (interactive setup/first-run)

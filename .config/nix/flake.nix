@@ -37,11 +37,13 @@
     };
 
     # Hermes Agent (Nous Research) — home-manager module for accismus.
-    # Deliberately NO `inputs.nixpkgs.follows = "nixpkgs"`: this input pins
-    # its own nixos-unstable nixpkgs (uv2nix builds need newer nixpkgs APIs
-    # than our stable nixos-26.05 channel provides). See AGENTS.md gotcha
-    # about `inputs.nixpkgs.follows` breaking inputs on stable channels.
+    # FOLLOWS nixpkgs-unstable on purpose (kept on an unstable channel: uv2nix
+    # needs packages newer than stable 26.05 ships); unstable→unstable follows
+    # is safe — the AGENTS.md gotcha is about following TO a stable channel.
+    # Its electron-headers fetch is shimmed in
+    # modules/packages/hermes-desktop-fixed.nix (drop with upstream PR #69458).
     hermes-agent.url = "github:NousResearch/hermes-agent";
+    hermes-agent.inputs.nixpkgs.follows = "nixpkgs-unstable";
   };
   outputs = inputs:
     inputs.flake-parts.lib.mkFlake {inherit inputs;} {
