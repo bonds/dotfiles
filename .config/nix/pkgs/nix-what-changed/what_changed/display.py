@@ -112,14 +112,18 @@ def show_package(pkg: str, old_ver: str, new_ver: str,
     if description:
         print(f"\033[33m{_wrap(description, indent='  ↳ ', subsequent='    ')}\033[m")
 
+    emitted = False
     if bullets:
         max_bullets = 5
         for b in bullets[:max_bullets]:
             print(_wrap(b, indent="  • ", subsequent="    "))
+            emitted = True
         if len(bullets) > max_bullets:
             _dim(f"  … and {len(bullets) - max_bullets} more changes")
     elif error:
         _dim(f"  ⚠ {error}")
+    if not emitted:
+        _dim("  no changelog source found")
     print()
 
 

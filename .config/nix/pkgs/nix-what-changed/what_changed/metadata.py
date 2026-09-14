@@ -48,9 +48,17 @@ def _metadata_expr(pkgs: list[str]) -> str:
       # only as python3Packages.<name>, not as a top-level pkgs.<name> attr.
       # Fall back so their src/homepage/changelog still resolve; {{}} keeps the
       # `or null` below happy for genuinely unknown names.
+      # `nix store diff-closures` prints some python packages with an
+      # interpreter prefix (e.g. python3.12-ctranslate2) that matches no
+      # attribute in pkgs or python3Packages. Strip the prefix and retry in
+      # the python set so src/homepage/changelog resolve to the parent attr.
+      stripPyPrefix = name:
+        let m = builtins.match "python3(\\\\.[0-9]+)?-(.*)" name;
+        in if m == null then name else builtins.elemAt m 1;
       pkg = name:
         if pkgs ? ${{name}} then pkgs.${{name}}
         else if py ? ${{name}} then py.${{name}}
+        else if py ? ${{stripPyPrefix name}} then py.${{stripPyPrefix name}}
         else {{}};
       result = builtins.listToAttrs (map (name: {{
         name = name;
