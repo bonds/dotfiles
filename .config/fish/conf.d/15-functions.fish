@@ -200,7 +200,7 @@ function nr
 end
 
 function hr
-    nice home-manager switch --flake ~/.config/nix $argv
+    nr $argv
 end
 
 function age
