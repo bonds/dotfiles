@@ -79,7 +79,7 @@ but is no longer managed.
 - `.config/helix/languages.toml` — Helix language config
 
 ### Git
-- `.config/git/config` — **vestigial** (was the old per-repo config before the bare-repo migration). The bare repo's own config lives inside `~/.config/dotfiles/config` and is managed via `config config <key> <value>`.
+- `.config/git/config` — **the global git config** (moved here from `~/.gitconfig`, which is gone; tracked in this repo). The bare repo's own config lives inside `~/.config/dotfiles/config` and is managed via `config config <key> <value>`.
 - `.config/git/ignore` — **vestigial** (was the old repo-level gitignore). Untracked-file hiding via `status.showUntrackedFiles = no` in the bare repo's config makes it unnecessary.
 - `.config/git/hooks/pre-commit` — pre-commit hook (fish indent/syntax check, reject `.pyc` files). The bare repo's `core.hooksPath` points here.
 - `.config/git/hooks/pre-push` — pre-push hook (runs `nix flake check --no-build`). Same hooksPath mechanism.
@@ -126,7 +126,7 @@ but is no longer managed.
     `photo-backup` (owner of `/dragon/media/photos`) using
     `~/.ssh/id_photo_rsync` (deployed to `/home/photo-backup/.ssh/authorized_keys`
     with `command=sftp-server -d /dragon/media/photos`). No local temp copies
-    (no SSD wear), works over LAN or tailnet. `bin/photos-backup` is the nightly
+    (no SSD wear), works over LAN or tailnet. `~/bin/photos-backup` is the nightly
     wrapper (launches the app; the SFTP transport needs no mount).
   - **Tests:** pure logic in `photoexport_core.swift` (single source of truth) + 39 unit tests in `test_core.swift`; wired into `nix flake check` as `photo-export-test` (runs in sandbox via Xcode toolchain). Run manually: copy `test_core.swift` → `main.swift`, `swiftc photoexport_core.swift main.swift`. End-to-end smoke test planned but not implemented: `INTEGRATION_TEST_PLAN.md`.
 
@@ -152,7 +152,7 @@ but is no longer managed.
 
 ### Scripts (`bin/`)
 Cross-platform utility scripts, organized by OS:
-- `bin/` root — general utilities: `bench`, `def`, `mylocation`, `rainbow`, `rdemo`, `repo2txt`, `sort_photos`, `wattage`, `wifi_qrcode`, `wol`, `youtube`
+- `bin/` root — general utilities: `bench`, `def`, `mylocation`, `rainbow`, `rdemo`, `repo2txt`, `sort_photos`, `wifi_qrcode`, `wol`, `youtube`
 - `bin/darwin/` — macOS-specific: `create_devbox_app_aliases`, `macos-defaults` (system preference toggles)
 - `bin/linux/` — Linux-specific: `idletime`, `maximize_across_multiple_monitors`, `vu1server`, `wear`
 - `bin/openbsd/` — OpenBSD-specific: `packages`, `wipe`
