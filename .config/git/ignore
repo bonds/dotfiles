@@ -5,3 +5,4 @@
 __pycache__/
 result
 .direnv
+.config/nix/secrets/osaurus-api-key.txt
