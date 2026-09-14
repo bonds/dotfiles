@@ -15,7 +15,7 @@ in {
 
   i18n.defaultLocale = "en_US.UTF-8";
 
-  # Provided by lib/common-modules.nix (wired via mkNixos).
+  # Common module list: lib/shared-modules.nix (wired via mkNixos).
 
   programs = {
     command-not-found.enable = false;
