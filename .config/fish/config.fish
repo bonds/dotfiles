@@ -7,5 +7,4 @@
 #   25-gcloud.fish     - GOOGLE_APPLICATION_CREDENTIALS (ADC)
 #   30-interactive.fish - starship, atuin, auto-tmux, fzf opts
 #   35-nix-github-token.fish - NIX_CONFIG GitHub access token (gh)
-#   40-lm-studio.fish  - LM Studio CLI PATH
 #   fzf.fish           - fzf key bindings (fzf.fish plugin)
