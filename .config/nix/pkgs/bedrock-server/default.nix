@@ -7,11 +7,11 @@
 }:
 stdenv.mkDerivation rec {
   pname = "bedrock-server";
-  version = "1.26.32.2";
+  version = "1.26.45.1";
 
   src = fetchurl {
     url = "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-${version}.zip";
-    hash = "sha256-d4iEPnHSt6+Kk+4wGDAB6c0jupad6Mnu96oG00pNvKs=";
+    hash = "sha256-sNuGCY7kGKm7Im9vP1H/K+NlQiNoOTdWJ7Ka7z36XNo=";
     curlOpts = "-A itzg/minecraft-bedrock-server";
   };
 
