@@ -166,6 +166,7 @@ KNOWN_URLS["what-changed"] = _make_github_commits_url(
     "bonds", "dotfiles", ".config/nix/pkgs/nix-what-changed"
 )
 KNOWN_URLS["polyptych"] = _make_github_commits_url("bonds", "polyptych")
+KNOWN_URLS["publicsuffix-list"] = _make_github_commits_url("publicsuffix", "list")
 
 
 def _make_clamav_url(new_ver: str) -> str | None:
@@ -227,6 +228,8 @@ KNOWN_URLS["msmtp"] = _make_github_blob("marlam", "msmtp", "NEWS")
 KNOWN_URLS["rsync"] = _make_github_blob("WayneD", "rsync", "NEWS.md")
 KNOWN_URLS["libssh"] = _make_github_blob("libssh", "libssh-mirror", "CHANGELOG")
 KNOWN_URLS["libmpg123"] = _make_github_blob("libsdl-org", "mpg123", "NEWS")
+KNOWN_URLS["glibc-locales"] = _make_github_blob("bminor", "glibc", "NEWS")
+KNOWN_URLS["glibc-multi"] = _make_github_blob("bminor", "glibc", "NEWS")
 
 
 def _make_gitlab_raw_url(host: str, group: str, repo: str, path: str, ref: str = "master"):
@@ -238,6 +241,7 @@ def _make_gitlab_raw_url(host: str, group: str, repo: str, path: str, ref: str =
 
 KNOWN_URLS["gdk-pixbuf"] = _make_gitlab_raw_url("gitlab.gnome.org", "GNOME", "gdk-pixbuf", "NEWS", "master")
 KNOWN_URLS["glib"] = _make_gitlab_raw_url("gitlab.gnome.org", "GNOME", "glib", "NEWS", "main")
+KNOWN_URLS["at-spi2-core"] = _make_gitlab_raw_url("gitlab.gnome.org", "GNOME", "at-spi2-core", "NEWS", "main")
 
 
 def _make_gimp_url(new_ver: str) -> str | None:
@@ -261,6 +265,13 @@ def _make_discord_url(new_ver: str) -> str | None:
 KNOWN_URLS["discord"] = _make_discord_url
 
 
+def _make_bedrock_url(new_ver: str) -> str | None:
+    return "https://feedback.minecraft.net/hc/en-us/sections/360001185332"
+
+
+KNOWN_URLS["bedrock-server"] = _make_bedrock_url
+
+
 def _make_linux_url(new_ver: str) -> str | None:
     parts = new_ver.split(".")
     if len(parts) >= 2:
@@ -269,6 +280,14 @@ def _make_linux_url(new_ver: str) -> str | None:
 
 
 KNOWN_URLS["linux"] = _make_linux_url
+KNOWN_URLS["initrd-linux"] = _make_linux_url
+
+
+def _make_linux_firmware_url(new_ver: str) -> str | None:
+    return f"https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/log/?h={new_ver}"
+
+
+KNOWN_URLS["linux-firmware"] = _make_linux_firmware_url
 
 
 def _make_zfs_kernel_url(new_ver: str) -> str | None:
