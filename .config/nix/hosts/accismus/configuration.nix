@@ -139,6 +139,21 @@ in {
   # is empty when pkgs is set.
   nixpkgs.config.allowUnfree = true;
 
+  # /etc/fstab preserves the Lix installer's /nix entry. Written via
+  # environment.etc (not fileSystems) because fileSystems mounts the device at
+  # activation and would hard-fail whenever a device is absent.
+  # NOTE: an earlier noasync entry for the removable "Extra Space" volume was
+  # removed — mount_apfs(8) does NOT support sync/[no]async on APFS, so it
+  # made the volume fail to mount.
+  environment.etc."fstab".text = ''
+    #
+    # Warning - this file should only be modified with vifs(8)
+    #
+    # Failure to do so is unsupported and may be destructive.
+    #
+    UUID=3238bd60-4954-4ea9-87c6-c5d2ceae78eb /nix apfs rw,noatime,noauto,nobrowse,nosuid,owners # Added by the Lix installer
+  '';
+
   networking.hostName = "accismus";
   networking.computerName = "Scott's MacBook Air";
 
