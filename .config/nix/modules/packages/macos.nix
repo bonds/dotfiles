@@ -109,6 +109,7 @@ in {
     inputs.neocode.packages.${pkgs.stdenv.hostPlatform.system}.default # Native macOS SwiftUI client for OpenCode (community, flake, nr --update)
     inputs.polyptych.packages.${pkgs.stdenv.hostPlatform.system}.default # spanned fullscreen video player
     jujutsu # git alternative
+    lagrange # gemini protocol client
     libreoffice-bin # office suite
     lima # vms for mac
     mpv # minimalist media player
