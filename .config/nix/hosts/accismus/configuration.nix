@@ -232,6 +232,25 @@ in {
             StandardErrorPath = "${userHome}/Library/Logs/photos-backup.err.log";
           };
         };
+        # SleepWatcher — eject the 'Extra Space' volume before sleep, remount on
+        # wake (see ~/.config/sleepwatcher/{sleep,wake}.sh). Uses RunAtLoad +
+        # KeepAlive so the agent persists as a login user agent.
+        sleepwatcher = {
+          serviceConfig = {
+            ProgramArguments = [
+              "${pkgs.sleepwatcher}/bin/sleepwatcher"
+              "-V"
+              "-s"
+              "${userHome}/.config/sleepwatcher/sleep.sh"
+              "-w"
+              "${userHome}/.config/sleepwatcher/wake.sh"
+            ];
+            RunAtLoad = true;
+            KeepAlive = true;
+            StandardOutPath = "${userHome}/Library/Logs/sleepwatcher.out.log";
+            StandardErrorPath = "${userHome}/Library/Logs/sleepwatcher.err.log";
+          };
+        };
       };
     };
   };
@@ -253,6 +272,7 @@ in {
         ../../modules/home/photo-export.nix
         ../../modules/home/polyptych.nix
         ../../modules/home/reel-summarize.nix
+        ../../modules/home/sleepwatcher.nix
         inputs.hermes-agent.homeManagerModules.default
       ];
 

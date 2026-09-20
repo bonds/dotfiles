@@ -132,6 +132,7 @@ in {
     rage # encryption tool (age alternative)
     rustup # rust installer
     syncthing # peer-to-peer file synchronization
+    sleepwatcher # run commands on sleep/wake (sleep-eject + wake-remount hooks)
     tailscale # tailnet CLI
     the-powder-toy # physics simulation game
     typescript # javascript dialect
