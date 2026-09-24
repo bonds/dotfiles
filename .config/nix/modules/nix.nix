@@ -9,7 +9,7 @@
       base = "nix-command flakes";
       linuxExtras = " auto-allocate-uids cgroups";
     in
-      lib.mkDefault (base + lib.optionalString pkgs.stdenv.isLinux linuxExtras);
+      lib.mkDefault (base + lib.optionalString pkgs.stdenv.hostPlatform.isLinux linuxExtras);
     nix-path = lib.mkDefault "";
     flake-registry = lib.mkDefault "";
     warn-dirty = lib.mkDefault false;

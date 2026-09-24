@@ -19,7 +19,7 @@
       starship # customizable cross-shell prompt
       tokei # fast code line and language counter
     ]
-    ++ lib.optionals pkgs.stdenv.isLinux [
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
       cabal-install # Haskell build tool and package manager
       ghc # Glasgow Haskell Compiler
       idris2 # functional language with dependent types
