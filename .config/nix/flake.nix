@@ -42,7 +42,7 @@
     # is safe — the AGENTS.md gotcha is about following TO a stable channel.
     # Its electron-headers fetch is shimmed in
     # modules/packages/hermes-desktop-fixed.nix (drop with upstream PR #69458).
-    hermes-agent.url = "github:NousResearch/hermes-agent";
+    hermes-agent.url = "git+https://github.com/NousResearch/hermes-agent?rev=749220ef0007f8d87bd1531f1c24b0fe93816385";
     hermes-agent.inputs.nixpkgs.follows = "nixpkgs-unstable";
   };
   outputs = inputs:
