@@ -17,7 +17,7 @@ in
     inherit pname version;
     src = fetchPypi {
       inherit pname version;
-      hash = "sha256-5ltwsWygp/4NqAmSuHGQ+l0/3tZQrUwc84KbD0RZelM=";
+      hash = "sha256-aS3hNGzwI5u3u8/98M+9U4wkg0+Lxh6bYPQQZGXAM8k=";
     };
     pyproject = true;
     python = python3;
