@@ -44,6 +44,10 @@ in
 
     buildInputs = [stdenv];
     dontBuild = true;
+    # Files arrive pre-fetched via the `files` fetchurl list, not via src, so
+    # skip the default unpack/build phases entirely.
+    dontUnpack = true;
+    dontConfigure = true;
 
     installPhase = ''
       mkdir -p $out/encoder $out/tokenizer
