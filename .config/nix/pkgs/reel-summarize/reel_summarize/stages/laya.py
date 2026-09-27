@@ -127,11 +127,36 @@ _WARNED = set()
 
 
 def _warn_once(msg: str) -> None:
+    """Print a warning once per process (on stderr)."""
     if msg not in _WARNED:
         import sys
 
         print(f"  ⚠ laya: {msg}", file=sys.stderr, flush=True)
         _WARNED.add(msg)
+
+
+# Hermetic deployment: the Nix packaging sets LAYA_CHECKPOINT_DIR to the store
+# path of the English checkpoint FOD (pkgs/laya-checkpoint).  When set, the
+# Router is built with models={"english": <path>} so laya loads the local
+# checkpoint directly (no HF download).  When unset, laya falls back to its
+# normal HF-cache behaviour.
+LAYA_CHECKPOINT_DIR = os.environ.get("LAYA_CHECKPOINT_DIR") or ""
+
+
+def _router_models() -> dict | None:
+    p = LAYA_CHECKPOINT_DIR.strip()
+    if not p:
+        return None
+    if os.path.isdir(p) and os.path.exists(os.path.join(p, "rl_agent_config.json")):
+        return {"english": p}
+    _warn_once("LAYA_CHECKPOINT_DIR set but not a valid checkpoint dir; ignoring")
+    return None
+
+
+def make_router(Router):
+    """Build a Router, pointing the english model at the store checkpoint when set."""
+    models = _router_models()
+    return Router(models=models) if models else Router()
 
 
 def _laya_model():
@@ -178,7 +203,7 @@ def filter_lines(
         return lines
 
     try:
-        router = Router()
+        router = make_router(Router)
         context_lines = list(lines)
         states = []
         for i, line in enumerate(lines):

@@ -15,6 +15,17 @@
     transcribe-cpp = transcribeCpp;
     transcribe-cpp-python = transcribeCppPython;
   };
+  # Hermetic laya (line-salience pre-filter) + its English checkpoint.  laya
+  # needs torch-bin (x86_64-linux only), so this whole MCP package is linux-
+  # scoped (it runs on sophrosyne).  Reading LAYA_CHECKPOINT_DIR at runtime
+  # lets stages/laya.py load the checkpoint straight from the store; the code
+  # import-guards so an absent laya/checkpoint never breaks the service.
+  laya = callPackage ../laya {
+    inherit (python3.pkgs) buildPythonPackage fetchPypi;
+    python3 = python3;
+    torch-bin = python3.pkgs.torch-bin;
+  };
+  layaCheckpoint = callPackage ../laya-checkpoint {};
 in
   python3.pkgs.buildPythonApplication {
     pname = "reel-summarize-mcp";
@@ -24,7 +35,9 @@ in
 
     nativeBuildInputs = with python3.pkgs; [setuptools wrapPython];
 
-    propagatedBuildInputs = with python3.pkgs; [mcp httpx starlette uvicorn] ++ [reelSummarize];
+    propagatedBuildInputs =
+      (with python3.pkgs; [mcp httpx starlette uvicorn])
+      ++ [reelSummarize laya];
 
     dontUsePythonRuntimeDepsCheck = true;
 
@@ -36,6 +49,9 @@ in
         then "libtranscribe.dylib"
         else "libtranscribe.so"
       }"
+      "--set"
+      "LAYA_CHECKPOINT_DIR"
+      "${layaCheckpoint}"
       "--prefix"
       "PATH"
       ":"
@@ -46,7 +62,7 @@ in
       description = "MCP server that summarizes Instagram Reels using local models";
       homepage = "https://github.com/bonds/dotfiles";
       license = licenses.mit;
-      platforms = platforms.unix;
+      platforms = platforms.linux; # torch-bin / laya are linux/x86_64
       mainProgram = "reel-summarize-mcp";
     };
   }
