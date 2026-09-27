@@ -15,6 +15,7 @@ from reel_summarize.stages.frame_extract import extract_frames
 from reel_summarize.stages.transcribe import transcribe, transcribe_text
 from reel_summarize.stages.vision import analyze_frames, format_vision_timeline
 from reel_summarize.stages.summarize import generate_summary
+from reel_summarize.stages.laya import filter_lines
 
 _LOCK_PATH = os.path.expanduser("~/.cache/reel-summarize.lock")
 
@@ -143,6 +144,12 @@ def run_structured(
         segments = transcribe(audio_path, cfg)
         transcript = transcribe_text(segments)
         p(f"→ done transcribe ({len(transcript)} chars)")
+
+        if cfg.laya_enabled:
+            lines = [s["text"] for s in segments if s["text"]]
+            kept = filter_lines(lines, cfg)
+            transcript = " ".join(kept)
+            p(f"→ laya pre-filter: {len(lines)} → {len(kept)} lines kept")
 
         vision_results = []
         if frames:
@@ -276,6 +283,12 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
             segments = transcribe(audio_path, cfg)
             transcript = transcribe_text(segments)
             p(f"✓ transcription done ({len(transcript)} chars)")
+
+            if cfg.laya_enabled:
+                lines = [s["text"] for s in segments if s["text"]]
+                kept = filter_lines(lines, cfg)
+                transcript = " ".join(kept)
+                p(f"→ laya pre-filter: {len(lines)} → {len(kept)} lines kept")
 
             vision_results = []
             if frames:

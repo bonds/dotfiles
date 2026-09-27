@@ -28,6 +28,9 @@ class Config:
     max_frames: int = 10
     timeout: int = 180
     osaurus_api_key: str = ""
+    laya_enabled: bool = False
+    laya_threshold: float = 0.30
+    laya_use_calibration: bool = False
 
     def __post_init__(self):
         # Auto-load Osaurus API key from file if not set
@@ -146,6 +149,9 @@ def load(path: str | None = None) -> Config:
         "frames_per_second": "REEL_SUMMARIZE_FPS",
         "timeout": "REEL_SUMMARIZE_TIMEOUT",
         "osaurus_api_key": "REEL_SUMMARIZE_OSAURUS_API_KEY",
+        "laya_enabled": "REEL_SUMMARIZE_LAYA_ENABLED",
+        "laya_threshold": "REEL_SUMMARIZE_LAYA_THRESHOLD",
+        "laya_use_calibration": "REEL_SUMMARIZE_LAYA_USE_CALIBRATION",
     }
     for attr, var in env.items():
         val = os.environ.get(var)
@@ -159,5 +165,7 @@ def load(path: str | None = None) -> Config:
                     val = int(val)
                 elif typ in ("float", float):
                     val = float(val)
+                elif typ in ("bool", bool):
+                    val = val.strip().lower() in ("1", "true", "yes", "on")
             setattr(cfg, attr, val)
     return cfg

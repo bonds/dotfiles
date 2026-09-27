@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "source": "laya-bench line-selection (laya100_preds.json x gold100.json)",
+  "provenance": "192 lines: 12 reel (5 include) + 180 AMI public (36 include); labels use the laya-bench line rubric; fit with pure-Python PAV isotonic regression; inputs outside the observed range clamp to the nearest step (no extrapolation).",
+  "fit": "all 192 pairs (single pred snapshot; held-out refit = Phase B)",
+  "n_pairs": 192,
+  "base_rate": 0.21354166666666666,
+  "apply": "map raw laya_prob through these steps (linear between breakpoints) to get calibrated P(include), then keep the line iff that calibrated probability >= the configured threshold (default 0.30).",
+  "mapping": [
+    [
+      0.11,
+      0.0
+    ],
+    [
+      0.4273,
+      0.09090909090909091
+    ],
+    [
+      0.5528,
+      0.125
+    ],
+    [
+      0.6081,
+      0.2
+    ],
+    [
+      0.6792,
+      0.23684210526315788
+    ],
+    [
+      0.8344,
+      0.24242424242424243
+    ],
+    [
+      0.8613,
+      0.3333333333333333
+    ]
+  ]
+}
