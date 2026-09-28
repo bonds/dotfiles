@@ -329,6 +329,14 @@ in {
       Type = "oneshot";
       ExecStart = pkgs.writeShellScript "soju-seed-user" ''
         set -e
+        # soju.service is Type=simple: systemd considers it "up" before the
+        # admin socket exists. Wait for /run/soju/admin so we don't race soju's
+        # async startup.
+        for _ in $(seq 1 50); do
+          [ -S /run/soju/admin ] && break
+          sleep 0.1
+        done
+        [ -S /run/soju/admin ] || { echo "soju admin socket never appeared" >&2; exit 1; }
         SOJU_PW="$(cat ${config.age.secrets.soju-password.path})"
         SOJUCTL="${pkgs.soju}/bin/sojuctl -config ${config.services.soju.configFile}"
         if $SOJUCTL user status scott >/dev/null 2>&1; then
