@@ -3,7 +3,7 @@
   buildPythonPackage,
   fetchPypi,
   python3,
-  torch-bin,
+  torchWithoutCuda,
 }: let
   # convaiinnovations/laya 0.3.20 — System-1 decision engine used as the
   # reel-summarize line-salience pre-filter.  Depends on torch + transformers +
@@ -22,10 +22,11 @@ in
     pyproject = true;
     python = python3;
 
-    # torch-bin (prebuilt wheel) instead of source torch — avoids the
-    # multi-hour compilation.  x86_64-linux only (built on sophrosyne).
+    # torchWithoutCuda (CPU-only prebuilt wheel) instead of source torch —
+    # avoids the multi-hour compilation and drops CUDA/NCCL entirely (no GPU
+    # on sophrosyne).  x86_64-linux only (built on sophrosyne).
     propagatedBuildInputs = [
-      torch-bin
+      torchWithoutCuda
       python3.pkgs.transformers
       python3.pkgs.safetensors
       python3.pkgs.huggingface-hub
@@ -39,7 +40,7 @@ in
       description = "Fast, non-autoregressive System 1 decision engine with calibrated probabilities (ModernBERT)";
       homepage = "https://huggingface.co/convaiinnovations/laya";
       license = licenses.asl20;
-      platforms = platforms.linux; # torch-bin is linux/x86_64
+      platforms = platforms.linux; # torchWithoutCuda is linux/x86_64
       maintainers = [];
     };
   }
