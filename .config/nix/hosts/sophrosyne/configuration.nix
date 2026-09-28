@@ -320,6 +320,10 @@ in {
         "HOME=/var/lib/reel-summarize-mcp"
         # Instagram cookies (Netscape format) for authenticated downloads
         "REEL_SUMMARIZE_COOKIES=/run/agenix/reel-ig-cookies"
+        # Hermetic laya line-salience pre-filter (Phase C, "we built it so
+        # let's use it").  Raw threshold 0.30, calibration opt-in off;
+        # LAYA_CHECKPOINT_DIR is set by the package wrapper (store FOD).
+        "REEL_SUMMARIZE_LAYA_ENABLED=true"
       ];
       PrivateTmp = true;
       NoNewPrivileges = true;
