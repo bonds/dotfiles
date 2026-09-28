@@ -14,3 +14,6 @@ reel-summarize = "reel_summarize.cli:entry"
 
 [tool.setuptools.packages.find]
 include = ["reel_summarize*"]
+
+[tool.setuptools.package-data]
+reel_summarize = ["laya_calibration.json"]

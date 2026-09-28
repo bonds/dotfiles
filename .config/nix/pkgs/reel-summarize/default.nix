@@ -6,7 +6,7 @@
 }:
 python3.pkgs.buildPythonApplication {
   pname = "reel-summarize";
-  version = "0.1.0";
+  version = "0.2.0";
   src = ./.;
   format = "pyproject";
   nativeBuildInputs = with python3.pkgs; [setuptools wrapPython];
