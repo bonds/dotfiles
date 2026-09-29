@@ -15,6 +15,7 @@ in [
   })
   (import ./zen-browser/default.nix)
   (import ./ghostty/default.nix)
+  (import ./orca-ade/default.nix)
   (import ./opencode/default.nix inputs.nixpkgs)
   (import ./daisydisk-overlay/default.nix inputs.nixpkgs)
   (import ./openfang/default.nix inputs.nixpkgs)
