@@ -125,6 +125,7 @@ in {
     openssh # macos ssh doesn't come with resident ssh support
     passage # age-based password manager
     (pkgs.callPackage ../../pkgs/ghosttile {}) # hide apps from Dock/Cmd+Tab
+    (pkgs.callPackage ../../pkgs/raven {}) # AI-native CLI agent (EverMind-AI Raven)
     hermesDesktopApp # Hermes Desktop .app wrapper for Spotlight/LaunchServices
     (python3.withPackages (p:
       with p; [
