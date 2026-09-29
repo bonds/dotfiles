@@ -23,6 +23,18 @@ final: prev: {
       mkdir -p $out/Applications $out/bin
       mv "Orca ${version}-arm64/Orca.app" $out/Applications/
       makeWrapper $out/Applications/Orca.app/Contents/MacOS/Orca $out/bin/orca
+
+      # The vendor _CodeSignature is invalidated by 7zz extraction: the
+      # per-file com.apple.cs.CodeSignature/CodeRequirements xattrs it stamps
+      # don't survive (only com.apple.provenance remains), so Gatekeeper
+      # reports "Orca is damaged and can't be opened" and codesign --verify
+      # fails with "a sealed resource is missing or invalid". Strip the stale
+      # signature and re-sign ad-hoc (same pattern as openfang-overlay) so
+      # LaunchServices/Spotlight accept the bundle.
+      APP="$out/Applications/Orca.app"
+      chmod -R u+w "$APP"
+      rm -rf "$APP/Contents/_CodeSignature"
+      /usr/bin/codesign --force --deep -s - "$APP"
     '';
 
     meta = {
