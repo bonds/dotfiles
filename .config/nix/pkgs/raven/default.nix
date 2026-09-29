@@ -23,19 +23,22 @@
     });
   # EverMind-AI Raven — AI-native CLI agent. Distributed via GitHub release
   # assets only (NOT on PyPI: the `raven` name there belongs to the legacy
-  # Sentry client). Built from the sdist:
-  # https://github.com/EverMind-AI/Raven/releases/download/v0.2.3/raven-0.2.3.tar.gz
-  sdist = builtins.fetchurl {
-    name = "${pname}-${version}.tar.gz";
-    url = "https://github.com/EverMind-AI/Raven/releases/download/v0.2.3/raven-0.2.3.tar.gz";
-    sha256 = "fe1cebe41ae81a2a9fb656ca2dc2f06226222e544e0082d1cb8ccf03e5c9fcfc";
+  # Sentry client). Built from the release WHEEL, which (unlike the sdist)
+  # ships the prebuilt web UI at raven/ui/dist/index.html — the sdist lacks
+  # it, which made `raven` print "No page is built".
+  # The src name MUST keep the .whl extension: pypaInstallPhase only installs
+  # dist/*.whl, so a nameless fetch silently installs nothing (the bug in the
+  # first wheel attempt).
+  wheel = builtins.fetchurl {
+    name = "${pname}-${version}-py3-none-any.whl";
+    url = "https://github.com/EverMind-AI/Raven/releases/download/v0.2.3/raven-0.2.3-py3-none-any.whl";
+    sha256 = "0m3qk7sa3zlmnf9sl3pbwssy3sg863wvhvfj6lcway0xbzk9sgc5";
   };
 in
   python3.pkgs.buildPythonApplication {
     inherit pname version;
-    src = sdist;
-    format = "pyproject";
-    nativeBuildInputs = with python3.pkgs; [hatchling];
+    src = wheel;
+    format = "wheel";
 
     # All base deps resolved from nixpkgs 26.05 python3Packages (Python 3.13).
     # Version pin notes vs the wheel's Requires-Dist ranges (nix doesn't
