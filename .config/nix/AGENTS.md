@@ -206,3 +206,30 @@ modules/           # Shared modules
   - **`opencode-desktop`** is a second binary overlay in the same file, fetching the Electron desktop `.zip` from the same releases. Strips `Contents/Resources/app-update.yml` to disable the built-in Electron auto-updater (`nr --update` is the only path). Uses `dontFixup = true`. Added to `nr --update`'s package loop alongside the CLI.
 - **`nr --update` on darwin uses `update.sh` scripts, not `nix-update`.** Binary overlays under `modules/overlays/<pkg>/` are updated by their own `update.sh` scripts (called from `nr --update`), not by `nix-update`. `nix-update` doesn't work here because the packages live under `modules/overlays/` (not `pkgs/`) and use the `mkDarwinPackage` wrapper instead of `stdenv.mkDerivation`. The `update.sh` scripts handle both version bumps and SRI hash recomputation. If you add a new binary overlay, write an `update.sh` for it and wire it into `nr` — don't add it to a `nix-update` loop.
 - **The neocode package on accismus is consumed via a flake input** (`github:bonds/NeoCode`). The fork's `flake.nix` exposes `packages.aarch64-darwin.default` that fetches the prebuilt `.dmg`, extracts via `7zz`, strips Sparkle auto-update keys, and re-signs ad-hoc. The DMG hash lives in NeoCode's `flake.nix`, next to the source. To update: rebase fork on upstream, run `neocode-release` from a terminal (builds in `/tmp` to avoid Xcode SCM integration fighting with the dotfiles git repo), then `nr --update` in the dotfiles repo bumps the `neocode` flake input to the new commit.
+## Packaging apps (prebuilt macOS .app / Python CLIs)
+
+Hard-won lessons from packaging GUI/CLI tools into this flake (raven, orca, DaisyDisk overlays).
+
+### A. Prebuilt macOS .app from a DMG
+
+- **Extract DMGs with `undmg`, not `7zz`.** 7zz drops the per-file `com.apple.cs.*` xattrs carrying the vendor's sealed-resource signature, forcing an ad-hoc re-sign — and on Sequoia `spctl` REJECTS ad-hoc-signed bundles outright even when `codesign --verify` passes. `undmg` preserves the original notarized Developer ID signature so no re-sign is needed. (Exception: the neo-code overlay deliberately 7zz-extracts + ad-hoc re-signs an upstream fork that has no usable Developer ID signature.)
+- **When an app won't launch ("damaged and can't be opened"), run `spctl -a -vvv -t exec <app>` FIRST.** `codesign --verify` passing is NOT sufficient — Gatekeeper requires a notarized Developer ID trust anchor. Don't chase quarantine/xattrs before checking spctl.
+
+### B. Where the .app must live (Spotlight / `open -a` trap)
+
+- **Do NOT put GUI apps in `environment.systemPackages` on darwin.** nix-darwin's system stager stages them to `/Applications/Nix Apps` and re-registers them with LaunchServices on every activation; stale registrations accumulate (old/GC'd `/nix/store` paths, dead volumes) and `open -a <name>` resolves the name across ALL registrations — landing on a rejected or nonexistent bundle → "damaged".
+- **Expose GUI apps via Home Manager instead** (`home.packages = [ pkgs.<app> ];`). Home Manager copies the .app to `~/Applications/Home Manager Apps/<App>.app` — a stable, user-owned, Spotlight-indexed path that the stager does not manage or re-poison across rebuilds. Precedent: `modules/home/photo-export.nix`, `modules/home/orca.nix`.
+- **Cleanup when a stale registration already exists:** `sudo rm -rf "/Applications/Nix Apps/<App>.app"`, then `lsregister -u <stale /nix/store path or dead /Volumes path>`, then `killall Finder`. `lsregister -u` alone is temporary — the next activation re-registers it, which is why the Home Manager move is the durable fix.
+
+### C. Python CLI/TUI apps (buildPythonApplication)
+
+- **Prefer the release WHEEL over the sdist** when the project ships prebuilt web-UI assets — sdists often omit them and the CLI errors at runtime ("No page is built").
+- **`format = "wheel"` installs NOTHING if `src` is not named `*.whl`** (wheelUnpackPhase copies to `dist/<src.name>` and the installer only matches `dist/*.whl`). Name the fetch `<pkg>-<ver>-py3-none-any.whl`.
+- **Detached child processes do NOT inherit the wrapper's in-process `sys.path`.** If a package re-spawns itself via `[sys.executable, "-m", "<pkg>"]`, export `PYTHONPATH` (the package's own site-packages + propagated deps) via `makeWrapperArgs`, or the child dies with `No module named <pkg>`.
+- **Version-range mismatch with nixpkgs?** Override the single dep with `overridePythonAttrs` and set `dontCheckRuntimeDeps = true` rather than letting the mismatch fail the build.
+- **CLI tools never appear in Spotlight** (no .app bundle) — expected, not a bug.
+
+### D. Verification discipline
+
+- **Build-green is NOT done.** For GUI apps, prove `spctl -a -vvv -t exec <app>` accepts the bundle; for CLI apps, actually run the binary (`--version`, `--help`, or the failing subcommand) from the built system out-path.
+- **Prefer fast checks** (`nix-instantiate --parse`, targeted `nix eval`) over full builds / `nix flake check` — long ones can blow a 30-minute agent time budget. The pre-push hook runs `nix flake check --no-build` for the heavy validation on push anyway. (Non-activating build-only verification — Scott runs `nr` himself — is already documented under Commands above.)
