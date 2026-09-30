@@ -88,6 +88,52 @@ in
     dontCheckRuntimeDeps = true;
     pythonImportsCheck = ["raven"];
 
+    # `raven web` spawns the gateway as a detached child via
+    # subprocess.Popen([sys.executable, "-P", "-m", "raven", ...]) — a BARE
+    # store python3 that inherits only the env. The wrapper's own sys.path
+    # surgery (site.addsitedir) is in-process and does not reach children, so
+    # the child dies with "No module named raven" (see ~/.raven/web.log).
+    # Export the same site-packages as PYTHONPATH so every descendant finds raven.
+    makeWrapperArgs = [
+      "--set"
+      "PYTHONPATH"
+      # raven's own site-packages (the out dir) first, then every propagated
+      # dep's — see the comment above about the detached gateway child.
+      ("$out/${python3.pkgs.python.sitePackages}"
+        + ":"
+        + python3.pkgs.makePythonPath (with python3.pkgs; [
+          typer
+          litellm
+          pydantic
+          pydantic-settings
+          httpx
+          loguru
+          rich
+          croniter
+          pyyaml
+          prompt-toolkit
+          json-repair
+          tiktoken
+          questionary
+          watchfiles
+          tomli-w
+          idna
+          portalocker
+          mcp
+          orjson
+          numpy
+          pillow
+          qrcode
+          lancedb
+          aiohttp
+          click
+          pyarrow
+          a2aSdk
+          protobuf
+          lxml
+        ]))
+    ];
+
     meta = with lib; {
       description = "Raven — AI-native command line agent with memory, proactivity, context control, and skill evolution";
       homepage = "https://github.com/EverMind-AI/Raven";
