@@ -270,6 +270,7 @@ in {
         ../../modules/home/halloy.nix
         ../../modules/home/ice.nix
         ../../modules/home/photo-export.nix
+        ../../modules/home/orca.nix
         ../../modules/home/polyptych.nix
         ../../modules/home/reel-summarize.nix
         ../../modules/home/sleepwatcher.nix

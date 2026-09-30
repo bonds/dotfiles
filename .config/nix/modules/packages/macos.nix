@@ -118,7 +118,11 @@ in {
     nodejs # needed for hihello development
     opencode # AI coding agent (CLI, binary overlay, nr --update)
     opencode-desktop # OpenCode Electron desktop app (binary overlay, auto-updater disabled)
-    orca-ade # agent-native IDE (Orca, stablyai; DMG binary overlay, not nixpkgs' GNOME orca)
+    # orca-ade is a home.packages entry (modules/home/orca.nix) — NOT systemPackages.
+    # Keeping it out of environment.systemPackages stops nix-darwin's system
+    # stager from copying it to /Applications/Nix Apps and re-registering stale
+    # store paths with LaunchServices (which made Spotlight launch a rejected
+    # bundle). Home Manager stages ~/Applications/Home Manager Apps/Orca.app.
     osaurus # native macOS AI agent harness (binary overlay, nr --update)
     openfang-desktop # OpenFang desktop app (agent OS, Tauri binary overlay, nr --update)
     pkgs-unstable.openspec # Fission-AI spec-driven development CLI (unstable tracks @latest that the Hermes openspec skills expect)
