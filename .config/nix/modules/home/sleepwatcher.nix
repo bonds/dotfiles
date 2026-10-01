@@ -1,4 +1,4 @@
-{...}: {
+_: {
   home.file = {
     ".config/sleepwatcher/sleep.sh" = {
       source = ./sleepwatcher/sleep.sh;

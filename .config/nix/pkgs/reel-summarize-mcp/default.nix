@@ -22,7 +22,7 @@
   # import-guards so an absent laya/checkpoint never breaks the service.
   laya = callPackage ../laya {
     inherit (python3.pkgs) buildPythonPackage fetchPypi;
-    python3 = python3;
+    inherit python3;
     torchWithoutCuda = python3.pkgs.torchWithoutCuda;
   };
   layaCheckpoint = callPackage ../laya-checkpoint {};
