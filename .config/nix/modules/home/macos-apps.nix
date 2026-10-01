@@ -5,12 +5,13 @@
   ...
 }: let
   # osaurus ships a NOTARIZED bundle (spctl: Developer ID Terence Pae), so its
-  # custom icon cannot be baked into the derivation the way the Zen overlay's is
-  # — rewriting Contents invalidates the code signature and Gatekeeper then
-  # rejects the app. Apply the icon to the Home Manager copy instead, after
-  # copyApps has staged it. A FinderInfo xattr does not affect the signature.
+  # custom icon cannot be baked into the derivation — rewriting Contents
+  # invalidates the code signature and Gatekeeper then rejects the app. Apply
+  # the icon to the Home Manager copy instead, after copyApps has staged it. A
+  # FinderInfo xattr does not affect the signature.
   osaurusIcon = ../overlays/osaurus/osaurus-icon.icns;
   zenIcon = ../zen-icon.icns;
+  zenPolicies = import ./zen-policies.nix;
   appDir = "${config.home.homeDirectory}/Applications/Home Manager Apps";
   setOsaurusIconScript = pkgs.writeText "set-osaurus-icon.applescript" ''
     use framework "Cocoa"
@@ -19,12 +20,11 @@
     set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
     current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
   '';
-  # Zen's icon is baked into the bundle by the overlay (Contents/Resources/
-  # firefox.icns), which is necessary for the .app to be self-contained — but
-  # macOS may still prefer the bundle's own Assets.car for display. Applying the
-  # icon via NSWorkspace setIcon:options:2 writes the FinderInfo xattr, a
-  # stronger display override that is independent of the bundle, and is what the
-  # owner's original setup used. The xattr does not affect the code signature.
+  # Zen's bundle is left as a pristine `undmg` extraction (Mozilla's Developer
+  # ID signature intact), so the icon is NOT baked into it — baking would break
+  # the seal. Applying the icon via NSWorkspace setIcon:options:2 writes the
+  # FinderInfo xattr, which is independent of the bundle and does not affect the
+  # code signature. This xattr is now the ONLY custom-icon mechanism.
   setZenIconScript = pkgs.writeText "set-zen-icon.applescript" ''
     use framework "Cocoa"
     set appPath to "${appDir}/Zen.app"
@@ -39,11 +39,11 @@ in {
   # them to ~/Applications/Home Manager Apps — a stable, user-owned,
   # Spotlight-indexed path — instead of nix-darwin's system stager copying them
   # to /Applications/Nix Apps and re-registering stale /nix/store paths with
-  # LaunchServices on every activation (see AGENTS.md §B). zen-browser's custom
-  # icon and enterprise policies are baked into its bundle by the
-  # modules/overlays/zen-browser overlay, and its icon is additionally applied to
-  # the Home Manager copy via the zenIcon activation below (FinderInfo xattr).
-  # daisydisk, ghosttile and openfang-desktop carry no custom icon.
+  # LaunchServices on every activation (see AGENTS.md §B). Zen's custom icon is
+  # applied to the Home Manager copy via the zenIcon activation below (FinderInfo
+  # xattr); its enterprise policies come from macOS managed preferences set in
+  # targets.darwin.defaults. Neither touches the bundle. daisydisk, ghosttile and
+  # openfang-desktop carry no custom icon.
   home.packages = with pkgs; [
     daisydisk # disk usage visualizer
     (pkgs.callPackage ../../pkgs/ghosttile {}) # hide apps from Dock/Cmd+Tab (local package)
@@ -55,6 +55,21 @@ in {
     # (nothing notarized to invalidate), so no activation step is needed.
     raven-desktop
   ];
+
+  # Zen enterprise policies via macOS managed preferences. The supported
+  # mechanism is `defaults write app.zen-browser.zen <Key> <value>` (Zen issue
+  # #12363: writing the .plist directly does NOT invalidate macOS's preferences
+  # cache). home-manager's targets.darwin.defaults writer generates
+  # `defaults import <domain> <plist>` from these attrs, which goes through the
+  # `defaults` CLI and flushes the cache. `EnterprisePoliciesEnabled = true` is
+  # the Firefox-family gate that makes Zen read this domain at all. The policy
+  # set itself lives in the shared zen-policies.nix (also consumed by the Linux
+  # wrapFirefox branch) — do NOT use programs.firefox here: its profile
+  # management would risk taking over the owner's hand-built 2.1 GB profile
+  # (AGENTS.md §B.1, "the profile trap").
+  targets.darwin.defaults."app.zen-browser.zen" =
+    {EnterprisePoliciesEnabled = true;}
+    // zenPolicies;
 
   home.activation.osaurusIcon = lib.hm.dag.entryAfter ["copyApps"] ''
     if [ -d "${appDir}/osaurus.app" ]; then

@@ -172,7 +172,8 @@ modules/           # Shared modules
 
 - **`inputs.nixpkgs.follows` can break things on stable channels.** Letting an input follow your nixpkgs can cause build failures if the input expects newer nixpkgs APIs than the stable channel provides. If an input fails to build on a stable channel, remove its follows so it uses its own pinned nixpkgs. This has happened with home-manager and arion in the past.
 - **`nix flake check` works on darwin** — NixOS configs evaluate fine cross-platform. Cannot cross-build x86_64 from aarch64 though; build directly on the target machine or deploy via `--target-host`. Runs `format-check` (alejandra), `deadnix-check`, `statix-check`, `secrets-check` (gitleaks), and `what-changed-test` (nix-what-changed's pytest suite, run from the root flake's `checks`). The non-hermetic `photo-export-test` (host Xcode) is NOT a check — it lives under `packages` and is built explicitly with `nix build .#photo-export-test` on a machine that has Xcode, because `nix flake check` builds every check and would fail without that exact Xcode.
-- **Re-signing icon-baked bundles (`codesign --force --deep --sign -`).** Any overlay that rewrites a signed macOS bundle — Zen's icon+policies, Hermes' Info.plist+icon, opencode-desktop's `app-update.yml` removal, NeoCode — must re-sign ad-hoc as the last install step, or the broken seal makes macOS report the app as "damaged". Verify with `codesign --verify --deep --strict <app>` on the built out-path. Two traps: (1) a symlink pointing outside the bundle is an "invalid destination for symbolic link in bundle" — Hermes must COPY its `dist`/`package.json`, not symlink them, before signing; (2) osaurus is deliberately NOT re-signed and does NOT bake its icon (its bundle is notarized — see §B).
+- **Re-signing icon-baked bundles (`codesign --force --deep --sign -`).** Any overlay that rewrites a signed macOS bundle — Hermes' Info.plist+icon, opencode-desktop's `app-update.yml` removal, NeoCode — must re-sign ad-hoc as the last install step, or the broken seal makes macOS report the app as "damaged". Verify with `codesign --verify --deep --strict <app>` on the built out-path. Two traps: (1) a symlink pointing outside the bundle is an "invalid destination for symbolic link in bundle" — Hermes must COPY its `dist`/`package.json`, not symlink them, before signing; (2) osaurus is deliberately NOT re-signed and does NOT bake its icon (its bundle is notarized — see §B). **Zen is deliberately NOT in this list any more** — its bundle is a pristine `undmg` extraction and keeps Mozilla's original signature (see §B.1).
+- **After changing an app's icon, relaunch the Dock (`killall Dock`) — and usually Finder too.** macOS caches app icons in `iconservices`; replacing the `.icns` in a bundle (or redeploying the bundle) does NOT refresh the Dock tile, Spotlight, or Finder. The bundle can be provably correct (`md5` of `Contents/Resources/<icon>.icns` matches, `CFBundleIconFile` points at it) while the Dock still shows the old icon. Fix: `killall Dock` (and `killall Finder` if Finder/Quick Look is stale). If it still doesn't take, `touch` the `.app` bundle and `killall Dock` again. This bit us after swapping the Raven placeholder icon — the icon was correct on disk the whole time.
 - **`statix-check` must NOT use `--config`** — statix silently ignores config files inside `/nix/store` (oppiliappan/statix#71), and flake checks run with cwd = `${self}` which IS a store path. The `statix.toml` at the repo root (disabling `repeated_keys`) is auto-discovered by name, so the check runs plain `statix check .`. Don't run `statix fix` unprompted — the W20 `repeated_keys` lint is intentionally disabled because NixOS modules idiomatically repeat attrset keys (e.g. `boot.loader.*`, multiple `systemd.services.*`).
 - **`nixos-rebuild switch` needs sudo.** Remote deploy from laptop uses `--target-host scott@host --use-remote-sudo`. Passwordless sudo (`NOPASSWD` in sudoers) is needed for automated deploys.
 - **`flake.lock` is tracked.** Commit it after `nix flake update`.
@@ -223,27 +224,83 @@ Hard-won lessons from packaging GUI/CLI tools into this flake (raven, orca, Dais
 ### B. Where the .app lives + the icon / signature mechanism
 
 - **GUI apps live in `home.packages`** (`home.packages = [ pkgs.<app> ];`), which Home Manager copies to `~/Applications/Home Manager Apps/<App>.app` — a stable, user-owned, Spotlight-indexed path. This is the accepted, corrected arrangement (the earlier blanket "never in `environment.systemPackages`" rule is relaxed). It avoids nix-darwin's system stager, which stages apps to `/Applications/Nix Apps` and re-registers them with LaunchServices on every activation; stale registrations accumulate (old/GC'd `/nix/store` paths, dead volumes) and `open -a <name>` resolves the name across ALL registrations — landing on a rejected or nonexistent bundle → "damaged". Precedent: `modules/home/photo-export.nix`, `modules/home/orca.nix`, `modules/home/macos-apps.nix` (daisydisk, ghosttile, osaurus, openfang-desktop, zen-browser), `modules/home/hermes-desktop-app.nix`. Zen is unified across accismus + metanoia on the local `modules/overlays/zen-browser` overlay (darwin .dmg / linux tarball); see the overlay's `update.sh` and `sources.json`.
-- **Custom-icon mechanism: bake AND apply a `FinderInfo` xattr.** A reliably displayed custom icon uses two steps: (1) bake the icon into the bundle (`Contents/Resources/firefox.icns` for Zen, done by the overlay), and (2) apply the icon to the Home Manager copy with an `osascript` `NSWorkspace setIcon:forFile:options:2` call, which writes the `FinderInfo` xattr (`home.activation.zenIcon` / `home.activation.osaurusIcon` in `modules/home/macos-apps.nix`). macOS may prefer the bundle's own `Assets.car` over the baked `.icns`, so the xattr is the stronger display override — and it does not affect the code signature.
+- **Custom-icon mechanism: `FinderInfo` xattr (and/or baking).** The durable, signature-safe way to display a custom icon is to apply it to the Home Manager copy with an `osascript` `NSWorkspace setIcon:forFile:options:2` call, which writes the `FinderInfo` xattr (`home.activation.zenIcon` / `home.activation.osaurusIcon` in `modules/home/macos-apps.nix`) — it is independent of the bundle and does not affect the code signature. Baking a `.icns` into the bundle (`Contents/Resources/firefox.icns`) is an optional second step, but it *rewrites* the bundle: fine only for an ad-hoc-signed/notarized-free bundle, NEVER for one with a Developer ID signature you want to keep (see the CRITICAL GOTCHA below). Zen no longer bakes — its icon is **FinderInfo-only** so the bundle stays pristine; macOS may prefer the bundle's own `Assets.car`, which is exactly why the xattr (the stronger display override) is what actually shows.
 - **CRITICAL GOTCHA — baking into a Developer-ID-signed bundle breaks the seal.** Rewriting a bundle that carries a Developer ID signature + hardened runtime invalidates its code signature; Gatekeeper then kills the app with "a sealed resource is missing or invalid" (verified: `codesign -dvvv` shows `flags=0x10000(runtime)` on the broken build). A broken seal alone is fatal.
-  - **Fix: ad-hoc re-sign** (`codesign --force --deep --sign -`) as the last install step. It drops the hardened-runtime flag (`0x10000(runtime)` → `0x2(adhoc)`), so `amfid` permits the app (verified: an icon-baked + ad-hoc-re-signed Zen launches). **Do NOT remove the re-sign**, and **do NOT re-sign with `--options runtime`** — adding the hardened-runtime flag back makes it fail again.
+  - **Historic fix (superseded for Zen): ad-hoc re-sign** (`codesign --force --deep --sign -`) as the last install step. It drops the hardened-runtime flag (`0x10000(runtime)` → `0x2(adhoc)`), so `amfid` permits the app. **Do NOT re-sign with `--options runtime`** — adding the hardened-runtime flag back makes it fail again. This remains the adopted approach for overlays that *must* rewrite a bundle (Hermes, opencode-desktop, NeoCode). **Zen no longer needs it** because it no longer rewrites the bundle at all (§B.1).
   - **Notarized-app exception (osaurus):** a *notarized* bundle cannot be re-signed and must never have its icon baked — rewriting `Contents` invalidates its signature and Gatekeeper rejects it (and on Sequoia `spctl` rejects ad-hoc bundles outright). Its icon is applied **only** via the `FinderInfo` xattr, never baked.
+  - **Better fix — don't rewrite the bundle at all.** Where a feature can be delivered outside the bundle, do that and keep the original signature. Zen does exactly this: policies via macOS managed preferences and the icon via the `FinderInfo` xattr, so the bundle is a pristine `undmg` extraction and Mozilla's Developer ID + hardened runtime survive untouched (§B.1).
 - **Cleanup when a stale registration already exists:** `sudo rm -rf "/Applications/Nix Apps/<App>.app"`, then `lsregister -u <stale /nix/store path or dead /Volumes path>`, then `killall Finder`. `lsregister -u` alone is temporary — the next activation re-registers it, which is why the Home Manager move is the durable fix.
 
-#### B.1 Zen.app: why it is built this way (hard-won, 2026-10-01)
+#### B.1 Zen.app: policies via managed preferences, bundle untouched (2026-10-01)
 
-The story behind §B's rules. It cost real time, and the obvious-looking answers
-were wrong twice. Read this before "simplifying" the Zen overlay or the icon
-activation.
+**Current design (supersedes the bake + re-sign approach below).** Zen's DMG is
+`undmg`-extracted into `$out/Applications/Zen.app` and that is *all* the darwin
+overlay does — no `policies.json`, no icon baking, no `codesign`. Nothing is
+written into the bundle, so **Mozilla's original Developer ID signature +
+hardened runtime survive** (`Authority=Developer ID Application: Mauro Baladés
+(9V5K9TP787)`, `flags=0x10000(runtime)`, `codesign --verify --deep --strict`
+rc=0) and **no ad-hoc re-sign is needed**. The two features that used to force a
+bundle rewrite are now delivered outside it:
 
-**The symptom chain.** The overlay bakes the custom icon (`firefox.icns`) and
-`policies.json` into a bundle that `undmg` extracted with Mozilla's Developer ID
-signature intact → the code-signature **seal breaks** → macOS reports
-"Zen.app is damaged and can't be opened" and refuses to launch it. The fix is an
-**ad-hoc re-sign** as the last install step (see §B).
+- **Enterprise policies → macOS managed preferences.** Set via
+  `targets.darwin.defaults."app.zen-browser.zen" = { EnterprisePoliciesEnabled =
+  true; } // (import ./zen-policies.nix);` in `modules/home/macos-apps.nix` —
+  **not** `programs.firefox`, whose profile management (`profiles.ini`,
+  `user.js`, extension prefs) would risk taking over the owner's hand-built
+  2.1 GB profile ("the profile trap" below). `modules/home/zen-policies.nix`
+  stays the single policy source (the Linux `wrapFirefox` branch consumes it
+  too).
+  - **`defaults write` is required, not a raw `.plist` write.** macOS caches
+    preferences; dropping a plist file into `~/Library/Preferences` does **not**
+    invalidate the cache, so Zen never sees it. Zen issue
+    [zen-browser/desktop#12363](https://github.com/zen-browser/desktop/issues/12363)
+    (closed "not a bug") confirms `defaults write app.zen-browser.zen <Key>
+    <value>` is the supported mechanism. home-manager's `targets.darwin.defaults`
+    writer emits `run /usr/bin/defaults import app.zen-browser.zen
+    <generated.plist>` (verified in the generated `activate` and its
+    `app.zen-browser.zen.plist`), which goes through the `defaults` CLI and
+    flushes the cache — so the Nix→plist translation (nested `ExtensionSettings`,
+    `Preferences` with `Status = "locked"`, bools→`true/false`, ints staying
+    ints) is what Zen ends up reading. Confirmed surviving the conversion with
+    `plutil -p`.
+
+  **Verified empirically (headless, 2026-10-01).** Importing the module's exact
+  generated plist via `defaults import` and launching the pristine built bundle
+  headless, then reading `Services.policies` over Marionette
+  (`-remote-allow-system-access` → chrome context), showed all policies active:
+  `DisableTelemetry`, `DisableFirefoxStudies`, `DisableAppUpdate`,
+  `ManualAppUpdateOnly`, `DisableFirefoxAccounts`, `DisableAccounts`,
+  `DisableFirefoxScreenshots`, `OverrideFirstRunPage`, `OverridePostUpdatePage`,
+  `DontCheckDefaultBrowser`, `DisplayBookmarksToolbar`, `EnableTrackingProtection`,
+  `SearchEngines`, `Preferences` (all 19, `signon.rememberSignons` /
+  `browser.contentblocking.category` reported locked) and `ExtensionSettings`
+  (all 11 extensions). `DisablePocket` is set in `zen-policies.nix` but is
+  **absent from `getActivePolicies()`** — Firefox removed the Pocket policy
+  (Pocket was discontinued 2025); it is inert, not a misconfiguration. The same
+  result was visible in a headless `about:policies` screenshot (policies listed
+  under "Active"). **When re-verifying, prefer the Marionette read over an
+  OCR'd screenshot** — the screenshot is legible but OCR mis-reads the long
+  extension IDs.
+- **Custom icon → `FinderInfo` xattr only.** `home.activation.zenIcon`
+  (`NSWorkspace setIcon:forFile:options:2`) applies it to the Home Manager copy;
+  since the bundle is no longer modified this is the *only* icon mechanism.
+
+**Launch test (verified 2/2).** A temp copy of the built bundle `open`-ed twice
+started the process both times (`pgrep` confirmed the
+`/private/tmp/zenlaunch/.../zen` path), then the process was killed. Real prefs
+were exported/restored around the test and the real `installs.ini` /
+`profiles.ini` / `Profiles/` were confirmed byte-identical afterwards.
+
+**What follows is the HISTORICAL approach — superseded, kept so the reasoning
+isn't repeated blindly.** It shipped baking the icon and `policies.json` into a
+`undmg`-extracted bundle with Mozilla's Developer ID signature intact → the
+code-signature **seal broke** → macOS reported "Zen.app is damaged and can't be
+opened" and refused to launch. The then-fix was an **ad-hoc re-sign** as the
+last install step.
 
 **The two false leads — do not repeat them.**
 
-- *"The re-sign broke it."* Wrong — the re-sign is what **fixes** it. A single
+- *"The re-sign broke it."* Wrong — the re-sign is what **fixed** it. A single
   flaky `open` trial made the un-re-signed store bundle look like it worked. A
   repeated A/B matrix (2 rounds each) settled it: no-re-sign → FAILS 2/2,
   ad-hoc re-sign → LAUNCHES 2/2. **Always repeat launch tests; one `open` is not
@@ -252,11 +309,12 @@ signature intact → the code-signature **seal breaks** → macOS reports
   trial, same error. The deployed copy was a **stale generation** built before
   the re-sign was added.
 
-**The verified mechanism.** A broken seal alone is **fatal** (Gatekeeper kills
-the app). An ad-hoc signature is **not** fatal — it is the cure, because
-`--sign -` drops the hardened-runtime flag. Re-signing ad-hoc **with**
-`--options runtime` **fails** (the flag comes back). So: keep the re-sign, never
-add `--options runtime`.
+**The verified mechanism of that era.** A broken seal alone is **fatal**
+(Gatekeeper kills the app). An ad-hoc signature is **not** fatal — it was the
+cure, because `--sign -` drops the hardened-runtime flag. Re-signing ad-hoc
+**with** `--options runtime` **fails** (the flag comes back). The better fix is
+the one now in place: **write nothing into the bundle**, so there is no seal to
+break and no re-sign to keep.
 
 **`spctl` vs launch — not the same gate.** `spctl -a -vvv -t exec` *assesses*
 against a notarized Developer ID trust anchor and will report an ad-hoc bundle
@@ -266,10 +324,11 @@ a broken seal *does* block launch even when `codesign --verify` passes — so
 check both, and trust the launch test.
 
 **The icon display trap.** Baking the icon is necessary but **not sufficient**:
-macOS may prefer the bundle's own `Assets.car` over the baked `.icns`. The
+macOS may prefer the bundle's own `Assets.car` over any baked `.icns`. The
 reliable override is the **FinderInfo xattr** written by the `home.activation`
 step (§B). This is why the original design used it — and why removing it (in
-favour of baking alone) made the custom icon disappear.
+favour of baking alone) made the custom icon disappear. With the bundle now
+untouched the xattr is also the *only* mechanism.
 
 **The profile trap — moving the app spawns a fresh profile.** Zen keys its
 "install" identity by the **app's filesystem path** (a hash in
