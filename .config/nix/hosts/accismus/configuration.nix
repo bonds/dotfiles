@@ -5,37 +5,10 @@
   ...
 }: let
   userHome = import ../../lib/user-home.nix pkgs;
-  pruneGenerations = import ../../modules/prune-generations.nix {inherit pkgs;};
-
-  zenIcon = ../../modules/zen-icon.icns;
-  setZenIconScript = pkgs.writeText "set-zen-icon.applescript" ''
-    use framework "Cocoa"
-    set appPath to "/Applications/Nix Apps/Zen.app"
-    set iconPath to "${zenIcon}"
-    set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
-    current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
-  '';
-
-  osaurusIcon = ../../modules/overlays/osaurus/osaurus-icon.icns;
-  setOsaurusIconScript = pkgs.writeText "set-osaurus-icon.applescript" ''
-    use framework "Cocoa"
-    set appPath to "/Applications/Nix Apps/osaurus.app"
-    set iconPath to "${osaurusIcon}"
-    set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
-    current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
-  '';
-
-  hermesIcon = ../../modules/overlays/hermes-icon.icns;
-  setHermesIconScript = pkgs.writeText "set-hermes-icon.applescript" ''
-    use framework "Cocoa"
-    set appPath to "/Applications/Nix Apps/Hermes.app"
-    set iconPath to "${hermesIcon}"
-    set img to (current application's NSImage's alloc()'s initWithContentsOfFile:iconPath)
-    current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:2
-  '';
 in {
   imports = [
     ../../modules/packages/macos.nix
+    ../../modules/darwin-agents.nix
   ];
 
   security.pam.services.sudo_local.touchIdAuth = true;
@@ -67,7 +40,7 @@ in {
     deps = ["agenix"];
     text = ''
       mkdir -p "${userHome}/.config/reel-summarize"
-      ln -sf /etc/agenix/osaurus-api-key "${userHome}/.config/reel-summarize/osaurus-api-key"
+      ln -sf /run/agenix/osaurus-api-key "${userHome}/.config/reel-summarize/osaurus-api-key"
     '';
   };
 
@@ -167,94 +140,6 @@ in {
   users.users.scott.shell = pkgs.fish;
   system.primaryUser = "scott";
 
-  # Custom icon for Zen.app — injected into the "applications" activation
-  # script so it runs right after rsync deploys the app (otherwise the
-  # freshly-rsynced bundle would lose the com.apple.FinderInfo xattr).
-  # See the setZenIconScript let-binding for how it works.
-  system.activationScripts.applications.text = lib.mkAfter ''
-    echo "zen-icon: setting custom icon on Zen.app" >&2
-    /usr/bin/osascript "${setZenIconScript}" 2>&1 || true
-
-    echo "osaurus-icon: setting custom icon on osaurus.app" >&2
-    /usr/bin/osascript "${setOsaurusIconScript}" 2>&1 || true
-
-    echo "hermes-icon: setting custom icon on Hermes.app" >&2
-    /usr/bin/osascript "${setHermesIconScript}" 2>&1 || true
-  '';
-
-  # https://www.danielcorin.com/til/nix-darwin/launch-agents/
-  launchd = {
-    user = {
-      agents = {
-        # --- Disabled 2026-08-04: moving to MCP on sophrosyne ---
-        # llamacpp-serve = {
-        #   command = "${llamacppServeScript}";
-        #   serviceConfig = {
-        #     KeepAlive = true;
-        #     RunAtLoad = true;
-        #     StandardOutPath = "${userHome}/Library/Logs/llamacpp.out.log";
-        #     StandardErrorPath = "${userHome}/Library/Logs/llamacpp.err.log";
-        #   };
-        # };
-        # llamacpp-vision-serve = {
-        #   command = "${llamacppVisionServeScript}";
-        #   serviceConfig = {
-        #     KeepAlive = true;
-        #     RunAtLoad = true;
-        #     StandardOutPath = "${userHome}/Library/Logs/llamacpp-vision.out.log";
-        #     StandardErrorPath = "${userHome}/Library/Logs/llamacpp-vision.err.log";
-        #   };
-        # };
-        prune-generations = {
-          command = "${pruneGenerations}/bin/prune-generations";
-          serviceConfig = {
-            StartCalendarInterval = [
-              {
-                Hour = 3;
-                Minute = 0;
-                Weekday = 0;
-              }
-            ];
-            StandardOutPath = "${userHome}/Library/Logs/prune-generations.out.log";
-            StandardErrorPath = "${userHome}/Library/Logs/prune-generations.err.log";
-          };
-        };
-        photos-backup = {
-          command = "${userHome}/bin/photos-backup";
-          serviceConfig = {
-            StartCalendarInterval = [
-              {
-                Hour = 2;
-                Minute = 0;
-              }
-            ];
-            StandardOutPath = "${userHome}/Library/Logs/photos-backup.out.log";
-            StandardErrorPath = "${userHome}/Library/Logs/photos-backup.err.log";
-          };
-        };
-        # SleepWatcher — eject the 'Extra Space' volume before sleep, remount on
-        # wake (see ~/.config/sleepwatcher/{sleep,wake}.sh). Uses RunAtLoad +
-        # KeepAlive so the agent persists as a login user agent.
-        sleepwatcher = {
-          serviceConfig = {
-            ProgramArguments = [
-              "${pkgs.sleepwatcher}/bin/sleepwatcher"
-              "-V"
-              "-s"
-              "${userHome}/.config/sleepwatcher/sleep.sh"
-              "-w"
-              "${userHome}/.config/sleepwatcher/wake.sh"
-            ];
-            RunAtLoad = true;
-            KeepAlive = true;
-            StandardOutPath = "${userHome}/Library/Logs/sleepwatcher.out.log";
-            StandardErrorPath = "${userHome}/Library/Logs/sleepwatcher.err.log";
-          };
-        };
-      };
-    };
-  };
-
   home-manager = {
     extraSpecialArgs = {
       inherit inputs;
@@ -268,7 +153,9 @@ in {
         ../../modules/home/base.nix
         ../../modules/home/direnv.nix
         ../../modules/home/halloy.nix
+        ../../modules/home/hermes-desktop-app.nix
         ../../modules/home/ice.nix
+        ../../modules/home/macos-apps.nix
         ../../modules/home/photo-export.nix
         ../../modules/home/orca.nix
         ../../modules/home/polyptych.nix

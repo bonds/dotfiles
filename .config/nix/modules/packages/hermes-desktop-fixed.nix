@@ -25,15 +25,23 @@
   pkgs,
   inputs,
 }: let
-  # Built from ${electron.version} in hermes-agent's nix/desktop.nix; 43.6.0 is
-  # what nixpkgs-unstable (02f5696b) resolves `electron` to today.
-  headersUrl = "https://artifacts.electronjs.org/headers/dist/v43.6.0/node-v43.6.0-headers.tar.gz";
+  # Built from ${electron.version} in hermes-agent's nix/desktop.nix. Pinned
+  # here to the version nixpkgs-unstable resolved when this workaround was
+  # written — the servedSha256 below is only valid for that exact tarball.
+  pinnedElectronVersion = "43.6.0";
+  headersUrl = "https://artifacts.electronjs.org/headers/dist/v${pinnedElectronVersion}/node-v${pinnedElectronVersion}-headers.tar.gz";
 
   servedSha256 = "sha256-xDgc5PpkcLpWHnlqVcjBD3SxJKtkUoSGLnJaSSrxJtI=";
 
   # The nixpkgs hermes-agent follows (inputs.nixpkgs.follows = "nixpkgs-unstable"
   # in flake.nix), not the caller's stable one.
   unstablePkgs = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+
+  # If nixpkgs-unstable moves electron, desktop.nix will build its headers URL
+  # from the NEW version, this shim's pinned URL stops matching, and the build
+  # fails with the ORIGINAL hash mismatch — with nothing pointing at the stale
+  # shim. Warn at eval time so that failure is legible.
+  electronMoved = unstablePkgs.electron.version != pinnedElectronVersion;
 
   pkgsWithServedHeaders =
     unstablePkgs
@@ -44,6 +52,15 @@
         else unstablePkgs.fetchurl args;
     };
 in
-  inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.desktop.override {
-    pkgs = pkgsWithServedHeaders;
-  }
+  pkgs.lib.warnIf electronMoved ''
+    hermes-desktop-fixed.nix: nixpkgs-unstable now has electron ${unstablePkgs.electron.version},
+    but this BUG-001 shim is pinned to ${pinnedElectronVersion}. desktop.nix will fetch
+    v${unstablePkgs.electron.version} headers, the shim will not match, and the build will
+    fail with the ORIGINAL hash mismatch. Refresh pinnedElectronVersion + servedSha256:
+      nix store prefetch-file --hash-type sha256 \
+        https://artifacts.electronjs.org/headers/dist/v${unstablePkgs.electron.version}/node-v${unstablePkgs.electron.version}-headers.tar.gz
+  '' (
+    inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.desktop.override {
+      pkgs = pkgsWithServedHeaders;
+    }
+  )

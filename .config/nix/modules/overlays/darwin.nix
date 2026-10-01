@@ -13,6 +13,15 @@ in [
   (final: _prev: {
     photo-export = final.callPackage ../../pkgs/photokit-export {inherit (final) mkDarwinPackage;};
   })
+  (final: _prev: {
+    # Native .app wrapper around `raven web` (AppKit + WKWebView). Compiles
+    # Swift against the system SDK like photo-export; sees the raven CLI it
+    # drives as an attribute path baked into the source.
+    raven-desktop = final.callPackage ../../pkgs/raven-desktop {
+      inherit (final) mkDarwinPackage;
+      raven = final.callPackage ../../pkgs/raven {};
+    };
+  })
   (import ./zen-browser/default.nix)
   (import ./ghostty/default.nix)
   (import ./orca-ade/default.nix)

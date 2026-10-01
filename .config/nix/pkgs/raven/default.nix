@@ -1,5 +1,6 @@
 {
   lib,
+  pkgs,
   python3,
 }: let
   pname = "raven";
@@ -11,7 +12,7 @@
     old
     // rec {
       version = "1.1.2";
-      src = builtins.fetchurl {
+      src = pkgs.fetchurl {
         name = "a2a_sdk-1.1.2.tar.gz";
         url = "https://files.pythonhosted.org/packages/38/cc/59b35c518d8289bd59d20d9d216ca29ccb41c4697eb85971efe41d1adaf3/a2a_sdk-1.1.2.tar.gz";
         sha256 = "045xl4q0x6rv7hipy3n7hl555f614r9bsn42xrrs9h0dkazxha7r";
@@ -29,7 +30,7 @@
   # The src name MUST keep the .whl extension: pypaInstallPhase only installs
   # dist/*.whl, so a nameless fetch silently installs nothing (the bug in the
   # first wheel attempt).
-  wheel = builtins.fetchurl {
+  wheel = pkgs.fetchurl {
     name = "${pname}-${version}-py3-none-any.whl";
     url = "https://github.com/EverMind-AI/Raven/releases/download/v0.2.3/raven-0.2.3-py3-none-any.whl";
     sha256 = "0m3qk7sa3zlmnf9sl3pbwssy3sg863wvhvfj6lcway0xbzk9sgc5";

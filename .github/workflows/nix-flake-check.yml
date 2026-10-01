@@ -1,0 +1,55 @@
+# UNTESTED scaffold — this workflow has never run (no CI existed before, and
+# GitHub Actions cannot be exercised from this machine). Verify the runner
+# label and the nix installer action before relying on it.
+#
+# The nix flake lives at .config/nix inside the dotfiles repo. GitHub only
+# reads workflows from the repository root, which here is $HOME, so this file
+# sits at .github/workflows/ rather than .config/nix/.github/workflows/.
+#
+# What it does: installs Nix (Determinate Systems installer, which enables
+# flakes by default) and runs `nix flake check` in .config/nix.
+#
+# Runner: macos-14 is arm64 (aarch64-darwin), matching the flake's darwin
+# system. `nix flake check` evaluates every check for aarch64-darwin (including
+# the eval checks for the x86_64-linux hosts — evaluation is platform
+# independent) and skips x86_64-linux checks with a warning, exactly as it does
+# locally. It does NOT build the x86_64-linux toplevels; those need a Linux
+# runner or a self-hosted builder (see the optional second job).
+name: nix flake check
+
+on:
+  push:
+    paths:
+      - ".config/nix/**"
+      - ".github/workflows/nix-flake-check.yml"
+  pull_request:
+    paths:
+      - ".config/nix/**"
+      - ".github/workflows/nix-flake-check.yml"
+  workflow_dispatch:
+
+jobs:
+  flake-check:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+
+      - name: nix flake check
+        working-directory: .config/nix
+        run: nix flake check -L
+
+  # Optional: build the two NixOS toplevels on Linux. Uncomment once a runner
+  # is available; `nix flake check` above only evaluates them.
+  #
+  # nixos-toplevels:
+  #   runs-on: ubuntu-24.04
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: DeterminateSystems/nix-installer-action@v14
+  #     - working-directory: .config/nix
+  #       run: |
+  #         nix eval --raw .#nixosConfigurations.metanoia.config.system.build.toplevel.drvPath
+  #         nix eval --raw .#nixosConfigurations.sophrosyne.config.system.build.toplevel.drvPath

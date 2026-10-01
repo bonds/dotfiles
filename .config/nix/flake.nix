@@ -17,10 +17,6 @@
       url = "github:bonds/nix-vudials";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    zen-browser = {
-      url = "github:youwen5/zen-browser-flake";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     polyptych = {
       url = "github:bonds/polyptych";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -44,6 +40,12 @@
     # modules/packages/hermes-desktop-fixed.nix (drop with upstream PR #69458).
     hermes-agent.url = "git+https://github.com/NousResearch/hermes-agent?rev=749220ef0007f8d87bd1531f1c24b0fe93816385";
     hermes-agent.inputs.nixpkgs.follows = "nixpkgs-unstable";
+    # Dedupe flake.lock's flake-parts_2 node: hermes-agent's flake-parts is only
+    # another instance of the same input and follows ours fine. (Its
+    # home-manager is NOT made to follow ours: hermes tracks nixpkgs-unstable,
+    # our home-manager is release-26.05, and following to a stable channel can
+    # break an unstable input — see the AGENTS.md follows gotcha.)
+    hermes-agent.inputs.flake-parts.follows = "flake-parts";
   };
   outputs = inputs:
     inputs.flake-parts.lib.mkFlake {inherit inputs;} {

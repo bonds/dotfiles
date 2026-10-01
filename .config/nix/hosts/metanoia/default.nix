@@ -15,7 +15,10 @@
     # its udev remove rule; NixOS leaves nixpkgs.pkgs unset by default, which broke
     # eval with "attribute 'systemd' missing". Setting nixpkgs.pkgs here (with the
     # same overlays) fixes it — note nixpkgs.overlays is ignored once pkgs is set.
-    overlays = [inputs.vudials.overlays.default];
+    overlays = [
+      inputs.vudials.overlays.default
+      (import ../../modules/overlays/zen-browser/default.nix)
+    ];
   };
 in
   mkNixos "metanoia" {

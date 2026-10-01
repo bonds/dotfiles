@@ -24,6 +24,7 @@ final: prev: {
     meta = {
       description = "Fast, native, feature-rich terminal emulator";
       homepage = "https://ghostty.org/";
+      license = prev.lib.licenses.mit;
       platforms = ["aarch64-darwin" "x86_64-darwin"];
     };
   };

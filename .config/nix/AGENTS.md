@@ -111,7 +111,7 @@ nix flake update
 ## Structure
 
 ```
-flake.nix          # Inputs + nixConfig (binary caches) + shared module wiring for all machines
+flake.nix          # Inputs + shared module wiring for all machines (no nixConfig — see Gotchas)
 lib/
   syncthing-ids.nix  # Centralized Syncthing device IDs (accismus + sophrosyne)
   shared-modules.nix # Module path list shared by all platforms
@@ -136,16 +136,19 @@ hosts/
     services.nix
     storage.nix
 modules/           # Shared modules
-  overlays/          # Binary package overlays (darwin-only; NixOS uses nixpkgs directly)
+  overlays/          # Binary package overlays (mostly darwin; zen-browser is dual-platform)
     darwin.nix       #   Master list of darwin overlays (includes vudials)
-    zen-browser/     #   Pinned zen-browser darwin binary + update.sh
+    zen-browser/     #   Pinned zen-browser binary + update.sh (darwin .dmg + linux tarball, dual-platform)
     opencode/        #   Pinned opencode CLI + desktop binaries + update.sh
     daisydisk-overlay/ # Pinned DaisyDisk darwin binary + update.sh
   home/            # Home-manager modules (all machines)
     base.nix        #   Shared base: stateVersion, tmux, what-changed (reduces per-host duplication)
     direnv.nix      #   direnv configuration
     gnome.nix       #   GNOME dconf, extensions, keybindings (metanoia only)
+    hermes-desktop-app.nix # Hermes Desktop .app wrapper (accismus, home.packages)
+    macos-apps.nix  #   macOS GUI .app bundles via home.packages (accismus)
     misc.nix        #   WirePlumber, uBlock, fish plugins, ulauncher (metanoia only)
+    orca.nix        #   Orca AIDE .app via home.packages (accismus)
     polyptych.nix   #   Polyptych (spanned fullscreen video player)
     tmux.nix        #   Catppuccin tmux theme, truecolor, cpu/ram/battery modules
     what-changed.nix #  what-changed LLM changelog summaries
@@ -154,8 +157,9 @@ modules/           # Shared modules
     dev.nix         #   Dev tools (shared: editors, languages, SCM)
     utils.nix       #   System utilities (shared: file, network, system tools)
     desktop.nix     #   metanoia workstation packages (GNOME, Steam, etc.)
-    macos.nix       #   accismus-specific packages (macOS apps, binaries)
+    macos.nix       #   accismus-specific system packages (CLI tools, binaries)
   nixos-common.nix  # Shared NixOS settings — auto-included by mkNixos.nix (not per-host)
+  darwin-agents.nix # accismus launchd user agents (extracted from the host config)
   vudials-uids.nix  # Scott's dial UID defaults (imported by both accismus + metanoia)
   bash-to-fish.nix  # Shell detection: bash → fish exec wrapper
   fish-command-not-found.nix  # nix-locate based command-not-found handler
@@ -167,12 +171,13 @@ modules/           # Shared modules
 ## Gotchas
 
 - **`inputs.nixpkgs.follows` can break things on stable channels.** Letting an input follow your nixpkgs can cause build failures if the input expects newer nixpkgs APIs than the stable channel provides. If an input fails to build on a stable channel, remove its follows so it uses its own pinned nixpkgs. This has happened with home-manager and arion in the past.
-- **`nix flake check` works on darwin** — NixOS configs evaluate fine cross-platform. Cannot cross-build x86_64 from aarch64 though; build directly on the target machine or deploy via `--target-host`. Runs `format-check` (alejandra), `deadnix-check`, `statix-check`, and `secrets-check` (gitleaks). Does NOT run pytest on nix-what-changed (run that explicitly in the sub-flake).
+- **`nix flake check` works on darwin** — NixOS configs evaluate fine cross-platform. Cannot cross-build x86_64 from aarch64 though; build directly on the target machine or deploy via `--target-host`. Runs `format-check` (alejandra), `deadnix-check`, `statix-check`, `secrets-check` (gitleaks), and `what-changed-test` (nix-what-changed's pytest suite, run from the root flake's `checks`). The non-hermetic `photo-export-test` (host Xcode) is NOT a check — it lives under `packages` and is built explicitly with `nix build .#photo-export-test` on a machine that has Xcode, because `nix flake check` builds every check and would fail without that exact Xcode.
+- **Re-signing icon-baked bundles (`codesign --force --deep --sign -`).** Any overlay that rewrites a signed macOS bundle — Zen's icon+policies, Hermes' Info.plist+icon, opencode-desktop's `app-update.yml` removal, NeoCode — must re-sign ad-hoc as the last install step, or the broken seal makes macOS report the app as "damaged". Verify with `codesign --verify --deep --strict <app>` on the built out-path. Two traps: (1) a symlink pointing outside the bundle is an "invalid destination for symbolic link in bundle" — Hermes must COPY its `dist`/`package.json`, not symlink them, before signing; (2) osaurus is deliberately NOT re-signed and does NOT bake its icon (its bundle is notarized — see §B).
 - **`statix-check` must NOT use `--config`** — statix silently ignores config files inside `/nix/store` (oppiliappan/statix#71), and flake checks run with cwd = `${self}` which IS a store path. The `statix.toml` at the repo root (disabling `repeated_keys`) is auto-discovered by name, so the check runs plain `statix check .`. Don't run `statix fix` unprompted — the W20 `repeated_keys` lint is intentionally disabled because NixOS modules idiomatically repeat attrset keys (e.g. `boot.loader.*`, multiple `systemd.services.*`).
 - **`nixos-rebuild switch` needs sudo.** Remote deploy from laptop uses `--target-host scott@host --use-remote-sudo`. Passwordless sudo (`NOPASSWD` in sudoers) is needed for automated deploys.
 - **`flake.lock` is tracked.** Commit it after `nix flake update`.
 - **`warn-dirty = false`** is set in `nix.conf` — builds work fine with uncommitted changes.
-- **The flake's `nixConfig` block (`trusted-substituters`/`trusted-public-keys`) is ignored with warnings when building as an unprivileged user.** Those are restricted settings — only honored from trusted config. `~/.config/nix/nix.conf` (tracked in dotfiles) mirrors the block at user level so `nr` / `nh build` don't emit "Ignoring the client-specified setting…" warnings. Keep both in sync when adding/removing a binary cache.
+- **`flake.nix` deliberately has NO `nixConfig` block.** The binary caches are configured in `~/.config/nix/nix.conf` only (the `extra-*` variants, tracked in dotfiles). Do not add a `nixConfig` block to "keep both in sync" — there is nothing to sync. Reasons: (1) Lix defaults `accept-flake-config` to `ask`; run non-interactively (agent/CI/`nr`) it *ignores* the flake's settings with a warning rather than applying them, so the block would be noise, not effect; (2) once a setting is approved, `ConfigFile::apply` calls `globalConfig.set(name, value)`, which sets the value *globally* rather than appending `extra-*` after the daemon's list — a surprising override for a setting that already works at user level; (3) it is a privileged surface (Lix's own warning: "may allow the flake to gain root"). If you are ever tempted to add restricted settings to the flake, add them to the user `nix.conf` instead.
 - **Uses `pkgs.lix`** as the nix package on all machines, not the default `pkgs.nix`.
 - **`allowUnfree = true`** — required for `helvetica-neue-lt-std` font on laptop.
 - **All machines use two nixpkgs:** `nixos-26.05` (stable) for most packages, `nixpkgs-unstable` for select packages (passed via `pkgs-unstable` specialArg).
@@ -212,14 +217,86 @@ Hard-won lessons from packaging GUI/CLI tools into this flake (raven, orca, Dais
 
 ### A. Prebuilt macOS .app from a DMG
 
-- **Extract DMGs with `undmg`, not `7zz`.** 7zz drops the per-file `com.apple.cs.*` xattrs carrying the vendor's sealed-resource signature, forcing an ad-hoc re-sign — and on Sequoia `spctl` REJECTS ad-hoc-signed bundles outright even when `codesign --verify` passes. `undmg` preserves the original notarized Developer ID signature so no re-sign is needed. (Exception: the neo-code overlay deliberately 7zz-extracts + ad-hoc re-signs an upstream fork that has no usable Developer ID signature.)
+- **Extract DMGs with `undmg`, not `7zz`.** 7zz drops the per-file `com.apple.cs.*` xattrs carrying the vendor's sealed-resource signature, forcing an ad-hoc re-sign — and on Sequoia `spctl` *assesses* ad-hoc-signed bundles as rejected even when `codesign --verify` passes (note: `spctl` rejection ≠ won't launch — see §B.1). `undmg` preserves the original notarized Developer ID signature so no re-sign is needed. (Exception: the neo-code overlay deliberately 7zz-extracts + ad-hoc re-signs an upstream fork that has no usable Developer ID signature.)
 - **When an app won't launch ("damaged and can't be opened"), run `spctl -a -vvv -t exec <app>` FIRST.** `codesign --verify` passing is NOT sufficient — Gatekeeper requires a notarized Developer ID trust anchor. Don't chase quarantine/xattrs before checking spctl.
 
-### B. Where the .app must live (Spotlight / `open -a` trap)
+### B. Where the .app lives + the icon / signature mechanism
 
-- **Do NOT put GUI apps in `environment.systemPackages` on darwin.** nix-darwin's system stager stages them to `/Applications/Nix Apps` and re-registers them with LaunchServices on every activation; stale registrations accumulate (old/GC'd `/nix/store` paths, dead volumes) and `open -a <name>` resolves the name across ALL registrations — landing on a rejected or nonexistent bundle → "damaged".
-- **Expose GUI apps via Home Manager instead** (`home.packages = [ pkgs.<app> ];`). Home Manager copies the .app to `~/Applications/Home Manager Apps/<App>.app` — a stable, user-owned, Spotlight-indexed path that the stager does not manage or re-poison across rebuilds. Precedent: `modules/home/photo-export.nix`, `modules/home/orca.nix`.
+- **GUI apps live in `home.packages`** (`home.packages = [ pkgs.<app> ];`), which Home Manager copies to `~/Applications/Home Manager Apps/<App>.app` — a stable, user-owned, Spotlight-indexed path. This is the accepted, corrected arrangement (the earlier blanket "never in `environment.systemPackages`" rule is relaxed). It avoids nix-darwin's system stager, which stages apps to `/Applications/Nix Apps` and re-registers them with LaunchServices on every activation; stale registrations accumulate (old/GC'd `/nix/store` paths, dead volumes) and `open -a <name>` resolves the name across ALL registrations — landing on a rejected or nonexistent bundle → "damaged". Precedent: `modules/home/photo-export.nix`, `modules/home/orca.nix`, `modules/home/macos-apps.nix` (daisydisk, ghosttile, osaurus, openfang-desktop, zen-browser), `modules/home/hermes-desktop-app.nix`. Zen is unified across accismus + metanoia on the local `modules/overlays/zen-browser` overlay (darwin .dmg / linux tarball); see the overlay's `update.sh` and `sources.json`.
+- **Custom-icon mechanism: bake AND apply a `FinderInfo` xattr.** A reliably displayed custom icon uses two steps: (1) bake the icon into the bundle (`Contents/Resources/firefox.icns` for Zen, done by the overlay), and (2) apply the icon to the Home Manager copy with an `osascript` `NSWorkspace setIcon:forFile:options:2` call, which writes the `FinderInfo` xattr (`home.activation.zenIcon` / `home.activation.osaurusIcon` in `modules/home/macos-apps.nix`). macOS may prefer the bundle's own `Assets.car` over the baked `.icns`, so the xattr is the stronger display override — and it does not affect the code signature.
+- **CRITICAL GOTCHA — baking into a Developer-ID-signed bundle breaks the seal.** Rewriting a bundle that carries a Developer ID signature + hardened runtime invalidates its code signature; Gatekeeper then kills the app with "a sealed resource is missing or invalid" (verified: `codesign -dvvv` shows `flags=0x10000(runtime)` on the broken build). A broken seal alone is fatal.
+  - **Fix: ad-hoc re-sign** (`codesign --force --deep --sign -`) as the last install step. It drops the hardened-runtime flag (`0x10000(runtime)` → `0x2(adhoc)`), so `amfid` permits the app (verified: an icon-baked + ad-hoc-re-signed Zen launches). **Do NOT remove the re-sign**, and **do NOT re-sign with `--options runtime`** — adding the hardened-runtime flag back makes it fail again.
+  - **Notarized-app exception (osaurus):** a *notarized* bundle cannot be re-signed and must never have its icon baked — rewriting `Contents` invalidates its signature and Gatekeeper rejects it (and on Sequoia `spctl` rejects ad-hoc bundles outright). Its icon is applied **only** via the `FinderInfo` xattr, never baked.
 - **Cleanup when a stale registration already exists:** `sudo rm -rf "/Applications/Nix Apps/<App>.app"`, then `lsregister -u <stale /nix/store path or dead /Volumes path>`, then `killall Finder`. `lsregister -u` alone is temporary — the next activation re-registers it, which is why the Home Manager move is the durable fix.
+
+#### B.1 Zen.app: why it is built this way (hard-won, 2026-10-01)
+
+The story behind §B's rules. It cost real time, and the obvious-looking answers
+were wrong twice. Read this before "simplifying" the Zen overlay or the icon
+activation.
+
+**The symptom chain.** The overlay bakes the custom icon (`firefox.icns`) and
+`policies.json` into a bundle that `undmg` extracted with Mozilla's Developer ID
+signature intact → the code-signature **seal breaks** → macOS reports
+"Zen.app is damaged and can't be opened" and refuses to launch it. The fix is an
+**ad-hoc re-sign** as the last install step (see §B).
+
+**The two false leads — do not repeat them.**
+
+- *"The re-sign broke it."* Wrong — the re-sign is what **fixes** it. A single
+  flaky `open` trial made the un-re-signed store bundle look like it worked. A
+  repeated A/B matrix (2 rounds each) settled it: no-re-sign → FAILS 2/2,
+  ad-hoc re-sign → LAUNCHES 2/2. **Always repeat launch tests; one `open` is not
+  evidence.**
+- *"The store bundle launches, so the deployed copy is the problem."* Same flaky
+  trial, same error. The deployed copy was a **stale generation** built before
+  the re-sign was added.
+
+**The verified mechanism.** A broken seal alone is **fatal** (Gatekeeper kills
+the app). An ad-hoc signature is **not** fatal — it is the cure, because
+`--sign -` drops the hardened-runtime flag. Re-signing ad-hoc **with**
+`--options runtime` **fails** (the flag comes back). So: keep the re-sign, never
+add `--options runtime`.
+
+**`spctl` vs launch — not the same gate.** `spctl -a -vvv -t exec` *assesses*
+against a notarized Developer ID trust anchor and will report an ad-hoc bundle
+as "rejected" — yet the app still **launches** (verified). Do not treat an
+`spctl` rejection as proof the app is broken; test an actual launch. Conversely,
+a broken seal *does* block launch even when `codesign --verify` passes — so
+check both, and trust the launch test.
+
+**The icon display trap.** Baking the icon is necessary but **not sufficient**:
+macOS may prefer the bundle's own `Assets.car` over the baked `.icns`. The
+reliable override is the **FinderInfo xattr** written by the `home.activation`
+step (§B). This is why the original design used it — and why removing it (in
+favour of baking alone) made the custom icon disappear.
+
+**The profile trap — moving the app spawns a fresh profile.** Zen keys its
+"install" identity by the **app's filesystem path** (a hash in
+`~/Library/Application Support/zen/installs.ini`). Moving the app from
+`/Applications/Nix Apps/Zen.app` to `~/Applications/Home Manager Apps/Zen.app`
+changes that hash, so Zen treats it as a **brand-new install** and creates an
+empty profile — your real profile (bookmarks, logins, containers) is left
+behind. Fix: remap the new install hash to the existing profile in
+`installs.ini` (and `profiles.ini`), e.g.
+
+```
+[7CCE27C76CD2D5B5]              # hash of ~/Applications/Home Manager Apps/Zen.app
+Default=Profiles/z8ofj1q4.Default (release)
+Locked=1
+```
+
+Back up both `.ini` files first. Also: **test launches create junk profiles** —
+a harness that launches Zen repeatedly litters `Profiles/` with empty
+`Default (release)-N` dirs and repoints `installs.ini` at them. Clean those up
+and restore the real profile afterwards.
+
+**Stale Spotlight / LaunchServices entries.** Old
+`/nix/store/.../Applications/Zen.app` bundles stay indexed by Spotlight and
+registered with LaunchServices. `lsregister -u <path>` unregisters them but does
+**not** purge the Spotlight index — those entries clear when the store paths are
+GC'd. `open -a Zen` resolves the name across ALL registrations, so a stale one
+can win and produce "damaged".
 
 ### C. Python CLI/TUI apps (buildPythonApplication)
 

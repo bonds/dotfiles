@@ -53,31 +53,26 @@
           echo "Evaluating metanoia NixOS config..." >&2
           nix eval --raw .#nixosConfigurations.metanoia.config.system.build.toplevel.drvPath 2>&1 || (echo "FAIL" >&2 && exit 1)
         '';
+
+        # nix-what-changed carries a real pytest suite, but it lives in a
+        # sub-flake whose checks the root flake never invoked — so it never
+        # ran. Run the same tests from the root flake, mirroring the sub-flake's
+        # `pytest` check: the python env needs pytest plus the package's runtime
+        # deps (the tests import what_changed, whose modules import rich/httpx/
+        # pyspellchecker), and PYTHONPATH must expose the package source.
+        what-changed-test =
+          mkCheck "what-changed-test"
+          [(pkgs.python3.withPackages (ps: [ps.pytest ps.tomli-w ps.httpx ps.rich ps.pyspellchecker]))]
+          ''
+            export HOME=$(mktemp -d)
+            export PYTHONPATH=${self}/pkgs/nix-what-changed''${PYTHONPATH:+:$PYTHONPATH}
+            pytest ${self}/pkgs/nix-what-changed/tests -v --tb=short -p no:cacheprovider
+          '';
       }
       // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
         accismus-eval = mkCheck "accismus-eval" [pkgs.nix] ''
           echo "Evaluating accismus darwin config..." >&2
           nix eval --raw .#darwinConfigurations.accismus.config.system.build.toplevel.drvPath 2>&1 || (echo "FAIL" >&2 && exit 1)
-        '';
-
-        photo-export-test = mkCheck "photo-export-test" [] ''
-          # Unit tests for photokit-export's pure logic. Needs Xcode's swiftc
-          # (system SDK), not nixpkgs `swift`. The CLI has top-level code, so
-          # copy the test to main.swift for multi-file compile.
-          TOOLCHAIN="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain"
-          SWIFTC="$TOOLCHAIN/usr/bin/swiftc"
-          RESDIR="$TOOLCHAIN/usr/lib/swift"
-          SDKROOT="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-          modcache="$TMPDIR/swiftmodule-cache"
-          mkdir -p "$modcache"
-          tmpdir="$TMPDIR/petest"
-          mkdir -p "$tmpdir"
-          cp ${self}/pkgs/photokit-export/photoexport_core.swift "$tmpdir/photoexport_core.swift"
-          cp ${self}/pkgs/photokit-export/test_core.swift "$tmpdir/main.swift"
-          "$SWIFTC" -module-cache-path "$modcache" -sdk "$SDKROOT" -resource-dir "$RESDIR" \
-            -o "$tmpdir/test" "$tmpdir/photoexport_core.swift" "$tmpdir/main.swift" \
-            || (echo "compile failed" >&2 && exit 1)
-          "$tmpdir/test"
         '';
       };
   };

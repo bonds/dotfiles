@@ -52,21 +52,15 @@ in {
     extraSpecialArgs = {
       inherit inputs;
     };
-    users.scott = {
-      pkgs,
-      inputs,
-      ...
-    }: let
-      zenPolicies = import ../../modules/home/zen-policies.nix;
-    in {
+    users.scott = {pkgs, ...}: {
       home = {
         username = "scott";
         homeDirectory = userHome;
-        packages = [
-          (inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.zen-browser.override {
-            extraPolicies = zenPolicies;
-          })
-        ];
+        # zen-browser comes from the local overlay (modules/overlays/zen-browser),
+        # unified with accismus — no flake input. The overlay builds the prebuilt
+        # tarball on Linux and wrapFirefox applies the shared zen-policies.nix
+        # (via extraPolicies), so no per-host .override is needed here.
+        packages = [pkgs.zen-browser];
       };
 
       imports = [

@@ -222,33 +222,44 @@ in {
       modelsMax = 3;
       sleepIdleSeconds = -1;
       models = {
+        # URLs are pinned to a commit revision (resolve/<commit>/...) rather
+        # than the mutable `main`, and each file's sha256 is verified after
+        # download — the module fails the service start on mismatch. Re-pin the
+        # revision and the hash together when bumping a model.
         "gemma-4-31b-it" = {
-          url = "https://huggingface.co/unsloth/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-Q4_K_M.gguf";
+          url = "https://huggingface.co/unsloth/gemma-4-31B-it-GGUF/resolve/c1ac76e99d5513b141e8adde7288b85c3f9c32ec/gemma-4-31B-it-Q4_K_M.gguf";
+          sha256 = "38bd64c852c4b460434cc7162fa9bdcf242faf86502581a754cb72956bb17f84";
           args = {ctx-size = "102400";};
         };
         "qwen3.8-27b" = {
-          url = "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/main/Qwen3.8-27B-UD-Q4_K_XL.gguf";
+          url = "https://huggingface.co/unsloth/Qwen3.8-27B-GGUF/resolve/4ca720788d1e01f1bff70c033e0d0028fd02e502/Qwen3.8-27B-UD-Q4_K_XL.gguf";
+          sha256 = "3f227079003add2511437e5b1e94812e363385225bf6a9b47b0054a72bc8b01e";
           args = {ctx-size = "102400";};
         };
         "qwen3.6-35b-a3b" = {
-          url = "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf";
+          url = "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF/resolve/a483e9e6cbd595906af30beda3187c2663a1118c/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf";
+          sha256 = "ac0e2c1189e055faa36eff361580e79c5bd6f8e76bffb4ce547f167d53e31a61";
           # smaller ctx: faster CPU load; summary requests are short
           args = {ctx-size = "8192";};
         };
         "ornith-1.0-35b" = {
-          url = "https://huggingface.co/deepreinforce-ai/Ornith-1.0-35B-GGUF/resolve/main/ornith-1.0-35b-Q4_K_M.gguf";
+          url = "https://huggingface.co/deepreinforce-ai/Ornith-1.0-35B-GGUF/resolve/383064f72a1ef3087b779f268d3ca117eb989aac/ornith-1.0-35b-Q4_K_M.gguf";
+          sha256 = "ff25291b2599fb927a835e624d2b3540106af61761c3fa57ac4264046dbec002";
           args = {ctx-size = "102400";};
         };
         "qwen2.5-7b" = {
-          url = "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf";
+          url = "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/8911e8a47f92bac19d6f5c64a2e2095bd2f7d031/Qwen2.5-7B-Instruct-Q4_K_M.gguf";
+          sha256 = "65b8fcd92af6b4fefa935c625d1ac27ea29dcb6ee14589c55a8f115ceaaa1423";
           # 16K ctx: still loads much faster on CPU than 102400, but big enough
           # for 15KB changelog inputs + output without context exhaustion
           args = {ctx-size = "16384";};
         };
         "qwen3vl-2b" = {
-          url = "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/resolve/main/Qwen3VL-2B-Instruct-Q4_K_M.gguf";
+          url = "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/resolve/52d6c8ffea26cc873ac5ad116f8631268d7eb503/Qwen3VL-2B-Instruct-Q4_K_M.gguf";
+          sha256 = "089d75c52f4b7ffc56ba998ffc50aae89fcafc755f9e7208aacca281dca6c2ae";
           mmproj = "/dragon/servers/llamacpp/models/mmproj-Qwen3VL-2B-Instruct-F16.gguf";
-          mmprojUrl = "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/resolve/main/mmproj-Qwen3VL-2B-Instruct-F16.gguf";
+          mmprojUrl = "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct-GGUF/resolve/52d6c8ffea26cc873ac5ad116f8631268d7eb503/mmproj-Qwen3VL-2B-Instruct-F16.gguf";
+          mmprojSha256 = "c3d5afbef5287953acd57b4043d2269456e5761a4eaccb3b71b062996970aea5";
           # small ctx: frame OCR requests are short; q8_0 KV cuts memory
           args = {
             ctx-size = "8192";

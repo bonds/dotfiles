@@ -4,9 +4,10 @@ set -euo pipefail
 DIR=$(cd "$(dirname "$0")" && pwd)
 OVERLAY="$DIR/default.nix"
 
-echo "Checking osaurus latest version from GitHub releases..."
-release_json=$(curl -fsSL https://api.github.com/repos/osaurus-ai/osaurus/releases/latest)
-version=$(echo "$release_json" | jq -r '.tag_name')
+echo "Checking Orca latest version from GitHub releases..."
+# Orca tags look like "v1.4.218"; the overlay version is without the 'v'.
+release_json=$(curl -fsSL https://api.github.com/repos/stablyai/orca/releases/latest)
+version=$(echo "$release_json" | jq -r '.tag_name | sub("^v"; "")')
 
 if [ -z "$version" ] || [ "$version" = "null" ]; then
   echo "ERROR: Could not parse latest version" >&2
@@ -24,8 +25,8 @@ while read -r name hex; do
 done < <(echo "$release_json" \
   | jq -r '.assets[] | select(.digest != null) | "\(.name) \(.digest | sub("^sha256:"; ""))"')
 
-ASSET="Osaurus-${version}.dmg"
-DOWNLOAD_URL="https://github.com/osaurus-ai/osaurus/releases/download/${version}/${ASSET}"
+ASSET="orca-macos-arm64.dmg"
+DOWNLOAD_URL="https://github.com/stablyai/orca/releases/download/v${version}/${ASSET}"
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 
@@ -51,12 +52,11 @@ fi
 hash=$(nix hash file --type sha256 "$tmp")
 echo "SRI hash: $hash"
 
-# Update the version and hash literals. Patterns are anchored to line start so
-# the commented-out duplicate lines in the overlay are never touched.
+# Update the version and hash literals. Patterns are anchored to line start.
 awk -v ver="$version" -v h="$hash" '
 /^[[:space:]]*version = "[0-9][^"]*";/ { sub(/version = "[^"]*";/, "version = \"" ver "\";") }
 /^[[:space:]]*hash = "sha256-[^"]*";/  { sub(/hash = "sha256-[^"]*";/, "hash = \"" h "\";") }
 { print }
 ' "$OVERLAY" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
 
-echo "Updated osaurus overlay to version $version"
+echo "Updated orca-ade overlay to version $version"

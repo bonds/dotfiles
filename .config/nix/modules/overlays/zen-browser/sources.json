@@ -1,0 +1,11 @@
+{
+  "version": "1.22.3b",
+  "aarch64-darwin": {
+    "url": "https://github.com/zen-browser/desktop/releases/download/1.22.3b/zen.macos-universal.dmg",
+    "hash": "sha256-cdv+OU7S9tHrmD/wzG35djxD/Gd3IgKHmmpAeUwU4aE="
+  },
+  "x86_64-linux": {
+    "url": "https://github.com/zen-browser/desktop/releases/download/1.22.3b/zen.linux-x86_64.tar.xz",
+    "hash": "sha256-Cq7hs/Z/B0rr9/xsL+gkRBvK/UMemZEzZHnBY3BRndA="
+  }
+}

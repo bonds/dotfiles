@@ -40,6 +40,7 @@ in
           meta = {
             description = "AI coding agent built for the terminal";
             homepage = "https://github.com/anomalyco/opencode";
+            license = prev.lib.licenses.mit;
             platforms = ["aarch64-darwin"];
           };
         };
@@ -64,11 +65,18 @@ in
             cp -r OpenCode.app $out/Applications/
             rm -f $out/Applications/OpenCode.app/Contents/Resources/app-update.yml
             ln -s $out/Applications/OpenCode.app/Contents/MacOS/OpenCode $out/bin/opencode-desktop
+
+            # Re-sign ad-hoc. Removing app-update.yml above rewrites a bundle
+            # that still carries the vendor's Developer ID signature, which
+            # breaks the code-signature seal — macOS then reports the app as
+            # "damaged". --deep covers the nested frameworks/helpers.
+            /usr/bin/codesign --force --deep --sign - $out/Applications/OpenCode.app
           '';
 
           meta = {
             description = "OpenCode Desktop App (auto-updater disabled)";
             homepage = "https://github.com/anomalyco/opencode";
+            license = prev.lib.licenses.mit;
             platforms = ["aarch64-darwin"];
           };
         };
