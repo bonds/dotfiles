@@ -41,6 +41,20 @@ jobs:
         working-directory: .config/nix
         run: nix flake check -L
 
+      # Host-config evaluation as DIRECT evals, outside the sandbox — a
+      # sandboxed `nix eval` check cannot reach the nix daemon on macOS (see
+      # the note in flake/checks.nix). Mirrors the pre-push hook.
+      - name: evaluate machine configs
+        working-directory: .config/nix
+        run: |
+          for target in \
+            nixosConfigurations.sophrosyne \
+            nixosConfigurations.metanoia \
+            darwinConfigurations.accismus; do
+            echo "evaluating .#$target..."
+            nix eval --raw ".#$target.config.system.build.toplevel.drvPath" >/dev/null
+          done
+
   # Optional: build the two NixOS toplevels on Linux. Uncomment once a runner
   # is available; `nix flake check` above only evaluates them.
   #
