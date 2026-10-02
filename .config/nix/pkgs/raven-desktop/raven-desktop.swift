@@ -33,6 +33,9 @@ private let ravenHomePath: String = {
 private let startupTimeoutS: TimeInterval = 150.0
 private let pollIntervalS: TimeInterval = 0.3
 private let stopTimeoutS: TimeInterval = 25.0
+// How long to wait for a stale gateway to go down after `raven web --stop`
+// before starting a fresh one anyway.
+private let staleRestartTimeoutS: TimeInterval = 10.0
 
 private let minPageZoom: CGFloat = 0.5
 private let maxPageZoom: CGFloat = 3.0
@@ -63,6 +66,43 @@ private func savePageZoom(_ value: CGFloat) {
     UserDefaults.standard.set(Double(clampPageZoom(value)), forKey: pageZoomDefaultsKey)
 }
 
+// The web UI is a prebuilt bundle served read-only from the nix store and has
+// no custom-CSS hook, so desktop-only style fixes are injected by the shell
+// instead. Both exist because the window uses .fullSizeContentView with a
+// hidden title bar, so the page runs to the very top of the window:
+//
+//   1. The macOS traffic lights float over the page's top-left corner, which is
+//      the rail header. Nudge that row down 5px so its controls clear them.
+//   2. Lock the outer window scroll. The shell stays exactly viewport-height
+//      and clips; the rail and chat panes keep scrolling their own inner
+//      containers (.scroll / .list / …), which already set
+//      `overflow-y: auto; min-height: 0`.
+//
+// The selectors are plain class/element selectors in the bundle, and this
+// stylesheet is appended last in <head>, so equal specificity resolves to
+// these rules by cascade order.
+private let desktopTweaksCSS = """
+.rail { padding-top: 5px; }                 /* 1. clear the traffic lights */
+
+html, body { overflow: hidden; height: 100%; }   /* 2. lock the outer scroll */
+.app { height: 100dvh; overflow: hidden; }       /*    shell clips, panes scroll */
+"""
+
+// Wrapped in a WKUserScript at document end (main frame only) so document.head
+// exists and any subframe is left alone. Appends a <style> element — not
+// document.write, which would clobber the parsed document.
+private func desktopTweaksUserScript() -> WKUserScript {
+    let source = """
+    (function () {
+      var style = document.createElement('style');
+      style.setAttribute('data-raven-desktop', 'tweaks');
+      style.textContent = `\(desktopTweaksCSS)`;
+      document.head.appendChild(style);
+    })();
+    """
+    return WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+}
+
 private struct ServeAuth {
     let port: Int
     let pid: pid_t
@@ -84,6 +124,67 @@ private func readServeState() -> ServeAuth? {
 private func pidAlive(_ pid: pid_t) -> Bool {
     if pid <= 0 { return false }
     return kill(pid, 0) == 0 || errno == EPERM
+}
+
+// The nix store directory of the raven build this app was compiled against,
+// e.g. "/nix/store/…-raven-0.2.3" from "/nix/store/…-raven-0.2.3/bin/raven".
+// nil when the path is not a nix store path (e.g. a source build).
+private let ownRavenStorePath: String? = {
+    let binDir = (ravenBinPath as NSString).deletingLastPathComponent
+    let storeDir = (binDir as NSString).deletingLastPathComponent
+    guard storeDir.hasPrefix("/nix/store/") else { return nil }
+    return storeDir
+}()
+
+// Run a process, discarding stderr, and return its stdout. nil if it could not
+// be launched or exited non-zero (`ps` exits 1 for a pid that is gone).
+private func captureProcess(_ executable: String, _ arguments: [String]) -> String? {
+    let proc = Process()
+    proc.executableURL = URL(fileURLWithPath: executable)
+    proc.arguments = arguments
+    let out = Pipe()
+    proc.standardOutput = out
+    proc.standardError = FileHandle.nullDevice
+    proc.standardInput = FileHandle.nullDevice
+    do {
+        try proc.run()
+    } catch {
+        return nil
+    }
+    let data = out.fileHandleForReading.readDataToEndOfFile()
+    proc.waitUntilExit()
+    guard proc.terminationStatus == 0 else { return nil }
+    return String(data: data, encoding: .utf8)
+}
+
+// Find a NAME=VALUE entry among the whitespace-separated environment shown by
+// `ps eww`. The value must not contain whitespace for this to match, which is
+// true of PYTHONPATH.
+private func environmentValue(_ name: String, in psOutput: String) -> String? {
+    let prefix = name + "="
+    for token in psOutput.split(whereSeparator: { $0 == " " || $0 == "\n" || $0 == "\t" || $0 == "\r" }) {
+        if token.hasPrefix(prefix) {
+            return String(token.dropFirst(prefix.count))
+        }
+    }
+    return nil
+}
+
+// The nix store directory of the raven build a process is running, read from
+// the raven store path in its PYTHONPATH. The gateway's *executable* is the
+// python interpreter (identical across builds), so PYTHONPATH is the only
+// build-specific signal. nil when it cannot be determined (ps fails, process
+// gone, or no raven store path found) so callers can fall back to attaching.
+private func ravenStorePath(of pid: pid_t) -> String? {
+    guard pid > 0 else { return nil }
+    // `-e` prints the process environment, `ww` disables command-line truncation.
+    guard let output = captureProcess("/bin/ps", ["eww", "-p", String(pid)]) else {
+        return nil
+    }
+    guard let pythonPath = environmentValue("PYTHONPATH", in: output) else { return nil }
+    let pattern = "/nix/store/[a-z0-9]+-raven-[0-9][^:/\\s]*"
+    guard let range = pythonPath.range(of: pattern, options: .regularExpression) else { return nil }
+    return String(pythonPath[range])
 }
 
 private func httpJSON(
@@ -225,6 +326,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
             action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
             keyEquivalent: ""
         )
+        let settingsItem = NSMenuItem(
+            title: "Settings…",
+            action: #selector(openSettings),
+            keyEquivalent: ","
+        )
+        settingsItem.target = self
+        appMenu.addItem(settingsItem)
         appMenu.addItem(.separator())
         appMenu.addItem(
             withTitle: "Hide Raven",
@@ -306,11 +414,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     private func buildWindow() {
         window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1180, height: 780),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "Raven"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.isMovableByWindowBackground = true
         window.minSize = NSSize(width: 640, height: 480)
         window.setFrameAutosaveName("RavenDesktopWindow")
         window.center()
@@ -319,6 +430,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
+        // Desktop-only CSS fixes (see desktopTweaksCSS); the bundle has no hook
+        // of its own for them.
+        config.userContentController.addUserScript(desktopTweaksUserScript())
         webView = WKWebView(frame: content.bounds, configuration: config)
         webView.autoresizingMask = [.width, .height]
         webView.navigationDelegate = self
@@ -393,6 +507,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         start()
     }
 
+    // Settings is a modal inside the web UI, not a URL. The page already binds
+    // Cmd+, itself, so replay that keydown and let its own handler open the
+    // dialog; `key` is what the page matches on.
+    @objc private func openSettings() {
+        webView.evaluateJavaScript(
+            "document.dispatchEvent(new KeyboardEvent('keydown', " +
+            "{key: ',', code: 'Comma', keyCode: 188, which: 188, metaKey: true, bubbles: true, cancelable: true}));"
+        )
+    }
+
     // MARK: - Zoom
 
     @objc private func zoomIn() {
@@ -462,8 +586,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     // main thread installs the session cookie and loads the page.
     private func bringUpServer() -> Outcome {
         if let state = readServeState(), pidAlive(state.pid), serverIsUp(port: state.port) {
-            setStartedServer(false)
-            return .success(Ready(cookie: state.cookie, authURL: mintAuthURL(port: state.port, token: state.token)))
+            // The gateway is resident across restarts by design, so after a
+            // rebuild the one already running may be from an older raven build.
+            // Attaching would serve that stale code. Compare the build the
+            // process was started from against ours; when ours is newer (they
+            // differ) stop the old gateway and fall through to starting fresh.
+            // If the running build can't be determined, attach as before.
+            let runningStore = ravenStorePath(of: state.pid)
+            let isStale = runningStore != nil && ownRavenStorePath != nil && runningStore != ownRavenStorePath
+            if isStale {
+                stopStaleGateway()
+            } else {
+                setStartedServer(false)
+                return .success(Ready(cookie: state.cookie, authURL: mintAuthURL(port: state.port, token: state.token)))
+            }
         }
 
         guard FileManager.default.isExecutableFile(atPath: ravenBinPath) else {
@@ -521,6 +657,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         return .failure(StartError(message: failureMessage(
             "Raven's server did not come up within \(Int(startupTimeoutS))s."
         )))
+    }
+
+    // Stop the resident gateway/supervisor so a fresh `raven web` can start.
+    // Bounded: if it does not go down, bringsUpServer's start-fresh path still
+    // runs (and will fail to bind if something is truly stuck, surfacing the
+    // problem to the user rather than hanging here).
+    private func stopStaleGateway() {
+        let stop = Process()
+        stop.executableURL = URL(fileURLWithPath: ravenBinPath)
+        stop.arguments = ["web", "--stop"]
+        stop.standardOutput = FileHandle.nullDevice
+        stop.standardError = FileHandle.nullDevice
+        stop.standardInput = FileHandle.nullDevice
+        do {
+            try stop.run()
+        } catch {
+            return
+        }
+        let deadline = Date().addingTimeInterval(staleRestartTimeoutS)
+        while Date() < deadline {
+            // serve.json gone, or its pid dead, means the gateway is down.
+            if let state = readServeState(), pidAlive(state.pid) {
+                Thread.sleep(forTimeInterval: pollIntervalS)
+                continue
+            }
+            break
+        }
     }
 
     private func prepareLogHandle() -> FileHandle {

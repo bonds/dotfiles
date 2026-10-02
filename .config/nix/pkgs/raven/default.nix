@@ -5,6 +5,12 @@
 }: let
   pname = "raven";
   version = "0.2.3";
+  # `everos-memory` — Raven's default memory plugin — is NOT on PyPI: it ships
+  # as a wheel asset on the raven release, and its `everos` substrate needs
+  # lancedb >=0.34 / pyarrow >=25 while nixpkgs 26.05 ships 0.32 / 23. Built
+  # under a single python override scope in everos-python.nix so the closure
+  # carries exactly one pyarrow (25.0.1) and one lancedb (0.34.0).
+  everos = pkgs.callPackage ./everos-python.nix {};
   # a2a-sdk: nixpkgs 26.05 ships 0.3.26 but raven 0.2.3 needs >=1.1.2
   # (imports a2a.utils.TransportProtocol, added in the 1.x series). Override
   # with the 1.1.2 sdist from PyPI.
@@ -41,11 +47,11 @@ in
     src = wheel;
     format = "wheel";
 
-    # All base deps resolved from nixpkgs 26.05 python3Packages (Python 3.13).
+    # All base deps resolved from nixpkgs 26.05 python3Packages (Python 3.13),
+    # except the everos memory stack which comes from the override scope above
+    # (`everos.packages`, closing over lancedb 0.34.0 / pyarrow 25.0.1).
     # Version pin notes vs the wheel's Requires-Dist ranges (nix doesn't
     # enforce those, but flagging what we knowingly deviate on):
-    #   - lancedb 0.32.0 (wheel wants >=0.33) — 26.05 ships 0.32.0, and raven
-    #     imports it lazily for raven.knowledge, so we ship what we have.
     #   - a2a-sdk 0.3.26 (wheel wants >=1.1.2) — 26.05 ships 0.3.26; kept for
     #     the same eager-import check to pass. TODO: revisit when 26.05 bumps.
     #   - protobuf 7.34.1 (wheel wants >=5.29.5,<7) — 26.05 ships 7.x; kept if
@@ -53,37 +59,39 @@ in
     # ripgrep-bin is NOT a nixpkgs python3Packages attr; raven shells out to
     # `rg` via shutil.which with a pure-Python fallback, so rg on PATH (the
     # darwin system already has ripgrep) covers it.
-    propagatedBuildInputs = with python3.pkgs; [
-      typer
-      litellm
-      pydantic
-      pydantic-settings
-      httpx
-      loguru
-      rich
-      croniter
-      pyyaml
-      prompt-toolkit
-      json-repair
-      tiktoken
-      questionary
-      watchfiles
-      tomli-w
-      idna
-      portalocker
-      mcp
-      orjson
-      numpy
-      pillow
-      qrcode
-      lancedb
-      aiohttp
-      click
-      pyarrow
-      a2aSdk
-      protobuf
-      lxml
-    ];
+    propagatedBuildInputs = with python3.pkgs;
+      [
+        typer
+        litellm
+        pydantic
+        pydantic-settings
+        httpx
+        loguru
+        rich
+        croniter
+        pyyaml
+        prompt-toolkit
+        json-repair
+        tiktoken
+        questionary
+        watchfiles
+        tomli-w
+        idna
+        portalocker
+        mcp
+        orjson
+        numpy
+        pillow
+        qrcode
+        aiohttp
+        click
+        a2aSdk
+        protobuf
+        lxml
+      ]
+      # everos memory stack: everos-memory (the `raven.plugins` entry point) plus
+      # its everos + everalgo-* substrate and lancedb 0.34 / pyarrow 25 pins.
+      ++ everos.packages;
 
     doCheck = false;
     dontCheckRuntimeDeps = true;
@@ -102,37 +110,39 @@ in
       # dep's — see the comment above about the detached gateway child.
       ("$out/${python3.pkgs.python.sitePackages}"
         + ":"
-        + python3.pkgs.makePythonPath (with python3.pkgs; [
-          typer
-          litellm
-          pydantic
-          pydantic-settings
-          httpx
-          loguru
-          rich
-          croniter
-          pyyaml
-          prompt-toolkit
-          json-repair
-          tiktoken
-          questionary
-          watchfiles
-          tomli-w
-          idna
-          portalocker
-          mcp
-          orjson
-          numpy
-          pillow
-          qrcode
-          lancedb
-          aiohttp
-          click
-          pyarrow
-          a2aSdk
-          protobuf
-          lxml
-        ]))
+        + python3.pkgs.makePythonPath (with python3.pkgs;
+          [
+            typer
+            litellm
+            pydantic
+            pydantic-settings
+            httpx
+            loguru
+            rich
+            croniter
+            pyyaml
+            prompt-toolkit
+            json-repair
+            tiktoken
+            questionary
+            watchfiles
+            tomli-w
+            idna
+            portalocker
+            mcp
+            orjson
+            numpy
+            pillow
+            qrcode
+            aiohttp
+            click
+            a2aSdk
+            protobuf
+            lxml
+          ]
+          # The everos stack, read from the SAME override scope as the
+          # propagatedBuildInputs so the two copies of python3.pkgs.line up.
+          ++ everos.pathPackages))
     ];
 
     meta = with lib; {

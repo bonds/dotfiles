@@ -26,24 +26,6 @@ in {
 
   age.identityPaths = ["/etc/age/identity"];
 
-  system.activationScripts.agenixIdentity = {
-    text = ''
-      mkdir -p /etc/age
-      if [ ! -f /etc/age/identity ]; then
-        ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > /etc/age/identity
-        chmod 600 /etc/age/identity
-      fi
-    '';
-  };
-
-  system.activationScripts.osaurusApiKey = {
-    deps = ["agenix"];
-    text = ''
-      mkdir -p "${userHome}/.config/reel-summarize"
-      ln -sf /run/agenix/osaurus-api-key "${userHome}/.config/reel-summarize/osaurus-api-key"
-    '';
-  };
-
   age.secrets = {
     osaurus-api-key = {
       file = ../../secrets/osaurus-api-key.age;
@@ -60,6 +42,15 @@ in {
       group = "staff";
       mode = "0400";
     };
+    # Serper web-search key for Raven (tools.web.search.apiKey). Content is the
+    # bare key; the postActivation snippet below merges it into
+    # ~/.raven/config.json.
+    serper-api-key = {
+      file = ../../secrets/serper-api-key.age;
+      owner = "scott";
+      group = "staff";
+      mode = "0400";
+    };
     # soju bouncer password on sophrosyne. macOS agenix mounts it at
     # /run/agenix/soju-password, which Halloy reads via password_file. Same
     # secret seeds soju's user on sophrosyne (see hosts/sophrosyne).
@@ -71,24 +62,39 @@ in {
     };
   };
 
-  system.activationScripts = {
-    photoRsyncKey.text = ''
-      KEYFILE="${userHome}/.ssh/id_photo_rsync"
-      if [ ! -f "$KEYFILE" ]; then
-        echo "photo-rsync: generating key" >&2
-        /usr/bin/ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "photo-rsync@accismus"
-        chown scott:staff "$KEYFILE" "$KEYFILE.pub" 2>/dev/null || true
-      fi
-      mkdir -p "${userHome}/Documents/.config"
-      cp -f "$KEYFILE".pub "${userHome}/Documents/.config/photo-rsync-key.pub"
-    '';
-    daisydiskDefaults.text = ''
-      sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUEnableAutomaticChecks -bool false 2>/dev/null || true
-      sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUAutomaticallyUpdate -bool false 2>/dev/null || true
-    '';
-  };
-
+  # nix-darwin 26.05 renders ONLY its built-in activationScripts attr names
+  # (preActivation, extraActivation, postActivation, …) into the generated
+  # `activate` script; a custom name like `system.activationScripts.foo` (and
+  # its `deps`) is silently ignored. So the custom snippets live in
+  # extraActivation / postActivation (see the ordering note below for why the
+  # Serper merge must use postActivation). Each step is guarded/idempotent so
+  # a re-run can never abort activation under `set -e`.
   system.activationScripts.extraActivation.text = lib.mkAfter ''
+    # Host identity for agenix. Generated once from the SSH host key; the
+    # `/etc/age/identity` file is gitignored local state, not a secret.
+    mkdir -p /etc/age
+    if [ ! -f /etc/age/identity ]; then
+      ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key > /etc/age/identity
+      chmod 600 /etc/age/identity
+    fi
+
+    # Reel-summarize reads its osaurus key through this symlink. Depends on
+    # the agenix launchd daemon having mounted /run/agenix.
+    mkdir -p "${userHome}/.config/reel-summarize"
+    ln -sf /run/agenix/osaurus-api-key "${userHome}/.config/reel-summarize/osaurus-api-key"
+
+    KEYFILE="${userHome}/.ssh/id_photo_rsync"
+    if [ ! -f "$KEYFILE" ]; then
+      echo "photo-rsync: generating key" >&2
+      /usr/bin/ssh-keygen -t ed25519 -f "$KEYFILE" -N "" -C "photo-rsync@accismus"
+      chown scott:staff "$KEYFILE" "$KEYFILE.pub" 2>/dev/null || true
+    fi
+    mkdir -p "${userHome}/Documents/.config"
+    cp -f "$KEYFILE".pub "${userHome}/Documents/.config/photo-rsync-key.pub"
+
+    sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUEnableAutomaticChecks -bool false 2>/dev/null || true
+    sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUAutomaticallyUpdate -bool false 2>/dev/null || true
+
     containers_setup="$HOME/.config/zen/containers-setup"
     if [ ! -f "$containers_setup" ]; then
       echo "REMINDER: Set up Zen browser containers (one-time):" >&2
@@ -98,6 +104,38 @@ in {
       echo "  3. Run: touch $containers_setup" >&2
       echo "  (this reminder won't show again)" >&2
     fi
+  '';
+
+  # Serper-key merge lives in postActivation, NOT extraActivation: nix-darwin
+  # renders extraActivation (activation-scripts.nix:118) BEFORE launchd
+  # (line 128), and launchd is what (re)loads the agenix daemon. On a switch
+  # that changes the secret set the daemon remounts /run/agenix only after
+  # extraActivation has run, so a merge there would find no mounted secret and
+  # silently do nothing. postActivation (line 139) renders after launchd.
+  # The daemon mounts asynchronously, so wait (bounded) for the file rather
+  # than assuming launchctl load has finished decrypting. Guard and hand-off
+  # are unchanged: preserve all other keys, chown scott:staff, chmod 644,
+  # atomic mv; `|| true` steps so a re-run can never abort activation under
+  # `set -e`.
+  system.activationScripts.postActivation.text = lib.mkAfter ''
+    # Merge the decrypted Serper key into Raven's config at
+    # tools.web.search.apiKey, preserving all other keys. Raven rewrites this
+    # file as scott, so hand it back to scott:staff afterwards.
+    serper_wait=0
+    while [ ! -f /run/agenix/serper-api-key ] && [ "$serper_wait" -lt 30 ]; do
+      sleep 0.5
+      serper_wait=$((serper_wait + 1))
+    done
+    if [ -f /run/agenix/serper-api-key ] && [ -f "${userHome}/.raven/config.json" ]; then
+      tmp="$(mktemp "${userHome}/.raven/config.json.XXXXXX")"
+      ${pkgs.jq}/bin/jq --arg key "$(cat /run/agenix/serper-api-key)" \
+        '.tools.web.search.apiKey = $key' "${userHome}/.raven/config.json" > "$tmp" &&
+        chown scott:staff "$tmp" &&
+        chmod 644 "$tmp" &&
+        mv "$tmp" "${userHome}/.raven/config.json"
+    elif [ ! -f /run/agenix/serper-api-key ]; then
+      echo "warning: /run/agenix/serper-api-key did not appear within 15s; skipping Serper key merge" >&2
+    fi || true
   '';
 
   # Used for backwards compatibility, please read the changelog before changing.

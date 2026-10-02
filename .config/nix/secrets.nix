@@ -11,4 +11,7 @@ in {
   "/Users/scott/.config/nix/secrets/osaurus-api-key.age".publicKeys = [sophrosyne accismus-yubikey accismus-host];
   "/Users/scott/.config/nix/secrets/soju-password.age".publicKeys = [sophrosyne accismus-yubikey accismus-host];
   "/Users/scott/.config/nix/secrets/hermes-openrouter.age".publicKeys = [sophrosyne accismus-yubikey accismus-host];
+  # Serper web-search key for Raven (tools.web.search.apiKey). Content is the
+  # bare key; an activation script merges it into ~/.raven/config.json.
+  "/Users/scott/.config/nix/secrets/serper-api-key.age".publicKeys = [sophrosyne accismus-yubikey accismus-host];
 }
