@@ -101,7 +101,9 @@ function nr
             bash modules/overlays/daisydisk-overlay/update.sh
             bash modules/overlays/osaurus/update.sh
             bash modules/overlays/openfang/update.sh
-            alejandra pkgs/oxillama/default.nix modules/overlays/zen-browser/default.nix modules/overlays/opencode/default.nix modules/overlays/daisydisk-overlay/default.nix modules/overlays/osaurus/default.nix modules/overlays/openfang/default.nix
+            bash modules/overlays/ghostty/update.sh
+            bash modules/overlays/orca-ade/update.sh
+            alejandra pkgs/oxillama/default.nix modules/overlays/opencode/default.nix modules/overlays/daisydisk-overlay/default.nix modules/overlays/osaurus/default.nix modules/overlays/openfang/default.nix modules/overlays/ghostty/default.nix modules/overlays/orca-ade/default.nix
             cd $_pwd
         else
             set -l _pwd $PWD
@@ -163,11 +165,13 @@ function nr
         if test "$_os" = darwin
             set -a _nr_files \
                 $HOME/.config/nix/pkgs/oxillama/default.nix \
-                $HOME/.config/nix/modules/overlays/zen-browser/default.nix \
+                $HOME/.config/nix/modules/overlays/zen-browser/sources.json \
                 $HOME/.config/nix/modules/overlays/opencode/default.nix \
                 $HOME/.config/nix/modules/overlays/daisydisk-overlay/default.nix \
                 $HOME/.config/nix/modules/overlays/osaurus/default.nix \
-                $HOME/.config/nix/modules/overlays/openfang/default.nix
+                $HOME/.config/nix/modules/overlays/openfang/default.nix \
+                $HOME/.config/nix/modules/overlays/ghostty/default.nix \
+                $HOME/.config/nix/modules/overlays/orca-ade/default.nix
         else
             set -a _nr_files \
                 $HOME/.config/nix/pkgs/bedrock-server/default.nix \
