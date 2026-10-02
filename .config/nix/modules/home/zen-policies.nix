@@ -3,7 +3,6 @@
   DisableFirefoxStudies = true;
   DisableAppUpdate = true;
   ManualAppUpdateOnly = true;
-  DisablePocket = true;
   DisableFirefoxAccounts = false;
   DisableAccounts = false;
   DisableFirefoxScreenshots = true;
