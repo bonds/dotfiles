@@ -22,3 +22,9 @@ class TestCLI(unittest.TestCase):
             entry()
             args, kwargs = mock_run.call_args
             self.assertTrue(kwargs["keep_artifacts"])
+
+    @patch("reel_summarize.cli.run")
+    def test_run_with_youtube_url(self, mock_run):
+        with patch("sys.argv", ["reel-summarize", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"]):
+            entry()
+            mock_run.assert_called_once()

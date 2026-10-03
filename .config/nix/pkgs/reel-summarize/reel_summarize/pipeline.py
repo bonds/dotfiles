@@ -9,12 +9,22 @@ import tempfile
 
 from reel_summarize.config import Config, resolve_model_name, whisper_model_path, MODELS_DIR, MODEL_URL
 from reel_summarize.errors import ReelError
-from reel_summarize.stages.download import download, fetch_metadata
+from reel_summarize.stages.download import download
+from reel_summarize.stages.download import fetch_metadata as fetch_ig_metadata
 from reel_summarize.stages.audio_extract import extract_audio
 from reel_summarize.stages.frame_extract import extract_frames
 from reel_summarize.stages.transcribe import transcribe, transcribe_text
 from reel_summarize.stages.vision import analyze_frames, format_vision_timeline
-from reel_summarize.stages.summarize import generate_summary
+from reel_summarize.stages.summarize import generate_summary, generate_summary_chunked
+# YouTube platform branch: audio-only ingest, captions-first transcript with
+# whisper fallback, no frames/vision, map-reduce summary for long transcripts.
+# stages.youtube.fetch_metadata is aliased so it doesn't shadow the Instagram one.
+from reel_summarize.stages.youtube import (
+    is_youtube_url,
+    download_audio,
+    fetch_captions,
+    fetch_metadata as fetch_youtube_metadata,
+)
 from reel_summarize.stages.laya import filter_lines
 
 _LOCK_PATH = os.path.expanduser("~/.cache/reel-summarize.lock")
@@ -119,6 +129,9 @@ def run_structured(
     work_dir = tempfile.mkdtemp(prefix="reel-summarize-")
     _clear_state()
 
+    is_yt = is_youtube_url(url)
+    platform = "youtube" if is_yt else "instagram"
+
     try:
         _ensure_model(cfg, cfg.vision_model, "vision")
         _ensure_model(cfg, cfg.summarize_model, "summary")
@@ -126,55 +139,101 @@ def run_structured(
 
         p = lambda m: print(m, file=sys.stderr, flush=True)
 
-        p("→ downloading video...")
-        down = download(url, work_dir)
-        video_path = down["video_path"]
-        metadata = pre_fetched_metadata if pre_fetched_metadata else down["metadata"]
-        p("→ done download")
+        segments = []
+        frames = []
+        _vmodel = None
 
-        p("→ extracting audio...")
-        audio_path = extract_audio(video_path, work_dir)
-        p("→ done audio extract")
+        if is_yt:
+            # --- YouTube path: audio-only, no frames/vision -----------------
+            p("→ fetching metadata...")
+            metadata = pre_fetched_metadata or fetch_youtube_metadata(url)
+            if metadata.get("is_live"):
+                from reel_summarize.errors import DownloadError
+                raise DownloadError(f"{url} is a livestream — wait until it ends, then retry")
+            p("→ done metadata")
 
-        p("→ extracting frames...")
-        frames = extract_frames(video_path, work_dir, cfg)
-        p(f"→ done frame extract ({len(frames)} frames)")
+            p("→ downloading audio (yt-dlp, audio-only)...")
+            src_audio = download_audio(url, work_dir)
+            p("→ done audio download")
+            p("→ extracting audio (16 kHz mono)...")
+            audio_path = extract_audio(src_audio, work_dir)
+            p("→ done audio extract")
 
-        p("→ transcribing audio (whisper)...")
-        segments = transcribe(audio_path, cfg)
-        transcript = transcribe_text(segments)
-        p(f"→ done transcribe ({len(transcript)} chars)")
+            segments = None
+            if cfg.youtube_prefer_captions:
+                p("→ trying YouTube captions...")
+                segments = fetch_captions(url, work_dir)
+                if segments:
+                    p(f"→ captions OK ({len(segments)} segments)")
+                else:
+                    p("→ captions unavailable/rate-limited — falling back to whisper")
 
-        if cfg.laya_enabled:
+            if segments is None:
+                p("→ transcribing audio (whisper)...")
+                segments = transcribe(audio_path, cfg)
+                p(f"→ done transcribe ({len(segments)} segments)")
+            transcript = transcribe_text(segments)
+
+            # frames stays [] → analyze_frames / format_vision_timeline skipped
+            vision_timeline = ""
+        else:
+            # --- Instagram path (unchanged behavior) -----------------------
+            p("→ downloading video...")
+            down = download(url, work_dir)
+            video_path = down["video_path"]
+            metadata = pre_fetched_metadata if pre_fetched_metadata else down["metadata"]
+            p("→ done download")
+
+            p("→ extracting audio...")
+            audio_path = extract_audio(video_path, work_dir)
+            p("→ done audio extract")
+
+            p("→ extracting frames...")
+            frames = extract_frames(video_path, work_dir, cfg)
+            p(f"→ done frame extract ({len(frames)} frames)")
+
+            p("→ transcribing audio (whisper)...")
+            segments = transcribe(audio_path, cfg)
+            transcript = transcribe_text(segments)
+            p(f"→ done transcribe ({len(transcript)} chars)")
+
+            vision_results = []
+            if frames:
+                _vmodel = cfg.vision_model
+                p(f"→ scanning {len(frames)} frames ({_vmodel})...")
+                vision_results = analyze_frames(frames, cfg)
+
+            vision_timeline = format_vision_timeline(
+                frames, vision_results, cfg.frames_per_second
+            )
+
+        if cfg.laya_enabled and segments:
             lines = [s["text"] for s in segments if s["text"]]
             kept = filter_lines(lines, cfg)
             transcript = " ".join(kept)
             p(f"→ laya pre-filter: {len(lines)} → {len(kept)} lines kept")
 
-        vision_results = []
-        if frames:
-            _vmodel = cfg.vision_model
-            p(f"→ scanning {len(frames)} frames ({_vmodel})...")
-            vision_results = analyze_frames(frames, cfg)
-
-        vision_timeline = format_vision_timeline(
-            frames, vision_results, cfg.frames_per_second
-        )
-
         author = metadata.get("author")
         caption = metadata.get("caption")
         _smodel = resolve_model_name(cfg.host, cfg)
         p(f"→ summarizing ({_smodel})...")
-        summary = generate_summary(
+        summary_fn = (
+            generate_summary_chunked
+            if platform == "youtube" and len(transcript) > cfg.summary_max_chars
+            else generate_summary
+        )
+        summary = summary_fn(
             transcript=transcript,
             vision_timeline=vision_timeline,
             caption=caption,
             author=author,
             cfg=cfg,
+            platform=platform,
         )
 
         return {
             "url": url,
+            "platform": platform,
             "author": author,
             "caption": caption,
             "transcript": transcript,
@@ -211,12 +270,14 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
     lock_fd = _acquire_lock()
     state = _load_state()
     work_dir = state.get("work_dir")
+    is_yt = is_youtube_url(url)
+    platform = "youtube" if is_yt else "instagram"
 
     try:
         p = lambda m: print(m, file=sys.stderr, flush=True)
 
         if stage == "metadata":
-            metadata = fetch_metadata(url)
+            metadata = fetch_youtube_metadata(url) if is_yt else fetch_ig_metadata(url)
             author = metadata.get("author") or "unknown"
             caption = metadata.get("caption") or "(no caption)"
             if author:
@@ -234,7 +295,7 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
             metadata = state.get("metadata") if state else None
             if not metadata:
                 p("→ fetching metadata...")
-                metadata = fetch_metadata(url)
+                metadata = fetch_youtube_metadata(url) if is_yt else fetch_ig_metadata(url)
                 author = metadata.get("author") or "unknown"
                 caption = metadata.get("caption") or "(no caption)"
                 if author:
@@ -245,6 +306,21 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
             if not work_dir:
                 work_dir = tempfile.mkdtemp(prefix="reel-summarize-")
                 _save_state({"work_dir": work_dir, "metadata": metadata})
+
+            if is_yt:
+                p("→ downloading audio (yt-dlp, audio-only)...")
+                src_audio = download_audio(url, work_dir)
+                p("→ extracting audio (16 kHz mono)...")
+                audio_path = extract_audio(src_audio, work_dir)
+                _save_state({
+                    "work_dir": work_dir,
+                    "audio_path": audio_path,
+                    "frames": [],
+                    "metadata": metadata,
+                    "platform": platform,
+                })
+                p("✓ download done — audio extracted (no frames for YouTube)")
+                return
 
             p("→ downloading video...")
             down = download(url, work_dir)
@@ -259,6 +335,7 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
                 "audio_path": audio_path,
                 "frames": frames,
                 "metadata": metadata,
+                "platform": platform,
             })
             p(f"✓ download done — {len(frames)} frames, audio extracted")
 
@@ -273,16 +350,27 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
             video_path = state.get("video_path")
             audio_path = state.get("audio_path")
             frames = state.get("frames", [])
+            stage_platform = state.get("platform") or platform
 
             if not audio_path or not os.path.exists(audio_path):
                 p("→ audio not found, re-extracting...")
                 audio_path = extract_audio(video_path, work_dir)
 
-            _ensure_whisper_model(cfg)
-            p("→ transcribing audio (whisper)...")
-            segments = transcribe(audio_path, cfg)
+            segments = None
+            if stage_platform == "youtube" and cfg.youtube_prefer_captions:
+                p("→ trying YouTube captions...")
+                segments = fetch_captions(url, work_dir)
+                if segments:
+                    p(f"→ captions OK ({len(segments)} segments)")
+                else:
+                    p("→ captions unavailable/rate-limited — falling back to whisper")
+
+            if segments is None:
+                _ensure_whisper_model(cfg)
+                p("→ transcribing audio (whisper)...")
+                segments = transcribe(audio_path, cfg)
+                p(f"✓ transcription done ({len(segments)} segments)")
             transcript = transcribe_text(segments)
-            p(f"✓ transcription done ({len(transcript)} chars)")
 
             if cfg.laya_enabled:
                 lines = [s["text"] for s in segments if s["text"]]
@@ -304,12 +392,18 @@ def run_stage(stage: str, url: str, cfg: Config, keep_artifacts: bool = False):
             caption = metadata.get("caption") or "(no caption)"
             _smodel = resolve_model_name(cfg.host, cfg)
             p(f"→ summarizing ({_smodel})...")
-            summary = generate_summary(
+            summary_fn = (
+                generate_summary_chunked
+                if stage_platform == "youtube" and len(transcript) > cfg.summary_max_chars
+                else generate_summary
+            )
+            summary = summary_fn(
                 transcript=transcript,
                 vision_timeline=vision_timeline,
                 caption=caption,
                 author=author,
                 cfg=cfg,
+                platform=stage_platform,
             )
 
             if author:

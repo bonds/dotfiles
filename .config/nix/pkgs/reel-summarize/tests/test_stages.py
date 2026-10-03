@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 from reel_summarize.config import Config
+from reel_summarize.errors import DownloadError
 from reel_summarize.stages.download import download
 from reel_summarize.stages.audio_extract import extract_audio
 from reel_summarize.stages.frame_extract import extract_frames
@@ -28,7 +29,7 @@ class TestDownload(unittest.TestCase):
         mock_run.return_value.returncode = 1
         mock_run.return_value.stderr = "HTTP Error 404"
         with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaises(SystemExit):
+            with self.assertRaises(DownloadError):
                 download("https://instagram.com/reel/bad", tmp)
 
 

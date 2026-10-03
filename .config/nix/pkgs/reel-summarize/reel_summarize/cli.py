@@ -41,6 +41,11 @@ def _preflight(cfg: Config):
     if not shutil.which("ffmpeg"):
         errors.append("ffmpeg not found on PATH (install via nix or brew)")
 
+    if cfg.youtube_prefer_captions:
+        # Captions are an optional fast path; whisper is the reliable default.
+        print("  · youtube_prefer_captions=on: caption 429s fall back to local whisper",
+              file=sys.stderr)
+
     if cfg.backend not in ("openai", "osaurus"):
         try:
             _ensure_ollama_model(cfg.vision_model, cfg)
@@ -66,9 +71,9 @@ def _preflight(cfg: Config):
 
 def entry():
     parser = argparse.ArgumentParser(
-        description="Summarize an Instagram Reel using local models"
+        description="Summarize an Instagram Reel or YouTube video using local models"
     )
-    parser.add_argument("url", nargs="?", help="Instagram Reel URL")
+    parser.add_argument("url", nargs="?", help="Instagram Reel or YouTube URL")
     parser.add_argument("--preflight", action="store_true", help="Check prerequisites")
     parser.add_argument("--keep-artifacts", action="store_true",
                         help="Keep intermediate files in /tmp/")

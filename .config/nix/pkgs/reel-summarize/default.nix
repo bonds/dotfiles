@@ -6,7 +6,7 @@
 }:
 python3.pkgs.buildPythonApplication {
   pname = "reel-summarize";
-  version = "0.2.0";
+  version = "0.3.0";
   src = ./.;
   format = "pyproject";
   nativeBuildInputs = with python3.pkgs; [setuptools wrapPython];
@@ -20,7 +20,7 @@ python3.pkgs.buildPythonApplication {
     "${transcribe-cpp}/lib/libtranscribe.dylib"
   ];
   meta = with lib; {
-    description = "Summarize Instagram Reels using local models (llama.cpp + transcribe.cpp, or Ollama)";
+    description = "Summarize Instagram Reels and YouTube videos using local models (llama.cpp + transcribe.cpp, or Ollama)";
     homepage = "https://github.com/bonds/dotfiles";
     license = licenses.mit;
     platforms = platforms.all;

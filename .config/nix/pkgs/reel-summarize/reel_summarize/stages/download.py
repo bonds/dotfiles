@@ -81,7 +81,7 @@ def _cookies_opt() -> list[str]:
 
 
 def _parse_metadata(raw: str | None) -> dict:
-    metadata = {"caption": None, "author": None, "duration": None}
+    metadata = {"caption": None, "author": None, "duration": None, "is_live": False}
     if not raw:
         return metadata
     try:
@@ -95,7 +95,10 @@ def _parse_metadata(raw: str | None) -> dict:
 
 
 def fetch_metadata(url: str) -> dict:
-    """Fetch only the metadata (caption, author, duration) without downloading video. Fast (~1-2s)."""
+    """Fetch only the metadata (caption, author, duration) without downloading video. Fast (~1-2s).
+
+    (YouTube URLs use ``stages.youtube.fetch_metadata`` instead — same shape,
+    plus an ``is_live`` flag and livestream rejection.)"""
     meta_result = subprocess.run(
         ["yt-dlp", "--dump-json", *_cookies_opt(), url],
         capture_output=True, text=True, timeout=30,

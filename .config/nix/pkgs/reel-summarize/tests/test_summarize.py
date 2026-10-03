@@ -3,7 +3,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 from reel_summarize.config import Config
 from reel_summarize.errors import SummaryError
-from reel_summarize.stages.summarize import generate_summary
+from reel_summarize.stages.summarize import (
+    generate_summary,
+    generate_summary_chunked,
+    split_text,
+)
 
 
 class TestSummarize(unittest.TestCase):
@@ -16,7 +20,7 @@ class TestSummarize(unittest.TestCase):
         mock_httpx.TimeoutException = type("TimeoutException", (Exception,), {})
         mock_httpx.RequestError = type("RequestError", (Exception,), {})
 
-        cfg = Config()
+        cfg = Config(backend="ollama")
         with patch.dict('sys.modules', {'httpx': mock_httpx}):
             result = generate_summary(
                 transcript="cats are great",
@@ -32,6 +36,31 @@ class TestSummarize(unittest.TestCase):
         self.assertIn("catlover", payload["prompt"])
         self.assertIn("Cute cat video", payload["prompt"])
         self.assertIn("cats are great", payload["prompt"])
+
+    def test_generate_summary_platform_prompt(self):
+        """YouTube prompt says 'YouTube video', Instagram says 'Instagram Reel'."""
+        mock_httpx = MagicMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
+        mock_response.raise_for_status.return_value = None
+        mock_httpx.post.return_value = mock_response
+        mock_httpx.TimeoutException = type("TimeoutException", (Exception,), {})
+        mock_httpx.RequestError = type("RequestError", (Exception,), {})
+        cfg = Config()
+        with patch.dict('sys.modules', {'httpx': mock_httpx}):
+            generate_summary(
+                transcript="t", vision_timeline="", caption="cap",
+                author="auth", cfg=cfg, platform="youtube",
+            )
+            yt_prompt = mock_httpx.post.call_args.kwargs["json"]["messages"][0]["content"]
+            generate_summary(
+                transcript="t", vision_timeline="", caption="cap",
+                author="auth", cfg=cfg, platform="instagram",
+            )
+            ig_prompt = mock_httpx.post.call_args.kwargs["json"]["messages"][0]["content"]
+        self.assertIn("YouTube video", yt_prompt)
+        self.assertNotIn("Instagram Reel", yt_prompt)
+        self.assertIn("Instagram Reel", ig_prompt)
 
 
 class TestSummarizeOsaurus(unittest.TestCase):

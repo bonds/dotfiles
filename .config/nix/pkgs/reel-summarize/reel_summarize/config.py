@@ -31,6 +31,13 @@ class Config:
     laya_enabled: bool = False
     laya_threshold: float = 0.30
     laya_use_calibration: bool = False
+    # YouTube inputs (see stages/youtube.py)
+    youtube_prefer_captions: bool = True  # captions first, whisper fallback
+    youtube_allow_silent: bool = False     # summarize description-only if no audio
+    # Long-video map-reduce summarization (32k-context models)
+    summary_max_chars: int = 60000        # above this, chunk the transcript
+    mapreduce_chunk_chars: int = 24000    # ~6k tokens per map call
+    mapreduce_overlap_chars: int = 1000   # sentence-boundary overlap
 
     def __post_init__(self):
         # Auto-load Osaurus API key from file if not set
@@ -152,6 +159,11 @@ def load(path: str | None = None) -> Config:
         "laya_enabled": "REEL_SUMMARIZE_LAYA_ENABLED",
         "laya_threshold": "REEL_SUMMARIZE_LAYA_THRESHOLD",
         "laya_use_calibration": "REEL_SUMMARIZE_LAYA_USE_CALIBRATION",
+        "youtube_prefer_captions": "REEL_SUMMARIZE_YOUTUBE_PREFER_CAPTIONS",
+        "youtube_allow_silent": "REEL_SUMMARIZE_YOUTUBE_ALLOW_SILENT",
+        "summary_max_chars": "REEL_SUMMARIZE_SUMMARY_MAX_CHARS",
+        "mapreduce_chunk_chars": "REEL_SUMMARIZE_MAPREDUCE_CHUNK_CHARS",
+        "mapreduce_overlap_chars": "REEL_SUMMARIZE_MAPREDUCE_OVERLAP_CHARS",
     }
     for attr, var in env.items():
         val = os.environ.get(var)

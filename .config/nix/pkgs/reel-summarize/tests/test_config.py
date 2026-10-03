@@ -32,6 +32,26 @@ class TestConfig(unittest.TestCase):
         finally:
             del os.environ["REEL_SUMMARIZE_HOST"]
 
+    def test_youtube_defaults(self):
+        """Captions preferred by default; map-reduce thresholds sane."""
+        cfg = load("/nonexistent/path")
+        self.assertTrue(cfg.youtube_prefer_captions)
+        self.assertFalse(cfg.youtube_allow_silent)
+        self.assertEqual(cfg.summary_max_chars, 60000)
+        self.assertEqual(cfg.mapreduce_chunk_chars, 24000)
+        self.assertEqual(cfg.mapreduce_overlap_chars, 1000)
+
+    def test_youtube_env_overrides(self):
+        os.environ["REEL_SUMMARIZE_YOUTUBE_PREFER_CAPTIONS"] = "0"
+        os.environ["REEL_SUMMARIZE_SUMMARY_MAX_CHARS"] = "12345"
+        try:
+            cfg = load("/nonexistent/path")
+            self.assertFalse(cfg.youtube_prefer_captions)
+            self.assertEqual(cfg.summary_max_chars, 12345)
+        finally:
+            del os.environ["REEL_SUMMARIZE_YOUTUBE_PREFER_CAPTIONS"]
+            del os.environ["REEL_SUMMARIZE_SUMMARY_MAX_CHARS"]
+
 
 class TestDiscoverOsaurus(unittest.TestCase):
     def test_discover_returns_none_when_no_files(self):
