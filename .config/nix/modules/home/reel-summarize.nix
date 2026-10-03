@@ -7,7 +7,7 @@
   cfg = config.programs.reel-summarize;
 in {
   options.programs.reel-summarize = {
-    enable = lib.mkEnableOption "reel-summarize — summarize Instagram Reels using local models";
+    enable = lib.mkEnableOption "reel-summarize — summarize Instagram Reels and YouTube videos using local models";
 
     settings = lib.mkOption {
       type = lib.types.submodule {
@@ -57,6 +57,31 @@ in {
             default = 300;
             description = "HTTP timeout in seconds for LLM API calls";
           };
+          youtubePreferCaptions = lib.mkOption {
+            type = lib.types.bool;
+            default = true;
+            description = "Try YouTube captions/auto-captions first; fall back to local whisper on any failure (429 etc.)";
+          };
+          youtubeAllowSilent = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = "Summarize description-only when a video has no audio track";
+          };
+          summaryMaxChars = lib.mkOption {
+            type = lib.types.int;
+            default = 60000;
+            description = "Transcript length (chars) above which map-reduce chunked summarization kicks in";
+          };
+          mapreduceChunkChars = lib.mkOption {
+            type = lib.types.int;
+            default = 24000;
+            description = "Chunk size (chars) for map-reduce transcript summarization";
+          };
+          mapreduceOverlapChars = lib.mkOption {
+            type = lib.types.int;
+            default = 1000;
+            description = "Sentence-boundary overlap (chars) between transcript chunks";
+          };
         };
       };
       default = {};
@@ -80,6 +105,11 @@ in {
         frames_per_second = s.framesPerSecond;
         max_frames = s.maxFrames;
         inherit (s) timeout;
+        youtube_prefer_captions = s.youtubePreferCaptions;
+        youtube_allow_silent = s.youtubeAllowSilent;
+        summary_max_chars = s.summaryMaxChars;
+        mapreduce_chunk_chars = s.mapreduceChunkChars;
+        mapreduce_overlap_chars = s.mapreduceOverlapChars;
       };
   };
 }
