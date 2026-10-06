@@ -30,6 +30,9 @@ in [
   (import ./openfang/default.nix inputs.nixpkgs)
   (import ./lix/default.nix)
   (import ./osaurus/default.nix)
+  (import ./anyio/default.nix)
+  (import ./mcp/default.nix)
+  (import ./nodejs/default.nix)
   (final: _prev: {
     oxillama = final.callPackage ../../pkgs/oxillama {};
   })

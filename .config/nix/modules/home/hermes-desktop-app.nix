@@ -29,12 +29,26 @@
   # rewriting Contents costs nothing — unlike osaurus, whose notarized signature
   # a baked icon would invalidate (see macos-apps.nix).
   hermesIcon = ../overlays/hermes-icon.icns;
+  # TODO(anyio-overlay): the desktop embeds hermesAgent's wrapped runtime; pass
+  # the anyio-overlaid build (same binding as hosts/accismus/configuration.nix)
+  # so this .app's closure doesn't rebuild anyio 4.14.2's failing test suite.
+  hermesUnstablePkgs = import inputs.nixpkgs-unstable.outPath {
+    system = pkgs.stdenv.hostPlatform.system;
+    overlays = [(import ../overlays/anyio/default.nix)];
+  };
+  hermesOverlaid = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default.override {
+    callPackage = hermesUnstablePkgs.callPackage;
+    python312 = hermesUnstablePkgs.python312;
+  };
   hermesDesktopApp = stdenvNoCC.mkDerivation rec {
     pname = "hermes-desktop-app";
     version = "0.17.0";
     phases = ["installPhase"];
     # BUG-001 workaround (upstream #61443) — see ../packages/hermes-desktop-fixed.nix
-    hermesDesktop = import ../packages/hermes-desktop-fixed.nix {inherit pkgs inputs;};
+    hermesDesktop = import ../packages/hermes-desktop-fixed.nix {
+      inherit pkgs inputs;
+      hermesAgent = hermesOverlaid;
+    };
     inherit electronPkg hermesIcon;
     installPhase = ''
       # Copy the renamed Electron.app structure

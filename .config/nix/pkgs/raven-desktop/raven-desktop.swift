@@ -103,6 +103,128 @@ private func desktopTweaksUserScript() -> WKUserScript {
     return WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
 }
 
+// WKScriptMessageHandler name the interaction script posts to. Shared by the
+// injection and the native side so the two cannot drift apart.
+private let windowInteractionHandlerName = "ravenDesktop"
+
+// The title bar is gone (hidden, transparent, full-size content view), so
+// AppKit's own double-click-to-zoom and title-bar drag no longer happen over
+// the page. This script restores both on the top strip of the window:
+//
+//   - dblclick with clientY < 30 (non-interactive target) -> zoom: fill the
+//     screen, or shrink to 75% of it (centered) when already filling
+//   - mousedown in the same strip, then mousemove -> send per-move deltas so
+//     the native side can move the window under the cursor
+//
+// The strip deliberately starts below the traffic lights, which sit above the
+// web view natively, and it bails on anything interactive so the rail header
+// toggle and pane-head buttons up there keep working as before.
+//
+// Surviving the page's own event code takes two rules together:
+//
+//   1. Injection is .atDocumentStart, so this IIFE runs before any page
+//      script. `document` exists at that point and addEventListener works
+//      there, so ours registers first — and at the same target + phase,
+//      registration order is call order, so our capture listener is ahead of
+//      every listener the page ever adds on `document`.
+//   2. All four listeners use the CAPTURE phase (third argument `true`), so
+//      they run on the way down, before any target handler can
+//      stopPropagation(). A bubble-phase document listener never fires if
+//      something up the tree stopped the event — which was the first bug —
+//      and a capture listener registered *after* the page's can still be
+//      killed by its stopImmediatePropagation() — which was this round's.
+//      Rule 1 is what rules that out; rule 2 alone was not enough.
+//
+// Registration touches no DOM beyond addEventListener itself: no queries, no
+// reads, nothing the page could not have built yet. The one element whose
+// existence is uncertain at documentStart (document.documentElement) is bound
+// lazily in bindLeave() when the first drag starts, never at registration.
+private func desktopInteractionUserScript() -> WKUserScript {
+    let source = """
+    (function () {
+      var TOP_STRIP = 30;
+      var INTERACTIVE = 'button, a, input, textarea, select, [role="button"], [contenteditable], summary';
+
+      function post(message) {
+        try { window.webkit.messageHandlers.\(windowInteractionHandlerName).postMessage(message); } catch (e) {}
+      }
+
+      function isInteractive(event) {
+        var target = event.target;
+        return !!(target && target.closest && target.closest(INTERACTIVE));
+      }
+
+      function inTopStrip(event) {
+        return event.clientY < TOP_STRIP;
+      }
+
+      document.addEventListener('dblclick', function (event) {
+        if (!inTopStrip(event) || isInteractive(event)) return;
+        post({ type: 'zoomWindow' });
+      }, true);
+
+      var dragging = false;
+      var lastX = 0;
+      var lastY = 0;
+      var leaveBound = false;
+      var pendingDx = 0;
+      var pendingDy = 0;
+      var flushScheduled = false;
+
+      function flushDrag() {
+        flushScheduled = false;
+        var dx = pendingDx;
+        var dy = pendingDy;
+        pendingDx = 0;
+        pendingDy = 0;
+        if (dx !== 0 || dy !== 0) post({ type: 'windowDrag', dx: dx, dy: dy });
+      }
+
+      function endDrag() {
+        dragging = false;
+        flushDrag();
+      }
+
+      // document.documentElement can still be null at documentStart, so the
+      // pointer-left-page listener is bound here instead of at registration,
+      // when the document has long been built.
+      function bindLeave() {
+        if (leaveBound || !document.documentElement) return;
+        leaveBound = true;
+        document.documentElement.addEventListener('mouseleave', endDrag);
+      }
+
+      document.addEventListener('mousedown', function (event) {
+        if (event.button !== 0 || !inTopStrip(event) || isInteractive(event)) return;
+        event.preventDefault();
+        bindLeave();
+        dragging = true;
+        lastX = event.clientX;
+        lastY = event.clientY;
+      }, true);
+
+      document.addEventListener('mousemove', function (event) {
+        if (!dragging) return;
+        var dx = event.clientX - lastX;
+        var dy = event.clientY - lastY;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        if (dx === 0 && dy === 0) return;
+        pendingDx += dx;
+        pendingDy += dy;
+        if (!flushScheduled) {
+          flushScheduled = true;
+          requestAnimationFrame(flushDrag);
+        }
+      }, true);
+
+      document.addEventListener('mouseup', endDrag, true);
+      window.addEventListener('blur', endDrag);
+    })();
+    """
+    return WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+}
+
 private struct ServeAuth {
     let port: Int
     let pid: pid_t
@@ -259,7 +381,7 @@ private func tail(_ path: String, lines: Int) -> String {
     return all.suffix(lines).joined(separator: "\n")
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKScriptMessageHandler {
     private var window: NSWindow!
     private var webView: WKWebView!
     private var overlay: NSView!
@@ -267,6 +389,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     private var errorLabel: NSTextField!
     private var retryButton: NSButton!
     private var spinner: NSProgressIndicator!
+
+    private var pendingDragDX: CGFloat = 0
+    private var pendingDragDY: CGFloat = 0
+    private var dragApplyScheduled = false
 
     // Written on the startup thread (bringUpServer) and read on the main thread
     // (stopServer / quit), so they live behind a lock rather than racing.
@@ -311,6 +437,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        webView?.configuration.userContentController.removeScriptMessageHandler(
+            forName: windowInteractionHandlerName
+        )
         stopServer()
     }
 
@@ -433,6 +562,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         // Desktop-only CSS fixes (see desktopTweaksCSS); the bundle has no hook
         // of its own for them.
         config.userContentController.addUserScript(desktopTweaksUserScript())
+        config.userContentController.addUserScript(desktopInteractionUserScript())
+        config.userContentController.add(self, name: windowInteractionHandlerName)
         webView = WKWebView(frame: content.bounds, configuration: config)
         webView.autoresizingMask = [.width, .height]
         webView.navigationDelegate = self
@@ -769,6 +900,110 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         showError("Could not load the Raven page: \(error.localizedDescription)")
+    }
+
+    // MARK: - WKScriptMessageHandler
+
+    // Native half of desktopInteractionUserScript: double-click in the top
+    // strip zooms the window (fill / shrink to 75%), dragging it moves the
+    // window.
+    //
+    // Units: the script posts CSS pixels. WKWebView reports them in the same
+    // coordinate space AppKit measures windows in — points, not device pixels
+    // — so no backingScaleFactor is involved on a Retina display. What does
+    // scale them is the page zoom: webView.pageZoom magnifies rendering, so at
+    // 2.0 one CSS pixel covers two points of window and the delta must be
+    // multiplied to keep the window glued to the cursor.
+    func userContentController(
+        _ userContentController: WKUserContentController,
+        didReceive message: WKScriptMessage
+    ) {
+        guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
+        switch type {
+        case "zoomWindow":
+            // Double-click toggles fill <-> shrink-to-75%, and the current
+            // state is read off the frame itself (size vs the screen's
+            // visibleFrame) rather than a stored flag, so a manual resize in
+            // between cannot leave a stale "am I maximized" flag behind — the
+            // next double-click just fills again.
+            //
+            // Never .fullScreen: this only sets a plain frame, so the result
+            // stays a normal titled window.
+            guard !window.styleMask.contains(.fullScreen) else { return }
+            guard let screen = window.screen ?? NSScreen.main else { return }
+            let visible = screen.visibleFrame
+            let current = window.frame.size
+            let filling = abs(current.width - visible.width) <= 2
+                && abs(current.height - visible.height) <= 2
+            if filling {
+                // 75% of the screen, centered in it.
+                let size = NSSize(width: visible.width * 0.75, height: visible.height * 0.75)
+                let origin = NSPoint(x: visible.midX - size.width / 2,
+                                     y: visible.midY - size.height / 2)
+                window.setFrame(NSRect(origin: origin, size: size), display: true, animate: true)
+            } else {
+                window.setFrame(visible, display: true, animate: true)
+            }
+        case "windowDrag":
+            // A full-screen window cannot be moved.
+            guard !window.styleMask.contains(.fullScreen) else { return }
+            guard let dx = body["dx"] as? Double, let dy = body["dy"] as? Double else { return }
+            pendingDragDX += CGFloat(dx)
+            pendingDragDY += CGFloat(dy)
+            scheduleDragApply()
+        default:
+            break
+        }
+    }
+
+    // Coalesce a burst of windowDrag messages into one window move per
+    // main-runloop turn: N bridge messages arriving in a turn become one
+    // setFrameOrigin instead of N window-server relayouts.
+    private func scheduleDragApply() {
+        guard !dragApplyScheduled else { return }
+        dragApplyScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.dragApplyScheduled = false
+            let dx = self.pendingDragDX
+            let dy = self.pendingDragDY
+            self.pendingDragDX = 0
+            self.pendingDragDY = 0
+            guard dx != 0 || dy != 0 else { return }
+            guard !self.window.styleMask.contains(.fullScreen) else { return }
+            let scale = CGFloat(self.webView.pageZoom)
+            var origin = self.window.frame.origin
+            origin.x += dx * scale
+            // JS's y axis runs top-down, AppKit's bottom-up: dragging the
+            // cursor down must lower origin.y.
+            origin.y -= dy * scale
+            self.window.setFrameOrigin(self.clampedWindowOrigin(origin))
+        }
+    }
+
+    // Keep the window inside the desktop while dragging — clamped against the
+    // bounding box of every screen's visible frame, so the window can cross
+    // freely between monitors but never leave the whole arrangement. Full
+    // containment when it fits, otherwise at least a strip of it stays
+    // reachable so it cannot be dragged out of reach.
+    private func clampedWindowOrigin(_ origin: NSPoint) -> NSPoint {
+        var desktop: NSRect?
+        for screen in NSScreen.screens {
+            let visible = screen.visibleFrame
+            desktop = desktop.map { $0.union(visible) } ?? visible
+        }
+        guard let box = desktop else { return origin }
+        let size = window.frame.size
+
+        let minX = size.width <= box.width ? box.minX : box.minX - size.width + 40
+        let maxX = size.width <= box.width ? box.maxX - size.width : box.maxX - 40
+        let minY = size.height <= box.height ? box.minY : box.minY - size.height + 40
+        let maxY = size.height <= box.height ? box.maxY - size.height : box.maxY - 40
+
+        var clamped = origin
+        clamped.x = min(max(clamped.x, min(minX, maxX)), max(minX, maxX))
+        clamped.y = min(max(clamped.y, min(minY, maxY)), max(minY, maxY))
+        return clamped
     }
 }
 

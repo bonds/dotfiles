@@ -5,7 +5,9 @@
 # matches what its URL serves, and the desktop build dies with a fixed-output
 # hash mismatch:
 #   pinned: sha256-f8bSbLRmtbP93CJAvEBs+sHWDZ1xP2bcpLhC1EnOmZU=
-#   served: sha256-xDgc5PpkcLpWHnlqVcjBD3SxJKtkUoSGLnJaSSrxJtI=
+#   served: sha256-9pfO2UU+Q2YljtD/NXESLaN7o+ydNJvRbZGFaRThQPA=
+# (2026-10-05 refresh: electron moved 43.6.0 -> 43.7.7 and the tarball was
+# regenerated again; prefetch of the v43.7.7 URL confirmed the served hash.)
 # That mismatch aborts the whole accismus closure: the desktop (and so
 # hermes-desktop-app) is a dependency of home-manager-generation.
 #
@@ -24,14 +26,21 @@
 {
   pkgs,
   inputs,
+  # TODO(anyio-overlay): the hermesAgent whose wrapped runtime the desktop
+  # embeds (desktop.nix HERMES_DESKTOP_HERMES). Defaults to the flake's own
+  # package for backward compatibility; the accismus config passes the anyio-
+  # overlaid build so the desktop's closure does not rebuild anyio 4.14.2's
+  # failing test suite. See modules/overlays/anyio/default.nix.
+  hermesAgent ? inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default,
 }: let
   # Built from ${electron.version} in hermes-agent's nix/desktop.nix. Pinned
   # here to the version nixpkgs-unstable resolved when this workaround was
   # written — the servedSha256 below is only valid for that exact tarball.
-  pinnedElectronVersion = "43.6.0";
+  pinnedElectronVersion = "43.7.7";
   headersUrl = "https://artifacts.electronjs.org/headers/dist/v${pinnedElectronVersion}/node-v${pinnedElectronVersion}-headers.tar.gz";
 
-  servedSha256 = "sha256-xDgc5PpkcLpWHnlqVcjBD3SxJKtkUoSGLnJaSSrxJtI=";
+  # Prefetched 2026-10-05: nix store prefetch-file --hash-type sha256 <headersUrl>
+  servedSha256 = "sha256-9pfO2UU+Q2YljtD/NXESLaN7o+ydNJvRbZGFaRThQPA=";
 
   # The nixpkgs hermes-agent follows (inputs.nixpkgs.follows = "nixpkgs-unstable"
   # in flake.nix), not the caller's stable one.
@@ -62,5 +71,6 @@ in
   '' (
     inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.desktop.override {
       pkgs = pkgsWithServedHeaders;
+      inherit hermesAgent;
     }
   )

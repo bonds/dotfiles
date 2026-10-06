@@ -5,6 +5,21 @@
   ...
 }: let
   userHome = import ../../lib/user-home.nix pkgs;
+
+  # TODO(anyio-overlay): hermes-agent instantiates ITS OWN nixpkgs-unstable
+  # (a flake input never sees our nixpkgs.overlays), so the anyio overlay
+  # must be re-applied to that instantiation and injected via .override.
+  # Why: modules/overlays/anyio/default.nix (anyio 4.14.2 TLS test failures).
+  hermesUnstablePkgs = import inputs.nixpkgs-unstable.outPath {
+    system = pkgs.stdenv.hostPlatform.system;
+    overlays = [(import ../../modules/overlays/anyio/default.nix)];
+  };
+  hermesOverlaid = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default.override {
+    # callPackage resolves python312 (and python.nix's whole scope) inside
+    # hermes-agent; python312 directly covers hermes-agent.nix's own uses.
+    callPackage = hermesUnstablePkgs.callPackage;
+    python312 = hermesUnstablePkgs.python312;
+  };
 in {
   imports = [
     ../../modules/packages/macos.nix
@@ -253,9 +268,15 @@ in {
       # modules/packages/hermes-desktop-fixed.nix (remove with PR #69458).
       programs.hermes-agent.desktop.package = import ../../modules/packages/hermes-desktop-fixed.nix {
         inherit pkgs inputs;
+        # TODO(anyio-overlay): keep the desktop's embedded runtime on the
+        # overlaid build too (it wraps hermesAgent, see hermes-desktop-fixed.nix).
+        hermesAgent = hermesOverlaid;
       };
       services.hermes-agent = {
         enable = true;
+        # TODO(anyio-overlay): overlaid build — hermes's own nixpkgs-unstable
+        # otherwise instantiates anyio 4.14.2 with its failing test suite.
+        package = hermesOverlaid;
         # browser dashboard at 127.0.0.1:9119 (interactive setup/first-run)
         backend.mode = "dashboard";
         # OpenRouter API key lives in agenix, decrypted to /run/agenix/ on

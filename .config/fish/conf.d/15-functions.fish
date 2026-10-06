@@ -136,22 +136,29 @@ function nr
     #      elevated commands in `sudo env … <cmd>`).
     # `darwin-rebuild`/`nixos-rebuild` re-use nh's cached build, so the
     # switch phase is near-instant.
+    # Build + switch output is teed to ~/.cache/nr/last.log as well as the
+    # terminal. The log is overwritten by the build phase each run and the
+    # switch phase appends, so it never grows unbounded. Exit status comes
+    # from $pipestatus[1] (the nix/nh command), captured immediately —
+    # $status after a pipe would be tee's status.
+    set -l _nr_log $HOME/.cache/nr/last.log
+    command mkdir -p $HOME/.cache/nr
     if test "$_os" = darwin
-        nh darwin build $HOME/.config/nix $_nr_args
-        set _nr_build_ok $status
+        nh darwin build $HOME/.config/nix $_nr_args 2>&1 | tee $_nr_log
+        set _nr_build_ok $pipestatus[1]
         if test $_nr_build_ok -eq 0
-            sudo /run/current-system/sw/bin/darwin-rebuild switch --flake $HOME/.config/nix $_nr_args
-            set _nr_switch_ok $status
+            sudo /run/current-system/sw/bin/darwin-rebuild switch --flake $HOME/.config/nix $_nr_args 2>&1 | tee -a $_nr_log
+            set _nr_switch_ok $pipestatus[1]
         else
             # Build failed — treat as a failed switch (skips commit/push)
             set _nr_switch_ok 1
         end
     else
-        nh os build $HOME/.config/nix $_nr_args
-        set _nr_build_ok $status
+        nh os build $HOME/.config/nix $_nr_args 2>&1 | tee $_nr_log
+        set _nr_build_ok $pipestatus[1]
         if test $_nr_build_ok -eq 0
-            doas /run/current-system/sw/bin/nixos-rebuild switch --flake $HOME/.config/nix $_nr_args
-            set _nr_switch_ok $status
+            doas /run/current-system/sw/bin/nixos-rebuild switch --flake $HOME/.config/nix $_nr_args 2>&1 | tee -a $_nr_log
+            set _nr_switch_ok $pipestatus[1]
         else
             set _nr_switch_ok 1
         end
