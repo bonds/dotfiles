@@ -47,13 +47,12 @@ end
 
 function __nr_local_builds --argument-names flake_ref
     # Print every output of this lock's full build graph that would have to be
-    # COMPILED locally: absent from every substituter (parallel narinfo probe)
-    # and not fixed-output (fetchurl-style FODs are downloads, not builds;
-    # structured-attribute drvs nest their env in env.__json). This counts the
-    # from-scratch requirement of a lock, independent of what is already
-    # realised in /nix/store, so a baseline and a post-update measurement are
-    # directly comparable. Prints one store path per line; exits non-zero if
-    # the measurement cannot be trusted (callers must fail closed).
+    # COMPILED locally: absent from every substituter (parallel narinfo probe),
+    # fixed-output derivations included. This counts the from-scratch
+    # requirement of a lock, independent of what is already realised in
+    # /nix/store, so a baseline and a post-update measurement are directly
+    # comparable. Prints one store path per line; exits non-zero if the
+    # measurement cannot be trusted (callers must fail closed).
     set -l tmp (command mktemp -d /tmp/nr-local-builds.XXXXXX)
     or return 1
     set -l drv (timeout 300 nix eval --raw "$flake_ref.drvPath" 2>/dev/null)
@@ -62,10 +61,9 @@ function __nr_local_builds --argument-names flake_ref
         echo "nr: could not evaluate $flake_ref.drvPath" >&2
         return 1
     end
-    # Drop fixed-output derivations: a bumped tarball hash is a download, not
-    # an extra local build, and would otherwise flap the gate on every bump.
+    # FODs are included deliberately: a stale-hash pin (e.g. node-v43.7.7-headers.tar.gz) is neither realised locally nor substitutable, exactly the "download will fail / not cached yet" case the gate must catch.
     timeout 300 nix derivation show -r "$drv" 2>/dev/null \
-        | jq -r 'to_entries[] | select((.value.env.outputHash != null) or ((.value.env.__json // "") | contains("\"outputHash\"")) | not) | .value.outputs[].path' \
+        | jq -r 'to_entries[].value.outputs[].path' \
         | sort -u >$tmp/paths
     if not test -s $tmp/paths
         command rm -rf $tmp
