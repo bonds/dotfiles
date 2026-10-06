@@ -94,7 +94,6 @@ function nr
         end
         set i (math $i + 1)
     end
-    # NOTE: --update is taken as-is; if it fails (e.g. a stale FOD hash pin in modules/packages/), revert flake.lock + the overlay files and fix the pin manually.
     if test "$_nr_update" = yes
         if test "$_os" = darwin
             set -l _pwd $PWD
@@ -130,6 +129,9 @@ function nr
         end
         cd $_pwd
     end
+    # NOTE: --update is taken as-is; if it fails (e.g. a stale FOD hash pin
+    # in modules/packages/), revert flake.lock + the overlay files and fix
+    # the pin manually.
     # Split build from activation, each as its least-privileged user:
     #   1. `nh build` — full nh/nix-output-monitor output (pretty bars,
     #      eval/build) running as scott. NEVER as root: build hooks and
