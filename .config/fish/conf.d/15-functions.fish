@@ -45,80 +45,6 @@ function tping
     end
 end
 
-function __nr_local_builds --argument-names flake_ref
-    # Print every output of this lock's full build graph that would have to be
-    # COMPILED locally: absent from every substituter (parallel narinfo probe),
-    # fixed-output derivations included. This counts the from-scratch
-    # requirement of a lock, independent of what is already realised in
-    # /nix/store, so a baseline and a post-update measurement are directly
-    # comparable. Prints one store path per line; exits non-zero if the
-    # measurement cannot be trusted (callers must fail closed).
-    set -l tmp (command mktemp -d /tmp/nr-local-builds.XXXXXX)
-    or return 1
-    set -l drv (timeout 300 nix eval --raw "$flake_ref.drvPath" 2>/dev/null)
-    if test $status -ne 0; or test -z "$drv"
-        command rm -rf $tmp
-        echo "nr: could not evaluate $flake_ref.drvPath" >&2
-        return 1
-    end
-    # FODs are included deliberately: a stale-hash pin (e.g. node-v43.7.7-headers.tar.gz) is neither realised locally nor substitutable, exactly the "download will fail / not cached yet" case the gate must catch.
-    timeout 300 nix derivation show -r "$drv" 2>/dev/null \
-        | jq -r 'to_entries[].value.outputs[].path' \
-        | sort -u >$tmp/paths
-    if not test -s $tmp/paths
-        command rm -rf $tmp
-        echo "nr: could not list build-graph outputs" >&2
-        return 1
-    end
-    set -l subs
-    for s in (timeout 30 nix config show substituters 2>/dev/null | string split --no-empty ' ')
-        if string match -qr '^https?://' -- $s
-            set -a subs (string replace -r '/$' '' -- $s)
-        end
-    end
-    if test (count $subs) -eq 0
-        command rm -rf $tmp
-        echo "nr: no http substituter configured — cannot measure local builds" >&2
-        return 1
-    end
-    # One narinfo probe per output path per substituter, all in one curl.
-    awk -v subs=(string join ' ' $subs) '{
-        h = $0; sub(/^\/nix\/store\//, "", h); sub(/-.*/, "", h);
-        n = split(subs, S, " ");
-        for (i = 1; i <= n; i++) { print "url = " S[i] "/" h ".narinfo"; print "output = /dev/null" }
-    }' $tmp/paths >$tmp/cfg
-    timeout 300 curl -s -K $tmp/cfg --parallel --parallel-max 64 \
-        --retry 2 --retry-delay 1 --retry-all-errors \
-        -w '%{http_code} %{url_effective}\n' >$tmp/probe
-    set -l curl_ok $status
-    set -l npaths (command wc -l <$tmp/paths | string trim)
-    set -l nprobe (command wc -l <$tmp/probe | string trim)
-    if test $curl_ok -ne 0; or command grep -q '^000 ' $tmp/probe
-        command rm -rf $tmp
-        echo "nr: narinfo probe had transport errors — refusing to guess a baseline" >&2
-        return 1
-    end
-    set -l nexpected (math "$npaths * "(count $subs))
-    if test "$nprobe" != "$nexpected"
-        command rm -rf $tmp
-        echo "nr: narinfo probe incomplete ($nprobe/$npaths answers) — refusing to guess" >&2
-        return 1
-    end
-    command sed -nE 's/^200 .*\/([a-z0-9]{32})\.narinfo$/\1/p' $tmp/probe | sort -u >$tmp/ok
-    if not test -s $tmp/ok
-        command rm -rf $tmp
-        echo "nr: substituter reports nothing valid — refusing to guess" >&2
-        return 1
-    end
-    command awk 'NR == FNR { ok[$1] = 1; next } {
-        h = $0; sub(/^\/nix\/store\//, "", h); sub(/-.*/, "", h);
-        if (!(h in ok)) print $0
-    }' $tmp/ok $tmp/paths
-    set -l rc $status
-    command rm -rf $tmp
-    return $rc
-end
-
 function nr
     # Run in the foreground when invoked interactively (output streams live
     # to the terminal). When invoked non-interactively (agents, scripts,
@@ -136,15 +62,6 @@ function nr
     command mkdir -p $HOME/.cache/nr
     # (A) tee log: build output truncates last.log, switch output appends.
     set -l _nr_log $HOME/.cache/nr/last.log
-    # (B) baseline-delta gate inputs: where the baseline, the pre-update lock
-    # and the system installable for THIS host live.
-    set -l _nr_base_file $HOME/.cache/nr/willbuild-baseline
-    set -l _nr_prev_lock $HOME/.cache/nr/flake.lock.prev
-    set -l _nr_attr nixosConfigurations
-    if test "$_os" = darwin
-        set _nr_attr darwinConfigurations
-    end
-    set -l _nr_ref "$HOME/.config/nix#$_nr_attr."(hostname -s)".system"
     set -l _nr_old_system
     set -l _nr_new_system
     set -l _nr_update no
@@ -177,23 +94,7 @@ function nr
         end
         set i (math $i + 1)
     end
-    # (B) Prepare the baseline-delta gate BEFORE touching anything: save the
-    # lock so a refused bump can be rolled back, and create the local-build
-    # baseline on first use while the current lock is still untouched.
-    if test "$_nr_update" = yes; or set -q _nr_inputs[1]
-        command cp -p $HOME/.config/nix/flake.lock $_nr_prev_lock
-        if not test -s $_nr_base_file
-            echo "nr: measuring local-build baseline for the current lock (about a minute)…"
-            __nr_local_builds "$_nr_ref" >$_nr_base_file.tmp
-            if test $status -ne 0
-                command rm -f $_nr_base_file.tmp
-                echo "nr: baseline measurement failed — not updating" >&2
-                return 1
-            end
-            command mv $_nr_base_file.tmp $_nr_base_file
-            echo "nr: baseline: "(count (command cat $_nr_base_file))" local builds"
-        end
-    end
+    # NOTE: --update is taken as-is; if it fails (e.g. a stale FOD hash pin in modules/packages/), revert flake.lock + the overlay files and fix the pin manually.
     if test "$_nr_update" = yes
         if test "$_os" = darwin
             set -l _pwd $PWD
@@ -228,35 +129,6 @@ function nr
             nix flake update $_nr_inputs
         end
         cd $_pwd
-    end
-    # (B) Baseline-delta gate: REFUSE a bump whose new lock needs MORE locally
-    # built derivations than the baseline. The threshold is a baseline DELTA,
-    # not an absolute zero — every darwin/nixos closure has host-specific
-    # derivations (activation script, system-path, etc.d) that no substituter
-    # serves, so a literal 0 would refuse every update.
-    if test "$_nr_update" = yes; or set -q _nr_inputs[1]
-        set -l _nr_new (__nr_local_builds "$_nr_ref")
-        if test $status -ne 0
-            command cp -p $_nr_prev_lock $HOME/.config/nix/flake.lock
-            echo "nr: could not measure the updated lock — flake.lock restored, nothing built" >&2
-            return 1
-        end
-        set -l _nr_base (command cat $_nr_base_file 2>/dev/null)
-        if test (count $_nr_new) -gt (count $_nr_base)
-            set -l _nr_extra
-            for _nr_p in $_nr_new
-                contains -- $_nr_p $_nr_base; or set -a _nr_extra $_nr_p
-            end
-            command cp -p $_nr_prev_lock $HOME/.config/nix/flake.lock
-            echo "nr: REFUSING update: "(count $_nr_new)" local builds vs baseline "(count $_nr_base) >&2
-            echo "nr: extra local builds the new lock would require:" >&2
-            printf '  %s\n' $_nr_extra[1..40] >&2
-            if test (count $_nr_extra) -gt 40
-                echo "  … and "(math (count $_nr_extra) - 40)" more" >&2
-            end
-            echo "nr: flake.lock restored; no build, no activation, no commit" >&2
-            return 1
-        end
     end
     # Split build from activation, each as its least-privileged user:
     #   1. `nh build` — full nh/nix-output-monitor output (pretty bars,
@@ -332,23 +204,6 @@ function nr
     end
     if test "$_nr_old_system" != "$_nr_new_system"; and command --query what-changed
         what-changed "$_nr_old_system" "$_nr_new_system"
-    end
-    # (B) Refresh the baseline after a successful --update (the lock and the
-    # overlay pins changed); also create it after the first successful run.
-    # Deliberately NOT refreshed on plain successful nr: the lock did not
-    # change, so the measured value would be identical.
-    if test "$_nr_switch_ok" -eq 0
-        if test "$_nr_update" = yes; or not test -s $_nr_base_file
-            echo "nr: refreshing local-build baseline (about a minute)…"
-            __nr_local_builds "$_nr_ref" >$_nr_base_file.tmp
-            if test $status -eq 0
-                command mv $_nr_base_file.tmp $_nr_base_file
-                echo "nr: baseline: "(count (command cat $_nr_base_file))" local builds"
-            else
-                command rm -f $_nr_base_file.tmp
-                echo "nr: WARNING: baseline refresh failed — keeping the old baseline" >&2
-            end
-        end
     end
 end
 
