@@ -49,6 +49,14 @@ in {
     (pkgs.callPackage ../../pkgs/ghosttile {}) # hide apps from Dock/Cmd+Tab (local package)
     osaurus # native macOS AI agent harness (binary overlay, nr --update)
     openfang-desktop # OpenFang desktop app (Tauri binary overlay, nr --update)
+    # Secretive (Secure Enclave SSH agent) — moved here from a manual
+    # /Applications install. nixpkgs repacks the official notarized release zip
+    # verbatim, so the bundle is byte-identical (same Developer ID signature /
+    # designated requirement): existing Secure Enclave keys, the
+    # com.maxgoedjen.Secretive.Host sandbox container and the socket.ssh agent
+    # path in ~/.config/ssh/config are all unaffected. Version bumps arrive via
+    # `nix flake update` (nr --update), not the in-app updater.
+    secretive
     zen-browser # firefox fork with vertical tabs (binary overlay, nr --update)
     # Raven: native window for the `raven web` page (Swift wrapper built here,
     # see pkgs/raven-desktop). Icon is baked in — the bundle is ad-hoc signed
