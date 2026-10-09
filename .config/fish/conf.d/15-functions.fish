@@ -45,6 +45,53 @@ function tping
     end
 end
 
+function nr-unpin-check --description "drop the temporary nixpkgs-unstable pin once the anyio blocker clears"
+    # Companion to the PIN comment at the top of ~/.config/nix/flake.nix.
+    # nixpkgs-unstable is pinned to a commit there because its CPython 3.12.15
+    # breaks anyio 4.14.2's own test suite (see that comment). `nr --update`
+    # calls this *before* `nix flake update`: it builds anyio from
+    # nixpkgs-unstable HEAD and, when that succeeds, rewrites the pin back to
+    # the moving branch so the input un-freezes on its own.
+    #
+    # Exit codes: 0 = nothing to do (no pin) · 2 = pin removed · 1 = pin kept.
+    # Optional argument: the flake ref to probe (default nixpkgs-unstable HEAD);
+    # lets either path be exercised against a known-good or known-bad ref.
+    set -l ref github:NixOS/nixpkgs/nixpkgs-unstable
+    if test (count $argv) -ge 1
+        set ref $argv[1]
+    end
+    set -l flake $HOME/.config/nix/flake.nix
+    set -l pinpat 'nixpkgs-unstable\.url = "github:NixOS/nixpkgs/[0-9a-f]{40}"'
+    if not test -f $flake
+        return 0
+    end
+    if not grep -qE $pinpat $flake
+        return 0
+    end
+    command mkdir -p $HOME/.cache/nr
+    set -l log $HOME/.cache/nr/anyio-probe.log
+    echo "nr: nixpkgs-unstable is pinned — testing whether upstream fixed it"
+    echo "nr:   probing $ref#python312Packages.anyio"
+    if nix build --no-link "$ref#python312Packages.anyio" >$log 2>&1
+        # Rewrite just the pin line back to the branch, preserving indentation.
+        set -l out
+        while read -l line
+            if string match -qr $pinpat -- $line
+                set -a out (string replace -r $pinpat 'nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable"' -- $line)
+            else
+                set -a out "$line"
+            end
+        end <$flake
+        printf '%s\n' $out >$flake.nr-new
+        and command mv $flake.nr-new $flake
+        echo "nr: ✓ anyio builds at $ref — pin removed"
+        return 2
+    end
+    echo "nr: ✗ anyio still fails at $ref — keeping the pin"
+    echo "nr:   probe log: $log"
+    return 1
+end
+
 function nr
     # Run in the foreground when invoked interactively (output streams live
     # to the terminal). When invoked non-interactively (agents, scripts,
@@ -68,6 +115,7 @@ function nr
     set -l _nr_args
     set -l _nr_inputs
     set -l _nr_switch_ok 0
+    set -l _nr_unpinned no
     if test "$_os" = darwin
         set _nr_old_system (command readlink -f /nix/var/nix/profiles/system 2>/dev/null)
     else
@@ -123,6 +171,13 @@ function nr
         set -l _pwd $PWD
         cd $HOME/.config/nix
         if test "$_nr_update" = yes
+            # Temporary nixpkgs-unstable pin (see the PIN comment at the top of
+            # flake.nix): probe unstable HEAD and drop the pin if upstream has
+            # fixed the anyio blocker that breaks `nh darwin build`.
+            nr-unpin-check
+            if test $status -eq 2
+                set _nr_unpinned yes
+            end
             nix flake update
         else
             nix flake update $_nr_inputs
@@ -168,6 +223,11 @@ function nr
         # (running `nr --update` from ~/.config/nix would otherwise make
         # git resolve `.config/nix/...` against the cwd and fail the add).
         set -l _nr_files $HOME/.config/nix/flake.lock
+        # Include flake.nix when it changed, so a pin that nr-unpin-check just
+        # dropped is committed and pushed with the bump.
+        if not config diff --quiet -- $HOME/.config/nix/flake.nix
+            set -a _nr_files $HOME/.config/nix/flake.nix
+        end
         if test "$_os" = darwin
             set -a _nr_files \
                 $HOME/.config/nix/pkgs/oxillama/default.nix \
@@ -187,7 +247,11 @@ function nr
         if config diff --cached --quiet
             echo "nr: no dependency bumps to commit"
         else
-            config commit -m "nr --update: bump nightly dependency versions"
+            set -l _nr_msg "nr --update: bump nightly dependency versions"
+            if test "$_nr_unpinned" = yes
+                set _nr_msg "nr --update: unpin nixpkgs-unstable (anyio fixed upstream) + bump nightly dependency versions"
+            end
+            config commit -m "$_nr_msg"
             if test "$_os" = darwin
                 config push origin
                 config push sophrosyne

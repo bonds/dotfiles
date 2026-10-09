@@ -3,7 +3,24 @@
   inputs = {
     # Stable nixpkgs (primary system packages — avoids cctools ld64 crash on arm64)
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    # ── TEMPORARY PIN — auto-removed by `nr --update` ────────────────────────
+    # Unpinned automatically by `nr-unpin-check` (see
+    # .config/fish/conf.d/15-functions.fish), which `nr --update` calls before
+    # `nix flake update`: it probes nixpkgs-unstable HEAD and restores the
+    # moving branch as soon as the blocker below clears.
+    #
+    # Why it is pinned: nixpkgs-unstable moved CPython to 3.12.15, which
+    # backports gh-156793 / CVE-2026-19553 (SSLContext.wrap_bio() now rejects
+    # server_hostname in server mode). anyio 4.14.2's own pytest suite fails on
+    # it, the derivation is absent from every configured substituter, so it
+    # builds from source and fails → `nh darwin build` aborts (anyio arrives
+    # through hermes-agent's dep set; hermes follows this input, see below).
+    # This rev is the last one whose python312 is 3.12.14, where anyio
+    # substitutes cleanly.
+    #
+    # Manual probe (no build of the system needed):
+    #   nix build --no-link 'github:NixOS/nixpkgs/nixpkgs-unstable#python312Packages.anyio'
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/c9fe7d12cd78d1adcd12dd15e24432dde5b155a0";
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
