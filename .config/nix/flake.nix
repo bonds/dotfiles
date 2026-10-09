@@ -1,25 +1,38 @@
 {
   description = "Scott Bonds <scott@ggr.com> multi-machine flake (darwin + NixOS)";
   inputs = {
-    # Stable nixpkgs (primary system packages — avoids cctools ld64 crash on arm64)
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
-    # ── TEMPORARY PIN — auto-removed by `nr --update` ────────────────────────
-    # Unpinned automatically by `nr-unpin-check` (see
+    # ── TEMPORARY PINS — auto-removed by `nr --update` ───────────────────────
+    # Both nixpkgs inputs are pinned to commits so that `nr --update` builds.
+    # Each is unpinned automatically by `nr-unpin-check` (see
     # .config/fish/conf.d/15-functions.fish), which `nr --update` calls before
-    # `nix flake update`: it probes nixpkgs-unstable HEAD and restores the
-    # moving branch as soon as the blocker below clears.
+    # `nix flake update`: for every pinned input it asks nix whether the
+    # offending package would still have to be built from source at the branch
+    # head, and restores the moving branch for that input as soon as a
+    # substituter has it again.
     #
-    # Why it is pinned: nixpkgs-unstable moved CPython to 3.12.15, which
-    # backports gh-156793 / CVE-2026-19553 (SSLContext.wrap_bio() now rejects
-    # server_hostname in server mode). anyio 4.14.2's own pytest suite fails on
-    # it, the derivation is absent from every configured substituter, so it
-    # builds from source and fails → `nh darwin build` aborts (anyio arrives
-    # through hermes-agent's dep set; hermes follows this input, see below).
-    # This rev is the last one whose python312 is 3.12.14, where anyio
-    # substitutes cleanly.
+    # Normally: nixpkgs = nixos-26.05 (primary system packages — avoids the
+    # cctools ld64 crash on arm64), nixpkgs-unstable = nixpkgs-unstable.
     #
-    # Manual probe (no build of the system needed):
-    #   nix build --no-link 'github:NixOS/nixpkgs/nixpkgs-unstable#python312Packages.anyio'
+    # Why each is pinned — in both cases the branch head needs a package built
+    # from source whose own test suite fails here, which aborts `nh darwin
+    # build`:
+    #   * nixpkgs: the stable bump changed python3.13-tokenizers, so it is no
+    #     longer substitutable; building it pulls its test deps (datasets →
+    #     pyarrow → arrow-cpp → thrift) and thrift 0.24.0's C++ tests do not
+    #     compile against libcxx 21 (a Catch2 static_assert, plus an assembler
+    #     error). Pinned to the last rev where thrift substitutes.
+    #   * nixpkgs-unstable: it moved CPython to 3.12.15, which backports
+    #     gh-156793 / CVE-2026-19553 (SSLContext.wrap_bio() now rejects
+    #     server_hostname in server mode). anyio 4.14.2's own pytest suite fails
+    #     on it and the derivation is absent from every substituter (anyio
+    #     arrives through hermes-agent's dep set; hermes follows this input,
+    #     see below). Pinned to the last rev whose python312 is 3.12.14.
+    #
+    # Manual probe (no build of the system needed — nix prints the derivation
+    # only when it would have to be built from source):
+    #   nix build --dry-run --no-link 'github:NixOS/nixpkgs/nixos-26.05#thrift'
+    #   nix build --dry-run --no-link 'github:NixOS/nixpkgs/nixpkgs-unstable#python312Packages.anyio'
+    nixpkgs.url = "github:NixOS/nixpkgs/774debe7a0d1b496e35677ad955a1011c6ff74f3";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/c9fe7d12cd78d1adcd12dd15e24432dde5b155a0";
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";

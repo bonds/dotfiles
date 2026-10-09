@@ -45,58 +45,103 @@ function tping
     end
 end
 
-function nr-unpin-check --description "drop the temporary nixpkgs-unstable pin once the anyio blocker clears"
-    # Companion to the PIN comment at the top of ~/.config/nix/flake.nix.
-    # nixpkgs-unstable is pinned to a commit there because its CPython 3.12.15
-    # breaks anyio 4.14.2's own test suite (see that comment). `nr --update`
-    # calls this *before* `nix flake update`: it builds anyio from
-    # nixpkgs-unstable HEAD and, when that succeeds, rewrites the pin back to
-    # the moving branch so the input un-freezes on its own.
+function nr-unpin-check --description "drop the temporary nixpkgs pins once the blockers clear"
+    # Companion to the TEMPORARY PINS comment at the top of ~/.config/nix/flake.nix.
+    # Two inputs are pinned to commits there because their branch heads need a
+    # package built from source whose own tests fail on this machine:
+    #   nixpkgs-unstable → python312Packages.anyio  (CPython 3.12.15 / anyio 4.14.2)
+    #   nixpkgs          → thrift                   (thrift 0.24.0 tests vs libcxx 21)
+    # `nr --update` calls this *before* `nix flake update`: for each pinned input
+    # it asks nix whether that package would still have to be BUILT at the branch
+    # head, and rewrites the pin back to the moving branch when it would not.
     #
-    # Exit codes: 0 = nothing to do (no pin) · 2 = pin removed · 1 = pin kept.
-    # Optional argument: the flake ref to probe (default nixpkgs-unstable HEAD);
-    # lets either path be exercised against a known-good or known-bad ref.
-    set -l ref github:NixOS/nixpkgs/nixpkgs-unstable
-    if test (count $argv) -ge 1
-        set ref $argv[1]
-    end
+    # The probe is `nix build --dry-run`, which reports a derivation only when no
+    # substituter has it — exactly the condition under which both blockers bite,
+    # and seconds instead of the ~10 minutes a real thrift build costs (and
+    # fails). Conservative by design: a probe that errors keeps the pin.
+    #
+    # Exit codes: 0 = nothing to do · 2 = at least one pin removed · 1 = a pin kept.
     set -l flake $HOME/.config/nix/flake.nix
-    set -l pinpat 'nixpkgs-unstable\.url = "github:NixOS/nixpkgs/[0-9a-f]{40}"'
     if not test -f $flake
         return 0
     end
-    if not grep -qE $pinpat $flake
-        return 0
-    end
     command mkdir -p $HOME/.cache/nr
-    set -l log $HOME/.cache/nr/anyio-probe.log
-    echo "nr: nixpkgs-unstable is pinned — testing whether upstream fixed it"
-    echo "nr:   probing $ref#python312Packages.anyio"
-    if nix build --no-link "$ref#python312Packages.anyio" >$log 2>&1
-        # Rewrite just the pin line back to the branch, preserving indentation.
+    set -l removed 0
+    set -l kept 0
+    set -l doturl .url
+    # Optional argument: probe this ref for every input instead of its own branch
+    # head — lets either path be exercised without waiting for upstream to fix
+    # anything. The rewrite always restores the input's own branch URL.
+    set -l refoverride
+    if test (count $argv) -ge 1
+        set refoverride $argv[1]
+    end
+    # input|branch-ref|probe-attr
+    set -l specs \
+        'nixpkgs|github:NixOS/nixpkgs/nixos-26.05|thrift' \
+        'nixpkgs-unstable|github:NixOS/nixpkgs/nixpkgs-unstable|python312Packages.anyio'
+    for spec in $specs
+        set -l parts (string split '|' -- $spec)
+        set -l input $parts[1]
+        set -l branch $parts[2]
+        set -l ref $branch
+        if test -n "$refoverride"
+            set ref $refoverride
+        end
+        set -l attr $parts[3]
+        # Two forms of the same pattern: the anchored one decides *which lines*
+        # are pin lines (so a comment quoting a pin is never rewritten), the
+        # unanchored one does the replacement (so indentation is preserved).
+        set -l pinpat "$input"'\.url = "github:NixOS/nixpkgs/[0-9a-f]{40}"'
+        set -l pinline "^[[:space:]]*$input"'\.url = "github:NixOS/nixpkgs/[0-9a-f]{40}"'
+        if not command grep -qE $pinline $flake
+            continue
+        end
+        set -l log $HOME/.cache/nr/unpin-probe-$input.log
+        echo "nr: $input is pinned — probing $attr at the branch head"
+        if not nix build --dry-run --no-link "$ref#$attr" >$log 2>&1
+            echo "nr: ! could not evaluate $ref#$attr — keeping the pin"
+            echo "nr:   probe log: $log"
+            set kept (math $kept + 1)
+            continue
+        end
+        if command grep -q 'will be built' $log
+            echo "nr: ✗ $attr would still build from source — keeping the pin"
+            echo "nr:   probe log: $log"
+            set kept (math $kept + 1)
+            continue
+        end
+        # Rewrite just this pin line back to the branch, preserving indentation.
+        set -l replacement "$input$doturl = \"$branch\""
         set -l out
         while read -l line
-            if string match -qr $pinpat -- $line
-                set -a out (string replace -r $pinpat 'nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable"' -- $line)
+            if string match -qr $pinline -- $line
+                set -a out (string replace -r $pinpat $replacement -- $line)
             else
                 set -a out "$line"
             end
         end <$flake
         if test (count $out) -lt 1
             echo "nr: ! rewrite produced an empty file — pin left in place" >&2
-            return 1
+            set kept (math $kept + 1)
+            continue
         end
         if printf '%s\n' $out >$flake.nr-new; and command mv $flake.nr-new $flake
-            echo "nr: ✓ anyio builds at $ref — pin removed"
-            return 2
+            echo "nr: ✓ $attr is substitutable again — $input pin removed"
+            set removed (math $removed + 1)
+        else
+            command rm -f $flake.nr-new
+            echo "nr: ! could not rewrite flake.nix — pin left in place" >&2
+            set kept (math $kept + 1)
         end
-        command rm -f $flake.nr-new
-        echo "nr: ! could not rewrite flake.nix — pin left in place" >&2
+    end
+    if test $removed -gt 0
+        return 2
+    end
+    if test $kept -gt 0
         return 1
     end
-    echo "nr: ✗ anyio still fails at $ref — keeping the pin"
-    echo "nr:   probe log: $log"
-    return 1
+    return 0
 end
 
 function nr
@@ -178,9 +223,9 @@ function nr
         set -l _pwd $PWD
         cd $HOME/.config/nix
         if test "$_nr_update" = yes
-            # Temporary nixpkgs-unstable pin (see the PIN comment at the top of
-            # flake.nix): probe unstable HEAD and drop the pin if upstream has
-            # fixed the anyio blocker that breaks `nh darwin build`.
+            # Temporary nixpkgs pins (see the TEMPORARY PINS comment at the top
+            # of flake.nix): probe each branch head and drop the pins that are
+            # no longer needed, so they expire on their own.
             nr-unpin-check
             if test $status -eq 2
                 set _nr_unpinned yes
@@ -256,7 +301,7 @@ function nr
         else
             set -l _nr_msg "nr --update: bump nightly dependency versions"
             if test "$_nr_unpinned" = yes
-                set _nr_msg "nr --update: unpin nixpkgs-unstable (anyio fixed upstream) + bump nightly dependency versions"
+                set _nr_msg "nr --update: drop temporary nixpkgs pin(s) + bump nightly dependency versions"
             end
             config commit -m "$_nr_msg"
             if test "$_os" = darwin
