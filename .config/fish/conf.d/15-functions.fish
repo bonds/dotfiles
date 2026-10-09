@@ -82,10 +82,17 @@ function nr-unpin-check --description "drop the temporary nixpkgs-unstable pin o
                 set -a out "$line"
             end
         end <$flake
-        printf '%s\n' $out >$flake.nr-new
-        and command mv $flake.nr-new $flake
-        echo "nr: ✓ anyio builds at $ref — pin removed"
-        return 2
+        if test (count $out) -lt 1
+            echo "nr: ! rewrite produced an empty file — pin left in place" >&2
+            return 1
+        end
+        if printf '%s\n' $out >$flake.nr-new; and command mv $flake.nr-new $flake
+            echo "nr: ✓ anyio builds at $ref — pin removed"
+            return 2
+        end
+        command rm -f $flake.nr-new
+        echo "nr: ! could not rewrite flake.nix — pin left in place" >&2
+        return 1
     end
     echo "nr: ✗ anyio still fails at $ref — keeping the pin"
     echo "nr:   probe log: $log"
