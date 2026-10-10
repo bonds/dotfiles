@@ -45,103 +45,17 @@ function tping
     end
 end
 
-function nr-unpin-check --description "drop the temporary nixpkgs pins once the blockers clear"
-    # Companion to the TEMPORARY PINS comment at the top of ~/.config/nix/flake.nix.
-    # Two inputs are pinned to commits there because their branch heads need a
-    # package built from source whose own tests fail on this machine:
-    #   nixpkgs-unstable → python312Packages.anyio  (CPython 3.12.15 / anyio 4.14.2)
-    #   nixpkgs          → thrift                   (thrift 0.24.0 tests vs libcxx 21)
-    # `nr --update` calls this *before* `nix flake update`: for each pinned input
-    # it asks nix whether that package would still have to be BUILT at the branch
-    # head, and rewrites the pin back to the moving branch when it would not.
+function nr-unpin-check --description "deprecated — forwarded to nr-pins check"
+    # Superseded by `nr-pins` (.config/nix/nr-pins), which drives everything from
+    # the pin registry .config/nix/flake-pins.json and renders the pin block in
+    # flake.nix from it, instead of the hand-written spec table that used to
+    # live here. The old table hardcoded both the inputs and the packages they
+    # were pinned for; the registry generalises that (any number of pins, any
+    # package names) and is written by `nr --update` itself when a build fails.
     #
-    # The probe is `nix build --dry-run`, which reports a derivation only when no
-    # substituter has it — exactly the condition under which both blockers bite,
-    # and seconds instead of the ~10 minutes a real thrift build costs (and
-    # fails). Conservative by design: a probe that errors keeps the pin.
-    #
-    # Exit codes: 0 = nothing to do · 2 = at least one pin removed · 1 = a pin kept.
-    set -l flake $HOME/.config/nix/flake.nix
-    if not test -f $flake
-        return 0
-    end
-    command mkdir -p $HOME/.cache/nr
-    set -l removed 0
-    set -l kept 0
-    set -l doturl .url
-    # Optional argument: probe this ref for every input instead of its own branch
-    # head — lets either path be exercised without waiting for upstream to fix
-    # anything. The rewrite always restores the input's own branch URL.
-    set -l refoverride
-    if test (count $argv) -ge 1
-        set refoverride $argv[1]
-    end
-    # input|branch-ref|probe-attr
-    set -l specs \
-        'nixpkgs|github:NixOS/nixpkgs/nixos-26.05|thrift' \
-        'nixpkgs-unstable|github:NixOS/nixpkgs/nixpkgs-unstable|python312Packages.anyio'
-    for spec in $specs
-        set -l parts (string split '|' -- $spec)
-        set -l input $parts[1]
-        set -l branch $parts[2]
-        set -l ref $branch
-        if test -n "$refoverride"
-            set ref $refoverride
-        end
-        set -l attr $parts[3]
-        # Two forms of the same pattern: the anchored one decides *which lines*
-        # are pin lines (so a comment quoting a pin is never rewritten), the
-        # unanchored one does the replacement (so indentation is preserved).
-        set -l pinpat "$input"'\.url = "github:NixOS/nixpkgs/[0-9a-f]{40}"'
-        set -l pinline "^[[:space:]]*$input"'\.url = "github:NixOS/nixpkgs/[0-9a-f]{40}"'
-        if not command grep -qE $pinline $flake
-            continue
-        end
-        set -l log $HOME/.cache/nr/unpin-probe-$input.log
-        echo "nr: $input is pinned — probing $attr at the branch head"
-        if not nix build --dry-run --no-link "$ref#$attr" >$log 2>&1
-            echo "nr: ! could not evaluate $ref#$attr — keeping the pin"
-            echo "nr:   probe log: $log"
-            set kept (math $kept + 1)
-            continue
-        end
-        if command grep -q 'will be built' $log
-            echo "nr: ✗ $attr would still build from source — keeping the pin"
-            echo "nr:   probe log: $log"
-            set kept (math $kept + 1)
-            continue
-        end
-        # Rewrite just this pin line back to the branch, preserving indentation.
-        set -l replacement "$input$doturl = \"$branch\""
-        set -l out
-        while read -l line
-            if string match -qr $pinline -- $line
-                set -a out (string replace -r $pinpat $replacement -- $line)
-            else
-                set -a out "$line"
-            end
-        end <$flake
-        if test (count $out) -lt 1
-            echo "nr: ! rewrite produced an empty file — pin left in place" >&2
-            set kept (math $kept + 1)
-            continue
-        end
-        if printf '%s\n' $out >$flake.nr-new; and command mv $flake.nr-new $flake
-            echo "nr: ✓ $attr is substitutable again — $input pin removed"
-            set removed (math $removed + 1)
-        else
-            command rm -f $flake.nr-new
-            echo "nr: ! could not rewrite flake.nix — pin left in place" >&2
-            set kept (math $kept + 1)
-        end
-    end
-    if test $removed -gt 0
-        return 2
-    end
-    if test $kept -gt 0
-        return 1
-    end
-    return 0
+    # Kept as a one-line forwarder so an already-running `nr`, or a shell with
+    # this function still loaded, behaves identically.
+    bash $HOME/.config/nix/nr-pins check
 end
 
 function nr
@@ -223,10 +137,23 @@ function nr
         set -l _pwd $PWD
         cd $HOME/.config/nix
         if test "$_nr_update" = yes
-            # Temporary nixpkgs pins (see the TEMPORARY PINS comment at the top
-            # of flake.nix): probe each branch head and drop the pins that are
-            # no longer needed, so they expire on their own.
-            nr-unpin-check
+            # Self-expiring flake input pins. `nr-pins` (.config/nix/nr-pins)
+            # owns the registry .config/nix/flake-pins.json and renders the
+            # delimited pin block in flake.nix from it.
+            #   snapshot — remember the revs that build right now, so a failed
+            #              update can pin the culprit back to the last rev that
+            #              worked
+            #   check    — probe each existing pin against its branch head and
+            #              drop the ones whose blocker has cleared, so pins
+            #              expire on their own
+            # The other half — CREATING a pin when an update breaks the build —
+            # runs in the retry loop below.
+            bash $HOME/.config/nix/nr-pins snapshot
+            if test $status -ne 0
+                echo "nr: WARNING — could not snapshot the current input revs;" >&2
+                echo "    if this update breaks the build, the culprit cannot be pinned back." >&2
+            end
+            bash $HOME/.config/nix/nr-pins check
             if test $status -eq 2
                 set _nr_unpinned yes
             end
@@ -236,9 +163,10 @@ function nr
         end
         cd $_pwd
     end
-    # NOTE: --update is taken as-is; if it fails (e.g. a stale FOD hash pin
-    # in modules/packages/), revert flake.lock + the overlay files and fix
-    # the pin manually.
+    # NOTE: a build failure during --update is now triaged automatically (see
+    # the retry loop below). A failure that is NOT an input regression — our
+    # own modules, a stale FOD hash in modules/packages/, … — is left alone:
+    # revert flake.lock + the overlay files and fix it by hand.
     # Split build from activation, each as its least-privileged user:
     #   1. `nh build` — full nh/nix-output-monitor output (pretty bars,
     #      eval/build) running as scott. NEVER as root: build hooks and
@@ -249,34 +177,67 @@ function nr
     #      elevated commands in `sudo env … <cmd>`).
     # `darwin-rebuild`/`nixos-rebuild` re-use nh's cached build, so the
     # switch phase is near-instant.
-    if test "$_os" = darwin
-        nh darwin build $HOME/.config/nix $_nr_args 2>&1 | tee $_nr_log
-        set _nr_build_ok $pipestatus[1]
+    set -l _nr_pinned no
+    set -l _nr_attempt 0
+    set -l _nr_build_ok 1
+    while true
+        set _nr_attempt (math $_nr_attempt + 1)
+        if test "$_os" = darwin
+            nh darwin build $HOME/.config/nix $_nr_args 2>&1 | tee $_nr_log
+            set _nr_build_ok $pipestatus[1]
+        else
+            nh os build $HOME/.config/nix $_nr_args 2>&1 | tee $_nr_log
+            set _nr_build_ok $pipestatus[1]
+        end
         if test $_nr_build_ok -eq 0
+            break
+        end
+        # The build failed. If this run updated the inputs, ask nr-pins whether
+        # the failure is an input regression: it reads the failing derivation
+        # out of the log and, for each nixpkgs-family input that moved, probes
+        # whether that input's branch head would have to BUILD the failing
+        # package from source. If so it pins the input back to the snapshot rev
+        # (the last rev that worked) and we rebuild. A failure that no nixpkgs
+        # input explains — i.e. our own code — is never pinned. Bounded, so a
+        # pin that does not actually help cannot loop forever.
+        if test "$_nr_update" = yes; and test $_nr_attempt -lt 3
+            bash $HOME/.config/nix/nr-pins diagnose $_nr_log
+            if test $status -eq 2
+                set _nr_pinned yes
+                echo "nr: an input was pinned to its last-good rev — rebuilding"
+                continue
+            end
+        end
+        break
+    end
+    if test $_nr_build_ok -eq 0
+        if test "$_os" = darwin
             sudo /run/current-system/sw/bin/darwin-rebuild switch --flake $HOME/.config/nix $_nr_args 2>&1 | tee -a $_nr_log
             set _nr_switch_ok $pipestatus[1]
         else
-            # Build failed — treat as a failed switch (skips commit/push)
-            set _nr_switch_ok 1
-        end
-    else
-        nh os build $HOME/.config/nix $_nr_args 2>&1 | tee $_nr_log
-        set _nr_build_ok $pipestatus[1]
-        if test $_nr_build_ok -eq 0
             doas /run/current-system/sw/bin/nixos-rebuild switch --flake $HOME/.config/nix $_nr_args 2>&1 | tee -a $_nr_log
             set _nr_switch_ok $pipestatus[1]
-        else
-            set _nr_switch_ok 1
         end
+    else
+        # Build failed — treat as a failed switch (skips commit/push)
+        set _nr_switch_ok 1
     end
     if test "$_nr_update" = yes; and test "$_nr_switch_ok" -eq 0
         # Commit the version bumps the update scripts + nh generated, then push.
         # Use home-absolute pathspecs so this block is cwd-independent
         # (running `nr --update` from ~/.config/nix would otherwise make
         # git resolve `.config/nix/...` against the cwd and fail the add).
+        # The pin registry and the pin engine ride along, so a pin that nr-pins
+        # added or dropped this run is committed and pushed with the bump.
+        # Guarded: `config add` fails the whole pathspec list if one path is
+        # missing (e.g. a machine whose work tree predates the file).
         set -l _nr_files $HOME/.config/nix/flake.lock
-        # Include flake.nix when it changed, so a pin that nr-unpin-check just
-        # dropped is committed and pushed with the bump.
+        for _nr_f in $HOME/.config/nix/flake-pins.json $HOME/.config/nix/nr-pins
+            if test -e $_nr_f
+                set -a _nr_files $_nr_f
+            end
+        end
+        # Include flake.nix when it changed — it carries the rendered pin block.
         if not config diff --quiet -- $HOME/.config/nix/flake.nix
             set -a _nr_files $HOME/.config/nix/flake.nix
         end
@@ -300,7 +261,9 @@ function nr
             echo "nr: no dependency bumps to commit"
         else
             set -l _nr_msg "nr --update: bump nightly dependency versions"
-            if test "$_nr_unpinned" = yes
+            if test "$_nr_pinned" = yes
+                set _nr_msg "nr --update: pin a nixpkgs input to its last-good rev + bump nightly dependency versions"
+            else if test "$_nr_unpinned" = yes
                 set _nr_msg "nr --update: drop temporary nixpkgs pin(s) + bump nightly dependency versions"
             end
             config commit -m "$_nr_msg"

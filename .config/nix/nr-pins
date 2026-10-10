@@ -1,0 +1,552 @@
+#!/usr/bin/env bash
+# nr-pins — manage the self-expiring flake input pins that keep `nr --update`
+# building when an input's branch head would force a package to be built from
+# source whose own tests fail on this machine.
+#
+# Invoked by `nr` (see ~/.config/fish/conf.d/15-functions.fish):
+#   nr-pins snapshot            before `nix flake update` — remember the revs that built
+#   nr-pins check               before `nix flake update` — drop pins no longer needed
+#   nr-pins diagnose <logfile>  after a failed build — pin the culprit input, then retry
+#   nr-pins list                show the registry
+#   nr-pins apply               re-render the pin block in flake.nix from the registry
+#
+# The registry (flake-pins.json) is the source of truth; the delimited block in
+# flake.nix is generated from it. A pin is justified while the input's branch
+# head would still have to BUILD the named packages; `check` drops it as soon as
+# a substituter carries them again.
+#
+# Exit codes: 0 = nothing to do · 2 = registry/flake.nix changed · 1 = pins
+# remain, or nothing could be pinned.
+
+set -uo pipefail
+
+FLAKE_DIR="${NR_PINS_FLAKE_DIR:-$HOME/.config/nix}"
+FLAKE_NIX="$FLAKE_DIR/flake.nix"
+LOCK="$FLAKE_DIR/flake.lock"
+REGISTRY="$FLAKE_DIR/flake-pins.json"
+SNAPSHOT="${NR_PINS_SNAPSHOT:-$HOME/.cache/nr/pins-snapshot.json}"
+BEGIN_MARK="BEGIN nr-managed input pins"
+END_MARK="END nr-managed input pins"
+
+die() { printf 'nr-pins: %s\n' "$*" >&2; exit 1; }
+log() { printf 'nr-pins: %s\n' "$*"; }
+
+# ------------------------------------------------------------------ registry --
+
+reg_init() {
+    # Fail closed on an unreadable registry. Without this a corrupt file makes
+    # reg_inputs emit nothing, every per-entry guard never runs, and `check`
+    # reports the benign "no pins" success while pins that ARE in flake.nix go
+    # unprobed — a failure read as the clean default. Every command calls this.
+    if [ ! -f "$REGISTRY" ]; then
+        mkdir -p "$(dirname "$REGISTRY")" || die "cannot create $(dirname "$REGISTRY")"
+        printf '{\n  "pins": []\n}\n' > "$REGISTRY" || die "cannot initialise $REGISTRY"
+        return 0
+    fi
+    # Syntax, shape, AND field completeness. A pin missing url/branch would
+    # otherwise render `nixpkgs.url = "";` straight into flake.nix, and a
+    # complete-record failure must fail closed for EVERY command, not just the
+    # one that happens to probe it. pnames members are deliberately not checked
+    # here — `check` handles a null member gracefully by keeping the pin.
+    jq -e '
+        (.pins | type) == "array"
+        and all(.pins[];
+            (.input | type) == "string" and (.input | length) > 0
+            and (.branch | type) == "string" and (.branch | length) > 0
+            and (.url | type) == "string" and (.url | length) > 0
+            and (.pnames | type) == "array"
+        )' "$REGISTRY" > /dev/null 2>&1 \
+        || die "the pin registry $REGISTRY is unreadable, has no 'pins' array, or has an incomplete entry (input/branch/url must be non-empty strings, pnames an array) — refusing to continue"
+}
+
+reg_inputs() { jq -r '.pins[]? | .input' "$REGISTRY"; }
+
+reg_get() { # reg_get <input> <field>
+    jq -r --arg i "$1" --arg f "$2" \
+        '.pins[]? | select(.input == $i) | .[$f] | if type == "array" then join(", ") else (. // "") end' \
+        "$REGISTRY"
+}
+
+reg_pnames() { # reg_pnames <input> → package names; NON-ZERO when none or unextractable
+    # -e makes jq exit non-zero when the entry has no pnames, or when .pnames is
+    # null and cannot be iterated. Callers must treat that as "cannot probe",
+    # never as "the blocker cleared" — an unreadable entry is not evidence.
+    jq -er --arg i "$1" '.pins[]? | select(.input == $i) | .pnames[]' "$REGISTRY" 2> /dev/null
+}
+
+reg_put() { # reg_put <json-object>
+    local tmp
+    tmp="$(mktemp)" || return 1
+    if jq --argjson o "$1" '.pins = (((.pins // []) | map(select(.input != $o.input))) + [$o])' \
+        "$REGISTRY" > "$tmp" && mv "$tmp" "$REGISTRY"; then
+        return 0
+    fi
+    rm -f "$tmp"
+    return 1
+}
+
+reg_drop() { # reg_drop <input>
+    local tmp
+    tmp="$(mktemp)" || return 1
+    if jq --arg i "$1" '.pins = ((.pins // []) | map(select(.input != $i)))' \
+        "$REGISTRY" > "$tmp" && mv "$tmp" "$REGISTRY"; then
+        return 0
+    fi
+    rm -f "$tmp"
+    return 1
+}
+
+# ---------------------------------------------------------------- flake.lock --
+
+lock_field() { jq -r --arg n "$1" --arg f "$2" '.nodes[$n].locked[$f] // empty' "$LOCK"; }
+lock_rev() { lock_field "$1" rev; }
+
+# Inputs that come from nixpkgs (owner NixOS, repo nixpkgs) are the only ones
+# `diagnose` is allowed to pin on its own. Never your own inputs: freezing those
+# would hide your own breakage instead of surfacing it.
+nixpkgs_inputs() {
+    # Prefer the inputs DECLARED in flake.nix's `inputs` — `.nodes.root.inputs`
+    # maps each declared input name to its lock node. Scanning every node with
+    # owner=NixOS/repo=nixpkgs would also catch internal nodes that merely
+    # `follows` one of them (a second nixpkgs node under another name), and
+    # `--override-input` cannot name those.
+    #
+    # Fall back to the full scan if the lock has no `root` entry, but say so on
+    # stderr: silently returning an empty list would leave diagnose unable to
+    # pin anything while still reporting a clean verdict.
+    local in node
+    if jq -e '.nodes.root.inputs? // empty' "$LOCK" > /dev/null 2>&1; then
+        jq -r '.nodes.root.inputs | to_entries[] | "\(.key) \(.value)"' "$LOCK" 2> /dev/null \
+            | while read -r in node; do
+                [ "$(lock_field "$node" owner)" = NixOS ] \
+                    && [ "$(lock_field "$node" repo)" = nixpkgs ] \
+                    && printf '%s\n' "$in"
+            done | sort
+        return 0
+    fi
+    log "flake.lock has no nodes.root.inputs — falling back to scanning every node (an internal 'follows' node may be unpinnable)" >&2
+    jq -r '.nodes | to_entries[] | select(.value.locked.owner == "NixOS" and .value.locked.repo == "nixpkgs") | .key' \
+        "$LOCK" 2> /dev/null | sort
+}
+
+branch_url() { # branch_url <input> → github:owner/repo/<ref>, or empty
+    local ref owner repo
+    ref="$(lock_field "$1" ref)"; owner="$(lock_field "$1" owner)"; repo="$(lock_field "$1" repo)"
+    [ -n "$ref" ] && [ -n "$owner" ] && [ -n "$repo" ] && printf 'github:%s/%s/%s\n' "$owner" "$repo" "$ref"
+}
+
+pin_url() { # pin_url <input> <rev> → github:owner/repo/<rev>
+    printf 'github:%s/%s/%s\n' "$(lock_field "$1" owner)" "$(lock_field "$1" repo)" "$2"
+}
+
+moved() { # moved <input> → true if its rev differs from the snapshot
+    local before now
+    before="$(jq -r --arg n "$1" '.nodes[$n].locked.rev // empty' "$SNAPSHOT" 2>/dev/null)"
+    now="$(lock_rev "$1")"
+    [ -n "$before" ] && [ "$before" != "$now" ]
+}
+
+rescape() { printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|]/\\&/g'; }
+
+# --------------------------------------------------------------------- probe --
+
+# A whole-system dry run with ONE input overridden to a ref. Nix lists a
+# derivation only when no substituter carries it — exactly the condition under
+# which a blocker bites — and doing it at the system level means no per-package
+# attribute path is needed. NR_PINS_PROBE_STUB overrides the command for tests.
+probe() { # probe <input> <ref> <attr>
+    if [ -n "${NR_PINS_PROBE_STUB:-}" ]; then
+        # Propagate the stub's status. A stub can fail on purpose, and the
+        # caller must be able to tell that from "nothing to build" — forcing 0
+        # here is what made the error path untestable.
+        "$NR_PINS_PROBE_STUB" "$1" "$2" "$3"
+        return $?
+    fi
+    (cd "$FLAKE_DIR" && nix build --dry-run --no-link --override-input "$1" "$2" ".#$3" 2>&1)
+}
+
+needs_build() { # needs_build <input> <ref> <attr> <pname> → 0 built · 1 not built · 2 probe failed
+    local out p st
+    out="$(probe "$1" "$2" "$3")"
+    st=$?
+    # A probe that could not run at all (offline, unevaluable ref, hash
+    # mismatch) is a THIRD outcome and must never be read as "the blocker
+    # cleared": the caller keeps the pin. Collapsing it into the not-built case
+    # is how a transient failure would silently unpin the very input the pin
+    # exists to hold back — the failure mode this whole tool is meant to avoid.
+    [ "$st" -ne 0 ] && return 2
+    p="$(rescape "$4")"
+    # Each built line looks like "  /nix/store/<hash>-<name>.drv". Match the
+    # package name as a whole dash-delimited component, so `anyio` matches
+    # python3.12-anyio-4.14.2 while a short name cannot match a longer one.
+    printf '%s\n' "$out" \
+        | sed -n 's#^.*/nix/store/[a-z0-9]*-\(.*\)\.drv$#\1#p' \
+        | grep -qE "(^|-)${p}(-|\$)" && return 0
+    return 1
+}
+
+drv_pname() { # drv_pname <drv-path>
+    local p
+    p="$(nix derivation show "$1" 2>/dev/null | jq -r 'to_entries[0].value.env.pname // empty')"
+    if [ -z "$p" ]; then
+        # Fallback heuristic for a drv whose env is unavailable: strip the store
+        # hash and the trailing version, then take the last word. Imperfect for
+        # multi-word pnames (arrow-cpp → cpp), but the probe matches on a
+        # substring of the real drv name, so a shorter word still hits.
+        p="$(basename "$1" .drv | sed -E 's/^[a-z0-9]{32}-//; s/-[0-9][^-]*$//')"
+        p="${p##*-}"
+    fi
+    printf '%s' "$p"
+}
+
+resolve_attr() { # resolve_attr → e.g. darwinConfigurations.accismus.system
+    [ -n "${NR_PINS_ATTR:-}" ] && { printf '%s\n' "$NR_PINS_ATTR"; return 0; }
+    local kind out n
+    for kind in darwinConfigurations nixosConfigurations; do
+        out="$(cd "$FLAKE_DIR" && nix eval --json --apply 'builtins.attrNames' ".#$kind" 2>/dev/null)" || continue
+        n="$(printf '%s' "$out" | jq -r 'if length == 1 then .[0] else empty end')"
+        [ -n "$n" ] && { printf '%s.%s.system\n' "$kind" "$n"; return 0; }
+    done
+    return 1
+}
+
+# ------------------------------------------------------------- flake.nix block --
+
+render_block() {
+    printf '    # ---- %s ---------------------------------------------\n' "$BEGIN_MARK"
+    cat <<'HDR'
+    # Generated by `nr` (see .config/nix/nr-pins) — do not hand-edit this block.
+    # Edit the registry at .config/nix/flake-pins.json instead.
+HDR
+    printf '    #\n'
+    cat <<'HDR2'
+    # A pin freezes an input at the last rev that built, because that input's
+    # branch head would need a package built from source whose own tests fail
+    # here. `nr --update` probes every pin against its branch head before
+    # updating (a whole-system `nix build --dry-run` with that input overridden)
+    # and drops the pin as soon as a substituter carries the package again.
+HDR2
+    local input branch url since reason pnames
+    for input in $(reg_inputs); do
+        branch="$(reg_get "$input" branch)"
+        url="$(reg_get "$input" url)"
+        since="$(reg_get "$input" since)"
+        reason="$(reg_get "$input" reason)"
+        pnames="$(reg_pnames "$input" | paste -sd, -)"
+        printf '    #\n'
+        printf '    # %s — pinned %s, normally %s\n' "$input" "$since" "${branch#github:NixOS/nixpkgs/}"
+        [ -n "$pnames" ] && printf '    #   (%s)\n' "$pnames"
+        printf '%s\n' "$reason" | fold -s -w 68 | sed -e 's/[[:space:]]*$//' -e 's/^/    #   /'
+        printf '    %s.url = "%s";\n' "$input" "$url"
+    done
+    printf '    # ---- %s -----------------------------------------------\n' "$END_MARK"
+}
+
+apply_block() { # splice the rendered block into flake.nix (insert or replace)
+    local blk tmp nbeg nend orig_lines new_lines old_block
+    blk="$(mktemp)" || return 1
+    tmp="$(mktemp)" || { rm -f "$blk"; return 1; }
+    render_block > "$blk" || { rm -f "$blk" "$tmp"; return 1; }
+
+    # Refuse unless the markers are exactly balanced. Deciding on the BEGIN
+    # marker alone is how a file whose END marker went missing gets silently
+    # truncated: the awk would skip from BEGIN to EOF, and the remains would be
+    # mv'd over flake.nix. A duplicated block is refused for the same reason.
+    nbeg="$(grep -cF "$BEGIN_MARK" "$FLAKE_NIX" || true)"
+    nend="$(grep -cF "$END_MARK" "$FLAKE_NIX" || true)"
+    if [ "$nbeg" -ne "$nend" ] || [ "$nbeg" -gt 1 ]; then
+        rm -f "$blk" "$tmp"
+        die "flake.nix has $nbeg BEGIN / $nend END marker(s) — refusing to rewrite it; repair the block by hand"
+    fi
+
+    if [ "$nbeg" -eq 1 ]; then
+        awk -v b="$blk" '
+            $0 ~ /BEGIN nr-managed input pins/ { while ((getline l < b) > 0) print l; close(b); inblk = 1; next }
+            $0 ~ /END nr-managed input pins/   { inblk = 0; next }
+            !inblk                             { print }
+        ' "$FLAKE_NIX" > "$tmp"
+    else
+        awk -v b="$blk" '
+            { print
+              if (!done && $0 ~ /^[[:space:]]*inputs[[:space:]]*=[[:space:]]*\{/) {
+                  while ((getline l < b) > 0) print l
+                  close(b); done = 1
+              }
+            }
+            END { exit (done ? 0 : 3) }
+        ' "$FLAKE_NIX" > "$tmp"
+        if [ $? -eq 3 ]; then
+            rm -f "$blk" "$tmp"
+            die "no 'inputs = {' line in flake.nix — refusing to insert the pin block"
+        fi
+    fi
+
+    # Never mv over flake.nix unless the result still looks like the whole file.
+    # The only lines legitimately removed are the old block's, so compare against
+    # that rather than a fixed slack — a large block can shrink a lot at once.
+    orig_lines="$(wc -l < "$FLAKE_NIX")"
+    new_lines="$(wc -l < "$tmp")"
+    old_block="$(awk '/BEGIN nr-managed input pins/,/END nr-managed input pins/' "$FLAKE_NIX" | wc -l)"
+    if [ ! -s "$tmp" ] \
+        || [ "$new_lines" -lt $((orig_lines - old_block - 5)) ] \
+        || [ "$(grep -cF "$BEGIN_MARK" "$tmp" || true)" -ne 1 ] \
+        || [ "$(grep -cF "$END_MARK" "$tmp" || true)" -ne 1 ]; then
+        rm -f "$blk" "$tmp"
+        die "refusing to write flake.nix — the rendered result failed its sanity check ($orig_lines lines → $new_lines, old block $old_block)"
+    fi
+    if command -v nix-instantiate > /dev/null 2>&1; then
+        nix-instantiate --parse "$tmp" > /dev/null 2>&1 || {
+            rm -f "$blk" "$tmp"
+            die "refusing to write flake.nix — the rendered result does not parse"
+        }
+    fi
+
+    cp -f "$FLAKE_NIX" "$FLAKE_NIX.nr-bak" 2> /dev/null || true
+    if mv "$tmp" "$FLAKE_NIX"; then
+        rm -f "$blk"
+        log "rendered the pin block from the registry"
+    else
+        rm -f "$blk" "$tmp"
+        die "could not replace flake.nix — previous copy left at $FLAKE_NIX.nr-bak"
+    fi
+}
+
+# ------------------------------------------------------------------ commands --
+
+cmd_snapshot() {
+    # Atomic: a failed read must leave the PREVIOUS snapshot intact. Writing
+    # straight into $SNAPSHOT truncates it before jq runs, so a transient
+    # failure to read flake.lock would destroy the last-good baseline — after
+    # which `moved` reports nothing as moved and diagnose can never pin again.
+    local dir tmp
+    dir="$(dirname "$SNAPSHOT")"
+    mkdir -p "$dir" || die "cannot create $dir"
+    tmp="$(mktemp "$dir/.pins-snapshot.XXXXXX")" || die "cannot create a temp file in $dir"
+    # Validate BEFORE writing: `jq -e '{nodes: .nodes}'` would pass on a lock
+    # that has no .nodes, because -e tests the output object, not the field.
+    if ! jq -e '.nodes' "$LOCK" > /dev/null 2>&1; then
+        rm -f "$tmp"
+        die "could not read $LOCK (or it has no .nodes) — previous snapshot left intact"
+    fi
+    if ! jq '{nodes: .nodes}' "$LOCK" > "$tmp"; then
+        rm -f "$tmp"
+        die "could not write the snapshot — previous one left intact"
+    fi
+    mv "$tmp" "$SNAPSHOT" || { rm -f "$tmp"; die "could not replace $SNAPSHOT"; }
+    log "snapshotted input revs to $SNAPSHOT"
+}
+
+cmd_check() { # drop every pin whose blocker has cleared
+    reg_init
+    local attr input branch p pnames pnames_flat still probe_err changed=0 kept=0
+    attr="${1:-}"
+    [ -n "$attr" ] || attr="$(resolve_attr)" || die "could not resolve the system attribute to probe"
+    for input in $(reg_inputs); do
+        branch="$(reg_get "$input" branch)"
+        # An entry we cannot read (missing, null, or unreadable pnames) is not
+        # evidence that anything cleared — keep the pin and say so.
+        #
+        # Read into a variable rather than piping into tr: `reg_pnames | tr`
+        # reports tr's status and masks reg_pnames' non-zero exit, and an array
+        # with a null member emits a partial list while still failing, so a
+        # truncated name list could be mistaken for a complete one.
+        if ! pnames="$(reg_pnames "$input")"; then
+            log "keeping the $input pin — flake-pins.json entry has no usable package names; fix the registry"
+            kept=1
+            continue
+        fi
+        pnames_flat="$(printf '%s' "$pnames" | tr '\n' ' ')"
+        if [ -z "${pnames_flat// /}" ]; then
+            log "keeping the $input pin — flake-pins.json entry has no usable package names; fix the registry"
+            kept=1
+            continue
+        fi
+        still=0
+        probe_err=0
+        for p in $pnames; do
+            needs_build "$input" "$branch" "$attr" "$p"
+            case $? in
+                0) still=1 ;;
+                2) probe_err=1 ;;
+            esac
+        done
+        if [ "$probe_err" -eq 1 ]; then
+            log "keeping the $input pin — the probe could not be evaluated (safe default)"
+            kept=1
+        elif [ "$still" -eq 0 ]; then
+            # Update the registry FIRST and only announce the drop if it took.
+            if reg_drop "$input"; then
+                log "dropping the $input pin — ${pnames_flat% } no longer build from source at $branch"
+                changed=1
+            else
+                log "could not update flake-pins.json — keeping the $input pin"
+                kept=1
+            fi
+        else
+            log "keeping the $input pin — still building from source at $branch: ${pnames_flat% }"
+            kept=1
+        fi
+    done
+
+    # Reconcile: flake.nix must always match the registry. Without this, an empty
+    # registry sitting alongside real pin lines (a hand-edit, or a drop whose
+    # apply failed) would be reported as the benign "nothing to do".
+    if ! diff -q <(render_block | sed -e 's/[[:space:]]*$//' -e '/^$/d') \
+        <(awk "/$BEGIN_MARK/,/$END_MARK/" "$FLAKE_NIX" | sed -e 's/[[:space:]]*$//' -e '/^$/d') > /dev/null 2>&1; then
+        if apply_block; then
+            changed=1
+        else
+            log "flake.nix does not match the registry and could not be rewritten — keeping the pins"
+            kept=1
+        fi
+    fi
+    if [ "$changed" -eq 1 ]; then
+        apply_block || die "registry updated but flake.nix was not rewritten — run 'nr-pins apply' to reconcile"
+        return 2
+    fi
+    [ "$kept" -eq 1 ] && return 1
+    return 0
+}
+
+cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input causes it
+    local logfile="${1:-}"
+    [ -n "$logfile" ] && [ -r "$logfile" ] || die "usage: nr-pins diagnose <readable logfile>"
+    reg_init
+    # Fail closed: moved() reads the snapshot, and an unreadable one makes every
+    # input look unmoved — which would end in the false "not a nixpkgs input
+    # regression" verdict. Require it, loudly.
+    [ -r "$SNAPSHOT" ] || die "no readable snapshot at $SNAPSHOT — run 'nr-pins snapshot' first; diagnose cannot tell which inputs moved"
+    # Readability is not enough. A truncated, empty-but-valid, or node-less
+    # snapshot makes moved() see an empty 'before' for every input, so each one
+    # looks unmoved and the run ends on the exonerating verdict.
+    jq -e '.nodes | type == "object" and length > 0' "$SNAPSHOT" > /dev/null 2>&1 \
+        || die "the snapshot $SNAPSHOT has no usable nodes — run 'nr-pins snapshot' again; diagnose cannot tell which inputs moved"
+    # Match the snapshot guard's strictness: a lock with zero nodes is as
+    # unusable as a missing one, and `length > 0` closes the shapeless-lock case
+    # that would otherwise enumerate zero inputs and reach the exonerating line.
+    jq -e '.nodes | type == "object" and length > 0' "$LOCK" > /dev/null 2>&1 \
+        || die "cannot read flake.lock ($LOCK) or it has no nodes — diagnose cannot tell which inputs moved"
+    local attr drvs d p pnames input branch rev hit pinned=0 perr=0 probe_err=0 io_err=0
+    attr="$(resolve_attr)" || die "could not resolve the system attribute to probe"
+
+    drvs="$(grep -oE "builder for '/nix/store/[a-z0-9]{32}-[^']+\.drv'" "$logfile" 2>/dev/null \
+        | grep -oE "/nix/store/[a-z0-9]{32}-[^']+\.drv" | sort -u)"
+    if [ -z "$drvs" ]; then
+        log "no failing derivation in $logfile — not a build failure (eval error?) — not pinning"
+        return 1
+    fi
+
+    pnames=""
+    for d in $drvs; do
+        p="$(drv_pname "$d")"
+        if [ -n "$p" ]; then pnames="$pnames $p"; else log "could not determine a package name for $d"; fi
+    done
+    pnames="$(printf '%s\n' $pnames | sort -u | tr '\n' ' ')"
+    [ -n "${pnames// /}" ] || { log "no package names derived — not pinning"; return 1; }
+    log "failing: $(printf '%s ' $drvs)"
+    log "package: ${pnames% }"
+
+    # Enumerate first, and treat an EMPTY list as an anomaly rather than a clean
+    # result: a lock that is parseable but shapeless (dangling root.inputs, nodes
+    # with no owner/repo) yields nothing here, the loop below never runs, and the
+    # run would otherwise end on the exonerating verdict.
+    local inputs_list
+    inputs_list="$(nixpkgs_inputs)"
+    if [ -z "${inputs_list// /}" ]; then
+        log "flake.lock declares no usable nixpkgs-family input — cannot tell which input regressed"
+        io_err=1
+    fi
+    for input in $inputs_list; do
+        # Order matters: resolve the branch AND the snapshot rev BEFORE
+        # concluding that an input did not move. An absent snapshot rev means we
+        # cannot tell whether it moved — that is an error, not exoneration.
+        branch="$(branch_url "$input")"
+        if [ -z "$branch" ]; then
+            log "$input: no branch ref in flake.lock — cannot probe it"
+            io_err=1
+            continue
+        fi
+        rev="$(jq -r --arg n "$input" '.nodes[$n].locked.rev // empty' "$SNAPSHOT" 2>/dev/null)"
+        if [ -z "$rev" ]; then
+            log "$input: no rev for it in the snapshot — cannot tell whether it moved"
+            io_err=1
+            continue
+        fi
+        if ! moved "$input"; then
+            log "$input did not move in this update — skipping"
+            continue
+        fi
+        hit=""
+        perr=0
+        for p in $pnames; do
+            needs_build "$input" "$branch" "$attr" "$p"
+            case $? in
+                0) hit="$hit $p" ;;
+                2) perr=1 ;;
+            esac
+        done
+        if [ "$perr" -eq 1 ]; then
+            # Same rule as in check: a probe that errored is NOT "not the
+            # culprit". Say so, and do not claim this input was exonerated.
+            log "$input: the probe could not be evaluated — cannot tell whether it is the culprit"
+            probe_err=1
+            continue
+        fi
+        if [ -z "${hit// /}" ]; then
+            log "$input: its branch head does not need ${pnames% } built — not the culprit"
+            continue
+        fi
+        log "$input: branch head would still build ${hit# } from source — pinning to ${rev:0:12}"
+        if reg_put "$(jq -n --arg i "$input" --arg b "$branch" --arg u "$(pin_url "$input" "$rev")" \
+            --argjson p "$(printf '%s\n' $hit | jq -R . | jq -cs .)" \
+            --arg s "$(date '+%Y-%m-%d')" \
+            --arg r "must be built from source at $branch and the build fails here (via ${hit# })" \
+            '{input: $i, branch: $b, url: $u, pnames: $p, since: $s, reason: $r}')"; then
+            pinned=1
+        else
+            # A write failure must not fall through to the exonerating verdict.
+            log "$input: could not write the registry — the pin was NOT recorded"
+            io_err=1
+        fi
+    done
+
+    if [ "$pinned" -eq 1 ]; then
+        apply_block || die "pinned an input but flake.nix was not rewritten — run 'nr-pins apply' to reconcile"
+        return 2
+    fi
+    if [ "$io_err" -eq 1 ]; then
+        log "nothing pinned — this run could not read or write something it needed, so it could not tell"
+        return 1
+    fi
+    if [ "$probe_err" -eq 1 ]; then
+        log "nothing pinned — a probe could not be evaluated, so a regression may have been missed; re-run when the flake evaluates"
+        return 1
+    fi
+    log "nothing pinnable — this failure is not a nixpkgs input regression"
+    return 1
+}
+
+cmd_list() {
+    reg_init
+    local n
+    n="$(jq '.pins | length' "$REGISTRY")"
+    if [ "$n" -eq 0 ]; then log "no pins"; return 0; fi
+    jq -r '.pins[] | "  \(.input)  [\(.pnames | join(", "))]  since \(.since)\n    pinned:   \(.url)\n    normally: \(.branch)\n    why:      \(.reason)"' "$REGISTRY"
+    return 1
+}
+
+cmd_apply() { reg_init; apply_block && log "rendered the pin block from the registry"; }
+
+usage() {
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+case "${1:-}" in
+    snapshot) cmd_snapshot ;;
+    check) cmd_check ;;
+    diagnose) shift; cmd_diagnose "$@" ;;
+    list) cmd_list ;;
+    apply) cmd_apply ;;
+    ""|-h|--help|help) usage ;;
+    *) die "unknown subcommand: $1 (try --help)" ;;
+esac

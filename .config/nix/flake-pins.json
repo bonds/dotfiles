@@ -1,0 +1,25 @@
+{
+  "$comment": "Managed by `nr` (see .config/nix/nr-pins). A pin freezes a flake input at the last rev that built, because that input's branch head would force a package to be built from source whose own tests fail here. `nr --update` probes each pin against its branch head before updating and drops it as soon as a substituter carries the package again. flake.nix's pin block is generated from this file — edit this file, not the block.",
+  "pins": [
+    {
+      "input": "nixpkgs",
+      "branch": "github:NixOS/nixpkgs/nixos-26.05",
+      "url": "github:NixOS/nixpkgs/774debe7a0d1b496e35677ad955a1011c6ff74f3",
+      "pnames": [
+        "thrift"
+      ],
+      "since": "2026-10-09",
+      "reason": "the stable bump changed python3.13-tokenizers, so it stopped substituting; building it pulls its test deps (datasets, pyarrow, arrow-cpp) and thrift 0.24.0's C++ tests do not compile against libcxx 21 (a Catch2 static_assert plus an assembler error)."
+    },
+    {
+      "input": "nixpkgs-unstable",
+      "branch": "github:NixOS/nixpkgs/nixpkgs-unstable",
+      "url": "github:NixOS/nixpkgs/c9fe7d12cd78d1adcd12dd15e24432dde5b155a0",
+      "pnames": [
+        "anyio"
+      ],
+      "since": "2026-10-09",
+      "reason": "it moved CPython to 3.12.15, which backports gh-156793 / CVE-2026-19553 (SSLContext.wrap_bio() rejects server_hostname in server mode); anyio 4.14.2's own pytest suite fails on it. Arrives through hermes-agent's python env."
+    }
+  ]
+}
