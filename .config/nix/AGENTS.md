@@ -108,6 +108,31 @@ alejandra <file> ...
 nix flake update
 ```
 
+### `nr-pins` — self-expiring flake input pins
+
+When `nr --update` fails because an input rev moved and a package must now build
+from source (and its tests fail), `nr-pins` pins that input back to the last rev
+that built, and lifts the pin automatically once a cache carries the package
+again.
+
+- **Registry:** `~/.config/nix/flake-pins.json` is the source of truth. The
+  block between `---- BEGIN/END nr-managed input pins` in `flake.nix` is
+  GENERATED from it — never edit the block; edit the registry and run
+  `bash ~/.config/nix/nr-pins apply` (or `check`, which reconciles).
+- **`nr --update`** runs `snapshot` → `check` → `nix flake update`, then a
+  bounded 3-attempt build retry that calls `diagnose <logfile>` on failure.
+- **Commands:** `snapshot` (record the revs that build now) · `check [attr]`
+  (probe each pin against its branch head, drop the cleared ones) ·
+  `diagnose <log>` (pin the culprit of a failed build) · `apply` (re-render the
+  block) · `list` (show the registry). Exit codes: 0 = nothing to do,
+  2 = changed, 1 = pins remain / could not pin.
+- **Safety, enforced in code:** only `owner == NixOS && repo == nixpkgs`
+  inputs; never on an eval error; never an input that did not move; and any
+  error, unreadable or malformed file, failed write, or empty enumeration KEEPS
+  the pin rather than reading as "the blocker cleared".
+- **Tests:** `bash ~/.config/nix/nr-pins-tests.sh` — stubbed, runs in
+  milliseconds, never touches the real flake.
+
 ## Structure
 
 ```

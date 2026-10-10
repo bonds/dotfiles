@@ -46,17 +46,26 @@ reg_init() {
     # Syntax, shape, AND field completeness. A pin missing url/branch would
     # otherwise render `nixpkgs.url = "";` straight into flake.nix, and a
     # complete-record failure must fail closed for EVERY command, not just the
-    # one that happens to probe it. pnames members are deliberately not checked
-    # here — `check` handles a null member gracefully by keeping the pin.
+    # one that happens to probe it. The character classes are the second half of
+    # that guarantee: input/branch/url are interpolated verbatim into flake.nix,
+    # so a hand-edited value containing whitespace, a quote, or a newline could
+    # break the line or inject one. pnames members are deliberately not checked —
+    # `check` handles a null member gracefully by keeping the pin.
     jq -e '
         (.pins | type) == "array"
         and all(.pins[];
             (.input | type) == "string" and (.input | length) > 0
+            and (.input | test("^[A-Za-z0-9._-]+\\z"))
             and (.branch | type) == "string" and (.branch | length) > 0
+            and (.branch | test("^[A-Za-z0-9._:/-]+\\z"))
             and (.url | type) == "string" and (.url | length) > 0
+            and (.url | test("^[A-Za-z0-9._:/@+-]+\\z"))
             and (.pnames | type) == "array"
+            and (.since | type) == "string" and (.since | length) > 0
+            and (.since | test("^[A-Za-z0-9._-]+\\z"))
+            and (.reason | type) == "string" and (.reason | length) > 0
         )' "$REGISTRY" > /dev/null 2>&1 \
-        || die "the pin registry $REGISTRY is unreadable, has no 'pins' array, or has an incomplete entry (input/branch/url must be non-empty strings, pnames an array) — refusing to continue"
+        || die "the pin registry $REGISTRY is unreadable, has no 'pins' array, or has an incomplete/invalid entry — input/branch/url/since/reason must be non-empty and free of whitespace, quotes or newlines; pnames must be an array"
 }
 
 reg_inputs() { jq -r '.pins[]? | .input' "$REGISTRY"; }
@@ -301,13 +310,18 @@ apply_block() { # splice the rendered block into flake.nix (insert or replace)
         }
     fi
 
-    cp -f "$FLAKE_NIX" "$FLAKE_NIX.nr-bak" 2> /dev/null || true
+    # Keep the pre-rewrite copy OUT of $HOME: the flake dir is a tracked worktree
+    # (untracked files are hidden by status.showUntrackedFiles=no), so a .bak left
+    # beside flake.nix is silent litter that a broad `git add` could stage. Best
+    # effort — a missing backup must never block the rewrite.
+    mkdir -p "${SNAPSHOT%/*}" 2> /dev/null || true
+    cp -f "$FLAKE_NIX" "${SNAPSHOT%/*}/flake.nix.bak" 2> /dev/null || true
     if mv "$tmp" "$FLAKE_NIX"; then
         rm -f "$blk"
         log "rendered the pin block from the registry"
     else
         rm -f "$blk" "$tmp"
-        die "could not replace flake.nix — previous copy left at $FLAKE_NIX.nr-bak"
+        die "could not replace flake.nix — previous copy left at ${SNAPSHOT%/*}/flake.nix.bak"
     fi
 }
 
@@ -334,6 +348,21 @@ cmd_snapshot() {
     fi
     mv "$tmp" "$SNAPSHOT" || { rm -f "$tmp"; die "could not replace $SNAPSHOT"; }
     log "snapshotted input revs to $SNAPSHOT"
+}
+
+reconcile_block() { # 0 = already matches · 2 = rewritten to match · 1 = cannot be fixed
+    # The registry is the source of truth for the generated block, so flake.nix
+    # must always match it. Compare whitespace-normalised (the renderer and the
+    # splice can differ in trailing space or blank lines) and re-apply when they
+    # differ — otherwise an empty registry beside real pin lines reads as the
+    # benign "nothing to do". Callers use the return value to decide whether
+    # anything changed, so the block is rewritten at most once per run.
+    if diff -q <(render_block | sed -e 's/[[:space:]]*$//' -e '/^$/d') \
+        <(awk "/$BEGIN_MARK/,/$END_MARK/" "$FLAKE_NIX" | sed -e 's/[[:space:]]*$//' -e '/^$/d') > /dev/null 2>&1; then
+        return 0
+    fi
+    apply_block || return 1
+    return 2
 }
 
 cmd_check() { # drop every pin whose blocker has cleared
@@ -390,18 +419,15 @@ cmd_check() { # drop every pin whose blocker has cleared
 
     # Reconcile: flake.nix must always match the registry. Without this, an empty
     # registry sitting alongside real pin lines (a hand-edit, or a drop whose
-    # apply failed) would be reported as the benign "nothing to do".
-    if ! diff -q <(render_block | sed -e 's/[[:space:]]*$//' -e '/^$/d') \
-        <(awk "/$BEGIN_MARK/,/$END_MARK/" "$FLAKE_NIX" | sed -e 's/[[:space:]]*$//' -e '/^$/d') > /dev/null 2>&1; then
-        if apply_block; then
-            changed=1
-        else
-            log "flake.nix does not match the registry and could not be rewritten — keeping the pins"
-            kept=1
-        fi
-    fi
+    # apply failed) would be reported as the benign "nothing to do". A pin drop
+    # in the loop above has already changed the registry, so this call also
+    # performs the single rewrite for the whole run.
+    reconcile_block
+    case $? in
+        2) changed=1 ;;
+        1) die "flake.nix does not match the registry and could not be rewritten — run 'nr-pins apply' to reconcile" ;;
+    esac
     if [ "$changed" -eq 1 ]; then
-        apply_block || die "registry updated but flake.nix was not rewritten — run 'nr-pins apply' to reconcile"
         return 2
     fi
     [ "$kept" -eq 1 ] && return 1
@@ -543,7 +569,7 @@ usage() {
 
 case "${1:-}" in
     snapshot) cmd_snapshot ;;
-    check) cmd_check ;;
+    check) shift; cmd_check "$@" ;;
     diagnose) shift; cmd_diagnose "$@" ;;
     list) cmd_list ;;
     apply) cmd_apply ;;

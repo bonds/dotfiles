@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Test stub for nr-pins' probe. Prints a fake `nix build --dry-run` listing one
+# derivation per package name in $NR_PINS_STUB_LIST — i.e. "these would have to
+# be built from source". An empty list prints nothing (everything substitutable).
+# $NR_PINS_STUB_INPUT restricts the stub to one input name (anything else reports
+# "nothing to build"), so tests can prove that a failure which no nixpkgs input
+# would need is never pinned.
+# $NR_PINS_STUB_FAIL makes the probe itself FAIL (non-zero, no output), the way a
+# real `nix build --dry-run` does when the flake cannot be evaluated (offline,
+# unevaluable ref, hash mismatch). That must keep the pin, never drop it.
+# usage: <stub> <input> <ref> <attr>
+# $NR_PINS_STUB_ATTR_OUT appends the attr it was asked to probe to that file, so
+# tests can prove the subcommand forwards its positional argument (and does not
+# leak the subcommand's own name into it).
+hex="$(printf 'a%.0s' $(seq 1 32))"
+if [ -n "${NR_PINS_STUB_ATTR_OUT:-}" ]; then
+    printf '%s\n' "${3:-}" >> "$NR_PINS_STUB_ATTR_OUT"
+fi
+if [ -n "${NR_PINS_STUB_FAIL:-}" ]; then
+    printf 'error: unable to evaluate — simulated probe failure\n' >&2
+    exit 1
+fi
+if [ -n "${NR_PINS_STUB_INPUT:-}" ] && [ "${NR_PINS_STUB_INPUT}" != "$1" ]; then
+    exit 0
+fi
+list="${NR_PINS_STUB_LIST:-}"
+[ -z "$list" ] && exit 0
+printf 'these %s derivations will be built:\n' "$(printf '%s\n' $list | wc -l | tr -d ' ')"
+for p in $list; do
+    printf '  /nix/store/%s-%s-1.0.drv\n' "$hex" "$p"
+done
