@@ -100,7 +100,17 @@ in {
     secretiveStoreApp="${pkgs.secretive}/Applications/Secretive.app"
     secretiveApp="/Applications/Secretive.app"
     if [ -d "$secretiveStoreApp" ]; then
-      run /bin/rm -rf "$secretiveApp"
+      # The previous copy carries the store's read-only 0555 mode (ditto
+      # preserves it), so rm cannot unlink inside it — it fails with
+      # "Permission denied" and leaves "Directory not empty". Under the
+      # activation's `set -e` that aborted the whole switch, which is why
+      # `nr --update` reported "nh switch failed" and skipped its commit.
+      # Restore owner-write first, and keep both steps non-fatal so a TCC
+      # (App Management) denial cannot abort activation again.
+      if [ -e "$secretiveApp" ]; then
+        run /bin/chmod -R u+w "$secretiveApp" || true
+        run /bin/rm -rf "$secretiveApp" || true
+      fi
       # ditto (not cp -R) preserves the bundle's code signature, and the store
       # bundle contains no symlinks, so the copy has no references back into
       # /nix/store. A failure here is non-fatal on purpose: it means macOS
