@@ -47,10 +47,13 @@ reg_init() {
     # otherwise render `nixpkgs.url = "";` straight into flake.nix, and a
     # complete-record failure must fail closed for EVERY command, not just the
     # one that happens to probe it. The character classes are the second half of
-    # that guarantee: input/branch/url are interpolated verbatim into flake.nix,
-    # so a hand-edited value containing whitespace, a quote, or a newline could
-    # break the line or inject one. pnames members are deliberately not checked —
-    # `check` handles a null member gracefully by keeping the pin.
+    # that guarantee: input/branch/url/since are interpolated verbatim into
+    # flake.nix, so a hand-edited value containing whitespace, a quote, or a
+    # newline could break the line or inject one. They are anchored with \z, not
+    # `$`, because `$` matches before a trailing newline. reason is free text —
+    # it is safe because it is emitted with a per-line comment prefix — and pnames
+    # members are deliberately not checked: `check` keeps the pin when it cannot
+    # read them.
     jq -e '
         (.pins | type) == "array"
         and all(.pins[];
@@ -65,7 +68,7 @@ reg_init() {
             and (.since | test("^[A-Za-z0-9._-]+\\z"))
             and (.reason | type) == "string" and (.reason | length) > 0
         )' "$REGISTRY" > /dev/null 2>&1 \
-        || die "the pin registry $REGISTRY is unreadable, has no 'pins' array, or has an incomplete/invalid entry — input/branch/url/since/reason must be non-empty and free of whitespace, quotes or newlines; pnames must be an array"
+        || die "the pin registry $REGISTRY is unreadable, has no 'pins' array, or has an invalid entry — input/branch/url/since must be non-empty and free of whitespace, quotes or newlines; reason must be non-empty (free text, emitted as a comment); pnames must be an array"
 }
 
 reg_inputs() { jq -r '.pins[]? | .input' "$REGISTRY"; }

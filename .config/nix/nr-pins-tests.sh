@@ -334,7 +334,7 @@ for mut in 'del(.pins[0].since)' \
     rc=$?
     if [ "$rc" -eq 0 ]; then bad "check accepted a bad entry: $mut"; else ok "refused (rc $rc)"; fi
 done
-grep -q 'incomplete/invalid entry' "$WT/mut.out" && ok "names the rule" || bad "no such message"
+grep -q 'pin registry' "$WT/mut.out" && ok "names the rule" || bad "no such message"
 
 printf '\n== check forwards an explicit attr, not the subcommand name ==\n'
 setup
