@@ -275,9 +275,16 @@ in {
           "/run/agenix/hermes-openrouter"
           "/run/agenix/hermes-deepinfra"
         ];
-        settings.model.provider = "openrouter";
-        # Default model on OpenRouter (DeepSeek V4 Flash)
-        settings.model.default = "deepseek/deepseek-v4-flash-0731";
+        # DeepInfra is the default provider. base_url is pinned explicitly and
+        # must not be dropped: the module preserves runtime keys, and a stale
+        # model.base_url (an OpenRouter URL from the earlier setup) OVERRIDES
+        # the provider profile's own endpoint — verified by calling
+        # resolve_runtime_provider(), which returns source="explicit" with the
+        # config's base_url. Same URL the deepinfra profile defines, so this
+        # only neutralises the stale value.
+        settings.model.provider = "deepinfra";
+        settings.model.default = "deepseek-ai/DeepSeek-V4-Flash";
+        settings.model.base_url = "https://api.deepinfra.com/v1/openai";
         # Enable the "session-cost" user plugin backend (sums state.db) so the
         # desktop status-bar chip can read per-session spend.
         settings.plugins.enabled = ["session-cost"];
