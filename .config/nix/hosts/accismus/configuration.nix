@@ -283,8 +283,12 @@ in {
         # config's base_url. Same URL the deepinfra profile defines, so this
         # only neutralises the stale value.
         settings.model.provider = "deepinfra";
-        settings.model.default = "deepseek-ai/DeepSeek-V4-Flash";
+        settings.model.default = "deepseek-ai/DeepSeek-V4.1-Flash";
         settings.model.base_url = "https://api.deepinfra.com/v1/openai";
+        # Reasoning depth for the default model (DeepInfra maps this onto its
+        # top-level `reasoning_effort` field). DeepSeek-V4.x leaves reasoning
+        # OFF when the field is absent, so this is what switches it on.
+        settings.agent.reasoning_effort = "high";
         # Enable the "session-cost" user plugin backend (sums state.db) so the
         # desktop status-bar chip can read per-session spend.
         settings.plugins.enabled = ["session-cost"];
