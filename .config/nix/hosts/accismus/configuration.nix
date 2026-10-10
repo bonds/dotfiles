@@ -42,6 +42,16 @@ in {
       group = "staff";
       mode = "0400";
     };
+    # DeepInfra API key for Hermes Agent. Content is the env line
+    # (`DEEPINFRA_API_KEY=<key>`), merged into $HERMES_HOME/.env alongside the
+    # OpenRouter key so the DeepInfra provider plugin (model picker, aux/vision
+    # resolution, image-gen/TTS) is available.
+    hermes-deepinfra = {
+      file = ../../secrets/hermes-deepinfra.age;
+      owner = "scott";
+      group = "staff";
+      mode = "0400";
+    };
     # Serper web-search key for Raven (tools.web.search.apiKey). Content is the
     # bare key; the postActivation snippet below merges it into
     # ~/.raven/config.json.
@@ -258,10 +268,13 @@ in {
         enable = true;
         # browser dashboard at 127.0.0.1:9119 (interactive setup/first-run)
         backend.mode = "dashboard";
-        # OpenRouter API key lives in agenix, decrypted to /run/agenix/ on
-        # accismus (active generation dir). Hermes merges it into
+        # Provider API keys live in agenix, decrypted to /run/agenix/ on
+        # accismus (active generation dir). Hermes merges them into
         # $HERMES_HOME/.env at activation.
-        environmentFiles = ["/run/agenix/hermes-openrouter"];
+        environmentFiles = [
+          "/run/agenix/hermes-openrouter"
+          "/run/agenix/hermes-deepinfra"
+        ];
         settings.model.provider = "openrouter";
         # Default model on OpenRouter (DeepSeek V4 Flash)
         settings.model.default = "deepseek/deepseek-v4-flash-0731";
