@@ -11,9 +11,9 @@ Personal nix flake for:
 
 ## Git repo (accismus)
 
-Accismus dotfiles use a **bare repo at `~/.config/dotfiles/`** with **worktree `$HOME`** — the `.git` directory is not inside `.config/nix`.
+Accismus dotfiles use a **bare repo at `~/.local/share/dotfiles/`** (moved from `~/.config/dotfiles/` on 2026-10-11) with **worktree `$HOME`** — the `.git` directory is not inside `.config/nix`.
 
-- **Alias:** `config` = `git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME`
+- **Alias:** `config` — resolves the git dir by existence: `git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME` on accismus, `git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME` on sophrosyne
 - Defined in `~/.config/fish/conf.d/10-aliases.fish`
 - When using the bare repo directly in a script, `cd ~` first so relative paths resolve
 - **Remotes:** `origin` (GitHub, `git@github.com:bonds/dotfiles.git`), `sophrosyne` (scott@home.ggr.com:~/.config/dotfiles)
@@ -219,8 +219,8 @@ modules/           # Shared modules
 - **Hooks are in `.config/git/hooks/` (tracked in git, `hooksPath = .config/git/hooks` in repo git config).** Currently: `pre-commit` (rejects `.pyc` files, checks fish formatting/syntax) and `pre-push` (runs `nix flake check --no-build` before push). Bypass the pre-push hook with `git push --no-verify`. The pre-push hook only checks the nix config subdirectory.
 - **Pushing to a checked-out branch on a remote** requires the remote repo to have `receive.denyCurrentBranch = updateInstead` (set on sophrosyne's `~/.git/config`). This auto-updates the work tree when pushed.
 - **Sophrosyne's dotfiles repo is a normal clone at `~`** (work tree is `$HOME`, git dir is `~/.git`). `core.bare` must stay `false`. Do NOT set `core.bare = true` — it breaks the working tree. If pushes fail with "unstaged changes": (1) inspect the changes with `ssh sophrosyne.local "cd ~ && git status --short && git diff"`, (2) summarize them for the user, (3) ask whether to commit+push, discard, or stash them. `.ssh/authorized_keys` is not tracked in git; each machine's nix activation script creates the symlink to `~/.config/ssh/keys` with the correct OS-specific path.
-- **Accismus dotfiles: bare repo at `~/.config/dotfiles/`, worktree `$HOME`.**  
-  The `config` alias (`alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'`) wraps git for this repo — use it for all add/commit/push operations. Remotes: `origin` (GitHub, `git@github.com:bonds/dotfiles.git`) and `sophrosyne` (`scott@home.ggr.com:~/.config/dotfiles`). The `config` alias is defined in `~/.config/fish/conf.d/10-aliases.fish`. If you need to use the bare repo directly (e.g. in a script or from a subdirectory), `cd ~` first so relative paths resolve correctly.
+- **Accismus dotfiles: bare repo at `~/.local/share/dotfiles/` (moved from `~/.config/dotfiles/` on 2026-10-11), worktree `$HOME`.**  
+  The `config` alias (`alias config='git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME'` on accismus; `~/.config/dotfiles` on sophrosyne) wraps git for this repo — use it for all add/commit/push operations. Remotes: `origin` (GitHub, `git@github.com:bonds/dotfiles.git`) and `sophrosyne` (`scott@home.ggr.com:~/.config/dotfiles`). The `config` alias is defined in `~/.config/fish/conf.d/10-aliases.fish`. If you need to use the bare repo directly (e.g. in a script or from a subdirectory), `cd ~` first so relative paths resolve correctly.
 - **When renaming a host**, keep old hostnames in SSH config during the transition. After the first rebuild with the new hostname, clean up old references in ssh config and known_hosts.
 - **The `dragon` pool on sophrosyne is intentionally degraded.** One drive (`nvme-JAJP600M4TB_C2525C6C11301647512`) is kept offline on purpose. Don't panic if `zpool status` shows DEGRADED — this is expected.
 - **Fish `$` escaping over `ssh 'bash -c \"…\"'` bites every time.** Machines default to fish. In an `ssh host 'bash -c "…$VAR…"'` the fish layer mangles `$`/`$?` before bash sees it; always use a temp script file (`ssh host 'bash -s' < script.sh`) for anything with shell variables or `$()`. Also `$?` doesn't work in fish (use `$status`) — an easy false-"auth failed" during doas/rebuild diagnostics.

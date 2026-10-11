@@ -31,7 +31,14 @@ else
     alias mtr "doas mtr"
 end
 
-alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
+# Bare dotfiles repo. accismus keeps it at ~/.local/share/dotfiles (moved from
+# ~/.config/dotfiles on 2026-10-11); sophrosyne/metanoia still use ~/.config/dotfiles.
+# Resolve by existence so this single file is correct on every machine and mid-move.
+if test -d $HOME/.local/share/dotfiles
+    alias config='git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME'
+else
+    alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
+end
 alias noise='play -n synth pinknoise vol 0.5 bass +3 treble -6'
 
 function newpost --description "Create a new dated Hugo blog post in ~/Documents/undated/repos/blog"

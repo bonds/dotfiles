@@ -3,23 +3,31 @@
 > **Also see:** `.config/nix/AGENTS.md` for nix-flake-specific docs — rebuild
 > commands, flake structure, per-machine gotchas, and nix conventions.
 
-Personal dotfiles tracked via a **bare git repo** at `~/.config/dotfiles`, managed
-through a `config` alias (fish-only, see below).  This avoids a `.git/` directory
-cluttering `$HOME`, which was causing issues with various tools.  The approach
-is the one described in the [Atlassian dotfiles
+Personal dotfiles tracked via a **bare git repo** at `~/.local/share/dotfiles` on
+accismus (`~/.config/dotfiles` on sophrosyne), managed through a `config` alias
+(fish-only, see below).  This avoids a `.git/` directory cluttering `$HOME`, which
+was causing issues with various tools.  The approach is the one described in the
+[Atlassian dotfiles
 tutorial](https://www.atlassian.com/git/tutorials/dotfiles).
 
 ## Git tracking strategy
 
-The bare repo lives at `~/.config/dotfiles/` and uses `--work-tree=$HOME` so
+The bare repo lives at `~/.local/share/dotfiles/` on accismus (moved from
+`~/.config/dotfiles/` on 2026-10-11) and uses `--work-tree=$HOME` so
 that tracked files appear directly in `$HOME`.  Untracked files in `$HOME` are
 hidden (`status.showUntrackedFiles = no` set in the bare repo's config).
 
 The `config` alias (defined in `.config/fish/conf.d/10-aliases.fish`) wraps
-every git command with the right `--git-dir` and `--work-tree`:
+every git command with the right `--git-dir` and `--work-tree`.  It resolves the
+git dir by existence, so the same file is correct on every machine and during a
+move:
 
 ```fish
-alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
+if test -d $HOME/.local/share/dotfiles
+    alias config='git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME'
+else
+    alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
+end
 ```
 
 **Everything you do with `config` works just like normal git** — `config status`,
@@ -34,11 +42,13 @@ alias changes; the subcommands are the same git you already know.
 >
 > ```bash
 > # always `cd ~` first so relative paths resolve
-> cd ~ && git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME status
-> git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME add <path>
-> git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME commit -m "..."
-> git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME push origin main
-> git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME push sophrosyne main
+> # accismus: ~/.local/share/dotfiles ; sophrosyne: ~/.config/dotfiles
+> GITDIR=$HOME/.local/share/dotfiles
+> cd ~ && git --git-dir=$GITDIR --work-tree=$HOME status
+> git --git-dir=$GITDIR --work-tree=$HOME add <path>
+> git --git-dir=$GITDIR --work-tree=$HOME commit -m "..."
+> git --git-dir=$GITDIR --work-tree=$HOME push origin main
+> git --git-dir=$GITDIR --work-tree=$HOME push sophrosyne main
 > ```
 >
 > Every `config` example below works with this `git --git-dir=... --work-tree=...`
@@ -82,7 +92,7 @@ but is no longer managed.
 - `.config/helix/languages.toml` — Helix language config
 
 ### Git
-- `.config/git/config` — **the global git config** (moved here from `~/.gitconfig`, which is gone; tracked in this repo). The bare repo's own config lives inside `~/.config/dotfiles/config` and is managed via `config config <key> <value>`.
+- `.config/git/config` — **the global git config** (moved here from `~/.gitconfig`, which is gone; tracked in this repo). The bare repo's own config lives inside `~/.local/share/dotfiles/config` (accismus) and is managed via `config config <key> <value>`.
 - `.config/git/ignore` — **vestigial** (was the old repo-level gitignore). Untracked-file hiding via `status.showUntrackedFiles = no` in the bare repo's config makes it unnecessary.
 - `.config/git/hooks/pre-commit` — pre-commit hook (fish indent/syntax check, reject `.pyc` files). The bare repo's `core.hooksPath` points here.
 - `.config/git/hooks/pre-push` — pre-push hook (runs `nix flake check --no-build`). Same hooksPath mechanism.
@@ -170,7 +180,7 @@ Useful scripts that live in `~/bin/` but are symlinked or copied from elsewhere 
 ### Machines
 Three machines managed from this repo:
 - **accismus** — macOS laptop (aarch64-darwin, nix-darwin)
-  - **Dotfiles** use the bare-repo approach described above (`~/.config/dotfiles`). The `config` fish alias is defined in `~/.config/fish/conf.d/10-aliases.fish`.
+  - **Dotfiles** use the bare-repo approach described above (`~/.local/share/dotfiles`, moved from `~/.config/dotfiles` on 2026-10-11). The `config` fish alias is defined in `~/.config/fish/conf.d/10-aliases.fish`.
   - **Syncthing** managed via nix-darwin launchd agent (not standalone app). Declarative `config.xml` generated and deployed by activation script. Config dir at `~/Library/Application Support/Syncthing/`. Preserves `key.pem`, `cert.pem`, `index-v2/` across rebuilds.
   - **Photos backup** via `photos-backup` launchd agent (daily at 2am). Runs **`photo-export`** (PhotoKit-native Swift) which streams ALL assets (local + iCloud-only) over **SFTP** to `/dragon/media/photos` as `photo-backup` — no SMB mount, no local copies, basic XMP sidecars. No osxphotos, no Syncthing for photos.
     - **⚠️ Prerequisite:** Photos access grant — see `pkgs/photokit-export/FIRST-RUN.md`. One-time "Allow" click via `open`; re-grant after any binary change (new nix build / version bump).

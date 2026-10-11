@@ -297,7 +297,11 @@ in {
 
       home.file.".stignore".text = ''
         # Specific excludes within included dirs
+        # accismus: the bare repo moved to ~/.local/share/dotfiles (2026-10-11).
+        # Both paths are listed so this is correct before, during and after the move;
+        # the ~/.config/dotfiles line can be dropped once the move is confirmed.
         /.config/dotfiles/**
+        /.local/share/dotfiles/**
         /.config/opencode/node_modules/**
         /.config/opencode/skills/**
 
