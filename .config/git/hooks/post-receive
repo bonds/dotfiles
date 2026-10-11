@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Post-receive hook for bare dotfiles repo at ~/.config/dotfiles.
+# Post-receive hook for bare dotfiles repo at ~/.local/share/dotfiles.
 #
 # When main is pushed to this bare repo, check out the working tree
 # so that $HOME reflects the latest tracked dotfiles.

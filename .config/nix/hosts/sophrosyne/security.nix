@@ -44,8 +44,8 @@ in {
   '';
 
   system.activationScripts.bareRepoHooks.text = ''
-    if [ -d "${userHome}/.config/dotfiles" ]; then
-      ${pkgs.git}/bin/git --git-dir="${userHome}/.config/dotfiles" config core.hooksPath "${userHome}/.config/git/hooks" || true
+    if [ -d "${userHome}/.local/share/dotfiles" ]; then
+      ${pkgs.git}/bin/git --git-dir="${userHome}/.local/share/dotfiles" config core.hooksPath "${userHome}/.config/git/hooks" || true
     fi
   '';
 

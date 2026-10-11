@@ -31,8 +31,8 @@ else
     alias mtr "doas mtr"
 end
 
-# Bare dotfiles repo. accismus keeps it at ~/.local/share/dotfiles (moved from
-# ~/.config/dotfiles on 2026-10-11); sophrosyne/metanoia still use ~/.config/dotfiles.
+# Bare dotfiles repo. accismus and sophrosyne keep it at ~/.local/share/dotfiles
+# (moved from ~/.config/dotfiles on 2026-10-11); metanoia still uses ~/.config/dotfiles.
 # Resolve by existence so this single file is correct on every machine and mid-move.
 if test -d $HOME/.local/share/dotfiles
     alias config='git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME'

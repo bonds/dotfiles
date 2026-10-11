@@ -4,7 +4,7 @@
 > commands, flake structure, per-machine gotchas, and nix conventions.
 
 Personal dotfiles tracked via a **bare git repo** at `~/.local/share/dotfiles` on
-accismus (`~/.config/dotfiles` on sophrosyne), managed through a `config` alias
+accismus and sophrosyne, managed through a `config` alias
 (fish-only, see below).  This avoids a `.git/` directory cluttering `$HOME`, which
 was causing issues with various tools.  The approach is the one described in the
 [Atlassian dotfiles
@@ -42,7 +42,7 @@ alias changes; the subcommands are the same git you already know.
 >
 > ```bash
 > # always `cd ~` first so relative paths resolve
-> # accismus: ~/.local/share/dotfiles ; sophrosyne: ~/.config/dotfiles
+> # accismus and sophrosyne: ~/.local/share/dotfiles
 > GITDIR=$HOME/.local/share/dotfiles
 > cd ~ && git --git-dir=$GITDIR --work-tree=$HOME status
 > git --git-dir=$GITDIR --work-tree=$HOME add <path>
@@ -190,7 +190,7 @@ Three machines managed from this repo:
 - **metanoia** — NixOS workstation (x86_64-linux)
   - **Dotfiles:** Should be migrated to the bare-repo approach when back online (same as accismus/sophrosyne).
 - **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
-  - **Dotfiles** use the same bare-repo approach. Remote push target for this machine: `scott@home.ggr.com:~/.config/dotfiles`. The bare repo has a `post-receive` hook at `~/.config/dotfiles/hooks/post-receive` (installed manually during bootstrap; tracked in the repo at `.config/git/hooks/post-receive` and pointed to via `core.hooksPath`) that checks out the work tree to `$HOME` on each push to `main`.
+  - **Dotfiles** use the same bare-repo approach. Remote push target for this machine: `scott@home.ggr.com:~/.local/share/dotfiles`. The bare repo has a `post-receive` hook at `~/.local/share/dotfiles/hooks/post-receive` (installed manually during bootstrap; tracked in the repo at `.config/git/hooks/post-receive` and pointed to via `core.hooksPath`) that checks out the work tree to `$HOME` on each push to `main`.
   - **ZFS pool:** The `dragon` pool is intentionally degraded (raidz2, 1 device kept offline) — running on 1-disk redundancy by design.
   - **Temperature logging:** NVMe/CPU temps and fan speeds are logged every minute to `/dragon/logs/temps.log` via `log-temps.timer`. After a crash or lockup, check the last entries in this file to see if temps spiked before the failure. The log survives reboots since it's on the ZFS pool.
   - **Firesafe USB backup:** Automated off-site backup via an A/B USB drive rotation. Defined in `modules/firesafe-backup.nix` (NixOS module: `programs.firesafe-backup`).
@@ -345,7 +345,7 @@ run tractable; a bare full-suite run recompiles ~1140 test files.)
 - **`config add` WITHOUT `-f` for `nix-what-changed`:** The directory has a `.gitignore` that excludes `__pycache__/`. Using `config add -f` overrides it and tracks `.pyc` files, which then need a cleanup commit. Use plain `config add .config/nix/pkgs/nix-what-changed/what_changed/<file>.py` for individual files, or `config add .config/nix/pkgs/nix-what-changed/` (without `-f`) to respect the gitignore. A pre-commit hook (`.config/git/hooks/pre-commit`) rejects `.pyc` files automatically if you forget.
 - **`flake.lock` changes:** When a commit includes a `flake.lock` update (e.g. after `nr --update`), push both remotes normally (`config push origin && config push sophrosyne`). The sophrosyne post-receive hook does a force checkout so there is no "dirty work tree" rejection. If sophrosyne independently updated its flake.lock (via `nr --update` on the server), the next push from accismus will overwrite it — this is intentional. If you need sophrosyne to pull changes without accismus pushing:
   1. `ssh sophrosyne "config pull origin main"`
-  2. The post-receive hook won't fire (it only runs on push), so the work tree will be updated by the checkout. If for some reason the work tree is stale: `ssh sophrosyne "cd ~ && git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME checkout -f main"`
+  2. The post-receive hook won't fire (it only runs on push), so the work tree will be updated by the checkout. If for some reason the work tree is stale: `ssh sophrosyne "cd ~ && git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME checkout -f main"`
 
 ### doas privilege escalation
 
