@@ -205,6 +205,7 @@ in {
         ../../modules/home/ice.nix
         ../../modules/home/macos-apps.nix
         ../../modules/home/photo-export.nix
+        ../../modules/home/pi.nix
         ../../modules/home/orca.nix
         ../../modules/home/polyptych.nix
         ../../modules/home/reel-summarize.nix
