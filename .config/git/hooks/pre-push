@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Pre-push hook — tracked in .githooks/pre-push (not .git/hooks/).
-# Activated by core.hooksPath = ~/.githooks in git config.
+# Pre-push hook — tracked at .config/git/hooks/pre-push (not .git/hooks/).
+# Activated by core.hooksPath = ~/.config/git/hooks in the bare repo's config.
 # Runs nix flake check --no-build --all-systems (evaluates checks for every declared
 # system: format, deadnix, gitleaks, machine evals — not just the host's) plus explicit
 # direct evals of each machine config, before pushing. --all-systems avoids the

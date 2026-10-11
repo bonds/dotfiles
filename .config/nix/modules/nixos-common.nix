@@ -31,6 +31,16 @@ in {
   security.sudo.enable = lib.mkDefault false;
   security.doas.enable = lib.mkDefault true;
 
+  # Wheel users may escalate with a persisted credential. `scott ∈ wheel`, so a
+  # per-user persist rule is redundant — do not re-add `users = ["scott"]`
+  # (nix-config-review.md F4).
+  security.doas.extraRules = [
+    {
+      users = [":wheel"];
+      persist = true;
+    }
+  ];
+
   services.openssh = {
     enable = lib.mkDefault true;
     settings = {
@@ -40,10 +50,13 @@ in {
     };
   };
 
+  # Started ONLY by the weekly timer below. Do NOT add `wantedBy` here: a
+  # `wantedBy = ["timers.target"]` on the *service* pulls it in at every boot
+  # (timers.target is reached at boot), which defeats the weekly schedule. Only
+  # the timer is `wantedBy` timers.target (nix-config-review.md F8).
   systemd.services.prune-generations = {
     description = "Prune old nix system profile generations";
     after = ["nix-daemon.service"];
-    wantedBy = ["timers.target"];
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${pruneGenerations}/bin/prune-generations";

@@ -5,11 +5,11 @@
 }: let
   userHome = config.users.users.scott.home;
 in {
+  # NOTE: no `users = ["scott"]; persist = true` rule here — scott ∈ wheel and
+  # modules/nixos-common.nix already grants the wheel group a persisted
+  # credential (nix-config-review.md F4). Only the noPass command rules below
+  # are host-specific.
   security.doas.extraRules = [
-    {
-      users = ["scott"];
-      persist = true;
-    }
     {
       users = ["scott"];
       cmd = "/run/current-system/sw/bin/nixos-rebuild";

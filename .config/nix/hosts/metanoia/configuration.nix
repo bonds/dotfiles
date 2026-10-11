@@ -85,10 +85,6 @@ in {
 
   users.users.root.hashedPassword = "*";
 
-  security.doas.extraRules = [
-    {
-      users = [":wheel"];
-      persist = true;
-    }
-  ];
+  # Privilege escalation for the wheel group lives once, in
+  # modules/nixos-common.nix (shared by all NixOS hosts).
 }

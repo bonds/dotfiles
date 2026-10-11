@@ -105,7 +105,9 @@ in {
     sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUEnableAutomaticChecks -bool false 2>/dev/null || true
     sudo -u scott defaults write com.daisydiskapp.DaisyDiskStandAlone SUAutomaticallyUpdate -bool false 2>/dev/null || true
 
-    containers_setup="$HOME/.config/zen/containers-setup"
+    # NOTE: ${userHome}, NOT $HOME — this activation runs as root, so $HOME is
+    # /var/root and the guard file would never be found (reminder every nr).
+    containers_setup="${userHome}/.config/zen/containers-setup"
     if [ ! -f "$containers_setup" ]; then
       echo "REMINDER: Set up Zen browser containers (one-time):" >&2
       echo "  1. Launch Zen, open Settings > Containers" >&2

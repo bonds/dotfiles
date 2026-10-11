@@ -33,9 +33,13 @@ in {
   };
 
   systemd.services.photo-backup-monitor = let
+    # Single source of truth for the staleness threshold: interpolated into the
+    # script AND used to derive the unit description, so the two cannot drift
+    # apart (nix-config-review.md F7).
+    thresholdHours = 336; # 14 days
     monitorScript = pkgs.writeShellScript "photo-backup-monitor" ''
       PHOTO_DIR="/dragon/media/photos"
-      THRESHOLD_HOURS=336
+      THRESHOLD_HOURS=${toString thresholdHours}
       LOG_FILE="/var/log/photo-backup-monitor.log"
 
       log() {
@@ -90,7 +94,7 @@ in {
       exit 0
     '';
   in {
-    description = "Check if photo backup is fresh — alert if stalled >48h";
+    description = "Check if photo backup is fresh — alert if stalled >${toString (thresholdHours / 24)}d";
     after = ["network.target"];
     serviceConfig = {
       Type = "oneshot";
@@ -121,10 +125,14 @@ in {
         t=$(${pkgs.nvme-cli}/bin/nvme smart-log "$d" 2>/dev/null | sed -n 's/^temperature.*: *\([0-9]*\).*/\1/p')
         printf "nvme-%s=%s " "$(basename $d)" "$t" >> "$log"
       done
-      cpu=$(cat /sys/devices/platform/coretemp.0/hwmon/hwmon9/temp1_input 2>/dev/null)
-      printf "cpu=%s " "$((cpu / 1000))" >> "$log"
-      f1=$(cat /sys/devices/platform/dell_smm_hwmon/hwmon/hwmon10/fan1_input 2>/dev/null)
-      f2=$(cat /sys/devices/platform/dell_smm_hwmon/hwmon/hwmon10/fan2_input 2>/dev/null)
+      # hwmonN numbering is assigned at probe time and shifts across kernel /
+      # driver changes, so glob the hwmon dir instead of hardcoding the index
+      # (nix-config-review.md F10). Empty on no match; the shell `:+` expansion
+      # avoids an arithmetic error when the file is missing.
+      cpu=$(cat /sys/devices/platform/coretemp.0/hwmon/hwmon*/temp1_input 2>/dev/null | head -1)
+      printf "cpu=%s " "''${cpu:+$((cpu / 1000))}" >> "$log"
+      f1=$(cat /sys/devices/platform/dell_smm_hwmon/hwmon/hwmon*/fan1_input 2>/dev/null | head -1)
+      f2=$(cat /sys/devices/platform/dell_smm_hwmon/hwmon/hwmon*/fan2_input 2>/dev/null | head -1)
       printf "fan-cpu=%s fan-sys=%s" "$f1" "$f2" >> "$log"
       echo >> "$log"
     '';

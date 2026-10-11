@@ -83,13 +83,8 @@ in {
 
   services.openssh.settings.KbdInteractiveAuthentication = false;
 
-  # Privilege escalation for wheel group (sudo is disabled globally via nixos-common.nix)
-  security.doas.extraRules = [
-    {
-      users = [":wheel"];
-      persist = true;
-    }
-  ];
+  # Privilege escalation for the wheel group is defined once, in
+  # modules/nixos-common.nix (shared by all NixOS hosts).
 
   age.identityPaths = ["/etc/age/identity"];
 
@@ -270,7 +265,10 @@ in {
       };
     };
   };
-  networking.firewall.allowedTCPPorts = [8080];
+
+  # NOTE: 8080 (llamacpp-server) is deliberately NOT in networking.firewall.
+  # allowedTCPPorts — that would open it on every interface. The tailscale0-only
+  # rule in ./networking.nix is the sole opener (tailnet + LAN-via-tailnet).
 
   systemd.services.mcp-searxng-search = {
     description = "SearXNG MCP server for web search";
