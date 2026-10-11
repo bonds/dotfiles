@@ -26,6 +26,7 @@
     idris2Packages.idris2Lsp # language service provider for idris2
     idris2Packages.pack # packages manager for idris2
     inputs.neocode.packages.${pkgs.stdenv.hostPlatform.system}.default # Native macOS SwiftUI client for OpenCode (community, flake, nr --update)
+    inputs.pi.packages.${pkgs.stdenv.hostPlatform.system}.default # Pi coding agent (earendil-works/pi, flake input, CLI)
     inputs.polyptych.packages.${pkgs.stdenv.hostPlatform.system}.default # spanned fullscreen video player
     jujutsu # git alternative
     lagrange # gemini protocol client
