@@ -359,3 +359,16 @@ Key constraints:
 - **Agent forwarding is required** for TouchID-for-doas. SSH config sets `ForwardAgent yes` for sophrosyne. If for some reason the agent isn't forwarded, doas falls back to password prompt (works interactively only).
 
 The keys file for `pam_ssh_agent_auth` is at `/etc/ssh/authorized_keys.d/scott` (root-owned, outside the nix store — an activation script copies it on each switch to avoid group-writable /nix/store directory rejections).
+
+## Editable worktree (`live`)
+
+The bare repo lives at `~/.local/share/dotfiles`. Agent edits are made in a
+linked worktree at `~/.local/share/dotfiles/live` (checked out on `main`);
+`$HOME` is the live tree, used via `--work-tree=$HOME` — not a git worktree.
+
+To sync `$HOME` to the tip of `main` (plain `git checkout main` only prints
+"Already on 'main'" and changes nothing):
+
+```bash
+git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME checkout main -- .
+```
