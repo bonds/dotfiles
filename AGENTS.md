@@ -107,15 +107,15 @@ but is no longer managed.
 - `.config/nix/` — **full nix flake for all machines** (see `.config/nix/AGENTS.md` for detailed docs)
   - Flake for: laptop (accismus/darwin), server (sophrosyne/NixOS), workstation (metanoia/NixOS)
   - `nr` fish function wraps `nh` for rebuilds
-- `.config/nix/pkgs/nix-what-changed/` — **`what-changed` tool** — Ported from fish to Python (v0.5.0).
+- `.config/nix/pkgs/nix-what-changed/` — **`what-changed` tool** — Ported from fish to Python (v0.22.0).
   - Lives at `pkgs/nix-what-changed/` inside the dotfiles flake.
   - Also publishable as a standalone flake: `github:bonds/dotfiles?dir=.config/nix/pkgs/nix-what-changed`.
   - Shows LLM-summarized changelogs after `nr` via `what-changed <old-closure> <new-closure>`.
-  - Model: `qwen2.5-7b` via llama.cpp on sophrosyne (`http://sophrosyne:8080`). Config at `~/.config/what-changed/config.toml`.
+  - Model: `qwen2.5-7b` via llama.cpp on sophrosyne (`http://sophrosyne.taileafac.ts.net:8080`). Config at `~/.config/what-changed/config.toml`.
 - Benchmark: `what-changed --benchmark [--models m1,m2]` compares speed, quality, bullet accuracy, and word merges. Run before switching default model.
   - Supports ollama + OpenAI-compatible backends. Caches results in `~/.cache/what-changed/`.
   - NixOS/darwin module: `programs.what-changed.enable`.
-  - `nix flake check` runs alejandra format check, Python syntax check, and pytest suite (for the standalone sub-flake only). The top-level flake's checks.nix does not include pytest — run `cd pkgs/nix-what-changed && nix flake check` for the full test suite.
+  - `nix flake check` runs the alejandra (format), deadnix, statix, and gitleaks (secrets) checks plus the `what-changed-test` pytest suite (166 tests), which mirrors the standalone sub-flake's own `pytest` check.
 - `.config/nix/pkgs/reel-summarize/` — **`reel-summarize` tool** (v0.2.0) — Local Instagram Reel summarizer (shared pipeline/CLI).
   - Pipeline: yt-dlp download → ffmpeg frames+audio → transcribe-cpp (whisper `whisper-small-Q5_K_M.gguf`) → per-frame vision OCR → LLM final summary.
   - Runtime deps: `yt-dlp`+`ffmpeg` via nix, llama.cpp OpenAI-compatible API (text `qwen2.5-7b` @ `:8080`, vision @ `:8081`), whisper via `transcribe-cpp` (`TRANSCRIBE_LIBRARY`).

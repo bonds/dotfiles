@@ -82,7 +82,10 @@ def test_benchmark_config_model_consistency():
     # Just verify the module imports and Config().model is reasonable
     cfg = Config()
     assert cfg.model, "Config must have a default model"
-    assert ":" in cfg.model or "/" in cfg.model, "Model name should have a tag"
+    # NOTE: do NOT require a ":" tag (ollama-style) here. The default backend
+    # is llama.cpp (openai), whose model aliases carry no tag — e.g.
+    # "qwen2.5-7b" (the alias served by llamacpp-server on sophrosyne).
+    # benchmark.py treats cfg.model as an opaque string; the tag is not parsed.
 
 
 # ── Regression 5: spellfix correction() returning None ───────────────

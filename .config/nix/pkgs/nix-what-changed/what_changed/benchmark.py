@@ -2,7 +2,7 @@
 
 Usage:
     python -m what_changed.benchmark                          # all models, all samples
-    python -m what_changed.benchmark --models qwen2.5:1.5b     # specific models
+    python -m what_changed.benchmark --models qwen2.5-7b      # specific models
     python -m what_changed.benchmark --samples capstone,hugo   # specific sample
     python -m what_changed.benchmark --json                     # machine-readable output
 """

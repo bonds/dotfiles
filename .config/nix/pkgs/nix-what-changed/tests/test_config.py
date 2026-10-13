@@ -7,7 +7,7 @@ from what_changed.config import Config, load
 def test_defaults():
     cfg = Config()
     assert cfg.backend == "openai"
-    assert cfg.model == "qwen2.5:1.5b"
+    assert cfg.model == "qwen2.5-7b"
     assert cfg.timeout == 180
     assert cfg.max_bullets == 5
 

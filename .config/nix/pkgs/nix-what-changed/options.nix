@@ -17,7 +17,7 @@
           };
           model = lib.mkOption {
             type = lib.types.str;
-            default = "qwen2.5:1.5b";
+            default = "qwen2.5-7b";
             description = "LLM model name";
           };
           timeout = lib.mkOption {

@@ -13,7 +13,7 @@ Personal dotfiles and Nix flake for macOS (nix-darwin) and NixOS machines.
 
 ## what-changed
 
-`what-changed` diffs two nix system closures, finds which packages changed, fetches their changelogs, and summarizes each using a local LLM (via ollama).
+`what-changed` diffs two nix system closures, finds which packages changed, fetches their changelogs, and summarizes each using a local LLM (llama.cpp's OpenAI-compatible API by default; ollama is also supported).
 
 Run it manually after a rebuild:
 
@@ -44,11 +44,11 @@ what-changed --json                  # machine-readable output
 ### Features
 
 - **Smart changelog discovery** — checks `meta.changelog`, GitHub releases, changelog files, known wiki pages, and GitHub API
-- **LLM summarization** — uses `qwen2.5:1.5b` via ollama (configurable: OpenAI-compatible APIs also supported)
+- **LLM summarization** — uses `qwen2.5-7b` via a llama.cpp OpenAI-compatible API by default (configurable: `ollama` is also supported)
 - **Caching** — metadata, changelogs, and LLM summaries are cached so repeat runs are instant
 - **Output formats** — rich terminal output, `--json`, `--brief`
 - **Config file** — `~/.config/what-changed/config.toml`
-- **Test suite** — 145+ tests, run via `nix flake check`
+- **Test suite** — 166 tests, run via `nix flake check`
 
 ### Installing in your Nix config
 
@@ -75,7 +75,7 @@ Or use the module (adds the package plus optional config):
   imports = [ inputs.what-changed.nixosModules.default ];
   programs.what-changed.enable = true;
   programs.what-changed.settings = {
-    model = "qwen2.5:1.5b";
+    model = "qwen2.5-7b";
     timeout = 180;
   };
 }
@@ -83,7 +83,7 @@ Or use the module (adds the package plus optional config):
 
 ### Requirements
 
-- [ollama](https://ollama.com) running locally with the default model pulled (`ollama pull qwen2.5:1.5b`)
+- A local LLM server. The default config targets a [llama.cpp](https://github.com/ggml-org/llama.cpp) server exposing the OpenAI-compatible API on port 8080 (e.g. `llama-server --port 8080 --model qwen2.5-7b.gguf`). [ollama](https://ollama.com) is also supported: set `backend = "ollama"` and `host = "http://localhost:11434"`.
 - Nix (obviously)
 - Python 3.10+ (included via nix package)
 
@@ -91,11 +91,11 @@ Or use the module (adds the package plus optional config):
 
 ```toml
 # ~/.config/what-changed/config.toml
-model = "qwen2.5:1.5b"
+model = "qwen2.5-7b"
 timeout = 180
-prompt_style = "strict"    # default, strict, concise, no-hallucinate, numbered
-backend = "ollama"         # or "openai" for OpenAI-compatible APIs
-host = "http://localhost:11434"
+prompt_style = "curate"    # curate (default), strict, concise, no-hallucinate, numbered
+backend = "openai"         # "openai" for llama.cpp / OpenAI-compatible APIs, or "ollama"
+host = "http://localhost:8080"
 max_bullets = 5
 ```
 

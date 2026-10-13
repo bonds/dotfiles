@@ -11,7 +11,7 @@ CONFIG_PATH = os.path.expanduser("~/.config/what-changed/config.toml")
 class Config:
     backend: str = "openai"
     host: str = "http://localhost:8080"
-    model: str = "qwen2.5:1.5b"
+    model: str = "qwen2.5-7b"
     timeout: int = 180
     max_input_bytes: int = 8000
     max_bullets: int = 5
