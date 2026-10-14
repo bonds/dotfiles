@@ -83,6 +83,47 @@ run_fail() { # run_fail <subcommand...> — the probe itself fails (unevaluable)
         NR_PINS_PROBE_STUB="$STUB" bash "$S" "$@"
 }
 
+fake_nix() { # write a fake `nix` under $T/fakebin that emulates the fetcher cache
+    mkdir -p "$T/fakebin"
+    : > "$T/fakebin/argv.log"
+    cat > "$T/fakebin/nix" <<'FAKE'
+#!/usr/bin/env bash
+# Fake `nix build --dry-run` for the fetcher-cache cases below. Real nix reuses
+# a tarball-ttl-cached branch→rev row unless --refresh is given (see
+# nr-pins-emptying-evidence-2026-10-14.md). So:
+#   * --refresh present         → the branch re-resolves to its HEAD, and the
+#                                 inputs named in $FAKE_NEEDS are listed as
+#                                 needing a source build (the blocker is real).
+#   * no --refresh, $FAKE_STALE → the probe reuses the stale row: the branch
+#                                 resolves to the pinned rev, where the blocker
+#                                 substitutes, so nothing is listed to build.
+printf '%s\n' "$*" >> "$FAKE_LOG"
+refresh=0; input=""; prev=""
+for a in "$@"; do
+    [ "$a" = "--refresh" ] && refresh=1
+    [ "$prev" = "--override-input" ] && input="$a"
+    prev="$a"
+done
+case " ${FAKE_NEEDS:-} " in *" $input "*) want=1 ;; *) want=0 ;; esac
+[ "$refresh" -eq 1 ] || [ -z "${FAKE_STALE:-}" ] || want=0
+[ "$want" -eq 0 ] && exit 0
+hex="$(printf 'a%.0s' $(seq 1 32))"
+printf 'these 1 derivations will be built:\n  /nix/store/%s-%s-1.0.drv\n' "$hex" "$FAKE_PNAME"
+FAKE
+    chmod +x "$T/fakebin/nix"
+}
+
+fake_run() { # fake_run <needs-inputs> <pname> <stale|head> <subcommand...>
+    local needs="$1" pname="$2" mode="$3" stale=""
+    shift 3
+    [ "$mode" = "stale" ] && stale=1
+    env PATH="$T/fakebin:$PATH" FAKE_LOG="$T/fakebin/argv.log" \
+        FAKE_NEEDS="$needs" FAKE_PNAME="$pname" FAKE_STALE="$stale" \
+        NR_PINS_FLAKE_DIR="$T" NR_PINS_SNAPSHOT="$T/pins-snapshot.json" \
+        NR_PINS_ATTR="darwinConfigurations.test.system" \
+        NR_PINS_PROBE_STUB= bash "$S" "$@"
+}
+
 apply_here() { # apply_here — run `apply` against the fixture without the stub
     NR_PINS_FLAKE_DIR="$T" bash "$S" apply
 }
@@ -116,6 +157,43 @@ grep -qF 'nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable"' "$T/fl
     && ok "nixpkgs-unstable still declared at its branch url" || bad "nixpkgs-unstable declaration lost with the pin"
 n=$(grep -cE 'url = "github:NixOS/nixpkgs/[0-9a-f]{40}"' "$T/flake.nix" || true)
 [ "$n" -eq 0 ] && ok "no pinned rev url survives an emptied registry" || bad "$n pinned rev url(s) left behind"
+u="$(follows_unresolved)"; [ -z "$u" ] && ok "every follows target still resolves" || bad "dangling follows: $u"
+
+printf '\n== check: a STALE fetcher-cache row must not drop the pin ==\n'
+# The 2026-10-14 incident. probe() ran `nix build --dry-run` WITHOUT --refresh,
+# so nix reused its tarball-ttl-cached branch→rev row (tarball-ttl = 3600). A row
+# still resolving the branch to the PINNED rev makes the override a no-op there,
+# the blocker substitutes, the dry run lists nothing to build — and `check`
+# drops a pin whose blocker has not cleared, emptying the registry. RUN B of
+# nr-pins-emptying-evidence-2026-10-14.md reproduces it; RUN C shows the one-word
+# --refresh fix restores the correct verdict on the very same cache.
+#
+# The stub replaces probe() wholesale, so it can never see the flag. These two
+# cases drive `check` through the REAL probe() with a fake `nix` on PATH instead.
+setup
+fake_nix
+fake_run "nixpkgs-unstable" anyio stale check > "$T/refresh.out" 2>&1
+check_rc 2 $? "check reports the drop of the genuinely-cleared pin"
+[ "$(jq -r '.pins | map(.input) | join(",")' "$T/flake-pins.json")" = "nixpkgs-unstable" ] \
+    && ok "kept the pin whose blocker is still unbuilt at the branch head" \
+    || bad "a stale cache row dropped it: $(jq -c '.pins|map(.input)' "$T/flake-pins.json")"
+n=$(grep -c -- '--refresh' "$T/fakebin/argv.log" || true)
+[ "$n" -eq 2 ] && ok "both probes asked nix to re-resolve the branch (--refresh)" \
+    || bad "$n/2 probe(s) reused the cached branch→rev row (no --refresh)"
+
+printf '\n== check: a branch-head row that substitutes still drops the pin ==\n'
+# The other direction: --refresh must not make a genuinely-cleared pin
+# undroppable. Nothing needs building at the branch head here, so the pin goes —
+# and the flag is still on every probe.
+setup
+fake_nix
+fake_run "" "" head check > "$T/refresh-head.out" 2>&1
+check_rc 2 $? "check drops a pin whose blocker has cleared at the head"
+[ "$(jq '.pins | length' "$T/flake-pins.json")" -eq 0 ] && ok "registry emptied" \
+    || bad "pin kept: $(jq -c '.pins|map(.input)' "$T/flake-pins.json")"
+n=$(grep -c -- '--refresh' "$T/fakebin/argv.log" || true)
+[ "$n" -eq 2 ] && ok "the refreshed probes still resolved the branch" \
+    || bad "$n/2 probe(s) ran without --refresh"
 u="$(follows_unresolved)"; [ -z "$u" ] && ok "every follows target still resolves" || bad "dangling follows: $u"
 
 printf '\n== check: only one blocker cleared ==\n'

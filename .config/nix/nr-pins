@@ -300,7 +300,10 @@ probe() { # probe <input> <ref> <attr>
         "$NR_PINS_PROBE_STUB" "$1" "$2" "$3"
         return $?
     fi
-    (cd "$FLAKE_DIR" && nix build --dry-run --no-link --override-input "$1" "$2" ".#$3" 2>&1)
+    # --refresh: never reuse nix's tarball-ttl-cached branch→rev row. Without it
+    # the dry run can be made at a rev `nix flake update` never goes on to use,
+    # so `check` drops a pin whose blocker has not actually cleared.
+    (cd "$FLAKE_DIR" && nix build --dry-run --refresh --no-link --override-input "$1" "$2" ".#$3" 2>&1)
 }
 
 needs_build() { # needs_build <input> <ref> <attr> <pname> → 0 built · 1 not built · 2 probe failed
