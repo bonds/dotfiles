@@ -1,5 +1,15 @@
 {
-  "$comment": "Managed by `nr` (see .config/nix/nr-pins). A pin freezes a flake input at the last rev that built, because that input's branch head would force a package to be built from source whose own tests fail here. `nr --update` probes each pin against its branch head before updating and drops it as soon as a substituter carries the package again. flake.nix's pin block is generated from this file — edit this file, not the block.",
+  "$comment": "Managed by `nr` (see .config/nix/nr-pins). A pin freezes a flake input at the last rev that built, because that input's branch head would force a package to be built from source whose own tests fail here. `nr --update` probes each pin against its branch head before updating and drops it as soon as a substituter carries the package again. flake.nix's pin block is generated from this file — edit this file, not the block. `base` lists the inputs the block owns and ALWAYS declares: the pinned rev URL while a pin exists, the normal branch URL otherwise (a pin may only overlay an input listed here). `base` is optional — when absent it defaults to the two nixpkgs inputs below.",
+  "base": [
+    {
+      "input": "nixpkgs",
+      "url": "github:NixOS/nixpkgs/nixos-26.05"
+    },
+    {
+      "input": "nixpkgs-unstable",
+      "url": "github:NixOS/nixpkgs/nixpkgs-unstable"
+    }
+  ],
   "pins": [
     {
       "input": "nixpkgs",

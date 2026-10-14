@@ -119,6 +119,31 @@ again.
   block between `---- BEGIN/END nr-managed input pins` in `flake.nix` is
   GENERATED from it — never edit the block; edit the registry and run
   `bash ~/.config/nix/nr-pins apply` (or `check`, which reconciles).
+- **The block ALWAYS declares every input it owns** — the registry's `base`
+  list. Each base input is rendered as its pinned rev URL while a pin is active
+  for it, and as its normal branch URL otherwise. A pin is only an OVERLAY on a
+  base input; it must never be the sole declaration of one. The rest of
+  `flake.nix` follows `nixpkgs` / `nixpkgs-unstable` by name, so a missing
+  declaration makes every `inputs.X.follows = "nixpkgs"` dangle and fails
+  `nix flake update` hard (`input 'agenix/nixpkgs' follows a non-existent input
+  'nixpkgs'`). **Invariant, enforced fail-closed in `reg_init` before anything is
+  written:** every `follows = "Y"` target found in `flake.nix` must name an input
+  the resulting flake declares — either in this block (`base` ∪ `pins`) or
+  elsewhere in `flake.nix` (e.g. `flake-parts`). Concretely: `base` must be a
+  non-empty array of `{input, url}`; input names must be unique within `base` and
+  within `pins`; every pinned input must appear in `base`; and a `base` that is
+  non-empty but omits a *followed* input is refused loudly, never rendered. When
+  `diagnose` pins an input `base` omits it extends `base` first, so it can never
+  leave a registry that the next command refuses.
+- **`base` is optional.** When the registry has no `base` field the engine
+  defaults to the two inputs the pin mechanism manages (`nixpkgs` →
+  `github:NixOS/nixpkgs/nixos-26.05`, `nixpkgs-unstable` →
+  `github:NixOS/nixpkgs/nixpkgs-unstable`), so a bare `{"pins": []}` registry
+  still renders a valid block.
+- **Recovery:** `bash ~/.config/nix/repair-pins-recovery.sh` repairs a tree
+  broken by the 2026-10-13 bug (an emptied registry had deleted the input
+  declarations). Idempotent, backs up what it replaces, never activates.
+
 - **`nr --update`** runs `snapshot` → `check` → `nix flake update`, then a
   bounded 3-attempt build retry that calls `diagnose <logfile>` on failure.
 - **Commands:** `snapshot` (record the revs that build now) · `check [attr]`

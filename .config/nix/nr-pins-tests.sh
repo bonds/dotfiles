@@ -19,6 +19,27 @@ check_rc() { # check_rc <expected> <actual> <label>
     if [ "$1" -eq "$2" ]; then ok "$3 (rc $2)"; else bad "$3 (expected rc $1, got $2)"; fi
 }
 
+follows_unresolved() { # → every follows target in $T/flake.nix not declared as an input
+    # The invariant nr-pins must guarantee: after any run, every
+    # `inputs.X.follows = "Y"` in flake.nix resolves — Y is declared somewhere in
+    # `inputs`. Evaluate the fixture's inputs attrset (lazily; `outputs` is never
+    # forced, so `mkFlake`/the imports are not touched) rather than grepping.
+    # Prints nothing when the invariant holds; "UNVERIFIED(...)" when it cannot
+    # be checked, so a broken eval never reads as a pass.
+    local declared targets t
+    if ! command -v nix > /dev/null 2>&1; then printf 'UNVERIFIED(no nix) '; return; fi
+    declared="$(nix eval --file "$T/flake.nix" --apply 'x: builtins.attrNames x.inputs' --json 2>/dev/null | jq -r '.[]' 2>/dev/null)" \
+        || { printf 'UNVERIFIED(attrNames failed) '; return; }
+    [ -n "$declared" ] || { printf 'UNVERIFIED(no inputs) '; return; }
+    targets="$(nix eval --file "$T/flake.nix" \
+        --apply 'x: builtins.concatLists (map (n: builtins.attrValues (x.inputs.${n}.inputs or {})) (builtins.attrNames x.inputs))' \
+        --json 2>/dev/null | jq -r '.[]? | .follows? // empty' | sort -u)" \
+        || { printf 'UNVERIFIED(follows scan failed) '; return; }
+    for t in $targets; do
+        printf '%s\n' "$declared" | grep -qxF "$t" || printf '%s ' "$t"
+    done
+}
+
 setup() {
     mkdir -p "$T"
     cat > "$T/flake.lock" <<'JSON'
@@ -84,7 +105,18 @@ run "" - check > /dev/null
 check_rc 2 $? "check drops both pins"
 [ "$(jq '.pins | length' "$T/flake-pins.json")" -eq 0 ] && ok "registry emptied" || bad "registry still has pins"
 grep -qF 'BEGIN nr-managed input pins' "$T/flake.nix" && ok "block retained" || bad "block lost"
-grep -qE '^[[:space:]]*nixpkgs\.url' "$T/flake.nix" && bad "pin line still present" || ok "pin lines removed"
+# The bug this guards: emptying the registry used to delete the input
+# DECLARATION itself (render_block emitted nothing for an empty registry),
+# leaving every `inputs.X.follows = "nixpkgs"` dangling and breaking
+# `nix flake update`. The block must still declare both nixpkgs inputs — now at
+# their normal branch URLs rather than a pinned rev.
+grep -qF 'nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05"' "$T/flake.nix" \
+    && ok "nixpkgs still declared at its branch url" || bad "nixpkgs declaration lost with the pin"
+grep -qF 'nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable"' "$T/flake.nix" \
+    && ok "nixpkgs-unstable still declared at its branch url" || bad "nixpkgs-unstable declaration lost with the pin"
+n=$(grep -cE 'url = "github:NixOS/nixpkgs/[0-9a-f]{40}"' "$T/flake.nix" || true)
+[ "$n" -eq 0 ] && ok "no pinned rev url survives an emptied registry" || bad "$n pinned rev url(s) left behind"
+u="$(follows_unresolved)"; [ -z "$u" ] && ok "every follows target still resolves" || bad "dangling follows: $u"
 
 printf '\n== check: only one blocker cleared ==\n'
 setup
@@ -142,6 +174,36 @@ apply_here > /dev/null 2>&1
 cp "$T/flake.nix" "$T/flake.once.nix"
 apply_here > /dev/null 2>&1
 diff -q "$T/flake.once.nix" "$T/flake.nix" > /dev/null && ok "second apply is a no-op" || bad "apply is not idempotent"
+
+printf '\n== render: a pinned entry keeps its pinned rev url ==\n'
+setup
+apply_here > /dev/null 2>&1
+grep -qF 'nixpkgs.url = "github:NixOS/nixpkgs/774debe7a0d1b496e35677ad955a1011c6ff74f3"' "$T/flake.nix" \
+    && ok "pinned nixpkgs renders its pinned rev" || bad "pinned nixpkgs rev not rendered"
+grep -qF 'nixpkgs-unstable.url = "github:NixOS/nixpkgs/c9fe7d12cd78d1adcd12dd15e24432dde5b155a0"' "$T/flake.nix" \
+    && ok "pinned nixpkgs-unstable renders its pinned rev" || bad "pinned nixpkgs-unstable rev not rendered"
+n=$(grep -cE 'url = "github:NixOS/nixpkgs/(nixos-26\.05|nixpkgs-unstable)"' "$T/flake.nix" || true)
+[ "$n" -eq 0 ] && ok "no branch url leaks while a pin is active" || bad "$n branch url(s) rendered despite the pins"
+u="$(follows_unresolved)"; [ -z "$u" ] && ok "every follows target resolves" || bad "dangling follows: $u"
+
+printf '\n== compat: a registry with no base list still declares the owned inputs ==\n'
+setup
+printf '{\n  "pins": []\n}\n' > "$T/flake-pins.json"
+apply_here > /dev/null 2>&1
+grep -qF 'nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05"' "$T/flake.nix" \
+    && ok "nixpkgs declared from the default base" || bad "nixpkgs not declared"
+grep -qF 'nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable"' "$T/flake.nix" \
+    && ok "nixpkgs-unstable declared from the default base" || bad "nixpkgs-unstable not declared"
+u="$(follows_unresolved)"; [ -z "$u" ] && ok "every follows target resolves" || bad "dangling follows: $u"
+# ...and the broken on-disk state (empty pins, block with no input declarations)
+# is repaired by `check`.
+setup
+printf '{\n  "pins": []\n}\n' > "$T/flake-pins.json"
+grep -vE '^[[:space:]]*(nixpkgs|nixpkgs-unstable)\.url' "$T/flake.nix" > "$T/noin" && mv "$T/noin" "$T/flake.nix"
+grep -qE '^[[:space:]]*nixpkgs\.url' "$T/flake.nix" && bad "fixture not actually broken" || ok "fixture mimics the broken on-disk state"
+run "thrift anyio" - check > "$T/repair.out" 2>&1
+check_rc 2 $? "check repairs the broken block"
+u="$(follows_unresolved)"; [ -z "$u" ] && ok "repaired block resolves every follows target" || bad "dangling follows: $u"
 
 printf '\n== check: a probe that CANNOT be evaluated must KEEP the pins ==\n'
 setup
@@ -313,13 +375,76 @@ run "thrift" - check > "$WT/nourl.out" 2>&1
 check_rc 1 $? "check refuses a pin with no url"
 grep -q 'pin registry' "$WT/nourl.out" && ok "names the field rule" || bad "no such message"
 
+printf '\n== fail-closed: a bad base list must be refused ==\n'
+for mut in '.base = []' \
+    '.base = "nixpkgs"' \
+    '.base = [{"input": "nixpkgs"}]' \
+    '.base = [{"input": "nixpkgs", "url": "github:NixOS/nixpkgs/dead beef"}]' \
+    '.base = [{"input": "nixpkgs\\n", "url": "github:NixOS/nixpkgs/nixos-26.05"}]' \
+    '.base = [{"input": "nixpkgs", "url": ""}]'; do
+    setup
+    jq "$mut" "$T/flake-pins.json" > "$WT/b.tmp" && mv "$WT/b.tmp" "$T/flake-pins.json"
+    run "thrift" - check > "$WT/badb.out" 2>&1
+    rc=$?
+    if [ "$rc" -eq 0 ]; then bad "accepted a bad base: $mut"; else ok "refused (rc $rc)"; fi
+done
+grep -q "pin registry" "$WT/badb.out" && ok "names the base rule" || bad "no such message"
+
+printf '\n== fail-closed: a pin outside the base list must be refused ==\n'
+setup
+jq '.base = [{"input": "nixpkgs", "url": "github:NixOS/nixpkgs/nixos-26.05"}]' "$T/flake-pins.json" > "$WT/o.tmp" && mv "$WT/o.tmp" "$T/flake-pins.json"
+run "thrift anyio" - check > "$WT/outside.out" 2>&1
+rc=$?
+[ "$rc" -ne 0 ] && ok "refused a pin its base does not cover (rc $rc)" || bad "accepted an uncovered pin"
+grep -q 'base list does not declare it' "$WT/outside.out" && ok "says to add it to base" || bad "no such message: $(tail -1 "$WT/outside.out")"
+
+printf '\n== fail-closed (S1): a base that omits a FOLLOWED input must be refused ==\n'
+# The original bug, one level up: base is non-empty and self-consistent but does
+# not declare an input flake.nix follows. Nothing in flake.nix declares
+# nixpkgs-unstable outside the block, so omitting it here re-creates the
+# dangling-follows flake silently — unless the coverage guard refuses it.
+setup
+jq '.base = [.base[0]] | .pins = []' "$T/flake-pins.json" > "$WT/s1.tmp" && mv "$WT/s1.tmp" "$T/flake-pins.json"
+run "thrift anyio" - check > "$WT/s1.out" 2>&1
+rc=$?
+[ "$rc" -ne 0 ] && ok "refused (rc $rc)" || bad "accepted a base that omits a followed input"
+grep -q "follows 'nixpkgs-unstable'" "$WT/s1.out" && ok "names the dangling follows target" || bad "no such message: $(tail -1 "$WT/s1.out")"
+# ...and the same base WITH the missing entry is accepted.
+setup
+jq '.pins = []' "$T/flake-pins.json" > "$WT/s1b.tmp" && mv "$WT/s1b.tmp" "$T/flake-pins.json"
+run "thrift anyio" - check > "$WT/s1b.out" 2>&1
+rc=$?
+[ "$rc" -ne 1 ] && ok "a complete base is accepted (rc $rc)" || bad "refused a complete base: $(tail -1 "$WT/s1b.out")"
+
+printf '\n== diagnose (S2): pinning an input base omits must extend base, not brick the registry ==\n'
+setup
+# Add a third nixpkgs-family root input that `base` does not declare, and make it
+# the only one that moved, so diagnose pins exactly it.
+jq '.nodes["nixpkgs-stable"] = {locked: {owner: "NixOS", repo: "nixpkgs", rev: "newstable3", ref: "nixos-26.05"}}
+    | .nodes.root.inputs["nixpkgs-stable"] = "nixpkgs-stable"' "$T/flake.lock" > "$WT/s2.lock" && mv "$WT/s2.lock" "$T/flake.lock"
+jq '.nodes["nixpkgs-stable"] = {locked: {rev: "oldstable3"}}' "$T/pins-snapshot.json" > "$WT/s2.snap" && mv "$WT/s2.snap" "$T/pins-snapshot.json"
+run "thrift" - diagnose "$T/failing.log" > "$WT/s2.out" 2>&1
+check_rc 2 $? "diagnose pins the uncovered input"
+grep -q 'nixpkgs-stable' "$T/flake-pins.json" && ok "the pin was recorded" || bad "no pin recorded"
+jq -e '.base | map(.input) | index("nixpkgs-stable") != null' "$T/flake-pins.json" > /dev/null 2>&1 \
+    && ok "base was extended to cover it" || bad "base still omits the pinned input"
+# The point of the fix: the registry diagnose just wrote must still be usable.
+run "thrift" - apply > "$WT/s2b.out" 2>&1
+check_rc 0 $? "the registry it wrote is still usable"
+grep -q 'base list does not declare it' "$WT/s2b.out" && bad "the registry was bricked" || ok "no coverage refusal"
+
 printf '\n== check: flake.nix is reconciled to an empty registry ==\n'
 setup
 printf '{\n  "pins": []\n}\n' > "$T/flake-pins.json"
 run "thrift anyio" - check > "$WT/reconcile.out" 2>&1
 check_rc 2 $? "reports the reconciliation as a change"
 n=$(grep -cE 'url = "github:NixOS/nixpkgs/[0-9a-f]{40}"' "$T/flake.nix" || true)
-[ "$n" -eq 0 ] && ok "pin lines removed to match the empty registry" || bad "$n pin line(s) left behind"
+[ "$n" -eq 0 ] && ok "pinned rev lines removed to match the empty registry" || bad "$n pinned rev line(s) left behind"
+grep -qF 'nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05"' "$T/flake.nix" \
+    && ok "nixpkgs falls back to its branch url" || bad "nixpkgs declaration lost"
+grep -qF 'nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable"' "$T/flake.nix" \
+    && ok "nixpkgs-unstable falls back to its branch url" || bad "nixpkgs-unstable declaration lost"
+u="$(follows_unresolved)"; [ -z "$u" ] && ok "every follows target resolves after reconcile" || bad "dangling follows: $u"
 
 printf '\n== fail-closed: an entry with a broken field must be refused ==\n'
 for mut in 'del(.pins[0].since)' \

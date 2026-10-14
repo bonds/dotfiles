@@ -15,6 +15,22 @@
 # head would still have to BUILD the named packages; `check` drops it as soon as
 # a substituter carries them again.
 #
+# The block ALWAYS declares every input it owns — the registry's `base` list —
+# emitting the pinned rev URL when a pin exists for that input and its normal
+# branch URL otherwise. A pin must never be the only thing declaring an input:
+# the rest of flake.nix follows nixpkgs / nixpkgs-unstable by name, so dropping
+# the last pin used to delete their declarations, making every
+# `inputs.X.follows = "nixpkgs"` dangle — `nix flake update` then failed hard
+# with "input 'agenix/nixpkgs' follows a non-existent input 'nixpkgs'".
+# Invariant, enforced fail-closed in reg_init BEFORE anything is written: every
+# `inputs.X.follows = "Y"` in flake.nix must name an input the resulting flake
+# declares — either in this block (the registry's `base` list, plus any pin) or
+# elsewhere in flake.nix. `base` must therefore list every input the block owns;
+# a base that is non-empty but omits a followed input is refused loudly, not
+# rendered (that omission IS the original bug). `base` itself is optional and
+# defaults to the two nixpkgs inputs, so a bare {"pins": []} registry still
+# renders a valid block.
+#
 # Exit codes: 0 = nothing to do · 2 = registry/flake.nix changed · 1 = pins
 # remain, or nothing could be pinned.
 
@@ -67,11 +83,93 @@ reg_init() {
             and (.since | type) == "string" and (.since | length) > 0
             and (.since | test("^[A-Za-z0-9._-]+\\z"))
             and (.reason | type) == "string" and (.reason | length) > 0
-        )' "$REGISTRY" > /dev/null 2>&1 \
-        || die "the pin registry $REGISTRY is unreadable, has no 'pins' array, or has an invalid entry — input/branch/url/since must be non-empty and free of whitespace, quotes or newlines; reason must be non-empty (free text, emitted as a comment); pnames must be an array"
+        )
+        and ((.pins | map(.input) | unique | length) == (.pins | length))
+        and (if has("base") then
+                 (.base | type) == "array" and (.base | length) > 0
+                 and all(.base[];
+                     (.input | type) == "string" and (.input | length) > 0
+                     and (.input | test("^[A-Za-z0-9._-]+\\z"))
+                     and (.url | type) == "string" and (.url | length) > 0
+                     and (.url | test("^[A-Za-z0-9._:/@+-]+\\z"))
+                 )
+                 and ((.base | map(.input) | unique | length) == (.base | length))
+             else true end)' "$REGISTRY" > /dev/null 2>&1 \
+        || die "the pin registry $REGISTRY is unreadable, has no 'pins' array, or has an invalid entry — input/branch/url/since must be non-empty and free of whitespace, quotes or newlines; reason must be non-empty (free text, emitted as a comment); pnames must be an array; input names must be unique within 'pins' and within 'base'; when present, 'base' must be a NON-EMPTY array of {input,url} obeying the same input/url rules"
+
+    # A pin may only overlay an input the base list already owns: otherwise
+    # dropping the pin would delete the input's declaration.
+    local owned input target declared
+    owned=" $(reg_base | cut -f1 | tr '\n' ' ') "
+    for input in $(reg_inputs); do
+        case "$owned" in
+            *" $input "*) ;;
+            *) die "the registry pins '$input' but its base list does not declare it — add {\"input\": \"$input\", \"url\": \"github:<owner>/<repo>/<branch>\"} to .base so the generated block always declares it" ;;
+        esac
+    done
+
+    # The real invariant (the one the bug violated): every `follows` target named
+    # in flake.nix must be an input the resulting flake declares — either in the
+    # generated block (base ∪ pins) or elsewhere in flake.nix (e.g. flake-parts).
+    # Checked here, before any write, so an incomplete `base` is refused loudly
+    # instead of silently re-rendering a flake whose follows targets dangle.
+    declared=" $(declared_inputs | tr '\n' ' ') "
+    for target in $(follows_targets); do
+        case "$declared" in
+            *" $target "*) ;;
+            *) die "flake.nix follows '$target' but neither the generated pin block (base ∪ pins) nor the rest of flake.nix declares it — add {\"input\": \"$target\", \"url\": \"github:<owner>/<repo>/<branch>\"} to .base" ;;
+        esac
+    done
+}
+
+follows_targets() { # → every distinct `follows = "X"` target named in flake.nix
+    grep -oE 'follows[[:space:]]*=[[:space:]]*"[^"]+"' "$FLAKE_NIX" 2> /dev/null \
+        | sed -E 's/.*"([^"]+)"$/\1/' | LC_ALL=C sort -u
+}
+
+declared_inputs() { # → every input name the rendered flake.nix will declare
+    # The block's inputs (base ∪ pins) plus whatever flake.nix declares OUTSIDE the
+    # block (flake-parts lives there). Used to prove every follows target resolves.
+    {
+        reg_base | cut -f1
+        reg_inputs
+        sed -n '/BEGIN nr-managed input pins/,/END nr-managed input pins/!p' "$FLAKE_NIX" 2> /dev/null \
+            | grep -oE '^[[:space:]]*[A-Za-z0-9._-]+([[:space:]]*\.url[[:space:]]*=|([[:space:]]*=[[:space:]]*\{))' \
+            | sed -E 's/^[[:space:]]*//; s/[[:space:]]*[.=].*$//'
+    } | LC_ALL=C sort -u
 }
 
 reg_inputs() { jq -r '.pins[]? | .input' "$REGISTRY"; }
+
+reg_base_add() { # reg_base_add <input> <branch-url> — make sure .base covers <input>
+    # Used by `diagnose` when it pins an input the registry's base list omits.
+    # Without this the pin would be written and then refused by every later
+    # command, leaving an unusable registry. Materialises the current base (which
+    # may be the built-in default) before appending.
+    local i="$1" u="$2" tmp
+    reg_base | cut -f1 | grep -qxF "$i" && return 0
+    tmp="$(mktemp)" || return 1
+    if jq --arg i "$i" --arg u "$u" \
+        --argjson b "$(reg_base | jq -R -s 'split("\n") | map(select(length > 0) | split("\t") | {input: .[0], url: .[1]})')" \
+        '.base = ($b + [{input: $i, url: $u}])' "$REGISTRY" > "$tmp"; then
+        mv "$tmp" "$REGISTRY" && return 0
+    fi
+    rm -f "$tmp"
+    return 1
+}
+
+reg_base() { # → "input<TAB>normal-branch-url", one line per owned input
+    # The inputs the generated block owns and ALWAYS declares. With no `base`
+    # list, default to the two nixpkgs inputs the pin mechanism manages — which
+    # is exactly what every earlier registry implied, so the broken on-disk
+    # {"pins": []} state still renders a valid block with no hand-editing.
+    if jq -e 'has("base")' "$REGISTRY" > /dev/null 2>&1; then
+        jq -r '.base[] | "\(.input)\t\(.url)"' "$REGISTRY"
+    else
+        printf 'nixpkgs\tgithub:NixOS/nixpkgs/nixos-26.05\n'
+        printf 'nixpkgs-unstable\tgithub:NixOS/nixpkgs/nixpkgs-unstable\n'
+    fi
+}
 
 reg_get() { # reg_get <input> <field>
     jq -r --arg i "$1" --arg f "$2" \
@@ -232,24 +330,43 @@ render_block() {
 HDR
     printf '    #\n'
     cat <<'HDR2'
-    # A pin freezes an input at the last rev that built, because that input's
-    # branch head would need a package built from source whose own tests fail
-    # here. `nr --update` probes every pin against its branch head before
-    # updating (a whole-system `nix build --dry-run` with that input overridden)
-    # and drops the pin as soon as a substituter carries the package again.
+    # Every input this block owns is declared below: the pinned rev URL while a
+    # pin is active, its normal branch URL otherwise. A pin freezes an input at
+    # the last rev that built, because that input's branch head would need a
+    # package built from source whose own tests fail here. `nr --update` probes
+    # every pin against its branch head before updating (a whole-system
+    # `nix build --dry-run` with that input overridden) and drops the pin as
+    # soon as a substituter carries the package again. Dropping a pin must never
+    # remove the declaration itself — the rest of flake.nix follows these inputs
+    # by name, so a missing declaration makes every `inputs.X.follows` dangle.
 HDR2
-    local input branch url since reason pnames
-    for input in $(reg_inputs); do
-        branch="$(reg_get "$input" branch)"
+    local input url branch since reason pnames base_url
+    # Deterministic order (C collation) so reconcile_block's whitespace-normalised
+    # diff stays meaningful. reg_inputs is a subset of reg_base (enforced in
+    # reg_init); the union keeps the render correct even if that is bypassed.
+    {
+        reg_base | cut -f1
+        reg_inputs
+    } | LC_ALL=C sort -u | while IFS= read -r input; do
+        [ -n "$input" ] || continue
         url="$(reg_get "$input" url)"
-        since="$(reg_get "$input" since)"
-        reason="$(reg_get "$input" reason)"
-        pnames="$(reg_pnames "$input" | paste -sd, -)"
-        printf '    #\n'
-        printf '    # %s — pinned %s, normally %s\n' "$input" "$since" "${branch#github:NixOS/nixpkgs/}"
-        [ -n "$pnames" ] && printf '    #   (%s)\n' "$pnames"
-        printf '%s\n' "$reason" | fold -s -w 68 | sed -e 's/[[:space:]]*$//' -e 's/^/    #   /'
-        printf '    %s.url = "%s";\n' "$input" "$url"
+        if [ -n "$url" ]; then
+            branch="$(reg_get "$input" branch)"
+            since="$(reg_get "$input" since)"
+            reason="$(reg_get "$input" reason)"
+            pnames="$(reg_pnames "$input" | paste -sd, -)"
+            printf '    #\n'
+            printf '    # %s — pinned %s, normally %s\n' "$input" "$since" "${branch#github:NixOS/nixpkgs/}"
+            [ -n "$pnames" ] && printf '    #   (%s)\n' "$pnames"
+            printf '%s\n' "$reason" | fold -s -w 68 | sed -e 's/[[:space:]]*$//' -e 's/^/    #   /'
+            printf '    %s.url = "%s";\n' "$input" "$url"
+        else
+            base_url="$(reg_base | awk -F'\t' -v i="$input" '$1 == i {print $2; exit}')"
+            [ -n "$base_url" ] || die "the block must declare '$input' but the registry's base list has no URL for it — add {\"input\": \"$input\", \"url\": ...} to .base"
+            printf '    #\n'
+            printf '    # %s — not pinned, normally %s\n' "$input" "${base_url#github:NixOS/nixpkgs/}"
+            printf '    %s.url = "%s";\n' "$input" "$base_url"
+        fi
     done
     printf '    # ---- %s -----------------------------------------------\n' "$END_MARK"
 }
@@ -531,6 +648,13 @@ cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input cause
             --arg s "$(date '+%Y-%m-%d')" \
             --arg r "must be built from source at $branch and the build fails here (via ${hit# })" \
             '{input: $i, branch: $b, url: $u, pnames: $p, since: $s, reason: $r}')"; then
+            # A pin must be covered by .base, or this run would leave a registry
+            # that every later command refuses (reg_init's coverage guard).
+            reg_base_add "$input" "$branch" || {
+                log "$input: pinned but could not add it to .base — the registry would be unusable"
+                io_err=1
+                continue
+            }
             pinned=1
         else
             # A write failure must not fall through to the exonerating verdict.
@@ -558,6 +682,8 @@ cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input cause
 cmd_list() {
     reg_init
     local n
+    printf 'base inputs (always declared in flake.nix):\n'
+    reg_base | while IFS=$'\t' read -r i u; do printf '  %s  %s\n' "$i" "$u"; done
     n="$(jq '.pins | length' "$REGISTRY")"
     if [ "$n" -eq 0 ]; then log "no pins"; return 0; fi
     jq -r '.pins[] | "  \(.input)  [\(.pnames | join(", "))]  since \(.since)\n    pinned:   \(.url)\n    normally: \(.branch)\n    why:      \(.reason)"' "$REGISTRY"
@@ -566,9 +692,7 @@ cmd_list() {
 
 cmd_apply() { reg_init; apply_block && log "rendered the pin block from the registry"; }
 
-usage() {
-    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
-}
+usage() { awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"; }
 
 case "${1:-}" in
     snapshot) cmd_snapshot ;;
