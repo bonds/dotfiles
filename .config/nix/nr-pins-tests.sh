@@ -146,6 +146,40 @@ check_rc 2 $? "diagnose pins something"
     || bad "wrong url: $(jq -r '.pins[] | select(.input=="nixpkgs") | .url' "$T/flake-pins.json")"
 grep -qF 'github:NixOS/nixpkgs/oldstable' "$T/flake.nix" && ok "block regenerated with the pin" || bad "block not regenerated"
 
+printf '\n== diagnose: an ANSI-coloured (nh) log still yields the failing derivation ==\n'
+setup
+# nix-output-monitor — the tool `nr` tees into the log diagnose is handed —
+# colours the store path INSIDE the quotes:
+#   error: builder for '<ESC>[35;1m/nix/store/<hash>-<name>.drv<ESC>[0m' failed ...
+# A literal "builder for '/nix/store/..." grep therefore never matches an nh log
+# and the failure reads as "no failing derivation (eval error?)", so the culprit
+# is never pinned and `nr --update` can never self-heal.
+printf "error: builder for '\033[35;1m/nix/store/a4qflb2vpddmdll0m7rp1qsl4g17vpbj-thrift-0.24.0.drv\033[0m' failed with exit code 2\n" > "$T/failing-ansi.log"
+run "thrift" - diagnose "$T/failing-ansi.log" > /dev/null
+check_rc 2 $? "diagnose pins from an ANSI-coloured nh log"
+[ "$(jq -r '.pins[] | select(.input=="nixpkgs") | .url' "$T/flake-pins.json")" = "github:NixOS/nixpkgs/oldstable" ] \
+    && ok "pinned nixpkgs at the snapshot rev" \
+    || bad "wrong url: $(jq -r '.pins[] | select(.input=="nixpkgs") | .url' "$T/flake-pins.json")"
+
+printf '\n== diagnose: a rev-locked flake.lock (no .locked.ref) still probes ==\n'
+setup
+# The REAL flake.lock never carries `.locked.ref`: while a pin is active the
+# input is locked by rev (owner/repo/rev only) and the declared ref lives in
+# `.original`. Reading the branch URL out of the lock therefore made every
+# diagnose probe bail with "no branch ref in flake.lock" and nothing was ever
+# pinned — the fixture above masked it by hand-writing a `ref`. The registry's
+# `base` list is the canonical source for an input's normal branch URL.
+jq '.nodes.nixpkgs.locked |= del(.ref) | .nodes["nixpkgs-unstable"].locked |= del(.ref)' \
+    "$T/flake.lock" > "$T/revlock.tmp" && mv "$T/revlock.tmp" "$T/flake.lock"
+run "thrift" - diagnose "$T/failing.log" > /dev/null
+check_rc 2 $? "diagnose pins without .locked.ref"
+[ "$(jq -r '.pins[] | select(.input=="nixpkgs") | .url' "$T/flake-pins.json")" = "github:NixOS/nixpkgs/oldstable" ] \
+    && ok "pinned nixpkgs at the snapshot rev" \
+    || bad "wrong url: $(jq -r '.pins[] | select(.input=="nixpkgs") | .url' "$T/flake-pins.json")"
+[ "$(jq -r '.pins[] | select(.input=="nixpkgs") | .branch' "$T/flake-pins.json")" = "github:NixOS/nixpkgs/nixos-26.05" ] \
+    && ok "recorded the branch url from the registry base" \
+    || bad "wrong branch: $(jq -r '.pins[] | select(.input=="nixpkgs") | .branch' "$T/flake-pins.json")"
+
 printf '\n== diagnose: eval failure (no failing derivation) ==\n'
 setup
 printf 'error: undefined variable foo\n' > "$T/eval.log"

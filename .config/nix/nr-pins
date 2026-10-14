@@ -239,9 +239,21 @@ nixpkgs_inputs() {
         "$LOCK" 2> /dev/null | sort
 }
 
-branch_url() { # branch_url <input> → github:owner/repo/<ref>, or empty
+branch_url() { # branch_url <input> → the input's normal branch URL, or empty
     local ref owner repo
-    ref="$(lock_field "$1" ref)"; owner="$(lock_field "$1" owner)"; repo="$(lock_field "$1" repo)"
+    # Prefer the registry's `base` list: it holds each owned input's normal
+    # branch URL — the same URL render_block emits while no pin is active, and
+    # the same one `check` probes. The lock is NOT a reliable source here:
+    # `.locked.ref` is absent whenever the input was locked BY REV, which is
+    # exactly the state an active pin leaves behind, so reading the lock alone
+    # made every `diagnose` probe bail out with "no branch ref in flake.lock"
+    # and nothing was ever pinned back.
+    ref="$(reg_base | awk -F'\t' -v i="$1" '$1 == i {print $2; exit}')"
+    if [ -n "$ref" ]; then printf '%s\n' "$ref"; return 0; fi
+    # Fallback for an input the registry does not own: the lock's own ref —
+    # `original.ref` is the declared ref, `locked.ref` the resolved one.
+    ref="$(jq -r --arg n "$1" '.nodes[$n].original.ref // .nodes[$n].locked.ref // empty' "$LOCK" 2>/dev/null)"
+    owner="$(lock_field "$1" owner)"; repo="$(lock_field "$1" repo)"
     [ -n "$ref" ] && [ -n "$owner" ] && [ -n "$repo" ] && printf 'github:%s/%s/%s\n' "$owner" "$repo" "$ref"
 }
 
@@ -257,6 +269,22 @@ moved() { # moved <input> → true if its rev differs from the snapshot
 }
 
 rescape() { printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|]/\\&/g'; }
+
+# nh (nix-output-monitor) colours the store path INSIDE the quotes of its
+# "builder for '<path>' failed" line, and `nr` tees nh's output into the logfile
+# `diagnose` is handed:
+#
+#     error: builder for '\e[35;1m/nix/store/<hash>-<name>.drv\e[0m' failed ...
+#
+# A literal grep for "builder for '/nix/store/..." therefore never matches an nh
+# log, every failure reads as "no failing derivation (eval error?)", and nothing
+# is ever pinned — the self-healing half of the pin mechanism is dead. Strip
+# CSI (ESC [ params intermediates final) and OSC (ESC ] ... BEL) sequences
+# before parsing.
+strip_ansi() {
+    sed -e $'s/\x1b\][^\x07]*\x07//g' \
+        -e $'s/\x1b\[[0-9:;<=>?]*[ -/]*[@-~]//g'
+}
 
 # --------------------------------------------------------------------- probe --
 
@@ -575,7 +603,8 @@ cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input cause
     local attr drvs d p pnames input branch rev hit pinned=0 perr=0 probe_err=0 io_err=0
     attr="$(resolve_attr)" || die "could not resolve the system attribute to probe"
 
-    drvs="$(grep -oE "builder for '/nix/store/[a-z0-9]{32}-[^']+\.drv'" "$logfile" 2>/dev/null \
+    drvs="$(strip_ansi < "$logfile" 2>/dev/null \
+        | grep -oE "builder for '/nix/store/[a-z0-9]{32}-[^']+\.drv'" \
         | grep -oE "/nix/store/[a-z0-9]{32}-[^']+\.drv" | sort -u)"
     if [ -z "$drvs" ]; then
         log "no failing derivation in $logfile — not a build failure (eval error?) — not pinning"
