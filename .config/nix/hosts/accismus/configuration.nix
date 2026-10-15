@@ -269,6 +269,17 @@ in {
       };
       services.hermes-agent = {
         enable = true;
+        # nixpkgs-unstable's python3.12-anyio with its own pytest suite skipped.
+        # Anyio is pulled into the closure through hermes-agent-env (see
+        # modules/packages/hermes-agent-fixed.nix for the full why-depends
+        # chain), and its suite fails on CPython 3.12.15, which used to fail
+        # the whole accismus build at every nixpkgs-unstable head that is not
+        # yet on a substituter. `programs.hermes-agent.package` follows this,
+        # and the desktop below follows it too, so the CLI, the services and
+        # the desktop are one patched build.
+        package = import ../../modules/packages/hermes-agent-fixed.nix {
+          inherit pkgs inputs;
+        };
         # browser dashboard at 127.0.0.1:9119 (interactive setup/first-run)
         backend.mode = "dashboard";
         # Provider API keys live in agenix, decrypted to /run/agenix/ on

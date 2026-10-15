@@ -23,13 +23,8 @@
     #   libcxx 21 (a Catch2 static_assert plus an assembler error).
     nixpkgs.url = "github:NixOS/nixpkgs/774debe7a0d1b496e35677ad955a1011c6ff74f3";
     #
-    # nixpkgs-unstable — pinned 2026-10-09, normally nixpkgs-unstable
-    #   (anyio)
-    #   it moved CPython to 3.12.15, which backports gh-156793 /
-    #   CVE-2026-19553 (SSLContext.wrap_bio() rejects server_hostname in
-    #   server mode); anyio 4.14.2's own pytest suite fails on it. Arrives
-    #   through hermes-agent's python env.
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/c9fe7d12cd78d1adcd12dd15e24432dde5b155a0";
+    # nixpkgs-unstable — not pinned, normally nixpkgs-unstable
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     # ---- END nr-managed input pins -----------------------------------------------
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";

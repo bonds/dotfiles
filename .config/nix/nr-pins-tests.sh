@@ -64,6 +64,18 @@ JSON
 JSON
     cp "$HERE/flake-pins.json" "$T/flake-pins.json"
     cp "$HERE/flake.nix" "$T/flake.nix"
+    # Keep the fixture's SHAPE fixed. The assertions below count the two pins
+    # this suite is written against (nixpkgs/thrift + nixpkgs-unstable/anyio) and
+    # the render case checks their pinned rev urls, but the LIVE registry's pin
+    # set is self-expiring — the anyio pin was retired into `$retired` on
+    # 2026-10-15, and copying it verbatim made 14 registry tests fail on a
+    # legitimate pin change. Fold retired entries back in, then re-render the
+    # block so the fixture registry and its flake.nix agree (otherwise check's
+    # reconcile pass reports a spurious change). NR_PINS_SNAPSHOT keeps the
+    # backup apply_block writes inside $T.
+    jq '.pins = ((.pins // []) + (."$retired" // [])) | del(."$retired")' \
+        "$T/flake-pins.json" > "$T/reg.tmp" && mv "$T/reg.tmp" "$T/flake-pins.json"
+    NR_PINS_FLAKE_DIR="$T" NR_PINS_SNAPSHOT="$T/pins-snapshot.json" bash "$S" apply > /dev/null 2>&1
 }
 
 run() { # run <stub-list> <stub-input|-> <subcommand...>

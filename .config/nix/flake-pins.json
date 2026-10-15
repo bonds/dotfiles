@@ -1,5 +1,5 @@
 {
-  "$comment": "Managed by `nr` (see .config/nix/nr-pins). A pin freezes a flake input at the last rev that built, because that input's branch head would force a package to be built from source whose own tests fail here. `nr --update` probes each pin against its branch head before updating and drops it as soon as a substituter carries the package again. flake.nix's pin block is generated from this file — edit this file, not the block. `base` lists the inputs the block owns and ALWAYS declares: the pinned rev URL while a pin exists, the normal branch URL otherwise (a pin may only overlay an input listed here). `base` is optional — when absent it defaults to the two nixpkgs inputs below.",
+  "$comment": "Managed by `nr` (see .config/nix/nr-pins). A pin freezes a flake input at the last rev that built, because that input's branch head would force a package to be built from source whose own tests fail here. `nr --update` probes each pin against its branch head before updating and drops it as soon as a substituter carries the package again. flake.nix's pin block is generated from this file — edit this file, not the block. `base` lists the inputs the block owns and ALWAYS declares: the pinned rev URL while a pin exists, the normal branch URL otherwise (a pin may only overlay an input listed here). `base` is optional — when absent it defaults to the two nixpkgs inputs below. `$retired` is metadata only — no command reads it — and holds pins removed by hand, with the reason they could be.",
   "base": [
     {
       "input": "nixpkgs",
@@ -20,7 +20,9 @@
       ],
       "since": "2026-10-09",
       "reason": "the stable bump changed python3.13-tokenizers, so it stopped substituting; building it pulls its test deps (datasets, pyarrow, arrow-cpp) and thrift 0.24.0's C++ tests do not compile against libcxx 21 (a Catch2 static_assert plus an assembler error)."
-    },
+    }
+  ],
+  "$retired": [
     {
       "input": "nixpkgs-unstable",
       "branch": "github:NixOS/nixpkgs/nixpkgs-unstable",
@@ -29,7 +31,9 @@
         "anyio"
       ],
       "since": "2026-10-09",
-      "reason": "it moved CPython to 3.12.15, which backports gh-156793 / CVE-2026-19553 (SSLContext.wrap_bio() rejects server_hostname in server mode); anyio 4.14.2's own pytest suite fails on it. Arrives through hermes-agent's python env."
+      "retired": "2026-10-15",
+      "reason": "it moved CPython to 3.12.15, which backports gh-156793 / CVE-2026-19553 (SSLContext.wrap_bio() rejects server_hostname in server mode); anyio 4.14.2's own pytest suite fails on it. Arrives through hermes-agent's python env.",
+      "retiredReason": "the failing suite no longer decides whether the tree builds: modules/packages/hermes-agent-fixed.nix hands the hermes-agent venv a python312 whose anyio is built with `doCheck = false`, so anyio builds at ANY nixpkgs-unstable rev. Retired by hand rather than by `check`, which cannot drop it — `check` drops a pin when the package SUBSTITUTES at the branch head, and skipping anyio's tests makes it buildable, not substitutable."
     }
   ]
 }

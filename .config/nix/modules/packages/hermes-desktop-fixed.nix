@@ -64,12 +64,18 @@
   # exist. Fail at eval (legible) rather than at fetch (a confusing hash
   # mismatch pointing at nothing).
   headersMissing = !(unstablePkgs.electron ? headers);
+
+  # The desktop is a passthru of the AGENT package, so build it from the agent
+  # hermes-agent-fixed.nix hands out (nixpkgs' python3.12-anyio with its tests
+  # skipped) — otherwise the desktop would pull an unpatched hermes-agent-env
+  # and re-introduce the anyio build failure. `hermesDesktop` is exactly
+  # `packages.<system>.desktop` (both are `full.hermesDesktop`), just with the
+  # anyio patch applied underneath.
+  agent = import ./hermes-agent-fixed.nix {inherit pkgs inputs;};
 in
   pkgs.lib.throwIf headersMissing ''
     hermes-desktop-fixed.nix: nixpkgs-unstable's electron ${unstablePkgs.electron.version} has no `headers` output;
     the BUG-001 shim needs pkgs.electron.headers (nixpkgs maintains its hash in binary/info.json).
-  '' (
-    inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.desktop.override {
-      pkgs = pkgsWithHeaders;
-    }
-  )
+  '' (agent.hermesDesktop.override {
+    pkgs = pkgsWithHeaders;
+  })
