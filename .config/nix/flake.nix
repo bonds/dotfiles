@@ -15,13 +15,8 @@
     # remove the declaration itself — the rest of flake.nix follows these inputs
     # by name, so a missing declaration makes every `inputs.X.follows` dangle.
     #
-    # nixpkgs — pinned 2026-10-09, normally nixos-26.05
-    #   (thrift)
-    #   the stable bump changed python3.13-tokenizers, so it stopped
-    #   substituting; building it pulls its test deps (datasets, pyarrow,
-    #   arrow-cpp) and thrift 0.24.0's C++ tests do not compile against
-    #   libcxx 21 (a Catch2 static_assert plus an assembler error).
-    nixpkgs.url = "github:NixOS/nixpkgs/774debe7a0d1b496e35677ad955a1011c6ff74f3";
+    # nixpkgs — not pinned, normally nixos-26.05
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     #
     # nixpkgs-unstable — not pinned, normally nixpkgs-unstable
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
