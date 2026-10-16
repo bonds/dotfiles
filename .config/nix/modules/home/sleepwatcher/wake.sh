@@ -1,29 +1,44 @@
 #!/usr/bin/env bash
-# SleepWatcher wake hook — remount the 'Extra Space' volume.
-# No UUID hardcoded (the Volume UUID changes on reformat); address the
-# volume by its mount point "/Volumes/Extra Space" or device disk8s1.
-# Only ever touches volume disk8s1 / its mount point, never whole device disk7.
-LOG=/tmp/sleepwatcher.log
+# SleepWatcher wake hook (`sleepwatcher -w`): bring 'Extra Space' back if the
+# drive is still attached. If it was unplugged while the Mac slept - the normal
+# case - no device shows up and this exits 0 quietly.
+#
+# The volume is looked up by name on every attempt rather than remembered by
+# diskN: after the sleep hook's eject the drive is re-enumerated with a fresh
+# identifier, and USB devices take a moment to come back. Bounded at ~10 s so
+# wake is never held up on a device that is not coming back, and it always
+# exits 0 - a detached drive is not an error.
+set -u
+. "${HOME}/.config/sleepwatcher/common.sh"
 
-# Common case: macOS automounts on wake before this hook runs — skip the loop.
-if /usr/sbin/diskutil info disk8s1 2>/dev/null | /usr/bin/grep -q "Mounted:"; then
-  echo "already mounted (automount) $(date)" >>"$LOG"
-  exit 0
+MAX_ATTEMPTS=10
+
+# An unclean removal can leave an empty /Volumes/Extra Space behind, and macOS
+# then mounts the returning volume as "/Volumes/Extra Space 1". rmdir only ever
+# removes an empty directory, and fails harmlessly on a real mount point.
+if [ -d "$VOL_PATH" ]; then
+  /bin/rmdir "$VOL_PATH" 2>/dev/null && log "wake: removed stale mount point ${VOL_PATH}"
 fi
 
-# Otherwise retry ~30 attempts at 2s apart (~60s total), trying the mount
-# point first, then the device identifier.
-for _ in $(seq 1 30); do
-  if /usr/sbin/diskutil mount "/Volumes/Extra Space" >/dev/null 2>&1; then
-    echo "mounted (via mount point) $(date)" >>"$LOG"
+attempt=0
+while [ "$attempt" -lt "$MAX_ATTEMPTS" ]; do
+  attempt=$((attempt + 1))
+  if volume_mounted; then
+    log "wake: ${VOL_NAME} mounted (attempt ${attempt})"
     exit 0
   fi
-  if /usr/sbin/diskutil mount disk8s1 >/dev/null 2>&1; then
-    echo "mounted (via disk8s1) $(date)" >>"$LOG"
-    exit 0
+  dev=$(unmounted_volume_device)
+  if [ -n "$dev" ]; then
+    /usr/sbin/diskutil mount "$dev" >/dev/null 2>&1
+    rc=$?
+    if volume_mounted; then
+      log "wake: mounted ${dev} (attempt ${attempt})"
+      exit 0
+    fi
+    log "wake: mount ${dev} failed exit ${rc} (attempt ${attempt})"
   fi
-  sleep 2
+  /bin/sleep 1
 done
 
-echo "FAILED to remount $(date)" >>"$LOG"
-exit 1
+log "wake: ${VOL_NAME} not remounted after ${MAX_ATTEMPTS}s (drive detached during sleep, or not mountable)"
+exit 0

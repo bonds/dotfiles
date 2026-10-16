@@ -116,6 +116,18 @@ in {
       echo "  3. Run: touch $containers_setup" >&2
       echo "  (this reminder won't show again)" >&2
     fi
+
+    # 'Extra Space' is a removable data/backup volume: keep Spotlight off it.
+    # mds is a classic Disk Arbitration dissenter, so indexing it can block the
+    # sleepwatcher sleep hook's unmount (see modules/home/sleepwatcher), and it
+    # is pointless I/O on a drive that gets unplugged. Guarded and idempotent:
+    # it only touches the volume while that volume is actually mounted.
+    if [ -d "/Volumes/Extra Space" ] &&
+      /sbin/mount | /usr/bin/grep -qF " on /Volumes/Extra Space ("; then
+      /usr/bin/mdutil -i off "/Volumes/Extra Space" >/dev/null 2>&1 || true
+      /usr/bin/touch "/Volumes/Extra Space/.metadata_never_index" 2>/dev/null || true
+      echo "extraSpace: Spotlight indexing off for /Volumes/Extra Space"
+    fi
   '';
 
   # Serper-key merge lives in postActivation, NOT extraActivation: nix-darwin
