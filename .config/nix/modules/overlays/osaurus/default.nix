@@ -1,11 +1,11 @@
 final: prev: {
   osaurus = final.mkDarwinPackage rec {
     pname = "osaurus";
-    version = "0.25.22";
+    version = "0.25.23";
 
     src = prev.fetchurl {
       url = "https://github.com/osaurus-ai/osaurus/releases/download/${version}/Osaurus-${version}.dmg";
-      hash = "sha256-iaaLj9ZadUfUHCnWfE3cYF0VYu9nKStb+pkDTvAk5Ww=";
+      hash = "sha256-lj2wbghrFgAnCHwRLi7ws3HcsyvZ2Kan+zSeWhI5LWQ=";
     };
 
     nativeBuildInputs = [prev._7zz];
