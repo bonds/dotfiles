@@ -281,11 +281,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792284033,
-        "narHash": "sha256-PODIDZZieZ1ZKzlziGRfY0KqhTSNRRthR6+t6y3RbCY=",
+        "lastModified": 1792285246,
+        "narHash": "sha256-YkeoIikmM9Z9FVD503Hfhoo6r4qie1aSlDoh2PqbSTk=",
         "owner": "bonds",
         "repo": "polyptych",
-        "rev": "080c1b24a8f3320bfa607e926ac76350c784039b",
+        "rev": "b22664e250be7f7e393ad828d7eddc703cdfef57",
         "type": "github"
       },
       "original": {
