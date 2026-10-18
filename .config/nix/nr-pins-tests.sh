@@ -62,19 +62,23 @@ JSON
   }
 }
 JSON
-    cp "$HERE/flake-pins.json" "$T/flake-pins.json"
     cp "$HERE/flake.nix" "$T/flake.nix"
     # Keep the fixture's SHAPE fixed. The assertions below count the two pins
-    # this suite is written against (nixpkgs/thrift + nixpkgs-unstable/anyio) and
-    # the render case checks their pinned rev urls, but the LIVE registry's pin
-    # set is self-expiring — the anyio pin was retired into `$retired` on
-    # 2026-10-15, and copying it verbatim made 14 registry tests fail on a
-    # legitimate pin change. Fold retired entries back in, then re-render the
-    # block so the fixture registry and its flake.nix agree (otherwise check's
-    # reconcile pass reports a spurious change). NR_PINS_SNAPSHOT keeps the
-    # backup apply_block writes inside $T.
-    jq '.pins = ((.pins // []) + (."$retired" // [])) | del(."$retired")' \
-        "$T/flake-pins.json" > "$T/reg.tmp" && mv "$T/reg.tmp" "$T/flake-pins.json"
+    # this suite is written against (nixpkgs/thrift + nixpkgs-unstable/anyio),
+    # but the LIVE registry's pin set is self-expiring — copying it verbatim
+    # made these tests fail on legitimate pin changes (the anyio pin was
+    # retired on 2026-10-15, leaving 31 failures). Keep the live `base` list
+    # (it carries the real input URLs, including rev-pinned ones) and set the
+    # pins explicitly.
+    jq '.pins = [
+          {input: "nixpkgs", branch: "github:NixOS/nixpkgs/nixos-26.05",
+           url: "github:NixOS/nixpkgs/774debe7a0d1b496e35677ad955a1011c6ff74f3", pnames: ["thrift"],
+           since: "2026-01-01", reason: "test fixture"},
+          {input: "nixpkgs-unstable", branch: "github:NixOS/nixpkgs/nixpkgs-unstable",
+           url: "github:NixOS/nixpkgs/c9fe7d12cd78d1adcd12dd15e24432dde5b155a0", pnames: ["anyio"],
+           since: "2026-01-01", reason: "test fixture"}
+        ] | del(."$retired")' \
+        "$HERE/flake-pins.json" > "$T/flake-pins.json"
     NR_PINS_FLAKE_DIR="$T" NR_PINS_SNAPSHOT="$T/pins-snapshot.json" bash "$S" apply > /dev/null 2>&1
 }
 
@@ -592,6 +596,65 @@ NR_PINS_STUB_ATTR_OUT="$WT/attrs.txt" run "thrift" - check darwinConfigurations.
 attrs="$(sort -u "$WT/attrs.txt" | tr '\n' ' ')"
 [ "${attrs% }" = "darwinConfigurations.test.system" ] && ok "attr forwarded verbatim" \
     || bad "attr leaked/ignored: got '${attrs% }'"
+
+
+# --------------------------------------------------- rev-pinned inputs (pi) --
+# pi is a third-party input locked to a *release rev* rather than a branch. It
+# cannot be probed against a branch head, so `diagnose` reverts it by matching
+# the failing derivation's package name, and `check` decides keep-vs-drop by
+# comparing the registry's base URL with the URL recorded at pin time.
+
+setup_rev_input() { # setup + a rev-pinned input `pi` that moved in this update
+    setup
+    jq '.nodes.pi = {locked: {owner: "earendil-works", repo: "pi",
+        rev: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", type: "git"}}' \
+        "$T/flake.lock" > "$T/l.tmp" && mv "$T/l.tmp" "$T/flake.lock"
+    jq '.nodes.pi = {locked: {rev: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}' \
+        "$T/pins-snapshot.json" > "$T/s.tmp" && mv "$T/s.tmp" "$T/pins-snapshot.json"
+}
+
+printf '\n== diagnose: a failing rev-pinned input is reverted ==\n'
+setup_rev_input
+cat > "$T/pi.log" <<'LOG'
+error: builder for '/nix/store/cccccccccccccccccccccccccccccccc-pi-1.4.0.drv' failed with exit code 1
+LOG
+run "" - diagnose "$T/pi.log" > /dev/null
+check_rc 2 $? "diagnose reverts a moved rev-pinned input"
+[ "$(jq -r '.pins[] | select(.input=="pi") | .url' "$T/flake-pins.json")" \
+    = "git+https://github.com/earendil-works/pi?rev=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ] \
+    && ok "reverted pi to the snapshot rev" \
+    || bad "wrong pi url: $(jq -r '.pins[] | select(.input=="pi") | .url' "$T/flake-pins.json")"
+[ "$(jq -r '.pins[] | select(.input=="pi") | .branch' "$T/flake-pins.json")" \
+    = "$(jq -r '.base[] | select(.input=="pi") | .url' "$T/flake-pins.json")" ] \
+    && ok "recorded the rejected release as the pin's normal URL" || bad "wrong pi branch"
+grep -qF 'rev=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' "$T/flake.nix" \
+    && ok "flake.nix renders the reverted rev" || bad "reverted rev not rendered"
+
+printf '\n== check: a reverted rev-pin stays pinned for the same release ==\n'
+run "thrift anyio" - check > /dev/null
+check_rc 1 $? "check keeps the rev-pin for the release that failed"
+[ "$(jq '[.pins[] | select(.input=="pi")] | length' "$T/flake-pins.json")" -eq 1 ] \
+    && ok "pi pin retained" || bad "pi pin dropped"
+
+printf '\n== check: a newer release drops the rev-pin ==\n'
+jq '.base |= map(if .input=="pi" then .url="git+https://github.com/earendil-works/pi?rev=dddddddddddddddddddddddddddddddddddddddd" else . end)' \
+    "$T/flake-pins.json" > "$T/r.tmp" && mv "$T/r.tmp" "$T/flake-pins.json"
+run "thrift anyio" - check > /dev/null
+check_rc 2 $? "check drops the rev-pin for a new release"
+[ "$(jq '[.pins[] | select(.input=="pi")] | length' "$T/flake-pins.json")" -eq 0 ] \
+    && ok "pi pin dropped" || bad "pi pin still present"
+grep -qF 'rev=dddddddddddddddddddddddddddddddddddddddd' "$T/flake.nix" \
+    && ok "flake.nix renders the new release" || bad "new release not rendered"
+
+printf '\n== diagnose: an unrelated failure does not revert the rev-pin ==\n'
+setup_rev_input
+cat > "$T/other.log" <<'LOG'
+error: builder for '/nix/store/cccccccccccccccccccccccccccccccc-photo-export-0.2.5.drv' failed with exit code 1
+LOG
+run "" - diagnose "$T/other.log" > /dev/null
+check_rc 1 $? "diagnose leaves pi alone for an unrelated failure"
+[ "$(jq '[.pins[] | select(.input=="pi")] | length' "$T/flake-pins.json")" -eq 0 ] \
+    && ok "no pi pin" || bad "pi was reverted for an unrelated failure"
 
 printf '\n== summarised: %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

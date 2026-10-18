@@ -76,9 +76,9 @@ reg_init() {
             (.input | type) == "string" and (.input | length) > 0
             and (.input | test("^[A-Za-z0-9._-]+\\z"))
             and (.branch | type) == "string" and (.branch | length) > 0
-            and (.branch | test("^[A-Za-z0-9._:/-]+\\z"))
+            and (.branch | test("^[A-Za-z0-9._:/@+?=&-]+\\z"))
             and (.url | type) == "string" and (.url | length) > 0
-            and (.url | test("^[A-Za-z0-9._:/@+-]+\\z"))
+            and (.url | test("^[A-Za-z0-9._:/@+?=&-]+\\z"))
             and (.pnames | type) == "array"
             and (.since | type) == "string" and (.since | length) > 0
             and (.since | test("^[A-Za-z0-9._-]+\\z"))
@@ -91,7 +91,16 @@ reg_init() {
                      (.input | type) == "string" and (.input | length) > 0
                      and (.input | test("^[A-Za-z0-9._-]+\\z"))
                      and (.url | type) == "string" and (.url | length) > 0
-                     and (.url | test("^[A-Za-z0-9._:/@+-]+\\z"))
+                     and (.url | test("^[A-Za-z0-9._:/@+?=&-]+\\z"))
+                     # Optional, for rev-pinned inputs: the package names its
+                     # build produces, so `diagnose` can attribute a failing
+                     # derivation to it, and a free-text note rendered in the
+                     # block (comment-prefixed, so it is safe like `reason`).
+                     and (if has("pnames") then
+                              (.pnames | type) == "array"
+                              and all(.pnames[]; (. | type) == "string" and test("^[A-Za-z0-9._+-]+\\z"))
+                          else true end)
+                     and (if has("note") then (.note | type) == "string" else true end)
                  )
                  and ((.base | map(.input) | unique | length) == (.base | length))
              else true end)' "$REGISTRY" > /dev/null 2>&1 \
@@ -169,6 +178,41 @@ reg_base() { # → "input<TAB>normal-branch-url", one line per owned input
         printf 'nixpkgs\tgithub:NixOS/nixpkgs/nixos-26.05\n'
         printf 'nixpkgs-unstable\tgithub:NixOS/nixpkgs/nixpkgs-unstable\n'
     fi
+}
+
+reg_base_url() { # reg_base_url <input> → its normal URL (branch, or rev for rev-pinned)
+    reg_base | awk -F'\t' -v i="$1" '$1 == i {print $2; exit}'
+}
+
+reg_base_pnames() { # reg_base_pnames <input> → declared package names (may be empty)
+    jq -r --arg i "$1" '.base[]? | select(.input == $i) | (.pnames // [])[]' "$REGISTRY" 2> /dev/null
+}
+
+reg_base_note() { # reg_base_note <input> → free-text note for the block (may be empty)
+    jq -r --arg i "$1" '.base[]? | select(.input == $i) | .note // empty' "$REGISTRY" 2> /dev/null
+}
+
+# A rev-pinned input is a third-party flake input locked to a release rev rather
+# than a branch (e.g. `git+https://github.com/owner/repo?rev=<sha>`). Its base
+# URL changes when a new release is published, so it cannot be probed against a
+# branch the way a nixpkgs pin is. `check` and `diagnose` handle it by URL
+# comparison and by matching the failing derivation's package name instead.
+is_rev_input() {
+    case "$(reg_base_url "$1")" in
+        *'?rev='* | *'&rev='*) return 0 ;;
+    esac
+    return 1
+}
+
+rev_inputs() { # → every rev-pinned input the registry's base owns
+    reg_base | cut -f1 | while IFS= read -r i; do
+        [ -n "$i" ] || continue
+        is_rev_input "$i" && printf '%s\n' "$i"
+    done
+}
+
+rev_pin_url() { # rev_pin_url <input> <rev> → its base URL with the rev replaced
+    reg_base_url "$1" | sed -E "s/([?&]rev=)[0-9a-f]+/\1$2/"
 }
 
 reg_get() { # reg_get <input> <field>
@@ -371,7 +415,7 @@ HDR
     # remove the declaration itself — the rest of flake.nix follows these inputs
     # by name, so a missing declaration makes every `inputs.X.follows` dangle.
 HDR2
-    local input url branch since reason pnames base_url
+    local input url branch since reason pnames base_url note
     # Deterministic order (C collation) so reconcile_block's whitespace-normalised
     # diff stays meaningful. reg_inputs is a subset of reg_base (enforced in
     # reg_init); the union keeps the render correct even if that is bypassed.
@@ -392,10 +436,12 @@ HDR2
             printf '%s\n' "$reason" | fold -s -w 68 | sed -e 's/[[:space:]]*$//' -e 's/^/    #   /'
             printf '    %s.url = "%s";\n' "$input" "$url"
         else
-            base_url="$(reg_base | awk -F'\t' -v i="$input" '$1 == i {print $2; exit}')"
+            base_url="$(reg_base_url "$input")"
             [ -n "$base_url" ] || die "the block must declare '$input' but the registry's base list has no URL for it — add {\"input\": \"$input\", \"url\": ...} to .base"
             printf '    #\n'
             printf '    # %s — not pinned, normally %s\n' "$input" "${base_url#github:NixOS/nixpkgs/}"
+            note="$(reg_base_note "$input")"
+            [ -n "$note" ] && printf '%s\n' "$note" | fold -s -w 68 | sed -e 's/[[:space:]]*$//' -e 's/^/    #   /'
             printf '    %s.url = "%s";\n' "$input" "$base_url"
         fi
     done
@@ -518,11 +564,34 @@ reconcile_block() { # 0 = already matches · 2 = rewritten to match · 1 = canno
 
 cmd_check() { # drop every pin whose blocker has cleared
     reg_init
-    local attr input branch p pnames pnames_flat still probe_err changed=0 kept=0
+    local attr input branch p pnames pnames_flat still probe_err changed=0 kept=0 base_url
     attr="${1:-}"
     [ -n "$attr" ] || attr="$(resolve_attr)" || die "could not resolve the system attribute to probe"
     for input in $(reg_inputs); do
         branch="$(reg_get "$input" branch)"
+        # A rev-pinned input cannot be probed against a branch: its "normal" URL
+        # is the release rev the update script set. Keep the pin while the
+        # registry still points at the release that failed, and drop it as soon
+        # as a newer release appears so `nix flake update` tries that one. The
+        # pin's `branch` field holds the rejected release URL — that is exactly
+        # "the URL that would be used if not pinned".
+        if is_rev_input "$input"; then
+            base_url="$(reg_base_url "$input")"
+            if [ -z "$branch" ] || [ -z "$base_url" ]; then
+                log "keeping the $input pin — cannot read its pinned or normal URL; fix the registry"
+                kept=1
+            elif [ "$base_url" = "$branch" ]; then
+                log "keeping the $input pin — $base_url is still the release that failed"
+                kept=1
+            elif reg_drop "$input"; then
+                log "dropping the $input pin — new release to try: $base_url"
+                changed=1
+            else
+                log "could not update flake-pins.json — keeping the $input pin"
+                kept=1
+            fi
+            continue
+        fi
         # An entry we cannot read (missing, null, or unreadable pnames) is not
         # evidence that anything cleared — keep the pin and say so.
         #
@@ -604,6 +673,7 @@ cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input cause
     jq -e '.nodes | type == "object" and length > 0' "$LOCK" > /dev/null 2>&1 \
         || die "cannot read flake.lock ($LOCK) or it has no nodes — diagnose cannot tell which inputs moved"
     local attr drvs d p pnames input branch rev hit pinned=0 perr=0 probe_err=0 io_err=0
+    local rinput rpnames snaprev
     attr="$(resolve_attr)" || die "could not resolve the system attribute to probe"
 
     drvs="$(strip_ansi < "$logfile" 2>/dev/null \
@@ -623,6 +693,53 @@ cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input cause
     [ -n "${pnames// /}" ] || { log "no package names derived — not pinning"; return 1; }
     log "failing: $(printf '%s ' $drvs)"
     log "package: ${pnames% }"
+
+    # Rev-pinned third-party inputs first. A moved input whose own package IS the
+    # failing derivation is the specific culprit, and reverting it is safe: the
+    # previous release already built, so its output is in the store. This must
+    # run BEFORE the nixpkgs scan: a from-source package like pi is always in the
+    # build plan, so `needs_build` would blame a nixpkgs bump for every failure
+    # of it. If one is reverted, retry before considering nixpkgs at all — the
+    # next attempt sees it as unmoved and falls through to the nixpkgs scan,
+    # which keeps the retry loop convergent.
+    for rinput in $(rev_inputs); do
+        if ! moved "$rinput"; then
+            log "$rinput did not move in this update — skipping"
+            continue
+        fi
+        rpnames="$(reg_base_pnames "$rinput")"
+        [ -n "$rpnames" ] || rpnames="$rinput"
+        hit=""
+        for p in $pnames; do
+            printf '%s\n' "$rpnames" | grep -qxF "$p" && hit="$hit $p"
+        done
+        if [ -z "${hit// /}" ]; then
+            log "$rinput: its packages ($(printf '%s ' $rpnames)) are not the failing one — not the culprit"
+            continue
+        fi
+        snaprev="$(jq -r --arg n "$rinput" '.nodes[$n].locked.rev // empty' "$SNAPSHOT" 2>/dev/null)"
+        if [ -z "$snaprev" ]; then
+            log "$rinput: no rev for it in the snapshot — cannot revert it"
+            io_err=1
+            continue
+        fi
+        log "$rinput: release build failed (${hit# }); reverting to the last-good rev ${snaprev:0:12}"
+        if reg_put "$(jq -n --arg i "$rinput" --arg b "$(reg_base_url "$rinput")" \
+            --arg u "$(rev_pin_url "$rinput" "$snaprev")" \
+            --argjson p "$(printf '%s\n' $hit | jq -R . | jq -cs .)" \
+            --arg s "$(date '+%Y-%m-%d')" \
+            --arg r "the release build failed here (via ${hit# }); reverted to the last release that built" \
+            '{input: $i, branch: $b, url: $u, pnames: $p, since: $s, reason: $r}') "; then
+            pinned=1
+        else
+            log "$rinput: could not write the registry — the revert was NOT recorded"
+            io_err=1
+        fi
+    done
+    if [ "$pinned" -eq 1 ]; then
+        apply_block || die "reverted an input but flake.nix was not rewritten — run 'nr-pins apply' to reconcile"
+        return 2
+    fi
 
     # Enumerate first, and treat an EMPTY list as an anomaly rather than a clean
     # result: a lock that is parseable but shapeless (dangling root.inputs, nodes

@@ -149,6 +149,14 @@ again.
   Before the flake update it also runs the binary-overlay `update.sh` scripts
   and `pkgs/pi/update.sh`, which moves the rev-pinned `pi` flake input to the
   latest GitHub **release** (not `main`).
+- **Rev-pinned third-party inputs** (e.g. `pi`) are `base` entries whose URL
+  carries `?rev=<sha>`, with a `pnames` list and an optional `note`. They have
+  no branch to probe, so the pin engine handles them differently: `diagnose`
+  reverts one whose package is the failing derivation (matching `pnames`), and
+  `check` keeps that pin until the base URL changes — i.e. until a newer
+  release appears, at which point it drops the pin to try it. This runs BEFORE
+  the nixpkgs scan: a from-source package is always in the build plan, so
+  `needs_build` would otherwise blame a nixpkgs bump for every failure of it.
 - **Commands:** `snapshot` (record the revs that build now) · `check [attr]`
   (probe each pin against its branch head, drop the cleared ones) ·
   `diagnose <log>` (pin the culprit of a failed build) · `apply` (re-render the

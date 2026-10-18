@@ -20,6 +20,16 @@
     #
     # nixpkgs-unstable — not pinned, normally nixpkgs-unstable
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    #
+    # pi — not pinned, normally git+https://github.com/earendil-works/pi?rev=71023aec1546d6d677a65669c5665c0927ce0dd0
+    #   Rev-pinned to a GitHub release: a from-source npm build with no
+    #   binary cache, so chasing main would build a random commit on every
+    #   `nr --update`. pkgs/pi/update.sh moves this to the latest release;
+    #   if that release fails to build, `nr-pins diagnose` reverts it to
+    #   the last-good rev and `check` keeps it there until a newer release
+    #   appears. FOLLOWS nixpkgs-unstable on purpose (upstream targets
+    #   nixos-unstable); unstable->unstable is safe and dedupes flake.lock.
+    pi.url = "git+https://github.com/earendil-works/pi?rev=71023aec1546d6d677a65669c5665c0927ce0dd0";
     # ---- END nr-managed input pins -----------------------------------------------
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
@@ -42,16 +52,11 @@
       url = "github:bonds/NeoCode";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Pi coding agent (earendil-works/pi) — CLI AI coding agent for accismus.
-    # Rev-pinned to a release: it is a from-source npm build with no binary
-    # cache, so chasing main would make every `nr --update` build a random
-    # commit and risk a broken tree. `nr --update` follows GitHub *releases*
-    # (pkgs/pi/update.sh rewrites this rev to the latest release tag); pin a
-    # specific tag by hand if needed.
-    # FOLLOWS nixpkgs-unstable on purpose (upstream targets nixos-unstable):
-    # unstable→unstable follows is safe — the AGENTS.md gotcha is about
-    # following TO a stable channel — and it dedupes flake.lock.
-    pi.url = "git+https://github.com/earendil-works/pi?rev=71023aec1546d6d677a65669c5665c0927ce0dd0";
+    # pi is declared in the nr-managed pin block above (see flake-pins.json):
+    # it is rev-pinned to a release, moved forward by pkgs/pi/update.sh, and
+    # reverted automatically if a release fails to build. FOLLOWS
+    # nixpkgs-unstable on purpose (upstream targets nixos-unstable);
+    # unstable→unstable is safe and dedupes flake.lock.
     pi.inputs.nixpkgs.follows = "nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
 
