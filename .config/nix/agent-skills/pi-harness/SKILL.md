@@ -34,6 +34,8 @@ nix-store symlinks.
 | `custom-footer.ts` | `/footer` toggles branch + tokens + cost |
 | `plan-mode/` | read-only `/plan` mode, `ctrl+alt+p` |
 | `learnings-capture.ts` | appends tool failures to `~/.pi/agent/inbox.md` |
+| `corrections-capture.ts` | appends user corrections and stated rules to the same inbox, with the action being corrected |
+| `record-learning.ts` | `learning` tool: writes + indexes `<repo>/docs/learnings/` |
 | `session-recall.ts` | `recall` tool: search past session JSONL |
 
 Rules that keep these safe: no model calls, never throw into the run (wrap
@@ -79,13 +81,22 @@ harness skips the skill silently). Keep it under 1024 characters.
 
 ## The learning loop
 
+Two stores, because there are two kinds of lesson. Agent *conduct* goes to the
+inbox and climbs the ladder; *domain knowledge* (a platform quirk, an API
+lifetime rule) stays in the repo next to the code, indexed, and never climbs
+anything.
+
 1. **Capture** — `learnings-capture.ts` writes one line per distinct failure
    signature to `~/.pi/agent/inbox.md` (immediately for policy/permission
-   failures, on the second occurrence otherwise). No model calls.
+   failures, on the second occurrence otherwise); `corrections-capture.ts`
+   writes one line per correction or stated rule, tagged `correction`/`policy`,
+   quoting the sentence and recording what it was correcting ("no" after
+   `git push` is the lesson; "no" alone is not). Neither makes a model call.
 2. **Distill** — `/distill` clusters the inbox and promotes each item up the
    ladder: `AGENTS.md` line → skill → hook/extension → automation. Seen twice
    means rung 3; `AGENTS.md` must not grow.
-3. **Verify** — `pkgs/pi/evals/run.sh` runs 13 `pi --print` cases that check
+3. **Verify** — `pkgs/pi/evals/run.sh` runs the `pi --print` cases in
+   `cases.txt` (one per routing fact) and checks
    the context still routes to the right files (`MODEL=` and case-name filters
    supported; scratch dirs under `~/.cache/pi-evals` because context files only
    load from the cwd downward, so running from `/tmp` would test bare pi).
@@ -96,8 +107,10 @@ harness skips the skill silently). Keep it under 1024 characters.
 4. **Recall** — the `recall` tool searches session JSONL for earlier work on
    the same problem. Codemode exposure, so it costs nothing per request.
 
-`/learn` is the manual sibling of capture: it writes `docs/learnings/` in a
-repo for a lesson that has no failed tool call behind it.
+`learning` (tool) and `/learn` (prompt) handle domain knowledge: entry in
+`<repo>/docs/learnings/YYYY-MM-DD-slug.md`, index line in its `README.md`,
+README scaffolded on first use. The tool refuses outside a git repository, so a
+lesson in `$HOME` correctly falls through to the inbox or `DECISIONS.md`.
 
 ## Testing without a rebuild
 

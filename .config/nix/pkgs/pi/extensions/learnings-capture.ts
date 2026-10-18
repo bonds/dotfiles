@@ -34,8 +34,9 @@ const MAX_SIGNATURE = 140;
 
 const HEADER = `# Learnings inbox
 
-Candidates written by the \`learnings-capture\` extension when a tool call
-failed. Each line is one distinct failure signature in one session.
+Candidates written by the \`learnings-capture\` and \`corrections-capture\`
+extensions when a tool call failed, or when the user corrected the agent or
+stated a rule.
 
 Run \`/distill\` to cluster these and promote them (AGENTS.md -> skill -> hook),
 then empty this file. Do not edit by hand: delete lines instead.

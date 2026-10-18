@@ -1,20 +1,29 @@
 ---
-description: Record a surprising finding in the repo's docs/learnings
+description: Record a non-obvious discovery in docs/learnings
 argument-hint: "[topic]"
 ---
-We just hit something non-obvious (topic: ${1:-unspecified}). Write it up so it
+We just hit something non-obvious (topic: ${1:-unspecified}). Record it so it
 is not rediscovered.
 
-Create `docs/learnings/<short-kebab-title>.md` in the current repo, or add to
-the existing entry if one already covers it. Keep it to three short sections:
+This is **domain knowledge** — a platform quirk, an API lifetime rule, an
+undefined-behavior trap. Agent-behaviour lessons ("never force-push") belong in
+`~/.pi/agent/inbox.md` for `/distill`, not here.
 
-- **Symptom** — what was observed, including the exact error text.
-- **Cause** — the underlying behavior (platform quirk, API change, undefined
-  behavior, wrong assumption).
-- **Fix / takeaway** — what to do next time, with the command or code that
-  works.
+1. If the repo has no `docs/learnings/`, create it with a `README.md` that has
+   an `## Entries` heading and the symptom / cause / fix template — copy the
+   shape from `~/src/bonds/polyptych/docs/learnings/README.md`.
+2. Write `docs/learnings/<YYYY-MM-DD>-<short-kebab-title>.md`, using today's
+   date from `date +%Y-%m-%d`. Three sections, kept short and concrete:
+   - **Symptom** — what was observed, including the exact error text or the
+     wrong behaviour.
+   - **Cause** — the underlying reason.
+   - **Fix / takeaway** — the command or code that works next time.
+3. Add one line under `## Entries` in `docs/learnings/README.md`, linking the
+   file with a short title.
+4. If the repo's own `AGENTS.md` does not mention `docs/learnings/`, add a
+   two-line `## Learnings` section pointing at it. That local echo is what
+   makes the practice survive: the rule has lived in `~/AGENTS.md` for a while
+   and was followed in exactly the one repo that repeated it locally.
 
-Then add one line to `docs/learnings/README.md` (create it with a
-`## Entries` heading if missing) linking the new file with a one-sentence
-summary. If the repo has no `docs/learnings/`, say so and ask before creating
-the directory.
+Prefer the `learning` tool when it is available — it does steps 1–3 in a single
+call. Leave the result uncommitted for the normal review flow.

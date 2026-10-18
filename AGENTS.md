@@ -135,33 +135,35 @@ YAML and the harness skips the skill silently.
 ## Compounding
 
 pi has no weight updates. It gets better only because lessons land in files the
-next session loads, so every lesson has a rung to climb:
+next session loads, and there are two kinds, with two homes:
 
-1. **`AGENTS.md` line** — advisory, costs tokens every request.
-2. **Skill** — loaded only when its description routes to it.
-3. **Hook / extension** — deterministic; the right home for "never do X".
-4. **Automation** — nix module, pre-commit hook, `nr` step.
+| Lesson | Home | Trigger |
+|---|---|---|
+| Agent conduct ("never force-push", "doas needs full paths") | `~/.pi/agent/inbox.md` → `/distill` | a tool failed, or the user corrected you |
+| Domain knowledge ("`openFile` also delivers argv") | `<repo>/docs/learnings/` | the world surprised you while working |
 
-Promote; do not accumulate prose. A rule seen twice belongs on rung 3, and
-`AGENTS.md` must not grow — move a paragraph into a skill in the same edit.
-`~/DECISIONS.md` holds the settled *why* so it stops being re-litigated.
+Agent lessons climb a ladder, and promoting past the current rung is the point:
+`AGENTS.md` line → skill → hook/extension → automation. A rule seen twice
+belongs on rung 3, and `AGENTS.md` must not grow — move a paragraph into a
+skill in the same edit. `~/DECISIONS.md` holds the settled *why*.
 
-The loop, in order:
+Domain learnings climb nothing: they are facts about a project, so they stay
+next to the code, indexed in `docs/learnings/README.md`, committed with it, and
+superseded rather than deleted. Use the `learning` tool, or `/learn`.
 
-- **Capture.** `learnings-capture.ts` appends each distinct tool failure to
-  `~/.pi/agent/inbox.md` (immediately for policy/permission failures, on the
-  second occurrence otherwise). Read it, do not edit it.
+The loop:
+
+- **Capture.** `learnings-capture.ts` writes one line per distinct tool failure
+  to the inbox; `corrections-capture.ts` writes one per correction or stated
+  rule ("from now on…", "always…"), recording the action being corrected. Read
+  it, do not edit it.
 - **Distill.** `/distill` clusters the inbox and promotes each item up the
   ladder, then deletes what it processed.
 - **Verify.** After changing `AGENTS.md`, a skill description, or
-  `DECISIONS.md`, run `~/.config/nix/pkgs/pi/evals/run.sh` — it asks pi a dozen
-  routing questions and checks the answers. A failure means the wording got
-  worse, not the model.
+  `DECISIONS.md`, run `~/.config/nix/pkgs/pi/evals/run.sh`. A failure means the
+  wording got worse, not the model.
 - **Recall.** The `recall` tool searches past session JSONL for earlier work on
   the same problem; use it before re-deriving an answer.
-
-`/learn` is the manual sibling of capture, for a lesson with no failed tool
-call behind it.
 
 ## Conventions
 
@@ -178,12 +180,12 @@ call behind it.
 - Nix formatting: alejandra (`nix fmt` — unreliable, prefer `alejandra <file>` directly)
 - **Prefer `rg` (ripgrep) and `fd` over `grep` and `find`.** Both are installed and much faster. Use `rg` for content search and `fd` for file discovery; fall back to `grep`/`find` only where they're unavailable (e.g. a minimal remote host).
 - **Tag and release when you bump a version.** A Git tag is not a GitHub release — create the release too, with notes built from `git log` since the previous tag (auto-generated notes are empty on repos with no PRs): `gh release create <tag> --notes-file <file>`. Creating releases needs `Contents: write`; the fine-grained `gh` PAT may lack it (HTTP 403) — the classic `public_repo` token in the `gh-public-token` Keychain item works for public repos. Worked example: `~/src/bonds/polyptych/AGENTS.md` → Releasing.
-- **Log surprises and lessons learned next to the code.** When you hit something non-obvious — undefined behavior, a platform quirk, an API change, a debugging trap — write a short entry in that repo's `docs/learnings/` (index in `docs/learnings/README.md`) so the knowledge accumulates instead of being re-discovered. Keep it brief: symptom, cause, fix/takeaway. Example: `~/src/bonds/polyptych/docs/learnings/`.
+- **Log surprises next to the code** — see **Compounding**: domain knowledge to the repo's `docs/learnings/`, agent rules to the inbox. Worked example: `~/src/bonds/polyptych/docs/learnings/`.
 - Before committing any changes, run a code review using the current harness's available code-review skill or tool, and ask the user how to proceed
 - After each batch of changes, commit and push to all remotes (`config push origin && config push sophrosyne`). Never force-push (`--force` / `config push -f`) to any remote. If sophrosyne rejects the push because of divergent histories (e.g. a `git commit --amend` or rebase on either side), pull or merge first to reconcile. The sophrosyne bare repo has a `post-receive` hook that checks out the work tree on push — no special `receive.denyCurrentBranch` config needed.
 - **`git push` over SSH needs Secretive TouchID — rebuilds do NOT.** Rebuilds (`nr` / `darwin-rebuild` / `nixos-rebuild`) are passwordless everywhere: `doas` noPass rules (full paths for `nixos-rebuild`/`nh` on sophrosyne) and passwordless sudo on accismus — but passwordless does not mean agent-run: **Scott runs the activating rebuild himself with `nr`**; agents may do build-only verification (e.g. non-activating `nh darwin build`) but must NOT run the switch/rebuild on his behalf (authoritative rule: `.config/nix/AGENTS.md` → Commands). The ONLY non-passwordless step is `git push` over SSH (GitHub and the `scott@home.ggr.com` bare repo): Secretive only signs after TouchID approval, and a fresh Hermes agent shell usually has **no identities** (`ssh-add -l` → "The agent has no identities"; `ssh github.com:22` may time out; `ssh.github.com:443` connects but Secretive "refused operation"). The `gh` CLI token is often read-only and 403s on push.
 - **TouchID is interactive — never wait for it in a loop, don't "resolve" it by retrying.** If a push fails with `Permission denied (publickey)`/403, the user needs to approve via TouchID and they may be AFK; ask them to push when they're back (e.g. `cd ~/Documents/undated/repos/<repo> && git push origin main`), or note it and move on. Don't assume a broken remote, and don't "resolve" a failed push by running the rebuild yourself — TouchID only guards `git push`; activating rebuilds are Scott's to run (rule above).
-- Code repos I'm actively working on live in `~/Documents/undated/repos/`
+- Code repos I'm actively working on live in `~/src/bonds/<name>/` for bonds projects, otherwise `~/Documents/undated/repos/<name>/` (a stale polyptych copy sits in the latter; the live one is `~/src/bonds/polyptych`)
 - **Nix deployments to remote machines:** Never attempt a cross-build from the local machine (aarch64-darwin cannot build x86_64-linux derivations that have `allowSubstitutes = false`, such as `arion-compose`). Instead, push the commit and then SSH directly to the target machine and a rebuild via **`fish -c 'nr'`** (runs detached in tmux session `nr-build`, mirroring local agent use) — or `fish -i -c 'nr'` to wait for the result: `ssh sophrosyne "fish -c 'nr'"`. `nr` handles the split build + exact-path `doas` switch, matching the noPass rules. Only fall back to `/run/current-system/sw/bin/nixos-rebuild` directly if `nr` itself is broken. Use the full `/run/current-system/sw/bin/nixos-rebuild` path if you do call it directly, so the `noPass` doas rule matches.
 - **Remote rebuilds must run to completion — a background/no-TTY SSH job silently no-ops.** Any remote deploy that can't get a TTY or forward the agent (e.g. Hermes running it in `terminal(background=true)`, or a bare `nixos-rebuild` with `doas` when the agent isn't forwarded) fails to authenticate with doas, prints **nothing, and exits 0 while creating NO new generation** — it looks like success but changes nothing. Run the deploy in the foreground and verify a new generation actually landed: `readlink -f /nix/var/nix/profiles/system` (must differ from before) and look for the `Done. The new configuration is ...` line. Don't trust the exit code alone.
 - **sophrosyne's shell is fish.** Inline one-liners passed to `ssh sophrosyne '...'` must be fish-compatible: bash-isms abort the whole line before anything runs — e.g. appending `echo "RC=$?"` makes fish error on `$?` (treated as a command), killing the entire remote command. Use `$status` for exit codes on the remote side.

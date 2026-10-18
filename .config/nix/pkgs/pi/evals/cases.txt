@@ -70,3 +70,20 @@ expect: pkgs/pi
 ### inbox-purpose
 prompt: What is ~/.pi/agent/inbox.md for, and what turns it into a permanent fix?
 expect: distill
+
+### inbox-sources
+prompt: What kinds of lesson does ~/.pi/agent/inbox.md collect, and what turns them into a permanent fix?
+expect: correction
+expect: distill
+
+### domain-learnings
+prompt: Where does a non-obvious platform or API discovery get recorded, and what three sections does that entry have?
+expect: docs/learnings
+expect: symptom
+expect: cause
+expect: fix
+
+### repos-location
+prompt: Where do the bonds code repos live on this machine, as opposed to the other active repos?
+expect: src/bonds
+expect: undated/repos
