@@ -107,7 +107,10 @@ are in the `machines-and-services` skill.
 
 ### Scripts (`bin/`)
 Cross-platform utility scripts, organized by OS:
-- `bin/` root — general utilities: `bench`, `def`, `mylocation`, `rainbow`, `rdemo`, `repo2txt`, `sort_photos`, `wifi_qrcode`, `wol`, `youtube`
+- `bin/` root — general utilities: `bench`, `def`, `hm-links`, `mylocation`, `rainbow`, `rdemo`, `repo2txt`, `sort_photos`, `wifi_qrcode`, `wol`, `youtube`
+  - `hm-links` — audit/repair home-manager's symlinks in `$HOME`; see the nix
+    AGENTS.md gotcha. `hm-links` audits, `--fix` repairs, `--scan` also finds
+    orphans the current generation no longer manages.
 - `bin/darwin/` — macOS-specific: `create_devbox_app_aliases`, `macos-defaults` (system preference toggles)
 - `bin/linux/` — Linux-specific: `idletime`, `maximize_across_multiple_monitors`, `vu1server`, `wear`
 - `bin/openbsd/` — OpenBSD-specific: `packages`, `wipe`

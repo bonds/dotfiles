@@ -1,5 +1,28 @@
-{...}: {
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
   home.stateVersion = "26.05";
+
+  # Repair home-manager's own links right after each activation.
+  #
+  # HM re-links every managed path on each run, but it does not remove a
+  # DIRECTORY symlink when a path changes from one whole-dir symlink to
+  # per-file links. That leaves the path resolving into an old generation (and
+  # dangling once it is collected) — it is how pi ended up seeing every skill
+  # twice ("[Skill conflicts]"): ~/.pi/agent/skills stayed a symlink after the
+  # switch to per-skill links. See bin/hm-links for the full story.
+  #
+  # Cheap (a few hundred stat calls), idempotent, and only ever repoints a
+  # symlink at the current generation. `hm-links` (no args) audits; `--scan`
+  # also hunts for orphan links the current generation no longer manages.
+  home.activation.hmLinks = lib.hm.dag.entryAfter ["linkGeneration"] ''
+    if [ -x "$HOME/bin/hm-links" ]; then
+      ${pkgs.bash}/bin/bash "$HOME/bin/hm-links" --fix --quiet || true
+    fi
+  '';
 
   imports = [
     ./ghostty.nix
