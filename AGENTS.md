@@ -333,6 +333,7 @@ run tractable; a bare full-suite run recompiles ~1140 test files.)
 - Shell history: atuin (synced database)
 - Password management: passage (age-encrypted, not GPG)
 - Nix formatting: alejandra (`nix fmt` — unreliable, prefer `alejandra <file>` directly)
+- **Prefer `rg` (ripgrep) and `fd` over `grep` and `find`.** Both are installed and much faster. Use `rg` for content search and `fd` for file discovery; fall back to `grep`/`find` only where they're unavailable (e.g. a minimal remote host).
 - **Log surprises and lessons learned next to the code.** When you hit something non-obvious — undefined behavior, a platform quirk, an API change, a debugging trap — write a short entry in that repo's `docs/learnings/` (index in `docs/learnings/README.md`) so the knowledge accumulates instead of being re-discovered. Keep it brief: symptom, cause, fix/takeaway. Example: `~/src/bonds/polyptych/docs/learnings/`.
 - Before committing any changes, run a code review using the current harness's available code-review skill or tool, and ask the user how to proceed
 - After each batch of changes, commit and push to all remotes (`config push origin && config push sophrosyne`). Never force-push (`--force` / `config push -f`) to any remote. If sophrosyne rejects the push because of divergent histories (e.g. a `git commit --amend` or rebase on either side), pull or merge first to reconcile. The sophrosyne bare repo has a `post-receive` hook that checks out the work tree on push — no special `receive.denyCurrentBranch` config needed.

@@ -1,4 +1,4 @@
-# pi (earendil-works/pi) — Deep Infra provider + DeepSeek-V4.1-Flash default.
+# pi (earendil-works/pi) — Deep Infra provider + DeepSeek-V4.1-Flash-1017 default.
 #
 # accismus-only: this module is imported solely by the accismus home-manager
 # block (hosts/accismus/configuration.nix), so it needs no `enable` option —
@@ -27,8 +27,8 @@
       apiKey = "!/usr/bin/sed -n 's/^DEEPINFRA_API_KEY=//p' /run/agenix/hermes-deepinfra";
       models = [
         {
-          id = "deepseek-ai/DeepSeek-V4.1-Flash";
-          name = "DeepSeek V4.1 Flash (Deep Infra)";
+          id = "deepseek-ai/DeepSeek-V4.1-Flash-1017";
+          name = "DeepSeek V4.1 Flash 1017 (Deep Infra)";
           api = "openai-completions";
           reasoning = true;
           input = ["text" "image"];
@@ -55,7 +55,7 @@
     piTmp="$(mktemp "$piSettings.XXXXXX")"
     if ${pkgs.jq}/bin/jq \
       '.defaultProvider = "deepinfra"
-       | .defaultModel = "deepseek-ai/DeepSeek-V4.1-Flash"
+       | .defaultModel = "deepseek-ai/DeepSeek-V4.1-Flash-1017"
        | .defaultThinkingLevel = "high"' "$piSettings" > "$piTmp"; then
       mv "$piTmp" "$piSettings"
     else
