@@ -51,6 +51,35 @@ in {
           contextWindow = 1048576;
           maxTokens = 1048576;
           compat.maxTokensField = "max_tokens";
+
+          # USD per MILLION tokens — required for /session and the footer to
+          # show a cost at all. Without this object pi reports every request
+          # at $0: pi prices requests as `tokens x model.cost` and never reads
+          # a cost field out of the provider response, and `deepinfra` has no
+          # pi.dev catalog entry to supply prices.
+          #
+          # These are Deep Infra's LIST prices for this model
+          # (`curl api.deepinfra.com/v1/openai/models` -> metadata.pricing):
+          # input 0.2, output 0.6, cache_read 0.006. There is no cache_write
+          # price (prompt caching is implicit, writes bill at the input rate),
+          # and the OpenAI-compatible API only reports cached_tokens
+          # (cacheRead), so cacheWrite tokens stay 0.
+          #
+          # They are NOT what we are billed: this model currently carries
+          # `metadata.discount: 0.51`, so the effective rate is 0.49x of list,
+          # and discounts expire without notice. The `reported-cost.ts`
+          # extension (pkgs/pi/extensions/) rewrites each finished message's
+          # usage.cost from Deep Infra's own per-request `usage.estimated_cost`,
+          # rescaling these components proportionally. So: keep list prices
+          # here as the shape/fallback, let the extension supply the real
+          # number. If Deep Infra stops reporting a cost, /session falls back
+          # to roughly 2x the true cost until this object is updated.
+          cost = {
+            input = 0.2;
+            output = 0.6;
+            cacheRead = 0.006;
+            cacheWrite = 0.2;
+          };
         }
       ];
     };

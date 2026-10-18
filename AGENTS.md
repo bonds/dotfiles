@@ -328,7 +328,7 @@ read-only resources out of `.config/nix/pkgs/pi/` and merges the rest into
 
 | Path | Contents |
 |---|---|
-| `pkgs/pi/extensions/` | `protected-paths.ts` (secrets/`.git`/`node_modules` writes blocked), `permission-gate.ts` (confirms `rm -rf`, `sudo`/`doas`, force-push, disk ops, and any `nr`/`*-rebuild switch` activation), `git-checkpoint.ts`, `dirty-repo-guard.ts` |
+| `pkgs/pi/extensions/` | `protected-paths.ts` (secrets/`.git`/`node_modules` writes blocked), `permission-gate.ts` (confirms `rm -rf`, `sudo`/`doas`, force-push, disk ops, and any `nr`/`*-rebuild switch` activation), `git-checkpoint.ts`, `dirty-repo-guard.ts`, `reported-cost.ts` (overrides pi's list-price cost with Deep Infra's per-request `usage.estimated_cost`) |
 | `pkgs/pi/skills/code-review/` | The `code-review` skill that the "before committing" rule below refers to; also `/skill:code-review` |
 | `pkgs/pi/prompts/` | `/review`, `/ship` (review → verify → commit → push both remotes), `/nr` (build-only, hand activation to Scott), `/learn` (docs/learnings entry) |
 | `pkgs/pi/keybindings.json` | `ctrl+shift+n` new session, `ctrl+shift+r` resume, `ctrl+shift+t` tree |
@@ -339,6 +339,14 @@ Because these are nix-store symlinks, `pi install` and `pi mcp add` cannot
 persist: edit the repo and re-run `nr`. `settings.json` stays writable (pi
 writes `lastChangelogVersion` itself), so it is merged with `jq` in
 `home.activation.piSettings` — add new default settings there, not by hand.
+
+**Cost display:** pi prices every request as `tokens × model.cost` (USD per
+million tokens) and ignores any cost the provider reports; `deepinfra` has no
+pi.dev catalog entry, so `models.json` is the only price source. Hence both
+halves of the setup: `models.json` carries Deep Infra's **list** prices, and
+`reported-cost.ts` rewrites each finished message's `usage.cost` from Deep
+Infra's own `usage.estimated_cost` (this model carries `discount: 0.51`, so the
+billed amount is ~0.49× list price — a static price alone overstates cost 2×).
 
 Verifying without activating: `nh darwin build .` from `.config/nix` shows the
 `hm_*` files. To test resources before a rebuild, pass them explicitly (from
