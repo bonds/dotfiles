@@ -320,6 +320,32 @@ swift test --package-path Packages/OsaurusCore --disable-sandbox \
 (Single-target filters like `--filter ChatWindowFrameClampingTests` keep the
 run tractable; a bare full-suite run recompiles ~1140 test files.)
 
+## pi coding agent
+
+Config is declarative: `modules/home/pi.nix` (accismus only) symlinks
+read-only resources out of `.config/nix/pkgs/pi/` and merges the rest into
+`~/.pi/agent/settings.json`.
+
+| Path | Contents |
+|---|---|
+| `pkgs/pi/extensions/` | `protected-paths.ts` (secrets/`.git`/`node_modules` writes blocked), `permission-gate.ts` (confirms `rm -rf`, `sudo`/`doas`, force-push, disk ops, and any `nr`/`*-rebuild switch` activation), `git-checkpoint.ts`, `dirty-repo-guard.ts` |
+| `pkgs/pi/skills/code-review/` | The `code-review` skill that the "before committing" rule below refers to; also `/skill:code-review` |
+| `pkgs/pi/prompts/` | `/review`, `/ship` (review → verify → commit → push both remotes), `/nr` (build-only, hand activation to Scott), `/learn` (docs/learnings entry) |
+| `pkgs/pi/keybindings.json` | `ctrl+shift+n` new session, `ctrl+shift+r` resume, `ctrl+shift+t` tree |
+| `models.json` (generated) | Deep Infra / DeepSeek-V4.1-Flash-1017; key read at request time from `/run/agenix/hermes-deepinfra` |
+| `mcp.json` (generated) | `reel-summarize` → `http://sophrosyne.taileafac.ts.net:8892/sse` (streamable HTTP; `/sse` is just the path) |
+
+Because these are nix-store symlinks, `pi install` and `pi mcp add` cannot
+persist: edit the repo and re-run `nr`. `settings.json` stays writable (pi
+writes `lastChangelogVersion` itself), so it is merged with `jq` in
+`home.activation.piSettings` — add new default settings there, not by hand.
+
+Verifying without activating: `nh darwin build .` from `.config/nix` shows the
+`hm_*` files. To test resources before a rebuild, pass them explicitly (from
+`~`): `pi -e .config/nix/pkgs/pi/extensions/protected-paths.ts --skill
+.config/nix/pkgs/pi/skills --prompt-template .config/nix/pkgs/pi/prompts`, or
+point `PI_CODING_AGENT_DIR` at a scratch directory.
+
 ## Conventions
 
 - **Shell commands must be fish-compatible.** The main interactive shell is fish; zsh only exists as a minimal entry point that immediately execs fish. Use `and` instead of `&&`, `(cmd)` instead of `$(cmd)`, `set -x FOO bar` instead of `export FOO=bar`, and avoid bashisms.

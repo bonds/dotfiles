@@ -211,6 +211,8 @@ modules/           # Shared modules
     misc.nix        #   WirePlumber, uBlock, fish plugins, ulauncher (metanoia only)
     orca.nix        #   Orca AIDE .app via home.packages (accismus)
     polyptych.nix   #   Polyptych (spanned fullscreen video player)
+    pi.nix          #   pi coding agent: models.json + mcp.json (generated), symlinked
+                    #   extensions/skills/prompts/keybindings from pkgs/pi/, settings merge
     tmux.nix        #   Catppuccin tmux theme, truecolor, cpu/ram/battery modules
     what-changed.nix #  what-changed LLM changelog summaries
     zen-policies.nix #  Zen browser policies (shared by accismus + metanoia)
