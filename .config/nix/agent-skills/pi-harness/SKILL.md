@@ -1,6 +1,6 @@
 ---
 name: pi-harness
-description: "How this machine's pi coding agent is configured: the extensions (protected-paths, permission-gate, git-checkpoint, dirty-repo-guard, reported-cost, notify, footer, plan-mode, learnings-capture, session-recall), the prompt templates (/review /ship /nr /learn /distill), models.json and Deep Infra pricing, mcp.json, settings.json merging, and the skills wiring for every harness. Use when editing pi config, adding an extension, skill or prompt, debugging a missing tool or wrong cost, or asking how pi learns from past sessions."
+description: "How this machine's pi coding agent is configured: the extensions (safety guards, cost reporting, learnings capture, session recall), the prompt templates (/review /ship /nr /learn /distill), models.json and Deep Infra pricing, mcp.json, settings.json merging, and the skills wiring for every harness. Use when editing pi config, adding an extension, skill or prompt, debugging a missing tool or wrong cost, or asking how pi learns from past sessions."
 ---
 
 Everything is declared in `.config/nix/pkgs/pi/` and symlinked read-only into

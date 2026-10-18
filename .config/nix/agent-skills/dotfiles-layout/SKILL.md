@@ -6,6 +6,13 @@ description: "Inventory of the tracked dotfiles: which file under $HOME holds sh
 Paths are relative to `$HOME` unless absolute. Machine and service details
 are in the `machines-and-services` skill.
 
+`~/src/` holds the active code: `~/src/bonds/<name>/` (config, dotfiles, local,
+neocode, osaurus, polyptych) and `~/src/hihello`. `~/Documents/undated/repos/`
+is an **archive** of finished or abandoned work — read-only reference, never a
+place to work, and not to be deleted: it holds the only local copy of
+`nix-vudials` and `macos-cli-kbdswitch`, so the paths into it in
+`.config/nix/AGENTS.md` are intentional, not stale.
+
 ### Shell
 - `.zshrc` — minimal zsh entry point (sources nix, execs fish)
 - `.config/fish/config.fish` — entry point, delegates to `conf.d/`

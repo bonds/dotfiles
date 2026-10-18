@@ -84,6 +84,6 @@ expect: cause
 expect: fix
 
 ### repos-location
-prompt: Where do the bonds code repos live on this machine, as opposed to the other active repos?
+prompt: Where do active code repos live on this machine, and what is ~/Documents/undated/repos/ for?
 expect: src/bonds
-expect: undated/repos
+expect: archive
