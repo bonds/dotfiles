@@ -36,8 +36,14 @@ const ROTATE_BYTES = 64 * 1024;
 const MAX_QUOTE = 200;
 const MAX_CONTEXT = 100;
 
-/** Longest message still treated as a terse instruction rather than prose. */
-const SHORT_MESSAGE = 240;
+/**
+ * Longest message still treated as a terse instruction rather than prose.
+ * 160 chars: a real correction is short ("the path should be X"), while a
+ * musing that merely contains "should be" is not ("I wonder if we should be
+ * logging those kinds of learnings all the time" — 76 chars of preamble, 205
+ * total, and the lesson is not a correction at all).
+ */
+const SHORT_MESSAGE = 160;
 /** Past this, the text is a paste, not a correction. */
 const MAX_MESSAGE = 2000;
 
@@ -51,7 +57,7 @@ Run \`/distill\` to cluster these and promote them (AGENTS.md -> skill -> hook),
 then empty this file. Do not edit by hand: delete lines instead.
 `;
 
-/** "Don't do that" — usually an explicit rejection of what just happened. */
+/** "Don't do that" — an explicit rejection, trusted at any length. */
 const CORRECTION = [
 	/^(no|nope|nah|stop)\b/i,
 	/\bdon'?t\b/i,
@@ -61,9 +67,13 @@ const CORRECTION = [
 	/\bI told you\b/i,
 	/\bthat'?s (wrong|not right|incorrect)\b/i,
 	/\bwhy did you\b/i,
-	/\bshould (be|have)\b/i,
-	/\binstead\b/i,
 ];
+
+/**
+ * Correction-ish, but also common in ordinary prose ("I wonder if we should
+ * be…"), so only trusted in a short message.
+ */
+const SHORT_CORRECTION = [/\bshould (be|have)\b/i, /\binstead\b/i];
 
 /** "Always / never / prefer" — only trusted in a short, instruction-shaped message. */
 const WEAK_POLICY = [/\balways\b/i, /\bnever\b/i, /\bprefer\b/i];
@@ -94,11 +104,14 @@ function classify(text: string): Quote | undefined {
 	if (EXPLICIT_POLICY.some((pattern) => pattern.test(text))) {
 		return { kind: "policy", text: sentenceAround(text, EXPLICIT_POLICY) };
 	}
-	if (text.length <= SHORT_MESSAGE && WEAK_POLICY.some((pattern) => pattern.test(text))) {
-		return { kind: "policy", text: sentenceAround(text, WEAK_POLICY) };
-	}
 	if (CORRECTION.some((pattern) => pattern.test(text))) {
 		return { kind: "correction", text: sentenceAround(text, CORRECTION) };
+	}
+	if (text.length <= SHORT_MESSAGE && SHORT_CORRECTION.some((pattern) => pattern.test(text))) {
+		return { kind: "correction", text: sentenceAround(text, SHORT_CORRECTION) };
+	}
+	if (text.length <= SHORT_MESSAGE && WEAK_POLICY.some((pattern) => pattern.test(text))) {
+		return { kind: "policy", text: sentenceAround(text, WEAK_POLICY) };
 	}
 	return undefined;
 }
