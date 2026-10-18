@@ -43,13 +43,15 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # Pi coding agent (earendil-works/pi) — CLI AI coding agent for accismus.
-    # Rev-pinned like hermes-agent: it is a from-source npm build with no
-    # binary cache, so an unpinned URL would make every `nr --update` chase
-    # main and risk a broken source build. Bump the rev deliberately.
+    # Rev-pinned to a release: it is a from-source npm build with no binary
+    # cache, so chasing main would make every `nr --update` build a random
+    # commit and risk a broken tree. `nr --update` follows GitHub *releases*
+    # (pkgs/pi/update.sh rewrites this rev to the latest release tag); pin a
+    # specific tag by hand if needed.
     # FOLLOWS nixpkgs-unstable on purpose (upstream targets nixos-unstable):
     # unstable→unstable follows is safe — the AGENTS.md gotcha is about
     # following TO a stable channel — and it dedupes flake.lock.
-    pi.url = "git+https://github.com/earendil-works/pi?rev=cdaf6c227d4718a72b59ccd02152c9614df44cfc";
+    pi.url = "git+https://github.com/earendil-works/pi?rev=71023aec1546d6d677a65669c5665c0927ce0dd0";
     pi.inputs.nixpkgs.follows = "nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
 

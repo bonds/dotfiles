@@ -109,6 +109,11 @@ function nr
         set i (math $i + 1)
     end
     if test "$_nr_update" = yes
+        # pi is a rev-pinned flake input; follow its GitHub releases.
+        set -l _pwd $PWD
+        cd $HOME/.config/nix
+        bash pkgs/pi/update.sh
+        cd $_pwd
         if test "$_os" = darwin
             set -l _pwd $PWD
             cd $HOME/.config/nix

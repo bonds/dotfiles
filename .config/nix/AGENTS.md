@@ -146,6 +146,9 @@ again.
 
 - **`nr --update`** runs `snapshot` → `check` → `nix flake update`, then a
   bounded 3-attempt build retry that calls `diagnose <logfile>` on failure.
+  Before the flake update it also runs the binary-overlay `update.sh` scripts
+  and `pkgs/pi/update.sh`, which moves the rev-pinned `pi` flake input to the
+  latest GitHub **release** (not `main`).
 - **Commands:** `snapshot` (record the revs that build now) · `check [attr]`
   (probe each pin against its branch head, drop the cleared ones) ·
   `diagnose <log>` (pin the culprit of a failed build) · `apply` (re-render the
