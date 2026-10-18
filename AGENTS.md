@@ -65,8 +65,8 @@ but is no longer managed.
 ## Tracked config layout
 
 The per-file inventory lives in the `dotfiles-layout` skill, and machine /
-service details in `machines-and-services` (both in
-`.config/nix/pkgs/pi/skills/`, loaded by pi on demand). Orientation:
+service details in `machines-and-services` (both in `.config/nix/agent-skills/`,
+loaded on demand). Orientation:
 
 - Shell: `.config/fish/` — `config.fish` entry point, `conf.d/` split by concern
 - Terminal: `.config/{alacritty,ghostty}/`; tmux via nix (`modules/home/tmux.nix`)
@@ -102,7 +102,7 @@ read-only resources out of `.config/nix/pkgs/pi/` and merges the rest into
 | Path | Contents |
 |---|---|
 | `pkgs/pi/extensions/` | `protected-paths.ts` (secrets/`.git`/`node_modules` writes blocked), `permission-gate.ts` (confirms `rm -rf`, `sudo`/`doas`, force-push, disk ops, and any `nr`/`*-rebuild switch` activation), `git-checkpoint.ts`, `dirty-repo-guard.ts`, `reported-cost.ts` (overrides pi's list-price cost with Deep Infra's per-request `usage.estimated_cost`), `notify.ts` (OSC 777 desktop notification when a run settles), `custom-footer.ts` (`/footer` toggles a branch + tokens + cost footer), `plan-mode/` (read-only `/plan` mode, `ctrl+alt+p`) |
-| `pkgs/pi/skills/` | `code-review` (the review rule below), `dotfiles-layout`, `machines-and-services`, `gh-credentials`, `osaurus-build` — the reference material split out of this file, loaded on demand |
+| `.config/nix/agent-skills/` | Shared by every agent (see **Skills** below): `code-review`, `dotfiles-layout`, `machines-and-services`, `gh-credentials`, `osaurus-build` |
 | `pkgs/pi/prompts/` | `/review`, `/ship` (review → verify → commit → push both remotes), `/nr` (build-only, hand activation to Scott), `/learn` (docs/learnings entry) |
 | `pkgs/pi/keybindings.json` | `ctrl+shift+n` new session, `ctrl+shift+r` resume, `ctrl+shift+t` tree |
 | `models.json` (generated) | Deep Infra: `DeepSeek-V4.1-Flash-1017` (default, vision) and `DeepSeek-V4-Flash` (cheap, text-only) for the `ctrl+p` cycle; key read at request time from `/run/agenix/hermes-deepinfra` |
@@ -117,11 +117,6 @@ instead of being a no-op — `**`, since model IDs contain a slash and the glob
 does not cross it) and `defaultTools: ["+codemode"]` (call tools from a script
 rather than one round-trip each).
 
-**Skills are pi-only.** The reference material moved out of this file is no
-longer visible to other harnesses (Hermes, Claude Code, opencode) that read
-`AGENTS.md`; they would need the skill files at
-`.config/nix/pkgs/pi/skills/*/SKILL.md`.
-
 **Cost display:** pi prices every request as `tokens × model.cost` (USD per
 million tokens) and ignores any cost the provider reports; `deepinfra` has no
 pi.dev catalog entry, so `models.json` is the only price source. Hence both
@@ -133,8 +128,44 @@ billed amount is ~0.49× list price — a static price alone overstates cost 2×
 Verifying without activating: `nh darwin build .` from `.config/nix` shows the
 `hm_*` files. To test resources before a rebuild, pass them explicitly (from
 `~`): `pi -e .config/nix/pkgs/pi/extensions/protected-paths.ts --skill
-.config/nix/pkgs/pi/skills --prompt-template .config/nix/pkgs/pi/prompts`, or
+.config/nix/agent-skills --prompt-template .config/nix/pkgs/pi/prompts`, or
 point `PI_CODING_AGENT_DIR` at a scratch directory.
+
+## Skills
+
+The canonical skills live in `.config/nix/agent-skills/<name>/SKILL.md` (Agent
+Skills format), tracked here and symlinked per skill into each harness by
+`modules/home/pi.nix`. Each agent's own directory stays real, so agents can
+still add their own skills.
+
+| Skill | Use it when |
+|---|---|
+| `code-review` | reviewing a diff before commit/push/PR — the rule in Conventions |
+| `dotfiles-layout` | locating a tracked config file, or deciding where a new one belongs |
+| `machines-and-services` | anything touching accismus/sophrosyne/metanoia, firesafe, photos, Minecraft, DST, Nitter |
+| `gh-credentials` | filing issues/PRs on third-party repos, or `gh` scope/403 failures |
+| `osaurus-build` | building or testing `~/src/bonds/osaurus` |
+
+Wiring (one symlink per skill, so a skill added here appears everywhere on the
+next rebuild — no other edit needed):
+
+| Harness | Directory |
+|---|---|
+| pi | `~/.pi/agent/skills/` (also reads `~/.agents/skills/`) |
+| Agent Skills standard | `~/.agents/skills/` |
+| Claude Code | `~/.claude/skills/` |
+| opencode | `~/.config/opencode/skills/` |
+| Hermes | `~/.hermes/skills/dotfiles/` (category dir + `DESCRIPTION.md`) |
+
+**Agents without skill support** (or a harness that ignores the directory) can
+still use them: read `.config/nix/agent-skills/<name>/SKILL.md` directly. That is
+why this table exists in `AGENTS.md` rather than only in the nix module.
+
+Adding a skill: create `.config/nix/agent-skills/<name>/SKILL.md` with `name` and
+`description` frontmatter, then `nr`. Keep the description to what it does *and*
+when to use it — that is what routes the model to it. Quote the description
+(`description: "…"`): an unquoted `key: value` inside it is invalid YAML and
+the harness skips the skill silently.
 
 ## Conventions
 
