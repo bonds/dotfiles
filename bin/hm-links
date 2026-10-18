@@ -19,11 +19,16 @@
 # stale directory symlink, which is replaced by a real directory.
 #
 # Usage:
-#   hm-links [--fix] [--scan] [--quiet]
-#     --fix     repair instead of only reporting
-#     --scan    also scan $HOME for home-manager-files links the current
-#               generation does not manage (slow; reports orphans only)
-#     --quiet   print only the summary and any problems that remain
+#   hm-links [--fix] [--scan] [--quiet] [--generation PATH]
+#     --fix          repair instead of only reporting
+#     --scan         also scan $HOME for home-manager-files links the current
+#                    generation does not manage (slow; reports orphans only)
+#     --quiet        print only the summary and any problems that remain
+#     --generation   use this generation instead of the current-home gcroot
+#                    (home-manager's activation passes its own $newGenPath:
+#                    the gcroot is only re-pointed at the END of activation,
+#                    so reading it mid-activation yields the PREVIOUS
+#                    generation and every "repair" would undo linkNewGen)
 #
 # Exit: 0 clean (or fully repaired), 1 problems remain, 2 cannot locate the
 # current home-manager generation.
@@ -36,28 +41,42 @@ set -u
 fix=0
 scan=0
 quiet=0
-for arg in "$@"; do
-	case "$arg" in
+gen_arg=""
+while [ $# -gt 0 ]; do
+	case "$1" in
 	--fix) fix=1 ;;
 	--scan) scan=1 ;;
 	--quiet) quiet=1 ;;
+	--generation)
+		if [ $# -lt 2 ]; then
+			echo "hm-links: --generation needs a path" >&2
+			exit 2
+		fi
+		gen_arg="$2"
+		shift
+		;;
 	-h | --help)
-		sed -n '2,30p' "$0"
+		sed -n '2,40p' "$0"
 		exit 0
 		;;
 	*)
-		echo "hm-links: unknown option: $arg" >&2
+		echo "hm-links: unknown option: $1" >&2
 		exit 2
 		;;
 	esac
+	shift
 done
 
-root="$HOME/.local/state/home-manager/gcroots/current-home"
-if [ ! -e "$root" ]; then
-	echo "hm-links: no current home-manager generation at $root" >&2
-	exit 2
+if [ -n "$gen_arg" ]; then
+	gen=$(cd "$gen_arg" && pwd -P)
+else
+	root="$HOME/.local/state/home-manager/gcroots/current-home"
+	if [ ! -e "$root" ]; then
+		echo "hm-links: no current home-manager generation at $root" >&2
+		exit 2
+	fi
+	gen=$(cd "$root" && pwd -P)
 fi
-gen=$(cd "$root" && pwd -P)
 # `home-files` is itself a symlink to <hash>-home-manager-files, so resolve it
 # too: the managed links point at the resolved store path, not at the
 # generation directory.

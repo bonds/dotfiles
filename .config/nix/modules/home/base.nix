@@ -20,7 +20,11 @@
   # also hunts for orphan links the current generation no longer manages.
   home.activation.hmLinks = lib.hm.dag.entryAfter ["linkGeneration"] ''
     if [ -x "$HOME/bin/hm-links" ]; then
-      ${pkgs.bash}/bin/bash "$HOME/bin/hm-links" --fix --quiet || true
+      # $newGenPath, not the current-home gcroot: home-manager re-points the
+      # gcroot at the very END of activation (nix-store --add-root), so
+      # reading it here would resolve to the PREVIOUS generation and the
+      # "repair" would undo linkNewGen.
+      ${pkgs.bash}/bin/bash "$HOME/bin/hm-links" --fix --quiet --generation "$newGenPath" || true
     fi
   '';
 
