@@ -48,10 +48,11 @@ handler blocks the tool).
 
 `models.json` is generated (read-only symlink) and is the **only** price
 source: `deepinfra` has no pi.dev catalog entry, and pi prices a request as
-`tokens x model.cost`, ignoring whatever cost the provider reports. Four models
+`tokens x model.cost`, ignoring whatever cost the provider reports. Five models
 for the `ctrl+p` cycle: `DeepSeek-V4.1-Flash-1017` (default, vision, 1M) plus
-`Qwen3.8-27B`, `GLM-5.3-Flash` and `MiMo-V2.6-Flash` (all vision; GLM and MiMo
-1M, Qwen 256k). Model IDs and list prices come from
+`Qwen3.8-27B`, `Qwen3.8-Flash`, `GLM-5.3-Flash` and `MiMo-V2.6-Flash`. All are
+vision-capable except `Qwen3.8-Flash` (text-only); GLM, Qwen3.8-Flash and MiMo
+are 1M, Qwen3.8-27B is 256k. Model IDs and list prices come from
 `curl api.deepinfra.com/v1/openai/models` → `metadata.pricing`.
 
 Each model's `name` in `models.json` is a plain label — `DeepSeek V4.1 Flash 1017`,

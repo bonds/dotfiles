@@ -140,9 +140,9 @@ in {
             }
 
             # Cheap/fast partners for Ctrl+P cycling (`enabledModels` below).
-            # All three are vision-capable and cheaper than the 1017 on input;
-            # prices are Deep Infra's list prices from the same
-            # `metadata.pricing` response as the model above. Where
+            # All four are cheaper than the 1017 on input and all but Qwen3.8
+            # Flash are vision-capable; prices are Deep Infra's list prices from
+            # the same `metadata.pricing` response as the model above. Where
             # `metadata.discount` is set it is noted per model — list price is
             # kept here as the fallback shape, and `reported-cost.ts` supplies
             # the real per-request number.
@@ -181,6 +181,29 @@ in {
                 output = 0.25;
                 cacheRead = 0.015;
                 cacheWrite = 0.075;
+              };
+            }
+            {
+              # $0.113/$0.382 list, no discount. Text-only (its catalogue tags
+              # are chat/prompt_cache/reasoning_effort — no `vision`, unlike the
+              # 27B), 1M context at a flat rate across the whole window, and it
+              # accepts a reasoning effort. Sits between GLM (cheaper) and MiMo
+              # (pricier) on output.
+              id = "Qwen/Qwen3.8-Flash";
+              name = "Qwen3.8 Flash";
+              api = "openai-completions";
+              reasoning = true;
+              input = ["text"];
+              contextWindow = 1000000;
+              maxTokens = 1000000;
+              compat.maxTokensField = "max_tokens";
+              cost = {
+                input = 0.113;
+                output = 0.382;
+                # Catalogue reports 0.01409999988; rounded, and only the
+                # reported per-request cost is billed anyway.
+                cacheRead = 0.0141;
+                cacheWrite = 0.113;
               };
             }
             {
