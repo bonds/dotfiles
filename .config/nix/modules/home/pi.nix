@@ -43,9 +43,9 @@
   # own. `builtins.readDir` picks up new skills on the next rebuild, so adding
   # a skill is just a new directory under .config/nix/agent-skills.
   #
-  #   ~/.pi/agent/skills          pi (it also reads ~/.agents/skills)
-  #   ~/.agents/skills            Agent Skills standard location (pi, Hermes
-  #                               project-local, other spec-compliant tools)
+  #   ~/.agents/skills            Agent Skills standard location — pi reads
+  #                               this too, so it is the ONLY pi path: linking
+  #                               both makes every skill collide at startup
   #   ~/.claude/skills            Claude Code personal skills
   #   ~/.config/opencode/skills   opencode
   #   ~/.hermes/skills/dotfiles   Hermes (global; skills live in a category dir)
@@ -61,8 +61,7 @@
       skillNames);
 in {
   home.file =
-    (skillLinks ".pi/agent/skills")
-    // (skillLinks ".agents/skills")
+    (skillLinks ".agents/skills")
     // (skillLinks ".claude/skills")
     // (skillLinks ".config/opencode/skills")
     // (skillLinks ".hermes/skills/dotfiles")

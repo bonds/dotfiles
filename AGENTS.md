@@ -151,7 +151,7 @@ next rebuild — no other edit needed):
 
 | Harness | Directory |
 |---|---|
-| pi | `~/.pi/agent/skills/` (also reads `~/.agents/skills/`) |
+| pi | `~/.agents/skills/` (the Agent Skills location — pi reads it natively; do **not** also link `~/.pi/agent/skills`, the duplicate makes every skill collide at startup) |
 | Agent Skills standard | `~/.agents/skills/` |
 | Claude Code | `~/.claude/skills/` |
 | opencode | `~/.config/opencode/skills/` |
