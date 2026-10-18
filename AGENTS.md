@@ -64,261 +64,34 @@ but is no longer managed.
 
 ## Tracked config layout
 
-### Shell
-- `.zshrc` — minimal zsh entry point (sources nix, execs fish)
-- `.config/fish/config.fish` — entry point, delegates to `conf.d/`
-- `.config/fish/conf.d/` — organized fish config split by concern:
-  - `00-paths.fish` — env vars, PATH
-  - `05-editor.fish` — EDITOR selection
-  - `10-aliases.fish` — aliases
-  - `15-functions.fish` — custom functions (ls, e, tree, ping, nr, hr, age)
-  - `20-ssh.fish` — SSH_AUTH_SOCK (Secretive on macOS)
-  - `25-gcloud.fish` — `GOOGLE_APPLICATION_CREDENTIALS` (ADC for Google client libraries, readonly SA)
-  - `30-interactive.fish` — starship, atuin, auto-tmux, fzf opts
-  - `35-nix-github-token.fish` — exports `NIX_CONFIG` access-tokens from `gh auth token` (avoids GitHub rate limits during `nr --update`); no secret in the file
-  - `36-gh-public-token.fish` — `gh-public` wrapper: injects a Keychain `public_repo` token as `GH_TOKEN` for third-party public repos; no secret in the file
-  - `40-lm-studio.fish` — LM Studio CLI PATH (isolated from tracked files)
-- `.config/fish/fish_plugins` — fish plugin list
-- `.config/starship/` — prompt configs: `darwin.toml`, `linux.toml`, `openbsd.toml`, `plain.toml` (fallback when no UTF-8)
-- `.config/atuin/config.toml` — shell history database config
+The per-file inventory lives in the `dotfiles-layout` skill, and machine /
+service details in `machines-and-services` (both in
+`.config/nix/pkgs/pi/skills/`, loaded by pi on demand). Orientation:
 
-### Terminal
-- `.config/alacritty/alacritty.toml` — Alacritty terminal emulator (font, window size, clipboard)
-- `.config/ghostty/config` — Ghostty terminal emulator (font, window size)
-- tmux config managed via nix/home-manager (`modules/home/tmux.nix`) — catppuccin frappe theme, truecolor, cpu/ram/battery modules
+- Shell: `.config/fish/` — `config.fish` entry point, `conf.d/` split by concern
+- Terminal: `.config/{alacritty,ghostty}/`; tmux via nix (`modules/home/tmux.nix`)
+- Editor: `.config/helix/`; `$EDITOR` is `hx`
+- Git: `.config/git/` — global config, `ignore`, `hooks/`
+- SSH: `.config/ssh/` — `config`, `keys` (symlinked to `~/.ssh/authorized_keys`)
+- Nix: `.config/nix/` — the whole flake; see its own `AGENTS.md`
+- Scripts: `bin/` plus `bin/{darwin,linux,openbsd}/`
 
-### Editor
-- `.config/helix/config.toml` — Helix editor (soft wrap)
-- `.config/helix/languages.toml` — Helix language config
-
-### Git
-- `.config/git/config` — **the global git config** (moved here from `~/.gitconfig`, which is gone; tracked in this repo). The bare repo's own config lives inside `~/.local/share/dotfiles/config` (accismus) and is managed via `config config <key> <value>`.
-- `.config/git/ignore` — **vestigial** (was the old repo-level gitignore). Untracked-file hiding via `status.showUntrackedFiles = no` in the bare repo's config makes it unnecessary.
-- `.config/git/hooks/pre-commit` — pre-commit hook (fish indent/syntax check, reject `.pyc` files). The bare repo's `core.hooksPath` points here.
-- `.config/git/hooks/pre-push` — pre-push hook (runs `nix flake check --no-build`). Same hooksPath mechanism.
-- `.config/git/hooks/post-receive` — post-receive hook (server-side only; on sophrosyne, checks out the work tree after a push to main).
-
-### SSH
-- `.config/ssh/config` — SSH client config (Secretive agent on macOS, ControlMaster for `*.ggr.com`/`*.local`, auto-tmux on remote connections, port forwarding)
-- `.config/ssh/keys` — authorized SSH keys (content tracked in git)
-- `.ssh/authorized_keys` — symlink to `~/.config/ssh/keys`, created by nix activation (not tracked in git)
-
-### Nix
-- `.config/nix/` — **full nix flake for all machines** (see `.config/nix/AGENTS.md` for detailed docs)
-  - Flake for: laptop (accismus/darwin), server (sophrosyne/NixOS), workstation (metanoia/NixOS)
-  - `nr` fish function wraps `nh` for rebuilds
-- `.config/nix/pkgs/nix-what-changed/` — **`what-changed` tool** — Ported from fish to Python (v0.22.0).
-  - Lives at `pkgs/nix-what-changed/` inside the dotfiles flake.
-  - Also publishable as a standalone flake: `github:bonds/dotfiles?dir=.config/nix/pkgs/nix-what-changed`.
-  - Shows LLM-summarized changelogs after `nr` via `what-changed <old-closure> <new-closure>`.
-  - Model: `qwen2.5-7b` via llama.cpp on sophrosyne (`http://sophrosyne.taileafac.ts.net:8080`). Config at `~/.config/what-changed/config.toml`.
-- Benchmark: `what-changed --benchmark [--models m1,m2]` compares speed, quality, bullet accuracy, and word merges. Run before switching default model.
-  - Supports ollama + OpenAI-compatible backends. Caches results in `~/.cache/what-changed/`.
-  - NixOS/darwin module: `programs.what-changed.enable`.
-  - `nix flake check` runs the alejandra (format), deadnix, statix, and gitleaks (secrets) checks plus the `what-changed-test` pytest suite (166 tests), which mirrors the standalone sub-flake's own `pytest` check.
-- `.config/nix/pkgs/reel-summarize/` — **`reel-summarize` tool** (v0.2.0) — Local Instagram Reel summarizer (shared pipeline/CLI).
-  - Pipeline: yt-dlp download → ffmpeg frames+audio → transcribe-cpp (whisper `whisper-small-Q5_K_M.gguf`) → per-frame vision OCR → LLM final summary.
-  - Runtime deps: `yt-dlp`+`ffmpeg` via nix, llama.cpp OpenAI-compatible API (text `qwen2.5-7b` @ `:8080`, vision @ `:8081`), whisper via `transcribe-cpp` (`TRANSCRIBE_LIBRARY`).
-  - CLI: `reel-summarize <url>` — concise prose summary to stdout. Nix-managed on accismus via home-manager: `programs.reel-summarize.enable`.
-  - Config at `~/.config/reel-summarize/config.toml` (backend, host/vision_host, model, fps, max_frames, timeout). Backend defaults to `openai` (llama.cpp); `ollama`/`osaurus` also supported.
-  - `nix flake check` runs format check, python syntax check, pytest suite.
-  - **Source overrides (without nix rebuild):** `PYTHONPATH="/Users/scott/.config/nix/pkgs/reel-summarize:$PYTHONPATH" reel-summarize <url>` picks up uncommitted source changes.
-- `.config/nix/pkgs/reel-summarize-mcp/` — **`reel-summarize-mcp` server** (v0.1.0) — MCP wrapper exposing the pipeline to the Osaurus agent.
-  - Wraps `reel-summarize` (locally `callPackage`d, plus `transcribe-cpp`) with `mcp`/`httpx`/`starlette`/`uvicorn`; streamable HTTP at `/sse` (default port 8892), optional bearer token via `REEL_SUMMARIZE_MCP_TOKEN`.
-  - Runs on **sophrosyne** as `systemd.services.reel-summarize-mcp` (see `hosts/sophrosyne/configuration.nix`), as user `llamacpp` with `StateDirectory=reel-summarize-mcp`. Binds `0.0.0.0` — reached from accismus over **Tailscale** (firewall opens 8892 on `tailscale0` only, not LAN/public).
-  - Models: text `qwen2.5-7b` @ `127.0.0.1:8080`, vision **Qwen3-VL-2B** @ `127.0.0.1:8081` via `llamacpp-vision-server` (KV cache `q8_0`). IG cookies from agenix: `REEL_SUMMARIZE_COOKIES=/run/agenix/reel-ig-cookies`.
-  - Full spec + remaining steps in `reel-summarize-mcp/SPEC.md`.
-- `.config/nix/pkgs/photokit-export/` — **`photo-export` package + Swift CLI** (v0.2.5) — PhotoKit-native photo export, sole exporter for the nightly backup. Replaced osxphotos entirely (broken `--download-missing` AppleScript path since 2026-07-26; osxphotos overlay removed).
-  - **How it works**: Swift against the system SDK (Xcode-only; Photos.framework isn't in nixpkgs), bundled in `.app` with `NSPhotoLibraryUsageDescription`, ad-hoc signed `com.ggr.photo-export`. Exports ALL assets (local + iCloud-only) via `PHImageManager.requestImageDataAndOrientation` + writes a basic XMP sidecar (description + dates) — no AppleScript, no osxphotos.
-  - **Config is source of truth**: `~/Library/Application Support/photo-export/config.toml` (dest, limit, manifest) — `open --args` doesn't reliably forward args to LaunchServices-registered apps. Args (when they arrive) override config. Home-manager `programs.photo-export.enable` writes the config.
-  - **Safety guard**: refuses to export when dest is the SMB mount path but not actually mounted (prevents silent local writes — this dumped 139GB once). Logic in `photoexport_core.swift`, unit-tested.
-  - **Robustness:** SMB mount via NetFS, mount probe, atomic `.part`+rename writes, 3× retry, resumable manifest `~/.cache/photo-export-manifest.txt`, `yyyy/mm` dirs.
-  - **First-run / grant-time:** one-time "Allow" click for Photos access (see `FIRST-RUN.md`). Must launch via `open` (direct exec = denied). Binary byte change (Swift / nix rebuild) re-grants — click again.
-  - **Transport is SFTP** (primary; SMB/netFS is the legacy fallback):
-    `photo-export` streams each original in-memory over SSH/SFTP as
-    `photo-backup` (owner of `/dragon/media/photos`) using
-    `~/.ssh/id_photo_rsync` (deployed to `/home/photo-backup/.ssh/authorized_keys`
-    with `command=sftp-server -d /dragon/media/photos`). No local temp copies
-    (no SSD wear), works over LAN or tailnet. `~/bin/photos-backup` is the nightly
-    wrapper (launches the app; the SFTP transport needs no mount).
-  - **Tests:** pure logic in `photoexport_core.swift` (single source of truth) + 39 unit tests in `test_core.swift`; wired into `nix flake check` as `photo-export-test` (runs in sandbox via Xcode toolchain). Run manually: copy `test_core.swift` → `main.swift`, `swiftc photoexport_core.swift main.swift`. End-to-end smoke test planned but not implemented: `INTEGRATION_TEST_PLAN.md`.
-
-### Haskell
-- `.config/ghc/ghci.conf` — GHCi config
-- `.config/ghc/ghci.rio.conf` — GHCi RIO config
-- `.config/ghc/rio.options` — RIO options
-
-### Passwords & Secrets
-- `.config/passage/` — password store (age-encrypted, via passage)
-
-### Display
-- `.local/share/icc/` — monitor ICC color profiles (Mstar, 3x U2718Q)
-
-### Misc
-- `.plan` — finger plan file
-- `.config/background` — desktop background
-- `.config/angband/` — Angband game config
-- `.config/crawl/init.txt` — Dungeon Crawl Stone Soup config
-- `.config/easyeffects/` — audio EQ presets
-- `.config/another-window-session-manager/` — saved window session
-- `LICENSE` — repo license
-
-### Scripts (`bin/`)
-Cross-platform utility scripts, organized by OS:
-- `bin/` root — general utilities: `bench`, `def`, `mylocation`, `rainbow`, `rdemo`, `repo2txt`, `sort_photos`, `wifi_qrcode`, `wol`, `youtube`
-- `bin/darwin/` — macOS-specific: `create_devbox_app_aliases`, `macos-defaults` (system preference toggles)
-- `bin/linux/` — Linux-specific: `idletime`, `maximize_across_multiple_monitors`, `vu1server`, `wear`
-- `bin/openbsd/` — OpenBSD-specific: `packages`, `wipe`
-- Haskell/Idris source: `rainbow.hs`, `rainbow.idr`
-
-### Untracked scripts
-Useful scripts that live in `~/bin/` but are symlinked or copied from elsewhere (not tracked in git):
-- `kbdswitch` — macOS keyboard layout switcher (compiled Swift binary from `~/Documents/undated/repos/macos-cli-kbdswitch/`)
-- `pnpm` — symlink to `node_modules/pnpm/bin/pnpm.cjs`
-- `npx-wrapper.sh` — adds Nix profile paths to PATH before running npx
-
-### Machines
-Three machines managed from this repo:
-- **accismus** — macOS laptop (aarch64-darwin, nix-darwin)
-  - **Dotfiles** use the bare-repo approach described above (`~/.local/share/dotfiles`, moved from `~/.config/dotfiles` on 2026-10-11). The `config` fish alias is defined in `~/.config/fish/conf.d/10-aliases.fish`.
-  - **Syncthing** managed via nix-darwin launchd agent (not standalone app). Declarative `config.xml` generated and deployed by activation script. Config dir at `~/Library/Application Support/Syncthing/`. Preserves `key.pem`, `cert.pem`, `index-v2/` across rebuilds.
-  - **Photos backup** via `photos-backup` launchd agent (daily at 2am). Runs **`photo-export`** (PhotoKit-native Swift) which streams ALL assets (local + iCloud-only) over **SFTP** to `/dragon/media/photos` as `photo-backup` — no SMB mount, no local copies, basic XMP sidecars. No osxphotos, no Syncthing for photos.
-    - **⚠️ Prerequisite:** Photos access grant — see `pkgs/photokit-export/FIRST-RUN.md`. One-time "Allow" click via `open`; re-grant after any binary change (new nix build / version bump).
-    - **iCloud originals:** with "Optimize Mac Storage" enabled, originals are iCloud-only; `photo-export` fetches them via PhotoKit (`PHImageManager.requestImageDataAndOrientation`), no AppleScript.
-    - **Resumable:** `~/.cache/photo-export-manifest.txt` tracks completed UUIDs; `yyyy/mm` date dirs; atomic `.part`+rename.
-    - **Safety guard:** `photo-export` refuses to write when dest is the SMB mount path but isn't actually mounted (prevents silent local-disk writes).
-- **metanoia** — NixOS workstation (x86_64-linux)
-  - **Dotfiles:** Should be migrated to the bare-repo approach when back online (same as accismus/sophrosyne).
-- **sophrosyne** — NixOS server at `sophrosyne.local` / `home.ggr.com` (x86_64-linux)
-  - **Dotfiles** use the same bare-repo approach. Remote push target for this machine: `scott@home.ggr.com:~/.local/share/dotfiles`. The bare repo has a `post-receive` hook at `~/.local/share/dotfiles/hooks/post-receive` (installed manually during bootstrap; tracked in the repo at `.config/git/hooks/post-receive` and pointed to via `core.hooksPath`) that checks out the work tree to `$HOME` on each push to `main`.
-  - **ZFS pool:** The `dragon` pool is intentionally degraded (raidz2, 1 device kept offline) — running on 1-disk redundancy by design.
-  - **Temperature logging:** NVMe/CPU temps and fan speeds are logged every minute to `/dragon/logs/temps.log` via `log-temps.timer`. After a crash or lockup, check the last entries in this file to see if temps spiked before the failure. The log survives reboots since it's on the ZFS pool.
-  - **Firesafe USB backup:** Automated off-site backup via an A/B USB drive rotation. Defined in `modules/firesafe-backup.nix` (NixOS module: `programs.firesafe-backup`).
-    - **How it works:** A udev rule matches drives labeled `firesafe` and triggers `firesafe-backup.service`, which mounts at `/mnt/firesafe`, reads `.firesafe-id` (A or B), then rsyncs configured sources (Archive, Backups, Documents, Media/* subdirs, Photos) from `/dragon/`.
-    - **Deleted file preservation:** Rsync uses `--backup --backup-dir=.deleted/DATE/`. When drive free space drops below 50GB, the oldest `.deleted/` dirs are pruned (one at a time) until the threshold is met.
-    - **A/B rotation:** Each drive has a `.firesafe-id` file (A or B). Rotate weekly by swapping drives to always have an off-site copy.
-    - **Commands:**
-      - `firesafe-status` — mount status, elapsed time, source-count ETA, log tail
-      - `firesafe-status -w` — live-updating every 2s
-      - `firesafe-eject` — kills backup, syncs, unmounts (uses sudo)
-      - `firesafe-reclaim [--dry-run]` — prune `.deleted/` dirs
-      - `firesafe-deleted [date]` — browse `.deleted/` contents
-    - **Deleted file changelog:** A permanent record of all deleted files (not pruned) is appended to `/dragon/logs/firesafe-backup-changelog.log` on each backup run. The log survives drive rotation and `.deleted/` cleanup. Format: `DATE<tab>SOURCE_PATH`. View with `tail /dragon/logs/firesafe-backup-changelog.log`.
-    - **Email notifications:** Results sent via msmtp to scott@ggr.com on completion/failure.
-    - **First-time setup:** Label ext4 drive `firesafe` (`e2label`), create `.firesafe-id`, plug in to trigger backup. Drive must be 4.5TB+ to hold Archive + Backups + Documents + selected Media subdirs.
-    - **Drive I/O note:** The WD Game Drive USB bridge (1058:262f) is BOT-only, QD=1, no UASP — USB-native PCB, cannot shuck. Random I/O ~1 MB/s; sequential ~40-90 MB/s ext4. ext4 journal vs exFAT speed tradeoffs, dirty page flush hang on umount. See `firesafe-backup.nix` header comment for full details.
-  - **Photos pipeline:**
-    - Mac (accismus): `photos-backup` launchd agent runs nightly at 2am — runs **`photo-export`** (PhotoKit-native) which streams ALL assets over **SFTP** to `/dragon/media/photos` (photo-backup key). No SMB mount, no osxphotos, no rsync, no syncthing for photos.
-    - SMB share: `[photos]` in `services.samba` (see `hosts/sophrosyne/networking.nix`) → `valid users = photo-backup`, path `/dragon/media/photos`. Samba user `photo-backup` (uid 973) has a password in `pdbedit`; not a shell login.
-    - Storage: `/dragon/media/photos` on sophrosyne (ZFS dataset `dragon/photos`, `atime=off`)
-    - Firesafe: `Photos` source picks up `/dragon/media/photos` during backup
-    - ZFS dataset: `dragon/photos` mounted at `/dragon/media/photos`, `atime=off`. Files are upserted by UUID manifest (no `--delete` mirroring; deleted originals in Photos are not "deleted" from the backup — firesafe `.deleted/` note no longer applies to photos).
-    - **Archived plan:** A larger restructure (promoting `/dragon/media` itself to a dataset) was researched but deferred — see `.config/nix/media-dataset-restructure-plan.md` for context.
-  - **Minecraft Bedrock server: Native (no container) via `modules/minecraft-bedrock.nix`.
-    - Binary packaged at `pkgs/bedrock-server/` — `fetchurl` from Mojang, `autoPatchelfHook` for glibc compat.
-    - Data dir: `/dragon/servers/minecraft` (migrated from old `/dragon/containers/minecraft`, kept as backup until `/dragon/containers` dataset was removed).
-    - Runs as `minecraft` user, systemd service with FIFO console socket for graceful stop.
-    - **Updates:** `nr --update` on Linux auto-bumps via `pkgs/bedrock-server/update.sh` (queries kittizz tracker, downloads zip, computes sha256, rewrites `default.nix`).
-  - **Don't Starve Together server:** Native (no container) via `modules/dst-server.nix`.
-    - Binary installed via SteamCMD at `/dragon/servers/dontstarve/install/` (app ID 343050, auto-updates on start).
-    - Old Debian library shims (`libcurl-gnutls`, `libnettle6`, `libldap-2.4`, `libsasl2`) extracted from Debian snapshots for ABI compatibility.
-    - Dual-shard setup (Master + Caves) as two systemd services.
-    - Config templates + non-destructive config generation in `modules/dst-server-config/`.
-    - Token at `/var/lib/dst-server/cluster_token.txt` (warn_missing in checkSecrets).
-  - **Nitter service** (Twitter/X alt front-end, via `services.nitter` in configuration.nix):
-    - Listens on port **8282**, reachable over Tailscale only (8282 added to `networking.firewall.interfaces.tailscale0.allowedTCPPorts` in `networking.nix` — never LAN/public).
-    - The module auto-provisions a local Redis (`redis-nitter.service`) for the tweet cache.
-    - **LoadCredential gotcha:** the unit does `LoadCredential=sessionsFile:/var/lib/nitter/sessions.jsonl`, and systemd refuses to mount a credential whose source file doesn't already exist (`Failed at step CREDENTIALS` → crash-loop). The module never creates the file, so provision it via `systemd.tmpfiles.rules` (see the comment in configuration.nix) — `d /var/lib/private/nitter` + `f .../sessions.jsonl` (DynamicUser StateDirectory). Empty file is fine.
-    - **Reality caveat:** X rate-limits aggressively; persistent 429s are X's fault, not the deployment — may not be worth fighting.
+Keep this list short. Detail belongs in the skills, not here.
 
 ## GitHub credentials (`gh`)
 
-Two tokens, deliberately separate. **Neither is stored in this repo** (it is public).
-
-| Credential | Stored in | Scope | Used for |
-|---|---|---|---|
-| fine-grained PAT | `gh` keyring (`~/.config/gh/`) | repos Scott owns | normal `gh` work; also feeds `NIX_CONFIG` access-tokens (`35-nix-github-token.fish`) |
-| classic PAT | macOS login Keychain, item `gh-public-token` | `public_repo` | filing issues/PRs on **third-party public repos**, via the `gh-public` wrapper |
-
-**Why two.** A fine-grained PAT can only ever be granted access to repos you own (or orgs you belong to), so it cannot reach a public repo owned by someone else — `gh issue create --repo someone/else` dies with `GraphQL: Resource not accessible by personal access token (createIssue)`. A classic `public_repo` token is the right credential for that, but it **cannot be stored in the `gh` keyring**: `gh auth login --with-token` enforces a minimum scope set (`repo`, `read:org`, `gist`) and rejects `public_repo` with `missing required scopes`.
-
-**Why per-invocation, not a global `GH_TOKEN`.** `GH_TOKEN` takes precedence over the keyring token for *every* gh call, so exporting the `public_repo` token globally would shadow the fine-grained PAT and strip gh's access to Scott's own private repos. `gh-public` sets it only for the command it wraps.
-
-Set up (once per machine; copy a classic token scoped to `public_repo` first):
-
-```fish
-security add-generic-password -U -s gh-public-token -a bonds -w (pbpaste)
-```
-
-Use:
-
-```fish
-gh-public issue create --repo osaurus-ai/osaurus --title "..." --label enhancement --body-file ~/body.md
-```
-
-Rotate: re-run the same `security add-generic-password -U …` line with the new token (`-U` updates the item in place). Remove: `security delete-generic-password -s gh-public-token -a bonds`. The wrapper itself is `.config/fish/conf.d/36-gh-public-token.fish`.
-
-**Gotchas:**
-- **`gh issue create --label X` does not fail when the label can't be applied** — it prints the issue URL and exits 0. Always confirm with `gh issue view <n> --json labels`. A non-collaborator cannot label on someone else's repo at all (`AddLabelsToLabelable` denied), so expect `labels: []`; a maintainer will label it.
-- The Keychain item was created by `security`, so `security` reads it without a prompt; reading it from fish can raise a one-time "always allow" dialog.
-- `--with-token`'s minimum-scope rule is hard, not a warning — a `public_repo`-only token cannot be logged in that way at all.
+Two tokens, deliberately separate; **neither is stored in this repo** (it is
+public). Fine-grained PAT in the `gh` keyring for Scott's own repos; classic
+`public_repo` token in the macOS Keychain behind the `gh-public` wrapper for
+third-party public repos. Full setup, rotation, and the gotchas are in the
+`gh-credentials` skill.
 
 ## Osaurus repo (bonds/osaurus)
 
-Local working copy: `~/src/bonds/osaurus` (a fork of OsaurusAI; origin is
-`github.com/bonds/osaurus`). Work-in-progress goes on feature branches off
-`main` (e.g. `scott/chat-window-clamp`), pushed to origin for PRs. The repo's
-own `AGENTS.md` has repo-local proof/proof-reporting rules — read it first.
-
-### Build & test reality (Xcode 26.3 / Swift 6.2.4)
-
-The repo's last clean build under the current toolchain was July 2026; Swift
-6.2.4 then surfaced a chain of strict-concurrency and type-checker failures
-that blocked the whole package. All fixed on `scott/chat-window-clamp`, but
-keep these in mind for any future work:
-
-- **Run `swift test` in Debug, never `-c release`.** Test-only hooks
-  (`makeContextForTesting`, `_setItemsForTesting`, `executeForTesting`,
-  `forceChatEngineRouteForTests`, …) are `#if DEBUG`-gated; a Release test
-  build strips them and fails the whole test target with "has no member".
-- **vmlx `MLXLMCommon` still over-reports region-isolation on 6.2.4.** Its
-  manifest forces `.v6` language mode when `compiler(>=6.2)` (it assumes 6.2
-  fixed the over-report; it did not), producing `#SendingRisksDataRace` errors
-  in `BatchEngine.swift`. Workaround: patch the vmlx checkout to `.v5` (the
-  manifest's own 6.0/6.1 fallback). Scratch-checkout-only; must be re-applied
-  after a clean checkout, or upstreamed as a pin bump / manifest change.
-- **Type-checker timeouts ("unable to type-check this expression in reasonable
-  time")** hit long chained string-concat and multi-source `Set(...)`/`flatMap`
-  expressions (fixed in `AgentToolLoop.announcedToolCallNotice` and
-  `MemoryContextAssembler`). Keep those expressions broken into small locals.
-- **Don't send non-Sendable `self` across isolation.** `KnowledgeManager.init`
-  loads the registry off-main via `Task.detached`; the pattern that satisfies
-  6.2.4 is a nested `Task.detached` for the load + a MainActor hop with only
-  the finished snapshot.
-- Window-frame persistence note (the original fix): `setFrameUsingName`
-  restores autosaved frames verbatim, so a frame saved on a large display can
-  land partly off a smaller screen. `ChatWindowManager.constrainedFrame(_:to:)`
-  clamps the restored frame into the visible frame; regression tests in
-  `Packages/OsaurusCore/Tests/Chat/ChatWindowFrameClampingTests.swift`.
-
-### Running tests in this sandboxed agent environment
-
-SwiftPM's own `sandbox-exec` can't nest and clang's module-cache dir is
-read-only in the sandbox, so the plain `make test` lane needs three flags:
-
-```bash
-cd ~/src/bonds/osaurus
-OSAURUS_DISABLE_KEYCHAIN_FOR_TESTS=1 \
-OSAURUS_TEST_ROOT=/tmp/osaurus-test \
-OSU_MODELS_DIR=/tmp/osaurus-test-models \
-swift test --package-path Packages/OsaurusCore --disable-sandbox \
-  --scratch-path /tmp/osaurus-swiftpm \
-  -Xcc -fmodules-cache-path=/tmp/osaurus-modcache \
-  --filter ChatWindowFrameClampingTests
-```
-
-(Single-target filters like `--filter ChatWindowFrameClampingTests` keep the
-run tractable; a bare full-suite run recompiles ~1140 test files.)
+Local working copy at `~/src/bonds/osaurus`; feature branches off `main`, pushed
+to `origin` for PRs. The repo's own `AGENTS.md` has its proof rules — read it
+first. Build/test reality under Xcode 26.3 / Swift 6.2.4 (Debug-only tests, the
+vmlx patch, sandboxed `swift test` invocation) is in the `osaurus-build` skill.
 
 ## pi coding agent
 
@@ -328,17 +101,26 @@ read-only resources out of `.config/nix/pkgs/pi/` and merges the rest into
 
 | Path | Contents |
 |---|---|
-| `pkgs/pi/extensions/` | `protected-paths.ts` (secrets/`.git`/`node_modules` writes blocked), `permission-gate.ts` (confirms `rm -rf`, `sudo`/`doas`, force-push, disk ops, and any `nr`/`*-rebuild switch` activation), `git-checkpoint.ts`, `dirty-repo-guard.ts`, `reported-cost.ts` (overrides pi's list-price cost with Deep Infra's per-request `usage.estimated_cost`) |
-| `pkgs/pi/skills/code-review/` | The `code-review` skill that the "before committing" rule below refers to; also `/skill:code-review` |
+| `pkgs/pi/extensions/` | `protected-paths.ts` (secrets/`.git`/`node_modules` writes blocked), `permission-gate.ts` (confirms `rm -rf`, `sudo`/`doas`, force-push, disk ops, and any `nr`/`*-rebuild switch` activation), `git-checkpoint.ts`, `dirty-repo-guard.ts`, `reported-cost.ts` (overrides pi's list-price cost with Deep Infra's per-request `usage.estimated_cost`), `notify.ts` (OSC 777 desktop notification when a run settles), `custom-footer.ts` (`/footer` toggles a branch + tokens + cost footer), `plan-mode/` (read-only `/plan` mode, `ctrl+alt+p`) |
+| `pkgs/pi/skills/` | `code-review` (the review rule below), `dotfiles-layout`, `machines-and-services`, `gh-credentials`, `osaurus-build` — the reference material split out of this file, loaded on demand |
 | `pkgs/pi/prompts/` | `/review`, `/ship` (review → verify → commit → push both remotes), `/nr` (build-only, hand activation to Scott), `/learn` (docs/learnings entry) |
 | `pkgs/pi/keybindings.json` | `ctrl+shift+n` new session, `ctrl+shift+r` resume, `ctrl+shift+t` tree |
-| `models.json` (generated) | Deep Infra / DeepSeek-V4.1-Flash-1017; key read at request time from `/run/agenix/hermes-deepinfra` |
+| `models.json` (generated) | Deep Infra: `DeepSeek-V4.1-Flash-1017` (default, vision) and `DeepSeek-V4-Flash` (cheap, text-only) for the `ctrl+p` cycle; key read at request time from `/run/agenix/hermes-deepinfra` |
 | `mcp.json` (generated) | `reel-summarize` → `http://sophrosyne.taileafac.ts.net:8892/sse` (streamable HTTP; `/sse` is just the path) |
 
 Because these are nix-store symlinks, `pi install` and `pi mcp add` cannot
 persist: edit the repo and re-run `nr`. `settings.json` stays writable (pi
 writes `lastChangelogVersion` itself), so it is merged with `jq` in
 `home.activation.piSettings` — add new default settings there, not by hand.
+It also sets `enabledModels: ["deepinfra/**"]` (so `ctrl+p` cycles both models
+instead of being a no-op — `**`, since model IDs contain a slash and the glob
+does not cross it) and `defaultTools: ["+codemode"]` (call tools from a script
+rather than one round-trip each).
+
+**Skills are pi-only.** The reference material moved out of this file is no
+longer visible to other harnesses (Hermes, Claude Code, opencode) that read
+`AGENTS.md`; they would need the skill files at
+`.config/nix/pkgs/pi/skills/*/SKILL.md`.
 
 **Cost display:** pi prices every request as `tokens × model.cost` (USD per
 million tokens) and ignores any cost the provider reports; `deepinfra` has no

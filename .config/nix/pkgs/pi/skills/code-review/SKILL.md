@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review pending changes before a commit, push, or pull request. Use when the user asks for a review, before committing any batch of edits, or when checking a branch or PR for problems.
+description: "Review pending changes before a commit, push, or pull request. Use when the user asks for a review, before committing any batch of edits, or when checking a branch or PR for problems."
 ---
 
 # Code review

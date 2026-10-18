@@ -49,6 +49,10 @@ in {
           reasoning = true;
           input = ["text" "image"];
           contextWindow = 1048576;
+          # Deep Infra reports `max_tokens` == `context_length` for this model
+          # (metadata, `curl api.deepinfra.com/v1/openai/models`), so this is
+          # the provider's own ceiling, not a typo. pi clamps it to the room
+          # left in the context anyway.
           maxTokens = 1048576;
           compat.maxTokensField = "max_tokens";
 
@@ -81,6 +85,27 @@ in {
             cacheWrite = 0.2;
           };
         }
+
+        # Cheap/fast partner for Ctrl+P cycling (`enabledModels` below).
+        # $0.09/$0.18 per million against the 1017's $0.20/$0.60, no discount
+        # to track, same 1M context, text-only. Prices from the same
+        # `metadata.pricing` response as the model above.
+        {
+          id = "deepseek-ai/DeepSeek-V4-Flash";
+          name = "DeepSeek V4 Flash (Deep Infra)";
+          api = "openai-completions";
+          reasoning = true;
+          input = ["text"];
+          contextWindow = 1048576;
+          maxTokens = 1048576;
+          compat.maxTokensField = "max_tokens";
+          cost = {
+            input = 0.09;
+            output = 0.18;
+            cacheRead = 0.018;
+            cacheWrite = 0.09;
+          };
+        }
       ];
     };
   };
@@ -110,6 +135,14 @@ in {
   # the same preserve-all-other-keys pattern used for Raven's config.json in
   # hosts/accismus/configuration.nix postActivation. Idempotent, so a re-run
   # never aborts activation under `set -e`.
+  #
+  #   enabledModels   both Deep Infra models are in the Ctrl+P cycle (with a
+  #                   single model the cycle is a no-op). `**`, not `*`: model
+  #                   IDs contain a slash (`deepseek-ai/…`) and the glob does
+  #                   not cross it — `deepinfra/*` matches nothing and pi warns.
+  #   defaultTools    `+codemode` adds the codemode tool next to the built-in
+  #                   defaults: the model can call tools from a script instead
+  #                   of one round-trip each.
   home.activation.piSettings = lib.hm.dag.entryAfter ["writeBoundary"] ''
     piSettings="${config.home.homeDirectory}/.pi/agent/settings.json"
     mkdir -p "$(dirname "$piSettings")"
@@ -122,6 +155,8 @@ in {
        | .defaultProvider = "deepinfra"
        | .defaultModel = "deepseek-ai/DeepSeek-V4.1-Flash-1017"
        | .defaultThinkingLevel = "high"
+       | .enabledModels = ["deepinfra/**"]
+       | .defaultTools = ["+codemode"]
        | .theme = "system"
        | .quietStartup = "header"
        | .enableInstallTelemetry = false' "$piSettings" > "$piTmp"; then
