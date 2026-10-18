@@ -1,6 +1,6 @@
 ---
 name: gh-credentials
-description: "The two GitHub tokens: a fine-grained PAT in the gh keyring for repos Scott owns, and a classic public_repo token in the macOS Keychain used by the `gh-public` wrapper for third-party public repos. Use when filing issues or PRs on someone else's repo, or when gh fails with missing scopes or 403."
+description: "The two GitHub tokens: a fine-grained PAT in the gh keyring for repos Scott owns, and a classic public_repo token in the macOS Keychain used by the `gh-public` wrapper for third-party public repos. Use when filing issues or PRs on someone else's repo, when creating a release (needs Contents: write), or when gh or a push fails with missing scopes, 403, or Permission denied."
 ---
 
 Neither token is in this repo (it is public).

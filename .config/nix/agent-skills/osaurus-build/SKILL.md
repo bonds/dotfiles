@@ -1,6 +1,6 @@
 ---
 name: osaurus-build
-description: "Build and test bonds/osaurus under Xcode 26.3 / Swift 6.2.4: Debug-only test builds, the vmlx region-isolation patch, type-checker traps, and the sandboxed test command. Use when working in ~/src/bonds/osaurus."
+description: "Build and test bonds/osaurus under Xcode 26.3 / Swift 6.2.4: Debug-only test builds, the vmlx region-isolation patch, type-checker traps, and the sandboxed test command. Use when working in ~/src/bonds/osaurus, when xcodebuild or swift test fails or hangs, or when a Swift type-checker error needs bisecting."
 ---
 
 The repo's own AGENTS.md has repo-local proof rules; read it first.

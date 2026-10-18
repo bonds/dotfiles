@@ -1,0 +1,72 @@
+# Routing evals for the agent context.
+#
+# Each case is one prompt with the substrings a correct answer must contain
+# (case-insensitive; every `expect:` line must match). They test what the
+# always-loaded context and the skill descriptions actually route the model to,
+# so run them after touching `~/AGENTS.md`, a skill description, or
+# `~/DECISIONS.md`:
+#
+#     ~/.config/nix/pkgs/pi/evals/run.sh
+#
+# A failure means the wording stopped carrying the answer, not that the model
+# got worse. Fix the wording, not the case.
+#
+# Format: `### name`, then `prompt:`, then one or more `expect:` lines.
+# `reject:` (must NOT appear) is supported for cases where a wrong answer is
+# the likely failure.
+
+### config-alias-file
+prompt: Which tracked file defines the `config` shell alias, and what does that alias expand to?
+expect: 10-aliases.fish
+expect: git
+
+### untrack-dotfile
+prompt: How do I stop tracking a dotfile without deleting it from disk?
+expect: rm --cached
+
+### rebuild-command
+prompt: What is the exact command I run to rebuild this Mac's system configuration?
+expect: nr
+
+### skills-location
+prompt: Where do the shared agent skills live on this machine?
+expect: .config/nix/agent-skills
+
+### protected-paths
+prompt: Which pi extension blocks writes to ~/.ssh and to agenix-decrypted secrets?
+expect: protected-paths
+
+### doas-authorized-keys
+prompt: Which file holds the SSH authorized keys that pam_ssh_agent_auth checks on sophrosyne?
+expect: /etc/ssh/authorized_keys.d/scott
+
+### dotfiles-remotes
+prompt: Which two git remotes does the dotfiles repo push to, and in what order?
+expect: origin
+expect: sophrosyne
+
+### editor
+prompt: What is $EDITOR set to, and where is that set?
+expect: hx
+expect: fish
+
+### reel-mcp
+prompt: Which MCP server summarizes Instagram Reels, and on which host does it run?
+expect: reel-summarize
+expect: sophrosyne
+
+### learnings-path
+prompt: Where does a lesson from the `/learn` prompt get written?
+expect: docs/learnings
+
+### decisions-file
+prompt: Where are settled decisions recorded with their rationale, so they stop being re-litigated?
+expect: DECISIONS.md
+
+### pi-config-source
+prompt: Where in the dotfiles repo is pi's configuration declared?
+expect: pkgs/pi
+
+### inbox-purpose
+prompt: What is ~/.pi/agent/inbox.md for, and what turns it into a permanent fix?
+expect: distill

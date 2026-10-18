@@ -1,6 +1,6 @@
 ---
 name: dotfiles-layout
-description: "Inventory of the tracked dotfiles: which file under $HOME holds shell, terminal, editor, git, ssh, nix, haskell, password-store and script config. Use when locating an existing config, deciding where a new tracked file belongs, or answering what a path in ~ contains."
+description: "Inventory of the tracked dotfiles: which file under $HOME holds shell (fish, the `config` alias), terminal (alacritty, ghostty, tmux), editor (helix), git, ssh, nix, haskell, password-store, DECISIONS.md and script config. Use when locating an existing config, answering where is X configured or what is in ~/.config, deciding where a new tracked file belongs, or untracking a file."
 ---
 
 Paths are relative to `$HOME` unless absolute. Machine and service details
@@ -49,6 +49,8 @@ are in the `machines-and-services` skill.
 - `.config/nix/` — **full nix flake for all machines** (see `.config/nix/AGENTS.md` for detailed docs)
   - Flake for: laptop (accismus/darwin), server (sophrosyne/NixOS), workstation (metanoia/NixOS)
   - `nr` fish function wraps `nh` for rebuilds
+- `.config/nix/agent-skills/` — canonical agent skills (`<name>/SKILL.md`), symlinked per skill into every harness by `modules/home/pi.nix`; see the `pi-harness` skill
+- `.config/nix/pkgs/pi/` — pi's declarative config: `extensions/`, `prompts/`, `keybindings.json`, `decisions.md` (→ `~/DECISIONS.md`), `evals/`
 - `.config/nix/pkgs/nix-what-changed/` — **`what-changed` tool** — Ported from fish to Python (v0.22.0).
   - Lives at `pkgs/nix-what-changed/` inside the dotfiles flake.
   - Also publishable as a standalone flake: `github:bonds/dotfiles?dir=.config/nix/pkgs/nix-what-changed`.
@@ -95,6 +97,13 @@ are in the `machines-and-services` skill.
 
 ### Display
 - `.local/share/icc/` — monitor ICC color profiles (Mstar, 3x U2718Q)
+
+### Agent harness
+- `AGENTS.md` — always-loaded agent instructions for `$HOME` (routing + non-negotiables; detail belongs in a skill)
+- `DECISIONS.md` — settled choices and their rationale, so they stop being re-litigated (symlink into `.config/nix/pkgs/pi/decisions.md`)
+- `~/.pi/agent/inbox.md` — **untracked**, written by `learnings-capture.ts` on tool failures; drained by `/distill`
+- `~/.pi/agent/sessions/` — **untracked** JSONL session tree, searchable with the `recall` tool
+- `docs/learnings/` — per-repo lesson notes, written by `/learn` (symptom / cause / takeaway)
 
 ### Misc
 - `.plan` — finger plan file

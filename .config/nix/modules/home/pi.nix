@@ -162,6 +162,11 @@ in {
       ".pi/agent/prompts".source = piConfig + "/prompts";
       ".pi/agent/keybindings.json".source = piConfig + "/keybindings.json";
 
+      # Settled decisions and their rationale: AGENTS.md says what to do, this
+      # says why, so an odd-looking choice is not re-litigated every session.
+      # At $HOME root (not under .pi) so every harness can find it.
+      "DECISIONS.md".source = piConfig + "/decisions.md";
+
       # MCP servers. reel-summarize-mcp runs on sophrosyne and speaks streamable
       # HTTP; the `/sse` path is only a path name (pi rejects the legacy SSE
       # transport, not this URL). Reachable over Tailscale only. The bearer

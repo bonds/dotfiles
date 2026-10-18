@@ -1,10 +1,32 @@
 ---
 name: machines-and-services
-description: "Per-machine setup and services: accismus (Syncthing, photo-export and the nightly photos backup), sophrosyne (ZFS pool, firesafe USB backup and its tools, photos pipeline, Minecraft Bedrock, Don't Starve Together, Nitter, temperature logging), metanoia. Use for anything involving those machines, their disks, backups, or long-running services."
+description: "Per-machine setup and services: accismus (Syncthing, photo-export and the nightly photos backup), sophrosyne (ZFS pool, firesafe USB backup and its tools, photos pipeline, Minecraft Bedrock, Don't Starve Together, Nitter, temperature logging, doas/sudo privilege), metanoia. Use for anything involving those machines, their disks, backups, doas or sudo prompts, or long-running services."
 ---
 
 Paths below are relative to `.config/nix/` unless absolute. The bare-repo
 dotfiles workflow is described in `~/AGENTS.md`.
+
+### doas (sophrosyne)
+
+Layered privilege: `noPass` rules for `systemctl`, `journalctl`,
+`nixos-rebuild` and `nh` (no PAM, no TouchID), and `pam_ssh_agent_auth` for
+everything else, which challenges the forwarded SSH agent (Secretive on
+accismus) — expect one TouchID prompt per operation.
+
+- **Rule matching needs the full path.** `doas
+  /run/current-system/sw/bin/systemctl restart syncthing`, never `doas
+  systemctl …`: doas does not resolve bare names through `PATH` before matching.
+- **`args` is an exact match** on the whole argument list, not a prefix, so
+  `args restart` only matches `doas cmd restart` with nothing after it. All
+  current noPass rules are therefore scoped to the command only.
+- **Agent forwarding is required** for the TouchID path; SSH config sets
+  `ForwardAgent yes` for sophrosyne. Without it doas falls back to a password
+  prompt, which only works interactively.
+- The `pam_ssh_agent_auth` key file is `/etc/ssh/authorized_keys.d/scott`
+  (root-owned, outside the nix store — activation copies it on each switch to
+  avoid group-writable `/nix/store` directory rejections).
+- Passwordless does not mean agent-run: activating rebuilds are Scott's to run
+  (see `~/AGENTS.md` → Conventions).
 
 ### Machines
 Three machines managed from this repo:

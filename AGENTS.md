@@ -2,6 +2,8 @@
 
 > **Also see:** `.config/nix/AGENTS.md` for nix-flake-specific docs — rebuild
 > commands, flake structure, per-machine gotchas, and nix conventions.
+> `~/DECISIONS.md` for the *why* behind choices that look odd — read it before
+> proposing to change one.
 
 Personal dotfiles tracked via a **bare git repo** at `~/.local/share/dotfiles` on
 accismus and sophrosyne, managed through a `config` alias
@@ -95,77 +97,71 @@ vmlx patch, sandboxed `swift test` invocation) is in the `osaurus-build` skill.
 
 ## pi coding agent
 
-Config is declarative: `modules/home/pi.nix` (accismus only) symlinks
-read-only resources out of `.config/nix/pkgs/pi/` and merges the rest into
-`~/.pi/agent/settings.json`.
+Declared in `.config/nix/pkgs/pi/` (extensions, prompts, keybindings,
+`decisions.md`) and symlinked read-only into `~/.pi/agent/` by
+`modules/home/pi.nix`; only `settings.json` is merged, with `jq`, at activation.
+So **edit the repo, then `nr`** — `pi install` and `pi mcp add` cannot persist.
+The extension inventory, prompt templates, the Deep Infra cost story,
+`mcp.json`, and the skills wiring are in the `pi-harness` skill.
 
-| Path | Contents |
-|---|---|
-| `pkgs/pi/extensions/` | `protected-paths.ts` (secrets/`.git`/`node_modules` writes blocked), `permission-gate.ts` (confirms `rm -rf`, `sudo`/`doas`, force-push, disk ops, and any `nr`/`*-rebuild switch` activation), `git-checkpoint.ts`, `dirty-repo-guard.ts`, `reported-cost.ts` (overrides pi's list-price cost with Deep Infra's per-request `usage.estimated_cost`), `notify.ts` (OSC 777 desktop notification when a run settles), `custom-footer.ts` (`/footer` toggles a branch + tokens + cost footer), `plan-mode/` (read-only `/plan` mode, `ctrl+alt+p`) |
-| `.config/nix/agent-skills/` | Shared by every agent (see **Skills** below): `code-review`, `dotfiles-layout`, `machines-and-services`, `gh-credentials`, `osaurus-build` |
-| `pkgs/pi/prompts/` | `/review`, `/ship` (review → verify → commit → push both remotes), `/nr` (build-only, hand activation to Scott), `/learn` (docs/learnings entry) |
-| `pkgs/pi/keybindings.json` | `ctrl+shift+n` new session, `ctrl+shift+r` resume, `ctrl+shift+t` tree |
-| `models.json` (generated) | Deep Infra: `DeepSeek-V4.1-Flash-1017` (default, vision) and `DeepSeek-V4-Flash` (cheap, text-only) for the `ctrl+p` cycle; key read at request time from `/run/agenix/hermes-deepinfra` |
-| `mcp.json` (generated) | `reel-summarize` → `http://sophrosyne.taileafac.ts.net:8892/sse` (streamable HTTP; `/sse` is just the path) |
+Two rules matter more than the inventory:
 
-Because these are nix-store symlinks, `pi install` and `pi mcp add` cannot
-persist: edit the repo and re-run `nr`. `settings.json` stays writable (pi
-writes `lastChangelogVersion` itself), so it is merged with `jq` in
-`home.activation.piSettings` — add new default settings there, not by hand.
-It also sets `enabledModels: ["deepinfra/**"]` (so `ctrl+p` cycles both models
-instead of being a no-op — `**`, since model IDs contain a slash and the glob
-does not cross it) and `defaultTools: ["+codemode"]` (call tools from a script
-rather than one round-trip each).
-
-**Cost display:** pi prices every request as `tokens × model.cost` (USD per
-million tokens) and ignores any cost the provider reports; `deepinfra` has no
-pi.dev catalog entry, so `models.json` is the only price source. Hence both
-halves of the setup: `models.json` carries Deep Infra's **list** prices, and
-`reported-cost.ts` rewrites each finished message's `usage.cost` from Deep
-Infra's own `usage.estimated_cost` (this model carries `discount: 0.51`, so the
-billed amount is ~0.49× list price — a static price alone overstates cost 2×).
-
-Verifying without activating: `nh darwin build .` from `.config/nix` shows the
-`hm_*` files. To test resources before a rebuild, pass them explicitly (from
-`~`): `pi -e .config/nix/pkgs/pi/extensions/protected-paths.ts --skill
-.config/nix/agent-skills --prompt-template .config/nix/pkgs/pi/prompts`, or
-point `PI_CODING_AGENT_DIR` at a scratch directory.
+- Agents may build-verify (`nh darwin build`) but **never run the activating
+  rebuild** — see Conventions.
+- What you learn about the harness goes into the repo, not into the session
+  that discovered it — see **Compounding** below.
 
 ## Skills
 
-The canonical skills live in `.config/nix/agent-skills/<name>/SKILL.md` (Agent
-Skills format), tracked here and symlinked per skill into each harness by
-`modules/home/pi.nix`. Each agent's own directory stays real, so agents can
-still add their own skills.
+Canonical skills: `.config/nix/agent-skills/<name>/SKILL.md`, symlinked per
+skill into every harness by `modules/home/pi.nix`. A new directory there shows
+up everywhere on the next `nr`, with no other edit. Harness paths and the
+wiring rules are in the `pi-harness` skill.
 
 | Skill | Use it when |
 |---|---|
 | `code-review` | reviewing a diff before commit/push/PR — the rule in Conventions |
 | `dotfiles-layout` | locating a tracked config file, or deciding where a new one belongs |
-| `machines-and-services` | anything touching accismus/sophrosyne/metanoia, firesafe, photos, Minecraft, DST, Nitter |
+| `machines-and-services` | anything touching accismus/sophrosyne/metanoia, firesafe, photos, Minecraft, DST, Nitter, doas |
 | `gh-credentials` | filing issues/PRs on third-party repos, or `gh` scope/403 failures |
 | `osaurus-build` | building or testing `~/src/bonds/osaurus` |
+| `pi-harness` | editing pi config or an extension/skill/prompt; a tool, cost or session question |
 
-Wiring (one symlink per skill, so a skill added here appears everywhere on the
-next rebuild — no other edit needed):
+Agents without skill support can read `SKILL.md` directly. The `description` is
+what routes the model to the skill: say what it does **and** when to use it, and
+quote it (`description: "…"`) — an unquoted `key: value` inside it is invalid
+YAML and the harness skips the skill silently.
 
-| Harness | Directory |
-|---|---|
-| pi | `~/.agents/skills/` (the Agent Skills location — pi reads it natively; do **not** also link `~/.pi/agent/skills`, the duplicate makes every skill collide at startup) |
-| Agent Skills standard | `~/.agents/skills/` |
-| Claude Code | `~/.claude/skills/` |
-| opencode | `~/.config/opencode/skills/` |
-| Hermes | `~/.hermes/skills/dotfiles/` (category dir + `DESCRIPTION.md`) |
+## Compounding
 
-**Agents without skill support** (or a harness that ignores the directory) can
-still use them: read `.config/nix/agent-skills/<name>/SKILL.md` directly. That is
-why this table exists in `AGENTS.md` rather than only in the nix module.
+pi has no weight updates. It gets better only because lessons land in files the
+next session loads, so every lesson has a rung to climb:
 
-Adding a skill: create `.config/nix/agent-skills/<name>/SKILL.md` with `name` and
-`description` frontmatter, then `nr`. Keep the description to what it does *and*
-when to use it — that is what routes the model to it. Quote the description
-(`description: "…"`): an unquoted `key: value` inside it is invalid YAML and
-the harness skips the skill silently.
+1. **`AGENTS.md` line** — advisory, costs tokens every request.
+2. **Skill** — loaded only when its description routes to it.
+3. **Hook / extension** — deterministic; the right home for "never do X".
+4. **Automation** — nix module, pre-commit hook, `nr` step.
+
+Promote; do not accumulate prose. A rule seen twice belongs on rung 3, and
+`AGENTS.md` must not grow — move a paragraph into a skill in the same edit.
+`~/DECISIONS.md` holds the settled *why* so it stops being re-litigated.
+
+The loop, in order:
+
+- **Capture.** `learnings-capture.ts` appends each distinct tool failure to
+  `~/.pi/agent/inbox.md` (immediately for policy/permission failures, on the
+  second occurrence otherwise). Read it, do not edit it.
+- **Distill.** `/distill` clusters the inbox and promotes each item up the
+  ladder, then deletes what it processed.
+- **Verify.** After changing `AGENTS.md`, a skill description, or
+  `DECISIONS.md`, run `~/.config/nix/pkgs/pi/evals/run.sh` — it asks pi a dozen
+  routing questions and checks the answers. A failure means the wording got
+  worse, not the model.
+- **Recall.** The `recall` tool searches past session JSONL for earlier work on
+  the same problem; use it before re-deriving an answer.
+
+`/learn` is the manual sibling of capture, for a lesson with no failed tool
+call behind it.
 
 ## Conventions
 
@@ -199,16 +195,13 @@ the harness skips the skill silently.
 
 ### doas privilege escalation
 
-doas is configured with layered privilege:
-- **noPass commands** — `systemctl`, `journalctl`, `nixos-rebuild`, `nh` — skip PAM entirely, no TouchID prompt.
-- **Everything else** — authenticates via `pam_ssh_agent_auth`, which challenges the forwarded SSH agent (Secretive on accismus). Expect a TouchID prompt per operation.
-
-Key constraints:
-- **doas does NOT resolve bare command names via PATH for rule matching.** Always use the full path: `doas /run/current-system/sw/bin/systemctl restart syncthing`, NOT `doas systemctl restart syncthing`. The existing `nixos-rebuild`/`nh` noPass rules follow the same convention (full path).
-- **`args` in doas.conf is an exact match** on the full argument list, not a prefix match. `args restart` only matches `doas cmd restart` (no additional args). All current noPass rules are scoped to `cmd`-level only (no `args`) for this reason.
-- **Agent forwarding is required** for TouchID-for-doas. SSH config sets `ForwardAgent yes` for sophrosyne. If for some reason the agent isn't forwarded, doas falls back to password prompt (works interactively only).
-
-The keys file for `pam_ssh_agent_auth` is at `/etc/ssh/authorized_keys.d/scott` (root-owned, outside the nix store — an activation script copies it on each switch to avoid group-writable /nix/store directory rejections).
+doas is layered: `noPass` rules for `systemctl`, `journalctl`, `nixos-rebuild`
+and `nh` (no TouchID), `pam_ssh_agent_auth` for everything else. Two traps: rule
+matching needs the **full path** (`doas /run/current-system/sw/bin/systemctl
+restart syncthing`, never the bare name), and `args` is an exact match on the
+whole argument list, not a prefix. Agent forwarding is required for the TouchID
+path. Details, including the `/etc/ssh/authorized_keys.d/scott` key file: the
+`machines-and-services` skill.
 
 ## Editable worktree (`live`)
 
