@@ -30,6 +30,7 @@ nix-store symlinks.
 | `git-checkpoint.ts` | `git stash create` per turn; offers restore on fork |
 | `dirty-repo-guard.ts` | warns when edits land on a dirty tree |
 | `reported-cost.ts` | replaces pi's list-price cost with Deep Infra's `usage.estimated_cost` |
+| `model-prices.ts` | `/prices` (and `ctrl+shift+l`): picker with aligned billed in/out/cache columns; also appends `· billed $in/$out/$cache` to each `deepinfra` model name for `/model` |
 | `notify.ts` | OSC 777 desktop notification on `agent_settled` |
 | `custom-footer.ts` | `/footer` toggles branch + tokens + cost |
 | `plan-mode/` | read-only `/plan` mode, `ctrl+alt+p` |
@@ -47,16 +48,45 @@ handler blocks the tool).
 
 `models.json` is generated (read-only symlink) and is the **only** price
 source: `deepinfra` has no pi.dev catalog entry, and pi prices a request as
-`tokens x model.cost`, ignoring whatever cost the provider reports. Two models
-for the `ctrl+p` cycle: `DeepSeek-V4.1-Flash-1017` (default, vision) and
-`DeepSeek-V4-Flash` (cheap, text-only).
+`tokens x model.cost`, ignoring whatever cost the provider reports. Four models
+for the `ctrl+p` cycle: `DeepSeek-V4.1-Flash-1017` (default, vision, 1M) plus
+`Qwen3.8-27B`, `GLM-5.3-Flash` and `MiMo-V2.6-Flash` (all vision; GLM and MiMo
+1M, Qwen 256k). Model IDs and list prices come from
+`curl api.deepinfra.com/v1/openai/models` → `metadata.pricing`.
 
-Prices there are Deep Infra's **list** prices. The API key is not stored — it is
-a `!command` reading `/run/agenix/hermes-deepinfra` at request time. This model
-carries a discount, so `reported-cost.ts` rewrites each finished message's
-`usage.cost` from the provider's own `estimated_cost` (rescaled across
-input/output/cache components); without it the footer and `/session` overstate
-the bill roughly 2x. If Deep Infra stops reporting a cost, update `models.json`
+Each model's `name` in `models.json` is a plain label — `DeepSeek V4.1 Flash 1017`,
+no price. `model-prices.ts` appends `· billed $in/$out/$cache` at runtime, which
+is what the built-in `/model` selector prints for the highlighted model
+(`Model Name: <name>`; its rows are `id` + `[provider]` only). Prices are **billed,
+not list**: list price is in `cost`, the discount is per model, and this file is
+static, so a price written here would be wrong within a week.
+
+`/prices` is the comparison view, because the built-in selector cannot show a
+per-row column: it renders `item.id` and nothing else, and it cannot be replaced
+— `app.model.select` is in `RESERVED_KEYBINDINGS_FOR_EXTENSION_CONFLICTS`, and a
+command named `model` is skipped in favour of the built-in
+(`getBuiltInCommandConflictDiagnostics`). The picker pins
+`minPrimaryColumnWidth == maxPrimaryColumnWidth == 32` so every description
+starts at column 34, which is what makes the price columns line up; a header
+`Text` padded by that same amount sits above the list.
+
+The billed numbers come from two sources: Deep Infra's catalogue
+`metadata.discount` at `session_start` (one GET, key resolved through the
+registry, so the `!command` → agenix path is reused), then per turn the measured
+ratio `usage.estimated_cost ÷ pi's list-price total`, which outranks the
+published number and corrects an expired promo. Nothing is shown until one of
+them answers — no list price passed off as billed. Names are applied by
+re-registering the provider (`pi.registerProvider`): the registry rebuilds its
+snapshot from `models.json` on every refresh, so in-place mutation of a `Model`
+is lost. Only `name` changes; every other field is copied from the live model.
+
+The API key is not stored — it is a `!command` reading
+`/run/agenix/hermes-deepinfra` at request time. `models.json` keeps list prices
+because pi needs `cost` for its own math, and `reported-cost.ts` rewrites each
+finished message's `usage.cost` from the provider's own `estimated_cost`
+(rescaled across input/output/cache components); without it the footer and
+`/session` overstate the bill — 2x on the 1017 (discount 0.51), 1.3x on Qwen,
+~1.05x on MiMo. If Deep Infra stops reporting a cost, update `models.json`
 instead of debugging the extension.
 
 `mcp.json` declares `reel-summarize` → `http://sophrosyne.taileafac.ts.net:8892/sse`

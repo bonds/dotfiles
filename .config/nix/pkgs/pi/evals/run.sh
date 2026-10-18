@@ -29,7 +29,7 @@ cases="${1:-$here/cases.txt}"
 if [[ $# -gt 0 ]]; then shift; fi
 only=("$@")
 
-model="${MODEL:-deepinfra/deepseek-ai/DeepSeek-V4-Flash}"
+model="${MODEL:-deepinfra/zai-org/GLM-5.3-Flash}"
 extra=()
 if [[ -n ${PI_EVAL_ARGS:-} ]]; then
     read -r -a extra <<< "$PI_EVAL_ARGS"

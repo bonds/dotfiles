@@ -88,7 +88,15 @@ in {
           models = [
             {
               id = "deepseek-ai/DeepSeek-V4.1-Flash-1017";
-              name = "DeepSeek V4.1 Flash 1017 (Deep Infra)";
+              # Plain label: `model-prices.ts` appends the billed prices, which
+              # is what the built-in /model selector prints for the highlighted
+              # model (`Model Name: <name>`) — its rows are `id` + `[provider]`
+              # only, and an extension may not replace it (a command named
+              # `model` is skipped in favour of the built-in). Billed rather than
+              # list prices live there because the discount is per model, and
+              # that is also why they are not written here: this file is static,
+              # the discount is not.
+              name = "DeepSeek V4.1 Flash 1017";
               api = "openai-completions";
               reasoning = true;
               input = ["text" "image"];
@@ -131,24 +139,67 @@ in {
               };
             }
 
-            # Cheap/fast partner for Ctrl+P cycling (`enabledModels` below).
-            # $0.09/$0.18 per million against the 1017's $0.20/$0.60, no
-            # discount to track, same 1M context, text-only. Prices from the
-            # same `metadata.pricing` response as the model above.
+            # Cheap/fast partners for Ctrl+P cycling (`enabledModels` below).
+            # All three are vision-capable and cheaper than the 1017 on input;
+            # prices are Deep Infra's list prices from the same
+            # `metadata.pricing` response as the model above. Where
+            # `metadata.discount` is set it is noted per model — list price is
+            # kept here as the fallback shape, and `reported-cost.ts` supplies
+            # the real per-request number.
             {
-              id = "deepseek-ai/DeepSeek-V4-Flash";
-              name = "DeepSeek V4 Flash (Deep Infra)";
+              # $0.20/$2.50 list, discount 0.25 (billed ~0.75x). 256k context,
+              # not 1M — the tightest of the four. Dense 27B, so output is the
+              # expensive side; good for short answers, not long generations.
+              id = "Qwen/Qwen3.8-27B";
+              name = "Qwen3.8 27B";
               api = "openai-completions";
               reasoning = true;
-              input = ["text"];
+              input = ["text" "image"];
+              contextWindow = 262144;
+              maxTokens = 262144;
+              compat.maxTokensField = "max_tokens";
+              cost = {
+                input = 0.2;
+                output = 2.5;
+                cacheRead = 0.05;
+                cacheWrite = 0.2;
+              };
+            }
+            {
+              # $0.075/$0.25 list, no discount — the cheapest output rate in
+              # the cycle by an order of magnitude, with the 1017's 1M context.
+              id = "zai-org/GLM-5.3-Flash";
+              name = "GLM-5.3 Flash";
+              api = "openai-completions";
+              reasoning = true;
+              input = ["text" "image"];
               contextWindow = 1048576;
               maxTokens = 1048576;
               compat.maxTokensField = "max_tokens";
               cost = {
-                input = 0.09;
-                output = 0.18;
-                cacheRead = 0.018;
-                cacheWrite = 0.09;
+                input = 0.075;
+                output = 0.25;
+                cacheRead = 0.015;
+                cacheWrite = 0.075;
+              };
+            }
+            {
+              # $0.14/$0.28 list, discount 0.05 (billed ~0.95x). Omnimodal
+              # (text/image/video/audio) with 1M context and a very cheap
+              # cache read, so it is the pick for long cached-context runs.
+              id = "XiaomiMiMo/MiMo-V2.6-Flash";
+              name = "MiMo V2.6 Flash";
+              api = "openai-completions";
+              reasoning = true;
+              input = ["text" "image"];
+              contextWindow = 1048576;
+              maxTokens = 1048576;
+              compat.maxTokensField = "max_tokens";
+              cost = {
+                input = 0.14;
+                output = 0.28;
+                cacheRead = 0.0028;
+                cacheWrite = 0.14;
               };
             }
           ];
@@ -187,7 +238,7 @@ in {
   # hosts/accismus/configuration.nix postActivation. Idempotent, so a re-run
   # never aborts activation under `set -e`.
   #
-  #   enabledModels   both Deep Infra models are in the Ctrl+P cycle (with a
+  #   enabledModels   all Deep Infra models are in the Ctrl+P cycle (with a
   #                   single model the cycle is a no-op). `**`, not `*`: model
   #                   IDs contain a slash (`deepseek-ai/…`) and the glob does
   #                   not cross it — `deepinfra/*` matches nothing and pi warns.
