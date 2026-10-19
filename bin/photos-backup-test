@@ -1,0 +1,7 @@
+#!/usr/bin/env fish
+set -l uid (id -u)
+launchctl bootout gui/$uid/org.nixos.photos-backup 2>/dev/null
+launchctl bootstrap gui/$uid ~/Library/LaunchAgents/org.nixos.photos-backup.plist
+launchctl start gui/$uid/org.nixos.photos-backup
+sleep 2
+cat ~/Library/Logs/photos-backup.out.log
