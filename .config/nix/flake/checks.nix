@@ -66,6 +66,26 @@
           export PYTHONPATH=${self}/pkgs/nix-what-changed''${PYTHONPATH:+:$PYTHONPATH}
           pytest ${self}/pkgs/nix-what-changed/tests -v --tb=short -p no:cacheprovider
         '';
+
+      # reel-summarize carries a real unittest suite (10 modules, 70 tests) that
+      # only runs during a *build* of the package (default.nix sets
+      # nativeCheckInputs = pytest), and `nix flake check` never builds packages —
+      # only `checks`. Same gap the what-changed check above closes.
+      #
+      # The suite is fully isolated: transcribe_cpp is injected via
+      # patch.dict(sys.modules, ...) and httpx is mocked, so this needs neither
+      # transcribe-cpp nor a whisper model file. That also keeps the check
+      # platform-independent — the package's makeWrapperArgs points at
+      # libtranscribe.dylib, which does not exist on the Linux hosts. numpy is
+      # the one real import (module-level in stages/transcribe.py).
+      reel-summarize-test =
+        mkCheck "reel-summarize-test"
+        [(pkgs.python3.withPackages (ps: [ps.pytest ps.numpy ps.httpx]))]
+        ''
+          export HOME=$(mktemp -d)
+          export PYTHONPATH=${self}/pkgs/reel-summarize''${PYTHONPATH:+:$PYTHONPATH}
+          pytest ${self}/pkgs/reel-summarize/tests -v --tb=short -p no:cacheprovider
+        '';
     };
   };
 }

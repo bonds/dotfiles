@@ -19,7 +19,7 @@ class TestVisionOllama(unittest.TestCase):
 
     def test_vision_call(self):
         mock_httpx = self._make_mock_httpx()
-        cfg = Config()
+        cfg = Config(backend="ollama")
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
             f.write(b"fake image data")
             f.flush()
@@ -38,7 +38,7 @@ class TestVisionOllama(unittest.TestCase):
         mock_httpx.post.return_value = mock_response
         mock_httpx.TimeoutException = type("TimeoutException", (Exception,), {})
         mock_httpx.RequestError = type("RequestError", (Exception,), {})
-        cfg = Config()
+        cfg = Config(backend="ollama")
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
             f.write(b"fake")
             f.flush()

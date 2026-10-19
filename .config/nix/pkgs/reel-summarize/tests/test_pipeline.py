@@ -5,6 +5,11 @@ from reel_summarize.pipeline import run
 
 
 class TestPipeline(unittest.TestCase):
+    # _ensure_whisper_model downloads the whisper model over the network, so it
+    # must be stubbed like the six stages below — otherwise the test is not
+    # hermetic and fails inside the nix sandbox (no network) with
+    # FileNotFoundError from httpx.stream().
+    @patch("reel_summarize.pipeline._ensure_whisper_model")
     @patch("reel_summarize.pipeline.download")
     @patch("reel_summarize.pipeline.extract_audio")
     @patch("reel_summarize.pipeline.extract_frames")
@@ -12,7 +17,7 @@ class TestPipeline(unittest.TestCase):
     @patch("reel_summarize.pipeline.analyze_frames")
     @patch("reel_summarize.pipeline.generate_summary")
     def test_pipeline_flow(self, mock_summary, mock_vision, mock_transcribe,
-                           mock_frames, mock_audio, mock_download):
+                           mock_frames, mock_audio, mock_download, mock_whisper):
         mock_download.return_value = {
             "video_path": "/tmp/v.mp4",
             "metadata": {"caption": "test", "author": "user", "duration": 30},
