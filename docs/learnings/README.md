@@ -25,5 +25,7 @@ lesson that was true once is still a lesson about why it changed.
 
 - [2026-10-19 — `git gc --prune=now` does not reclaim garbage held by reflogs](2026-10-19-git-gc-reflog-blocks-prune.md)
 - [2026-10-19 — `status.showUntrackedFiles=no` hides files in *every* worktree](2026-10-19-showuntrackedfiles-hides-worktree-files.md)
+- [2026-10-19 — Secretive/TouchID failures don't only look like `Permission denied (publickey)`](2026-10-19-secretive-touchid-closes-the-connection.md)
+- [2026-10-19 — Piping a command to `tail` reports success, and hides the failure from capture](2026-10-19-pipe-masks-exit-code.md)
 - [2026-10-19 — `~/DECISIONS.md` is a read-only nix store symlink](2026-10-19-decisions-md-is-a-store-symlink.md)
 - [2026-10-19 — `rg -r` is `--replace`, not recursive](2026-10-19-ripgrep-r-is-replace.md)
