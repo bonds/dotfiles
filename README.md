@@ -1,19 +1,128 @@
 # bonds/dotfiles
 
-Personal dotfiles and Nix flake for macOS (nix-darwin) and NixOS machines.
+Personal dotfiles for three machines, plus the Nix flake that declares all of
+them.
 
-## What's here
+| machine | system | role |
+|---|---|---|
+| **accismus** | macOS (nix-darwin) | laptop |
+| **sophrosyne** | NixOS | server |
+| **metanoia** | NixOS | workstation |
 
-- **Nix flake** (`~/.config/nix/`) — manages three machines: accismus (macOS), sophrosyne (NixOS server), metanoia (NixOS workstation)
-- **Shell config** — fish + starship + atuin across all machines
-- **Editor config** — Helix editor settings
-- **SSH config** — Secretive-agent-based SSH with ControlMaster
-- **Scripts** (`bin/`) — cross-platform utilities
-- **`what-changed`** — a tool for showing LLM-summarized changelogs after nix rebuilds
+**This repo is public.** Only encrypted secrets are tracked — age/agenix for
+service credentials, [passage](https://github.com/FiloSottile/passage) for the
+rest. `DECISIONS.md` records that and the other trade-offs that look odd until
+you know why.
+
+## Layout
+
+| path | what |
+|---|---|
+| `.config/nix/` | the flake: hosts, modules, packages, agent skills |
+| `.config/fish/` | shell config; `conf.d/` is split by concern |
+| `.config/{helix,git,ssh,starship,alacritty,atuin,passage}/` | tracked config, used in place |
+| `bin/` | cross-platform scripts (`photos-backup`, `hm-links`, `wol`, …) |
+| `docs/learnings/` | platform traps, as symptom / cause / fix |
+| `AGENTS.md` | how agents should work here |
+| `DECISIONS.md` | why the deliberate oddities are deliberate |
+
+Config that home-manager *generates* (`tmux`, `ghostty`, `halloy`,
+`what-changed`, `reel-summarize`, `sleepwatcher`, `direnv`) is a symlink into
+`/nix/store`. Edit the module in `.config/nix/modules/home/`, not the file that
+appears in `$HOME` — `readlink -f` tells you which you are looking at.
+
+## Managing the dotfiles
+
+A **bare repo** at `~/.local/share/dotfiles` with `--work-tree=$HOME`, so no
+`.git` directory clutters `$HOME` and tools that walk up looking for a
+repository do not trip over one. Untracked files are hidden
+(`status.showUntrackedFiles=no`), so `git add` can never stage the whole home
+directory — which also means plain `git status` will not show you untracked
+files in *any* worktree; use `-uall` when it matters.
+
+In fish a `config` alias does the plumbing:
+
+```fish
+config status
+config add .config/fish
+config commit -m "…"
+config push origin; and config push sophrosyne
+```
+
+Outside fish there is no alias — spell it out:
+
+```bash
+cd ~ && git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME status
+```
+
+Two remotes: `origin` (GitHub) and `sophrosyne` (a bare repo on the server whose
+`post-receive` hook checks out the work tree). Never force-push: on sophrosyne
+that hook would destroy uncommitted work with no recovery.
+
+## The flake
+
+```fish
+nr                  # build and switch this machine (Scott runs this one)
+nh darwin build     # build-verify only — what agents are allowed to do
+```
+
+`nr` is a fish function (`conf.d/15-functions.fish`), like `config` — it does not
+exist in bash. `nh` is the nix helper it wraps; `nh darwin build` is the
+build-without-activating form, and switching a machine is Scott's call, not an
+agent's.
+
+`nix flake check` runs six checks, and `.config/git/hooks/pre-push` runs them
+before every push:
+
+| check | what |
+|---|---|
+| `format-check` | alejandra |
+| `deadnix-check` | unused bindings |
+| `statix-check` | nix lint |
+| `secrets-check` | gitleaks over the tree |
+| `what-changed-test` | 166 tests |
+| `reel-summarize-test` | 70 tests |
+
+## Agent harness
+
+`.config/nix/pkgs/pi/` declares the [pi](https://github.com/earendil-works/pi)
+coding agent: 13 extensions (permission gate, protected paths, git checkpoint,
+cost reporting, learnings capture, session recall, plan mode), 5 prompt
+templates (`/review`, `/ship`, `/nr`, `/learn`, `/distill`), and 16 routing
+evals that make context edits measurable. It is symlinked read-only into
+`~/.pi/agent/` at activation, so `pi install` and `pi mcp add` cannot persist —
+edit the repo and rebuild.
+
+Skills live once, in `.config/nix/agent-skills/`, and every harness links to
+them:
+
+| skill | use it when |
+|---|---|
+| `code-review` | reviewing a diff before commit, push, or PR |
+| `dotfiles-layout` | locating a config, or deciding where a new one belongs |
+| `gh-credentials` | `gh` scopes, third-party repos, releases |
+| `machines-and-services` | the three machines, backups, services, doas |
+| `osaurus-build` | building or testing `~/src/bonds/osaurus` |
+| `pi-harness` | editing pi config; tool, cost or session questions |
+
+## Packages
+
+| package | what |
+|---|---|
+| `nix-what-changed` | LLM-summarized changelogs after a rebuild — see below |
+| `reel-summarize` | transcribe + summarize Reels and YouTube with local models |
+| `photokit-export` | Swift PhotoKit exporter feeding the photos pipeline |
+| `ghosttile`, `raven`, `raven-desktop` | macOS window manager and desktop apps |
+| `oxillama`, `laya`, `transcribe-cpp` | local inference helpers |
+| `bedrock-server`, `dst-server` | game servers for sophrosyne |
+| `rsync-tmbackup` | rsync-based Time Machine style snapshots |
+| `mcp-fetch`, `mcp-searxng-search`, `reel-summarize-mcp` | MCP servers |
 
 ## what-changed
 
-`what-changed` diffs two nix system closures, finds which packages changed, fetches their changelogs, and summarizes each using a local LLM (llama.cpp's OpenAI-compatible API by default; ollama is also supported).
+`what-changed` diffs two nix system closures, finds which packages changed,
+fetches their changelogs, and summarizes each using a local LLM (llama.cpp's
+OpenAI-compatible API by default; ollama is also supported).
 
 Run it manually after a rebuild:
 
