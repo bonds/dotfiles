@@ -39,6 +39,18 @@ public. Hence: `protected-paths.ts` blocks writes to `secrets/`, `~/.ssh`,
 `models.json` that reads `/run/agenix/hermes-deepinfra` at request time; SSH
 agent is Secretive (TouchID + secure enclave) rather than an on-disk key.
 
+**The passage YubiKeys keep `Touch policy: Never` on purpose.** The guarded
+secret is low security by design — both keys are enrolled as "Scott's low
+security secrets" — so possession of the key *is* the security boundary, and a
+physical touch on every decrypt buys nothing worth the friction. Accepted
+consequence: the wrapped identities for both passage keys have been in this
+public repo since 2024, so anyone holding either YubiKey can decrypt
+`NIX_CONFIG.age` with no PIN and no touch. That is the intended trade, not a
+gap to close. It does **not** extend to agenix: those secrets are encrypted to a
+third YubiKey (`age1yubikey1qwh2pyyk…`) whose identity is in neither the repo
+nor on disk. Rejected: re-enrolling with `--touch-policy cached`, which would
+protect a deliberately low-value secret at the cost of a prompt on every read.
+
 **Two GitHub tokens, deliberately separate.** Fine-grained PAT in the `gh`
 keyring for Scott's repos; classic `public_repo` token in the Keychain behind
 the `gh-public` wrapper for third-party public repos. Rejected: one broad token,
