@@ -59,6 +59,14 @@ catalog entry, so prices live in `models.json` and `reported-cost.ts` overrides
 pi's list-price math with Deep Infra's own `usage.estimated_cost` (the model
 carries a discount, so list price overstates the bill ~2x).
 
+**Prices in the pi UI are billed, never list.** A list price beside the billed
+one is space that does not change the decision, and on the discounted models it
+is wrong by 2x. So `model-prices.ts` derives the numbers from `cost` × the
+discount — published at session start, then measured from each request — and the
+`/prices` picker's three columns are in/out/cache, the rates that actually
+differ between models. Nothing is shown until a multiplier is known, rather than
+passing list off as billed.
+
 **Skills live in `.config/nix/agent-skills/`, one symlink per skill per
 harness.** Rejected: one symlink for the whole directory, because each harness
 must be able to keep its own skills. `~/.agents/skills` is the only pi path —

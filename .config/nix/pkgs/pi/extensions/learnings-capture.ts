@@ -19,6 +19,11 @@
  *     agent probing paths that were never there
  *   - one line per distinct signature: the inbox is a set of unresolved
  *     lessons, not a log, so re-seeing the same error does not grow it
+ *   - a silent exit 1 is a negative result, not a failure: `rg`, `grep`, `fd`
+ *     and `diff` all report "nothing matched" that way, which is the normal
+ *     outcome of a search. Capturing those filled the inbox with `(no output)`
+ *     lines that also shared a single signature with every other silent
+ *     failure, so a real one would dedupe away against search noise
  *   - rotates at 64 KiB so a forgotten inbox cannot grow without bound
  */
 
@@ -65,6 +70,10 @@ interface Failure {
 	display: string;
 	/** Normalized text used for dedupe, lowercased. */
 	key: string;
+	/** The tool printed nothing but its exit banner. */
+	silent: boolean;
+	/** Exit code parsed out of that banner, when the tool reported one. */
+	exitCode?: number;
 }
 
 function textOf(content: unknown): string {
@@ -81,12 +90,21 @@ function textOf(content: unknown): string {
 }
 
 /** Lines that carry no signal on their own: bash's own exit-code banner. */
-const NOISE = [/^exit code \d+$/i, /^exit status \d+$/i, /^command exited with/i];
+const NOISE = [
+	/^exit code \d+$/i,
+	/^exit status \d+$/i,
+	/^command exited with/i,
+	/^\(no output\)$/i,
+];
+
+/** "Command exited with code 1" — the only signal a silent failure carries. */
+const EXIT_CODE = /(?:exited with code|exit code|exit status)\s+(\d+)/i;
 
 /** A line that names the failure, rather than echoing a path or a usage dump. */
 const SIGNAL = /error|denied|not found|refus|blocked|fail|invalid|unknown|cannot|unable|no such/i;
 
 function describe(raw: string): Failure {
+	const exitCode = Number(EXIT_CODE.exec(raw)?.[1]);
 	const lines = raw
 		.replace(/\x1b\[[0-9;]*m/g, "") // ANSI colors
 		.split("\n")
@@ -95,14 +113,21 @@ function describe(raw: string): Failure {
 
 	// Prefer a line that names the failure; fall back to whatever came first.
 	const chosen = lines.find((line) => SIGNAL.test(line)) ?? lines[0];
-	const display = (chosen ?? "(no output)").slice(0, MAX_SIGNATURE);
+	const silent = chosen === undefined;
+	// Carry the exit code into the signature when there is no text: otherwise
+	// every silent failure — a denied operation, a failed assertion, a missing
+	// remote — normalizes to the same `(no output)` key and only one of them
+	// ever survives dedupe.
+	const display = (
+		silent ? `(no output${Number.isFinite(exitCode) ? `, exit ${exitCode}` : ""})` : chosen
+	).slice(0, MAX_SIGNATURE);
 	const key = display
 		.replace(/(?:\/[\w.@+-]+){2,}/g, "<path>") // absolute paths
 		.replace(/\b[0-9a-f]{8}-[0-9a-f-]{20,}\b/gi, "<id>")
 		.replace(/\b0x[0-9a-f]+\b/gi, "<addr>")
 		.replace(/\s+/g, " ")
 		.toLowerCase();
-	return { display, key };
+	return { display, key, silent, exitCode: Number.isFinite(exitCode) ? exitCode : undefined };
 }
 
 /** FNV-1a; only used to tag a line so later sessions can dedupe against it. */
@@ -178,6 +203,11 @@ export default function (pi: ExtensionAPI) {
 
 		const failure = describe(textOf(event.content));
 		if (failure.key.length === 0) return;
+
+		// Nothing matched is a result, not a lesson. Agents search for strings
+		// that are not there constantly (`rg`/`grep` exit 1, `fd` and `diff`
+		// too), so this is the single biggest source of inbox noise.
+		if (failure.silent && failure.exitCode === 1) return;
 
 		const seen = (counts.get(failure.key) ?? 0) + 1;
 		counts.set(failure.key, seen);
