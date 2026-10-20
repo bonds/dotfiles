@@ -1,20 +1,30 @@
-# UNTESTED scaffold — this workflow has never run (no CI existed before, and
-# GitHub Actions cannot be exercised from this machine). Verify the runner
-# label and the nix installer action before relying on it.
+# CI for the nix flake. Live since 2026-10-01: 70 runs, 6 failures, all of
+# them in the first week while the workflow itself was being shaken out (the
+# last was 2026-10-06). It has earned its keep at least once — see the
+# "lint: fix two statix warnings that broke the new CI statix-check" commit.
 #
 # The nix flake lives at .config/nix inside the dotfiles repo. GitHub only
 # reads workflows from the repository root, which here is $HOME, so this file
 # sits at .github/workflows/ rather than .config/nix/.github/workflows/.
 #
 # What it does: installs Nix (Determinate Systems installer, which enables
-# flakes by default) and runs `nix flake check` in .config/nix.
+# flakes by default) and runs `nix flake check` in .config/nix. That covers
+# every flake check, including the two Python suites — `what-changed-test`
+# (166 tests) and `reel-summarize-test` (70) — because they are `checks`, not
+# packages. `nix flake check` never builds packages, which is exactly why
+# suites that only run in a package's checkPhase are invisible to it.
+#
+# Not covered here, deliberately:
+#   - the 16 routing evals in .config/nix/pkgs/pi/evals/ — they need a Deep
+#     Infra API key and cost money per run, so they stay a manual step.
+#   - building the x86_64-linux toplevels; those need a Linux runner (see the
+#     optional second job below).
 #
 # Runner: macos-14 is arm64 (aarch64-darwin), matching the flake's darwin
 # system. `nix flake check` evaluates every check for aarch64-darwin (including
 # the eval checks for the x86_64-linux hosts — evaluation is platform
 # independent) and skips x86_64-linux checks with a warning, exactly as it does
-# locally. It does NOT build the x86_64-linux toplevels; those need a Linux
-# runner or a self-hosted builder (see the optional second job).
+# locally.
 name: nix flake check
 
 on:
