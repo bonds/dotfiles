@@ -73,7 +73,16 @@ const CORRECTION = [
  * Correction-ish, but also common in ordinary prose ("I wonder if we should
  * be…"), so only trusted in a short message.
  */
-const SHORT_CORRECTION = [/\bshould (be|have)\b/i, /\binstead\b/i];
+const SHORT_CORRECTION = [
+	/\bshould (be|have)\b/i,
+	/\binstead\b/i,
+	// "it was X actually" — a correction stated as a fact rather than a
+	// rejection. None of the CORRECTION markers match that shape, so a real
+	// correction was silently dropped (2026-10-19: "I think it was a touchid
+	// failure actually"). Short-message tier because "actually" is common in
+	// ordinary prose.
+	/\bactually\b/i,
+];
 
 /** "Always / never / prefer" — only trusted in a short, instruction-shaped message. */
 const WEAK_POLICY = [/\balways\b/i, /\bnever\b/i, /\bprefer\b/i];
