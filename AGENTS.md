@@ -14,55 +14,14 @@ tutorial](https://www.atlassian.com/git/tutorials/dotfiles).
 
 ## Git tracking strategy
 
-The bare repo lives at `~/.local/share/dotfiles/` on accismus (moved from
-`~/.config/dotfiles/` on 2026-10-11) and uses `--work-tree=$HOME` so
-that tracked files appear directly in `$HOME`.  Untracked files in `$HOME` are
-hidden (`status.showUntrackedFiles = no` set in the bare repo's config).
+Bare repo at `~/.local/share/dotfiles/` with `--work-tree=$HOME`; untracked
+files are hidden (`status.showUntrackedFiles = no`), so `git add` cannot stage
+all of `$HOME`. The `config` alias wraps git with the right `--git-dir` and
+`--work-tree`, and **it is fish-only** — from bash or a script use the full
+`git --git-dir=... --work-tree=...` form, `cd ~` first.
 
-The `config` alias (defined in `.config/fish/conf.d/10-aliases.fish`) wraps
-every git command with the right `--git-dir` and `--work-tree`.  It resolves the
-git dir by existence, so the same file is correct on every machine and during a
-move:
-
-```fish
-if test -d $HOME/.local/share/dotfiles
-    alias config='git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME'
-else
-    alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
-end
-```
-
-**Everything you do with `config` works just like normal git** — `config status`,
-`config add`, `config commit`, `config push`, `config log`, etc.  Only the
-alias changes; the subcommands are the same git you already know.
-
-> **⚠️ `config` is a fish-ONLY alias.** It does not exist in bash/zsh/sh, and it
-> is **not** available in Hermes' `terminal` tool or any non-fish shell; there
-> it errors with `config: command not found` (and, worse, a script invoking it
-> can silently no-op, as with `nr`). From any shell use the full invocation
-> instead:
->
-> ```bash
-> # always `cd ~` first so relative paths resolve
-> # accismus and sophrosyne: ~/.local/share/dotfiles
-> GITDIR=$HOME/.local/share/dotfiles
-> cd ~ && git --git-dir=$GITDIR --work-tree=$HOME status
-> git --git-dir=$GITDIR --work-tree=$HOME add <path>
-> git --git-dir=$GITDIR --work-tree=$HOME commit -m "..."
-> git --git-dir=$GITDIR --work-tree=$HOME push origin main
-> git --git-dir=$GITDIR --work-tree=$HOME push sophrosyne main
-> ```
->
-> Every `config` example below works with this `git --git-dir=... --work-tree=...`
-> prefix substituted for `config`. (Prefer `cd ~` first; relative paths in the
-> dotfiles worktree otherwise fail to resolve.)
-
-**To see tracked files:** `config ls-files`
-**To add new files to tracking:** `config add <path>` (the bare repo config
-hides untracked files from status, so `git add` won't accidentally stage
-everything)
-**To untrack a file:** `config rm --cached <path>` — the file stays on disk
-but is no longer managed.
+Alias mechanics, the non-fish invocation, and the add/untrack/sync recipes: the
+`dotfiles-layout` skill.
 
 ## Tracked config layout
 
@@ -206,11 +165,13 @@ whole argument list, not a prefix. Agent forwarding is required for the TouchID
 path. Details, including the `/etc/ssh/authorized_keys.d/scott` key file: the
 `machines-and-services` skill.
 
-## Editable worktree (`live`)
+## The work tree is `$HOME`
 
-The bare repo lives at `~/.local/share/dotfiles`. Agent edits are made in a
-linked worktree at `~/.local/share/dotfiles/live` (checked out on `main`);
-`$HOME` is the live tree, used via `--work-tree=$HOME` — not a git worktree.
+Tracked files live directly in `$HOME` via `--work-tree=$HOME`; edit them
+there. There is no second checkout. (A `live` worktree under
+`~/.local/share/dotfiles/live` existed until 2026-10-19 and was removed: it had
+drifted to 69 staged files behind `main`, so an agent editing it would have
+committed reverts. Do not recreate it.)
 
 To sync `$HOME` to the tip of `main` (plain `git checkout main` only prints
 "Already on 'main'" and changes nothing):

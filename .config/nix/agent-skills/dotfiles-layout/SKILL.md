@@ -13,6 +13,51 @@ place to work, and not to be deleted: it holds the only local copy of
 `nix-vudials` and `macos-cli-kbdswitch`, so the paths into it in
 `.config/nix/AGENTS.md` are intentional, not stale.
 
+### The bare repo and the `config` alias
+
+Tracked files live directly in `$HOME`; there is no `.git` directory there. The
+bare repo is `~/.local/share/dotfiles/` and it is driven with
+`--work-tree=$HOME`. Untracked files are hidden from `git status`
+(`status.showUntrackedFiles = no` in the bare repo's config), so `git add`
+cannot accidentally stage the whole home directory — and plain `git status`
+will not show you untracked files in *any* worktree; pass `-uall` when it
+matters.
+
+The `config` alias (`.config/fish/conf.d/10-aliases.fish`) wraps every git
+command with the right `--git-dir` and `--work-tree`. It resolves the git dir
+by existence, so the same file is correct on every machine and during a move:
+
+```fish
+if test -d $HOME/.local/share/dotfiles
+    alias config='git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME'
+else
+    alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
+end
+```
+
+Everything works like normal git — `config status`, `config add`,
+`config commit`, `config push`, `config log`. Only the alias changes.
+
+**`config` is fish-only.** It does not exist in bash/zsh/sh or in Hermes'
+`terminal` tool; there it errors with `config: command not found`, and a script
+invoking it can silently no-op (as with `nr`). From any other shell use the full
+invocation, always `cd ~` first so relative paths resolve:
+
+```bash
+GITDIR=$HOME/.local/share/dotfiles
+cd ~ && git --git-dir=$GITDIR --work-tree=$HOME status
+```
+
+| task | command |
+|---|---|
+| see tracked files | `config ls-files` |
+| start tracking a file | `config add <path>` (no `-f`: respect `.gitignore`) |
+| stop tracking, keep on disk | `config rm --cached <path>` |
+| sync `$HOME` to the tip of `main` | `git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME checkout main -- .` |
+
+That last one is needed because a plain `git checkout main` only prints
+"Already on 'main'" and changes nothing.
+
 ### Shell
 - `.zshrc` — minimal zsh entry point (sources nix, execs fish)
 - `.config/fish/config.fish` — entry point, delegates to `conf.d/`

@@ -20,31 +20,28 @@
 #   owns — the pinned rev URL while a pin is active, that input's normal branch
 #   URL otherwise — so a dropped pin can never remove the declaration again.
 #
-# RUN THIS ONCE, as scott, on the machine whose $HOME/.config/nix is broken
-# (until the fix is committed and deployed, run it from the worktree it was
-# reviewed in):
-#
-#     bash ~/.local/share/dotfiles/live/.config/nix/repair-pins-recovery.sh
-#
-#   Once the fix is on main it is also at the familiar path:
+# RUN THIS ONCE, as scott, on the machine whose $HOME/.config/nix is broken.
+# It repairs in place, so the default source is the same tree it repairs:
 #
 #     bash ~/.config/nix/repair-pins-recovery.sh
 #
-#   Pass the directory holding the fixed files if it is somewhere else:
+#   Pass the directory holding the fixed files if they are somewhere else
+#   (e.g. a worktree you reviewed the fix in):
 #
 #     bash repair-pins-recovery.sh ~/src/bonds/dotfiles/.config/nix
 #
 # It is idempotent, backs up what it replaces, and NEVER activates anything —
 # no `nr`, no `darwin-rebuild switch`. Scott runs `nr` himself afterwards.
 #
-# NOTE (commit step): this file is UNTRACKED and this repo sets
-# status.showUntrackedFiles=no, so `git commit -a` / `git add -u` and the
-# `nr --update` commit list will NOT pick it up. It needs an explicit
-#     git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME add .config/nix/repair-pins-recovery.sh
+# NOTE: this file IS tracked (.config/nix/repair-pins-recovery.sh). Older
+# revisions of this header claimed otherwise — the repo sets
+# status.showUntrackedFiles=no, which hides untracked files, but that does not
+# apply here. Verify with:
+#     git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME ls-files .config/nix/repair-pins-recovery.sh
 set -euo pipefail
 
 FLAKE_DIR="${HOME}/.config/nix"
-FIXED_SRC="${1:-$HOME/.local/share/dotfiles/live/.config/nix}"
+FIXED_SRC="${1:-$HOME/.config/nix}"
 STAMP="$(date '+%Y%m%d-%H%M%S')"
 mkdir -p "$HOME/.cache/nr"
 BACKUP="$(mktemp -d "$HOME/.cache/nr/repair-XXXXXX")"   # unique: two runs in the same second must not share one
@@ -62,7 +59,7 @@ repair-pins: no FIXED nr-pins found at: $FIXED_SRC
 Pass the directory that holds the fixed files, e.g. the worktree the fix was
 reviewed in:
 
-    bash $0 ~/.local/share/dotfiles/live/.config/nix
+    bash $0 ~/src/bonds/dotfiles/.config/nix
 
 Or, once the fix is committed to main, restore the files from git yourself and
 re-run this script (this also restores the pinned block):

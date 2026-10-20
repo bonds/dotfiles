@@ -54,3 +54,11 @@
 # are real choices, and a tracked copy would push macOS paths onto the Linux
 # hosts. Nothing in nix manages this file — cabal must be able to write it.
 .config/cabal/
+
+# ── Agent/tool runtime directories ──────────────────────────────────────
+# Local state, node_modules and (in .raven's case) symlink loops. None of it
+# is config; ignoring it also stops `git status -uall` emitting "Too many
+# levels of symbolic links" warnings for .raven's job directories.
+.omo/
+.raven/
+.osaurus/
