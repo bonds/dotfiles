@@ -29,3 +29,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-10-19 — Piping a command to `tail` reports success, and hides the failure from capture](2026-10-19-pipe-masks-exit-code.md)
 - [2026-10-19 — `~/DECISIONS.md` is a read-only nix store symlink](2026-10-19-decisions-md-is-a-store-symlink.md)
 - [2026-10-19 — `rg -r` is `--replace`, not recursive](2026-10-19-ripgrep-r-is-replace.md)
+- [2026-10-21 — `nr` commits its own dependency bumps, sweeping in pending overlay edits](2026-10-21-nr-auto-commits-dependency-bumps.md)

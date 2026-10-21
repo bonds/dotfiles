@@ -146,8 +146,15 @@ anything.
 
 `learning` (tool) and `/learn` (prompt) handle domain knowledge: entry in
 `<repo>/docs/learnings/YYYY-MM-DD-slug.md`, index line in its `README.md`,
-README scaffolded on first use. The tool refuses outside a git repository, so a
-lesson in `$HOME` correctly falls through to the inbox or `DECISIONS.md`.
+README scaffolded on first use.
+
+Trap: the tool decides "am I in a repo?" with `git rev-parse` against the cwd,
+and the dotfiles work tree has **no `.git` in `$HOME`** (the repo is bare at
+`~/.local/share/dotfiles`). So from `~` it refuses — "not inside a git
+repository, so there is nowhere for this to live" — even though the lesson
+belongs in `~/docs/learnings/`. That is a false negative, not a signal to
+redirect the lesson: write the file and the index line by hand, in the same
+format the tool would have produced.
 
 ## Testing without a rebuild
 
