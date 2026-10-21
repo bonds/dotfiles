@@ -93,6 +93,12 @@ instead of debugging the extension.
 `mcp.json` declares `reel-summarize` → `http://sophrosyne.taileafac.ts.net:8892/sse`
 (streamable HTTP; `/sse` is only a path). Tailscale only.
 
+`start_summarize_reel` is two-phase: it returns author + caption in ~2s, then
+runs download → transcribe → vision → summary in the background, which takes
+**~15 minutes** on a 2-minute reel. So report the caption straight away, then
+wait (a long `sleep` in bash — codemode has no timers) before polling
+`get_reel_summary`; tight polling only burns tokens on `running` statuses.
+
 ## Skills wiring
 
 Canonical skills: `.config/nix/agent-skills/<name>/SKILL.md`. One symlink per
