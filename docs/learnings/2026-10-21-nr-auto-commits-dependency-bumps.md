@@ -47,8 +47,12 @@ the hash, and a wrong one only surfaces at build time.
 After any `nr`, check for a machine commit sitting ahead of both remotes:
 
 ```bash
-git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME rev-parse --short HEAD origin/main sophrosyne/main
+git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME rev-parse HEAD origin/main sophrosyne/main
 ```
+
+(`--short` cannot be combined with several revisions — `git rev-parse --short
+HEAD origin/main` fails with `fatal: Needed a single revision`. Drop the flag,
+or pipe through `cut -c1-7`.)
 
 ## See also
 

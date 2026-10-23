@@ -32,3 +32,5 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-10-21 — `nr` commits its own dependency bumps, sweeping in pending overlay edits](2026-10-21-nr-auto-commits-dependency-bumps.md)
 - [2026-10-21 — LibreSSL's `openssl verify` ignores aux trust, so it reports OK for a rejected root](2026-10-21-libressl-verify-ignores-aux-trust.md)
 - [2026-10-21 — `security.pki` does not reach the bundle nix OpenSSL tools fall back to](2026-10-21-pki-blacklist-misses-profile-bundle.md)
+- [2026-10-22 — OpenCode V2 ships only through npm, so a GitHub-release overlay cannot find it](2026-10-22-opencode-v2-is-npm-only.md)
+- [2026-10-22 — OpenCode V2 commands silently spawn a background service on a fixed port](2026-10-22-opencode-v2-managed-service.md)
