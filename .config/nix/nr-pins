@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # nr-pins — manage the self-expiring flake input pins that keep `nr --update`
 # building when an input's branch head would force a package to be built from
-# source whose own tests fail on this machine.
+# source whose own tests fail on this machine — and revert a prebuilt-overlay
+# bump whose package is what failed to build.
 #
 # Invoked by `nr` (see ~/.config/fish/conf.d/15-functions.fish):
 #   nr-pins snapshot            before `nix flake update` — remember the revs that built
 #   nr-pins check               before `nix flake update` — drop pins no longer needed
-#   nr-pins diagnose <logfile>  after a failed build — pin the culprit input, then retry
+#   nr-pins diagnose <logfile>  after a failed build — pin the culprit input (or
+#                               revert a bad prebuilt-overlay bump), then retry
 #   nr-pins list                show the registry
 #   nr-pins apply               re-render the pin block in flake.nix from the registry
 #
@@ -31,8 +33,19 @@
 # defaults to the two nixpkgs inputs, so a bare {"pins": []} registry still
 # renders a valid block.
 #
-# Exit codes: 0 = nothing to do · 2 = registry/flake.nix changed · 1 = pins
-# remain, or nothing could be pinned.
+# Two mechanisms, both driven by `diagnose`:
+#
+#   * flake input pins — the registry below; a pin freezes an input at the last
+#     rev that built and expires on its own;
+#   * prebuilt-overlay reverts — `nr --update`'s update.sh scripts bump a version
+#     + SRI hash in modules/overlays/* and a few pkgs/*, which are NOT flake
+#     inputs. When the failing derivation is one of those packages, diagnose
+#     restores the directory from git instead: the last committed pin. See
+#     "overlay pins" below.
+#
+# Exit codes: 0 = nothing to do · 2 = registry/flake.nix rewritten (a pin) ·
+# 3 = a prebuilt-overlay bump was reverted (no registry change) · 1 = pins
+# remain, or nothing could be pinned/reverted.
 
 set -uo pipefail
 
@@ -328,6 +341,107 @@ rescape() { printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|]/\\&/g'; }
 strip_ansi() {
     sed -e $'s/\x1b\][^\x07]*\x07//g' \
         -e $'s/\x1b\[[0-9:;<=>?]*[ -/]*[@-~]//g'
+}
+
+# -------------------------------------------------------------- overlay pins --
+# `nr --update` also bumps hand-pinned prebuilt packages: every directory under
+# modules/overlays/ and the prebuilt pkgs/ that carries a default.nix plus the
+# update.sh rewriting its version + SRI hash (sometimes a sources.json). Those
+# are not flake inputs, so neither a rev pin nor the nixpkgs probe applies to
+# them — but the same self-healing rule does. When the failing derivation is one
+# of the packages such a bump produced, restore the directory from git (the last
+# committed pin) and let `nr` rebuild: the bad bump never reaches a commit, and
+# the next `nr --update` tries the newest release again.
+#
+# Deliberately not registry entries: the registry renders flake.nix input
+# declarations, and these packages are not inputs. Reverting a file is also
+# inherently self-expiring — the next update.sh run bumps it again.
+DOT_GIT_DIR="${NR_PINS_GIT_DIR:-$HOME/.local/share/dotfiles}"
+DOT_WORK_TREE="${NR_PINS_WORK_TREE:-$HOME}"
+
+# A changed line that is only a pin. Loose on purpose in one direction only: a
+# line that does not match keeps the directory from being reverted.
+PIN_LINE_RE='^[+-][[:space:]]*"?(version|hash|sha256|sri|rev|integrity)"?[[:space:]]*[:=]|^[+-][[:space:]]*[A-Za-z_][A-Za-z0-9_]*(Version|Hash|Rev|Sha256|Integrity)[[:space:]]*[:=]'
+
+dot_git() { # dot_git <git args...> — the dotfiles repo, with the work tree as cwd
+    ( cd "$DOT_WORK_TREE" 2> /dev/null \
+        && git --git-dir="$DOT_GIT_DIR" --work-tree="$DOT_WORK_TREE" "$@" )
+}
+
+overlay_dirs() { # → dirs, relative to the flake dir, that `nr --update` bumps
+    local d rel
+    for d in "$FLAKE_DIR"/modules/overlays/*/ "$FLAKE_DIR"/pkgs/*/; do
+        [ -d "$d" ] || continue
+        [ -f "$d/default.nix" ] && [ -f "$d/update.sh" ] || continue
+        rel="${d%/}"
+        rel="${rel#"$FLAKE_DIR"/}"
+        # A rev-pinned flake input's directory (pkgs/pi) is reverted through the
+        # registry: its pin is an input declaration in flake.nix, and its
+        # update.sh edits the registry rather than a hash.
+        is_rev_input "${rel##*/}" && continue
+        printf '%s\n' "$rel"
+    done
+}
+
+overlay_pnames() { # overlay_pnames <dir> → the package names its default.nix declares
+    grep -oE 'pname[[:space:]]*=[[:space:]]*"[^"]+"' "$FLAKE_DIR/$1/default.nix" 2> /dev/null \
+        | sed -E 's/.*"([^"]+)"$/\1/' | LC_ALL=C sort -u
+}
+
+overlay_relpath() { # overlay_relpath <dir> → path relative to the git work tree
+    case "$FLAKE_DIR" in
+        "$DOT_WORK_TREE") printf '%s\n' "$1" ;;
+        "$DOT_WORK_TREE"/*) printf '%s/%s\n' "${FLAKE_DIR#"$DOT_WORK_TREE"/}" "$1" ;;
+        *) return 1 ;;
+    esac
+}
+
+overlay_changes() { # overlay_changes <relpath> → its uncommitted files; rc 1 = git failed
+    dot_git status --porcelain --untracked-files=no -- "$1" 2> /dev/null
+}
+
+overlay_diff_is_pin_only() { # → 0 when EVERY changed line is a version/hash pin
+    # Reverting throws the working-tree edit away, so refuse unless the whole
+    # diff is a version/hash bump. A hand edit in the same directory therefore
+    # survives, and the failure falls through to the input logic below instead
+    # of being "reverted" away.
+    local rel="$1" nonpin
+    nonpin="$(dot_git diff -U0 -- "$rel" 2> /dev/null \
+        | grep -E '^[+-]' \
+        | grep -vE '^(---|\+\+\+)' \
+        | grep -vE '^[+-][[:space:]]*$' \
+        | grep -vE "$PIN_LINE_RE")"
+    [ -z "$nonpin" ]
+}
+
+revert_overlay() { # revert_overlay <dir> → 0 reverted · 1 not a bump of this run · 2 could not
+    local dir="$1" rel changed files
+    rel="$(overlay_relpath "$dir")" || {
+        log "cannot revert $dir — the flake dir is not inside the git work tree ($DOT_WORK_TREE)"
+        return 2
+    }
+    command -v git > /dev/null 2>&1 || {
+        log "cannot revert $rel — git is not available"
+        return 2
+    }
+    changed="$(overlay_changes "$rel")" || {
+        log "cannot revert $rel — git could not report its state"
+        return 2
+    }
+    # Not modified means the failing build is not this run's bump (a nixpkgs
+    # regression, or a pin that was committed earlier): nothing to undo here.
+    [ -n "$changed" ] || return 1
+    if ! overlay_diff_is_pin_only "$rel"; then
+        log "$rel has changes that are not a version/hash bump — not reverting it"
+        return 1
+    fi
+    files="$(printf '%s\n' "$changed" | awk '{print $NF}' | paste -sd, -)"
+    if dot_git checkout HEAD -- "$rel" 2> /dev/null; then
+        log "reverted $files to the last committed pin"
+        return 0
+    fi
+    log "could not revert $rel — git checkout failed; fix the bump by hand"
+    return 2
 }
 
 # --------------------------------------------------------------------- probe --
@@ -673,7 +787,7 @@ cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input cause
     jq -e '.nodes | type == "object" and length > 0' "$LOCK" > /dev/null 2>&1 \
         || die "cannot read flake.lock ($LOCK) or it has no nodes — diagnose cannot tell which inputs moved"
     local attr drvs d p pnames input branch rev hit pinned=0 perr=0 probe_err=0 io_err=0
-    local rinput rpnames snaprev
+    local rinput rpnames snaprev odir opnames reverted=0
     attr="$(resolve_attr)" || die "could not resolve the system attribute to probe"
 
     drvs="$(strip_ansi < "$logfile" 2>/dev/null \
@@ -693,6 +807,30 @@ cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input cause
     [ -n "${pnames// /}" ] || { log "no package names derived — not pinning"; return 1; }
     log "failing: $(printf '%s ' $drvs)"
     log "package: ${pnames% }"
+
+    # Prebuilt overlays first: an uncommitted overlay bump is the most specific
+    # attribution available, and undoing it is free — it restores a committed
+    # file, where a registry pin has to expire later. `revert_overlay` refuses
+    # unless the directory's whole diff is a version/hash bump, so a hand edit is
+    # never discarded and the failure falls through to the input logic below.
+    for odir in $(overlay_dirs); do
+        opnames="$(overlay_pnames "$odir")"
+        [ -n "$opnames" ] || continue
+        for p in $pnames; do
+            printf '%s\n' "$opnames" | grep -qxF "$p" || continue
+            log "$odir: its package $p is the failing derivation"
+            revert_overlay "$odir"
+            case $? in
+                0) reverted=1 ;;
+                2) io_err=1 ;;
+            esac
+            break
+        done
+    done
+    if [ "$reverted" -eq 1 ]; then
+        log "reverted a prebuilt-overlay bump — retrying the build with the last committed pin"
+        return 3
+    fi
 
     # Rev-pinned third-party inputs first. A moved input whose own package IS the
     # failing derivation is the specific culprit, and reverting it is safe: the
@@ -824,7 +962,7 @@ cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input cause
         log "nothing pinned — a probe could not be evaluated, so a regression may have been missed; re-run when the flake evaluates"
         return 1
     fi
-    log "nothing pinnable — this failure is not a nixpkgs input regression"
+    log "nothing pinnable — this failure is neither a nixpkgs input regression nor an uncommitted prebuilt-overlay bump"
     return 1
 }
 

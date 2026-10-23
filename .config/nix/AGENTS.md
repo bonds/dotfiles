@@ -108,12 +108,15 @@ alejandra <file> ...
 nix flake update
 ```
 
-### `nr-pins` — self-expiring flake input pins
+### `nr-pins` — self-expiring flake input pins, and overlay reverts
 
 When `nr --update` fails because an input rev moved and a package must now build
 from source (and its tests fail), `nr-pins` pins that input back to the last rev
 that built, and lifts the pin automatically once a cache carries the package
-again.
+again. When it fails because a hand-pinned prebuilt package's just-bumped
+version is the thing that broke, `nr-pins` instead restores that overlay
+directory from git — the last committed pin — so the bad bump never reaches a
+commit.
 
 - **Registry:** `~/.config/nix/flake-pins.json` is the source of truth. The
   block between `---- BEGIN/END nr-managed input pins` in `flake.nix` is
@@ -145,10 +148,11 @@ again.
   declarations). Idempotent, backs up what it replaces, never activates.
 
 - **`nr --update`** runs `snapshot` → `check` → `nix flake update`, then a
-  bounded 3-attempt build retry that calls `diagnose <logfile>` on failure.
-  Before the flake update it also runs the binary-overlay `update.sh` scripts
-  and `pkgs/pi/update.sh`, which moves the rev-pinned `pi` flake input to the
-  latest GitHub **release** (not `main`).
+  bounded 3-attempt build retry that calls `diagnose <logfile>` on failure and
+  rebuilds on exit 2 (a pin) or 3 (a revert). Before the flake update it also
+  runs the binary-overlay `update.sh` scripts and `pkgs/pi/update.sh`, which
+  moves the rev-pinned `pi` flake input to the latest GitHub **release** (not
+  `main`).
 - **Rev-pinned third-party inputs** (e.g. `pi`) are `base` entries whose URL
   carries `?rev=<sha>`, with a `pnames` list and an optional `note`. They have
   no branch to probe, so the pin engine handles them differently: `diagnose`
@@ -159,13 +163,31 @@ again.
   `needs_build` would otherwise blame a nixpkgs bump for every failure of it.
 - **Commands:** `snapshot` (record the revs that build now) · `check [attr]`
   (probe each pin against its branch head, drop the cleared ones) ·
-  `diagnose <log>` (pin the culprit of a failed build) · `apply` (re-render the
+  `diagnose <log>` (undo the culprit of a failed build) · `apply` (re-render the
   block) · `list` (show the registry). Exit codes: 0 = nothing to do,
-  2 = changed, 1 = pins remain / could not pin.
+  2 = a pin was written (registry + flake.nix changed), 3 = a prebuilt-overlay
+  bump was reverted (working tree restored, no registry change), 1 = pins
+  remain / could not pin.
+- **Prebuilt overlays (not flake inputs):** every directory under
+  `modules/overlays/` and the prebuilt `pkgs/` that carries a `default.nix`
+  plus the `update.sh` rewriting its version + SRI hash is bumped by
+  `nr --update` but is not a flake input, so the registry cannot hold it back.
+  `diagnose` handles those by matching the failing derivation's pname against
+  the `pname` its `default.nix` declares and then `git checkout HEAD --` that
+  directory (which restores a sibling `sources.json` too). Two deliberate
+  guards: it only reverts when the directory is *modified* (an unmodified one
+  means the failure is not this run's bump, so the input logic gets its turn),
+  and only when the whole diff is a version/hash line — a hand edit in the same
+  directory is never discarded. Reverting is inherently self-expiring: the next
+  `update.sh` run bumps it again. Reverts read the dotfiles bare repo
+  (`~/.local/share/dotfiles`, work tree `$HOME`), overridable for tests via
+  `NR_PINS_GIT_DIR` / `NR_PINS_WORK_TREE`.
 - **Safety, enforced in code:** only `owner == NixOS && repo == nixpkgs`
-  inputs; never on an eval error; never an input that did not move; and any
-  error, unreadable or malformed file, failed write, or empty enumeration KEEPS
-  the pin rather than reading as "the blocker cleared".
+  inputs; never on an eval error; never an input that did not move; never a
+  revert of an unmodified or hand-edited overlay directory; and any error,
+  unreadable or malformed file, failed write or checkout, or empty enumeration
+  KEEPS the pin (or the working tree) rather than reading as "the blocker
+  cleared".
 - **Tests:** `bash ~/.config/nix/nr-pins-tests.sh` — stubbed, runs in
   milliseconds, never touches the real flake.
 

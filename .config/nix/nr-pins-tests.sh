@@ -379,7 +379,7 @@ run_fail diagnose "$T/failing3.log" > "$T/diag.out" 2>&1
 check_rc 1 $? "diagnose declines"
 grep -q 'could not be evaluated' "$T/diag.out" && ok "reports the probe failure honestly" \
     || bad "did not report the probe failure: $(tail -2 "$T/diag.out" | tr '\n' ' ')"
-grep -q 'not a nixpkgs input regression' "$T/diag.out" && bad "still claims not-a-regression on a probe error" \
+grep -q 'nothing pinnable' "$T/diag.out" && bad "still claims not-a-regression on a probe error" \
     || ok "does not claim not-a-regression"
 [ "$(jq '.pins | length' "$T/flake-pins.json")" -eq 2 ] && ok "registry unchanged" || bad "registry changed"
 
@@ -418,7 +418,7 @@ rm -f "$T/pins-snapshot.json"
 run_fail diagnose "$WT/failing.log" > "$WT/nosnap.out" 2>&1
 check_rc 1 $? "diagnose refuses without a snapshot"
 grep -q 'no readable snapshot' "$WT/nosnap.out" && ok "says the snapshot is unreadable" || bad "no such message"
-grep -q 'not a nixpkgs input regression' "$WT/nosnap.out" && bad "exonerated on an unreadable snapshot" || ok "no exonerating verdict"
+grep -q 'nothing pinnable' "$WT/nosnap.out" && bad "exonerated on an unreadable snapshot" || ok "no exonerating verdict"
 
 printf '\n== fail-closed: a registry write failure must not exonerate ==\n'
 setup
@@ -426,7 +426,7 @@ chmod 555 "$T"
 run "thrift" - diagnose "$WT/failing.log" > "$WT/roreg.out" 2>&1
 chmod 755 "$T"
 grep -q 'could not write the registry' "$WT/roreg.out" && ok "reports the write failure" || bad "write failure not reported: $(tail -2 "$WT/roreg.out" | tr '\n' ' ')"
-grep -q 'not a nixpkgs input regression' "$WT/roreg.out" && bad "claimed not-a-regression despite the write failure" || ok "does not claim not-a-regression"
+grep -q 'nothing pinnable' "$WT/roreg.out" && bad "claimed not-a-regression despite the write failure" || ok "does not claim not-a-regression"
 
 printf '\n== snapshot: a lock with no .nodes is refused ==\n'
 setup
@@ -449,7 +449,7 @@ setup
 printf '{"nodes": {"nixpkgs": {"locked": {"rev": "oldstable"\n' > "$T/pins-snapshot.json"
 run "thrift" - diagnose "$WT/failing.log" > "$WT/badsnap.out" 2>&1
 check_rc 1 $? "diagnose refuses a corrupt snapshot"
-grep -q 'not a nixpkgs input regression' "$WT/badsnap.out" && bad "exonerated on a corrupt snapshot" || ok "no exonerating verdict"
+grep -q 'nothing pinnable' "$WT/badsnap.out" && bad "exonerated on a corrupt snapshot" || ok "no exonerating verdict"
 grep -q 'no usable nodes' "$WT/badsnap.out" && ok "says the snapshot has no usable nodes" || bad "no such message"
 
 printf '\n== fail-closed: a node-less snapshot must not exonerate ==\n'
@@ -457,14 +457,14 @@ setup
 printf '{}' > "$T/pins-snapshot.json"
 run "thrift" - diagnose "$WT/failing.log" > "$WT/emptysnap.out" 2>&1
 check_rc 1 $? "diagnose refuses a node-less snapshot"
-grep -q 'not a nixpkgs input regression' "$WT/emptysnap.out" && bad "exonerated on an empty snapshot" || ok "no exonerating verdict"
+grep -q 'nothing pinnable' "$WT/emptysnap.out" && bad "exonerated on an empty snapshot" || ok "no exonerating verdict"
 
 printf '\n== fail-closed: a corrupt flake.lock must not exonerate ==\n'
 setup
 printf '{ not valid json\n' > "$T/flake.lock"
 run "thrift" - diagnose "$WT/failing.log" > "$WT/badlock.out" 2>&1
 check_rc 1 $? "diagnose refuses a corrupt lock"
-grep -q 'not a nixpkgs input regression' "$WT/badlock.out" && bad "exonerated on a corrupt lock" || ok "no exonerating verdict"
+grep -q 'nothing pinnable' "$WT/badlock.out" && bad "exonerated on a corrupt lock" || ok "no exonerating verdict"
 grep -q 'cannot read flake.lock' "$WT/badlock.out" && ok "names the lock" || bad "no such message"
 
 printf '\n== fail-closed: a shape-corrupt registry must not read as "no pins" ==\n'
@@ -482,7 +482,7 @@ setup
 jq 'del(.nodes["nixpkgs"])' "$T/pins-snapshot.json" > "$WT/snap.tmp" && mv "$WT/snap.tmp" "$T/pins-snapshot.json"
 run "thrift" - diagnose "$WT/failing.log" > "$WT/partial.out" 2>&1
 grep -q 'no rev for it in the snapshot' "$WT/partial.out" && ok "reports the input it cannot judge" || bad "no such message"
-grep -q 'not a nixpkgs input regression' "$WT/partial.out" && bad "exonerated with an input absent from the snapshot" || ok "no exonerating verdict"
+grep -q 'nothing pinnable' "$WT/partial.out" && bad "exonerated with an input absent from the snapshot" || ok "no exonerating verdict"
 
 printf '\n== fail-closed: a shapeless flake.lock must not exonerate ==\n'
 for bad in '{"nodes": {}}' \
@@ -492,7 +492,7 @@ for bad in '{"nodes": {}}' \
     printf '%s\n' "$bad" > "$T/flake.lock"
     run "thrift" - diagnose "$WT/failing.log" > "$WT/badlock2.out" 2>&1
     rc=$?
-    grep -q 'not a nixpkgs input regression' "$WT/badlock2.out" && bad "exonerated on lock: $bad" || ok "no exonerating verdict (rc $rc)"
+    grep -q 'nothing pinnable' "$WT/badlock2.out" && bad "exonerated on lock: $bad" || ok "no exonerating verdict (rc $rc)"
 done
 grep -qE 'no nodes|cannot tell which input regressed' "$WT/badlock2.out" && ok "says it cannot tell" || bad "no such message"
 
@@ -655,6 +655,201 @@ run "" - diagnose "$T/other.log" > /dev/null
 check_rc 1 $? "diagnose leaves pi alone for an unrelated failure"
 [ "$(jq '[.pins[] | select(.input=="pi")] | length' "$T/flake-pins.json")" -eq 0 ] \
     && ok "no pi pin" || bad "pi was reverted for an unrelated failure"
+
+# ------------------------------------------- prebuilt-overlay pins (revert) --
+# `nr --update` also bumps hand-pinned prebuilt packages (modules/overlays/*,
+# and pkgs/* with an update.sh): their update.sh rewrites a version + SRI hash in
+# a tracked file. Those are not flake inputs, so the pin registry cannot hold
+# them back — diagnose restores the directory from git instead, which is the
+# last committed pin. These cases drive that through a real (bare) git repo, so
+# the revert path is the one production runs.
+
+fgit() { # fgit <git args...> — the fixture repo, work tree = $T
+    ( cd "$T" && git --git-dir="$T/git" --work-tree="$T" "$@" )
+}
+
+overlay_write() { # overlay_write <dir> <old|new> [extra nix line]
+    local dir="$1" state="$2" extra="${3:-}" v h
+    case "$state" in
+        old) v=2.1.3; h=sha256-oldhash= ;;
+        new) v=2.1.4; h=sha256-newhash= ;;
+        *) bad "overlay_write: bad state $state"; return 1 ;;
+    esac
+    case "$dir" in
+        modules/overlays/opencode)
+            # cliVersion/cliHash, not version/hash: that is the real file, and the
+            # pin-line pattern has to cover the camelCase form.
+            printf '{\n  pname = "opencode";\n  cliVersion = "%s";\n  cliHash = "%s";\n  pname = "opencode-desktop";\n%s}\n' \
+                "$v" "$h" "$extra" > "$T/$dir/default.nix"
+            ;;
+        modules/overlays/zen-browser)
+            printf '{\n  pname = "zen-browser";\n  version = "%s";\n  hash = "%s";\n%s}\n' \
+                "$v" "$h" "$extra" > "$T/$dir/default.nix"
+            printf '{\n  "version": "%s",\n  "sha256": "%s"\n}\n' "$v" "$h" \
+                > "$T/$dir/sources.json"
+            ;;
+        pkgs/pi)
+            printf '{\n  pname = "pi";\n  version = "%s";\n  hash = "%s";\n}\n' "$v" "$h" \
+                > "$T/$dir/default.nix"
+            ;;
+    esac
+}
+
+setup_overlays() { # setup + a dotfiles-shaped bare repo holding the prebuilt dirs
+    setup
+    rm -rf "$T/modules" "$T/pkgs" "$T/git"
+    mkdir -p "$T/modules/overlays/opencode" "$T/modules/overlays/zen-browser" "$T/pkgs/pi"
+    : > "$T/modules/overlays/opencode/update.sh"
+    : > "$T/modules/overlays/zen-browser/update.sh"
+    : > "$T/pkgs/pi/update.sh"
+    overlay_write modules/overlays/opencode old
+    overlay_write modules/overlays/zen-browser old
+    overlay_write pkgs/pi old
+    git init -q --bare "$T/git"
+    fgit add -A modules/overlays pkgs \
+        && fgit -c user.email=test@example.invalid -c user.name=test commit -q -m pristine
+}
+
+run_ov() { # run_ov <stub-list> <stub-input|-> <subcommand...> — against the fixture repo
+    local list="$1" only="$2"
+    shift 2
+    [ "$only" = "-" ] && only=""
+    env NR_PINS_STUB_LIST="$list" NR_PINS_STUB_INPUT="$only" \
+        NR_PINS_FLAKE_DIR="$T" NR_PINS_SNAPSHOT="$T/pins-snapshot.json" \
+        NR_PINS_GIT_DIR="$T/git" NR_PINS_WORK_TREE="$T" \
+        NR_PINS_ATTR="darwinConfigurations.test.system" \
+        NR_PINS_PROBE_STUB="$STUB" bash "$S" "$@"
+}
+
+fake_nix_show() { # a fake `nix` answering `derivation show` with $FAKE_PNAME
+    # Production reads the real pname out of the .drv; the fallback heuristic
+    # takes the LAST dash component, so a multi-word pname (opencode-desktop,
+    # zen-browser) only matches through this path. No probe stub list, so the
+    # nixpkgs logic stays out of the verdict.
+    mkdir -p "$T/fakebin2"
+    cat > "$T/fakebin2/nix" <<'FAKE'
+#!/usr/bin/env bash
+if [ "$1" = "derivation" ] && [ "$2" = "show" ]; then
+    printf '{"%s":{"env":{"pname":"%s"}}}\n' "${3:-}" "${FAKE_PNAME:-}"
+    exit 0
+fi
+exit 1
+FAKE
+    chmod +x "$T/fakebin2/nix"
+}
+
+run_ov_show() { # run_ov_show <pname> <subcommand...> — with the fake `derivation show`
+    local pname="$1"
+    shift
+    env PATH="$T/fakebin2:$PATH" FAKE_PNAME="$pname" \
+        NR_PINS_STUB_LIST="" NR_PINS_STUB_INPUT="" \
+        NR_PINS_FLAKE_DIR="$T" NR_PINS_SNAPSHOT="$T/pins-snapshot.json" \
+        NR_PINS_GIT_DIR="$T/git" NR_PINS_WORK_TREE="$T" \
+        NR_PINS_ATTR="darwinConfigurations.test.system" \
+        NR_PINS_PROBE_STUB="$STUB" bash "$S" "$@"
+}
+
+printf '\n== diagnose: a bumped prebuilt overlay is reverted to the last committed pin ==\n'
+setup_overlays
+overlay_write modules/overlays/opencode new
+hex="$(printf 'a%.0s' $(seq 1 32))"
+printf "error: builder for '/nix/store/%s-opencode-2.1.4.drv' failed with exit code 1\n" "$hex" > "$T/oc.log"
+run_ov "" - diagnose "$T/oc.log" > "$T/ov.out" 2>&1
+check_rc 3 $? "diagnose reports the revert"
+grep -q 'cliVersion = "2.1.3"' "$T/modules/overlays/opencode/default.nix" \
+    && ok "restored the committed pin" || bad "the bump was not reverted"
+grep -q 'reverted .* to the last committed pin' "$T/ov.out" && ok "says what it reverted" \
+    || bad "no revert message: $(tail -2 "$T/ov.out" | tr '\n' ' ')"
+[ -z "$(fgit status --porcelain -- modules/overlays/opencode)" ] \
+    && ok "the directory is clean again" || bad "still dirty after the revert"
+[ "$(jq '.pins | length' "$T/flake-pins.json")" -eq 2 ] \
+    && ok "the registry was left alone" || bad "the registry changed"
+
+printf '\n== diagnose: a multi-word pname (opencode-desktop) also matches ==\n'
+setup_overlays
+fake_nix_show
+overlay_write modules/overlays/opencode new
+run_ov_show opencode-desktop diagnose "$T/oc.log" > "$T/ov2.out" 2>&1
+check_rc 3 $? "reverted via the real pname"
+grep -q 'cliVersion = "2.1.3"' "$T/modules/overlays/opencode/default.nix" \
+    && ok "restored" || bad "not restored"
+
+printf '\n== diagnose: every file of the overlay dir is reverted, not just default.nix ==\n'
+setup_overlays
+fake_nix_show
+overlay_write modules/overlays/zen-browser new
+printf "error: builder for '/nix/store/%s-zen-browser-2.1.4.drv' failed\n" "$hex" > "$T/zb.log"
+run_ov_show zen-browser diagnose "$T/zb.log" > "$T/ov3.out" 2>&1
+check_rc 3 $? "reverted"
+grep -q 'version = "2.1.3"' "$T/modules/overlays/zen-browser/default.nix" \
+    && ok "default.nix restored" || bad "default.nix not restored"
+grep -q '"version": "2.1.3"' "$T/modules/overlays/zen-browser/sources.json" \
+    && ok "sources.json restored too" || bad "sources.json left bumped"
+
+printf '\n== diagnose: an UNMODIFIED overlay is not reverted ==\n'
+setup_overlays
+run_ov "" - diagnose "$T/oc.log" > "$T/ov4.out" 2>&1
+check_rc 1 $? "declines (the failure is not this run's bump)"
+grep -q 'nothing pinnable' "$T/ov4.out" && ok "says nothing was pinnable" \
+    || bad "wrong verdict: $(tail -2 "$T/ov4.out" | tr '\n' ' ')"
+
+printf '\n== diagnose: a hand edit next to the bump is never discarded ==\n'
+setup_overlays
+overlay_write modules/overlays/opencode new '  description = "hand edit";\n'
+run_ov "" - diagnose "$T/oc.log" > "$T/ov5.out" 2>&1
+check_rc 1 $? "declines to revert a non-pin change"
+grep -q 'not a version/hash bump' "$T/ov5.out" && ok "says why" \
+    || bad "no such message: $(tail -2 "$T/ov5.out" | tr '\n' ' ')"
+grep -q 'hand edit' "$T/modules/overlays/opencode/default.nix" \
+    && ok "the hand edit survived" || bad "the hand edit was discarded"
+
+printf '\n== diagnose: a rev-pinned input directory is never reverted ==\n'
+setup_overlays
+overlay_write pkgs/pi new
+printf "error: builder for '/nix/store/%s-pi-1.4.0.drv' failed\n" "$hex" > "$T/pi2.log"
+run_ov "" - diagnose "$T/pi2.log" > "$T/ov6.out" 2>&1
+grep -q 'version = "2.1.4"' "$T/pkgs/pi/default.nix" \
+    && ok "left the input's directory alone" || bad "reverted a flake input's directory"
+
+printf '\n== fail-closed: a revert that cannot run must not exonerate ==\n'
+setup_overlays
+overlay_write modules/overlays/opencode new
+env NR_PINS_STUB_LIST="" NR_PINS_STUB_INPUT="" \
+    NR_PINS_FLAKE_DIR="$T" NR_PINS_SNAPSHOT="$T/pins-snapshot.json" \
+    NR_PINS_GIT_DIR="$T/no-such-repo" NR_PINS_WORK_TREE="$T" \
+    NR_PINS_ATTR="darwinConfigurations.test.system" \
+    NR_PINS_PROBE_STUB="$STUB" bash "$S" diagnose "$T/oc.log" > "$T/ov7.out" 2>&1
+check_rc 1 $? "declines"
+grep -q 'could not report its state' "$T/ov7.out" && ok "says git could not report the state" \
+    || bad "no such message: $(tail -2 "$T/ov7.out" | tr '\n' ' ')"
+grep -q 'nothing pinnable' "$T/ov7.out" && bad "exonerated despite the failed revert" \
+    || ok "does not claim nothing was pinnable"
+grep -q 'cliVersion = "2.1.4"' "$T/modules/overlays/opencode/default.nix" \
+    && ok "left the working tree untouched" || bad "reverted without git"
+
+printf '\n== fail-closed: a flake dir outside the git work tree cannot be reverted ==\n'
+setup_overlays
+overlay_write modules/overlays/opencode new
+mkdir -p "$T/elsewhere"
+env NR_PINS_STUB_LIST="" NR_PINS_STUB_INPUT="" \
+    NR_PINS_FLAKE_DIR="$T" NR_PINS_SNAPSHOT="$T/pins-snapshot.json" \
+    NR_PINS_GIT_DIR="$T/git" NR_PINS_WORK_TREE="$T/elsewhere" \
+    NR_PINS_ATTR="darwinConfigurations.test.system" \
+    NR_PINS_PROBE_STUB="$STUB" bash "$S" diagnose "$T/oc.log" > "$T/ov9.out" 2>&1
+check_rc 1 $? "declines"
+grep -q 'not inside the git work tree' "$T/ov9.out" && ok "says the flake dir is outside the work tree" \
+    || bad "no such message: $(tail -2 "$T/ov9.out" | tr '\n' ' ')"
+grep -q 'nothing pinnable' "$T/ov9.out" && bad "exonerated although it could not revert" \
+    || ok "does not claim nothing was pinnable"
+
+printf '\n== diagnose: a second pass after the revert converges (no revert loop) ==\n'
+setup_overlays
+overlay_write modules/overlays/opencode new
+run_ov "" - diagnose "$T/oc.log" > /dev/null 2>&1
+check_rc 3 $? "first pass reverts"
+run_ov "" - diagnose "$T/oc.log" > "$T/ov8.out" 2>&1
+check_rc 1 $? "second pass (rebuilt, still failing) declines instead of reverting again"
+grep -q 'reverted' "$T/ov8.out" && bad "reverted twice" || ok "did not revert a second time"
 
 printf '\n== summarised: %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

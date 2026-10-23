@@ -168,10 +168,15 @@ function nr
         end
         cd $_pwd
     end
-    # NOTE: a build failure during --update is now triaged automatically (see
-    # the retry loop below). A failure that is NOT an input regression — our
-    # own modules, a stale FOD hash in modules/packages/, … — is left alone:
-    # revert flake.lock + the overlay files and fix it by hand.
+    # NOTE: a build failure during --update is triaged automatically (see the
+    # retry loop below). Two things get undone without asking:
+    #   - a flake input whose branch head would force a from-source build
+    #     (`nr-pins` pins it back to the snapshot rev), and
+    #   - a prebuilt-overlay bump whose package is the failing derivation
+    #     (`nr-pins` restores that overlay directory from git — the last
+    #     committed pin).
+    # Anything else — our own modules, a stale FOD hash, an eval error — is left
+    # alone: fix it by hand.
     # Split build from activation, each as its least-privileged user:
     #   1. `nh build` — full nh/nix-output-monitor output (pretty bars,
     #      eval/build) running as scott. NEVER as root: build hooks and
@@ -183,6 +188,7 @@ function nr
     # `darwin-rebuild`/`nixos-rebuild` re-use nh's cached build, so the
     # switch phase is near-instant.
     set -l _nr_pinned no
+    set -l _nr_reverted no
     set -l _nr_attempt 0
     set -l _nr_build_ok 1
     while true
@@ -198,18 +204,31 @@ function nr
             break
         end
         # The build failed. If this run updated the inputs, ask nr-pins whether
-        # the failure is an input regression: it reads the failing derivation
-        # out of the log and, for each nixpkgs-family input that moved, probes
-        # whether that input's branch head would have to BUILD the failing
-        # package from source. If so it pins the input back to the snapshot rev
-        # (the last rev that worked) and we rebuild. A failure that no nixpkgs
-        # input explains — i.e. our own code — is never pinned. Bounded, so a
-        # pin that does not actually help cannot loop forever.
+        # the failure is a regression it can undo: it reads the failing
+        # derivation out of the log and either
+        #   - restores a prebuilt-overlay directory whose just-bumped package is
+        #     the failing derivation (git checkout of the last committed pin), or
+        #   - for each nixpkgs-family input that moved, probes whether that
+        #     input's branch head would have to BUILD the failing package from
+        #     source; if so it pins the input back to the snapshot rev (the last
+        #     rev that worked).
+        # Either way we rebuild. A failure that neither explains — i.e. our own
+        # code — is never touched. Bounded, so an undo that does not actually
+        # help cannot loop forever.
         if test "$_nr_update" = yes; and test $_nr_attempt -lt 3
             bash $HOME/.config/nix/nr-pins diagnose $_nr_log
-            if test $status -eq 2
-                set _nr_pinned yes
-                echo "nr: an input was pinned to its last-good rev — rebuilding"
+            set -l _nr_diag $status
+            # 2 = an input was pinned (registry + flake.nix changed);
+            # 3 = an overlay bump was reverted (working tree restored, no
+            #     registry change). Both mean "rebuild"; the commit message
+            #     below has to say which actually happened.
+            if test $_nr_diag -eq 2 -o $_nr_diag -eq 3
+                if test $_nr_diag -eq 3
+                    set _nr_reverted yes
+                else
+                    set _nr_pinned yes
+                end
+                echo "nr: rolled a dependency back to its last-good pin — rebuilding"
                 continue
             end
         end
@@ -270,6 +289,8 @@ function nr
                 set _nr_msg "nr --update: pin a nixpkgs input to its last-good rev + bump nightly dependency versions"
             else if test "$_nr_unpinned" = yes
                 set _nr_msg "nr --update: drop temporary nixpkgs pin(s) + bump nightly dependency versions"
+            else if test "$_nr_reverted" = yes
+                set _nr_msg "nr --update: keep the last-good pin for a bad dependency bump + bump nightly dependency versions"
             end
             config commit -m "$_nr_msg"
             if test "$_os" = darwin

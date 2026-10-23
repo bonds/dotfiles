@@ -34,3 +34,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-10-21 — `security.pki` does not reach the bundle nix OpenSSL tools fall back to](2026-10-21-pki-blacklist-misses-profile-bundle.md)
 - [2026-10-22 — OpenCode V2 ships only through npm, so a GitHub-release overlay cannot find it](2026-10-22-opencode-v2-is-npm-only.md)
 - [2026-10-22 — OpenCode V2 commands silently spawn a background service on a fixed port](2026-10-22-opencode-v2-managed-service.md)
+- [2026-10-23 — `git --work-tree=X` does not make pathspecs relative to X](2026-10-23-work-tree-does-not-scope-pathspecs.md)
