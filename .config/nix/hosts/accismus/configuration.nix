@@ -52,6 +52,15 @@ in {
       group = "staff";
       mode = "0400";
     };
+    # DeepInfra API key for OpenCode's `deepinfra` provider. Content is the BARE
+    # key (no `DEEPINFRA_API_KEY=` prefix), read verbatim by opencode's
+    # `settings.apiKey: "{file:/run/agenix/opencode-deepinfra}"`.
+    opencode-deepinfra = {
+      file = ../../secrets/opencode-deepinfra.age;
+      owner = "scott";
+      group = "staff";
+      mode = "0400";
+    };
     # Serper web-search key for Raven (tools.web.search.apiKey). Content is the
     # bare key; the postActivation snippet below merges it into
     # ~/.raven/config.json.

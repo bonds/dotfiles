@@ -3,21 +3,57 @@
   "autoupdate": false,
   "default_agent": "plan",
   "snapshot": true,
-  "agent": {
+  "agents": {
     "plan": {
       // "model": "opencode-go/deepseek-v4-flash-new"
       // "model": "opencode-go/glm-5.2"
       // "model": "opencode-go/qwen3.7-max"
       // "model": "opencode-go/mimo-v2.5"
-      "model": "openrouter/deepseek/deepseek-v4-flash-0731"
+      "model": "deepinfra/deepseek-v4.1-flash-1017#max"
     },
     "build": {
       // "model": "opencode-go/deepseek-v4-flash-new"
       // "model": "opencode-go/mimo-v2.5"
-      "model": "openrouter/deepseek/deepseek-v4-flash-0731"
+      "model": "deepinfra/deepseek-v4.1-flash-1017#low"
     }
   },
   "disabled_providers": [],
+  "providers": {
+    "deepinfra": {
+      "name": "Deep Infra",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "https://api.deepinfra.com/v1/openai",
+        // Bare key, decrypted by agenix to /run/agenix (see .config/nix/secrets.nix).
+        "apiKey": "{file:/run/agenix/opencode-deepinfra}"
+      },
+      "models": {
+        "deepseek-v4.1-flash-1017": {
+          "modelID": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+          "name": "DeepSeek V4.1 Flash 1017",
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image"],
+            "output": ["text"],
+            "reasoning": { "supported": true }
+          },
+          "limit": { "context": 1048576, "output": 1048576 },
+          "cost": {
+            "input": 0.2,
+            "output": 0.6,
+            "cache": { "read": 0.006, "write": 0.2 }
+          },
+          "variants": [
+            // Deep Infra's own knob. It accepts none|minimal|low|medium|high|xhigh|max
+            // even though the docs list only none|low|medium|high.
+            { "id": "low", "body": { "reasoning_effort": "low" } },
+            { "id": "high", "body": { "reasoning_effort": "high" } },
+            { "id": "max", "body": { "reasoning_effort": "max" } }
+          ]
+        }
+      }
+    }
+  },
   "mcp": {
     "sophrosyne": {
       "type": "remote",

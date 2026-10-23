@@ -28,6 +28,27 @@ accismus) — expect one TouchID prompt per operation.
 - Passwordless does not mean agent-run: activating rebuilds are Scott's to run
   (see `~/AGENTS.md` → Conventions).
 
+### Secrets (agenix)
+
+Declared in `secrets.nix` (recipients per file), mounted by `age.secrets.<name>`
+in `hosts/accismus/configuration.nix` (owner/mode), ciphertext in
+`secrets/*.age` (safe to track — that is the agenix model). After `nr` the
+plaintext appears at `/run/agenix/<name>`; verify it with
+`od -c /run/agenix/<name> | tail -2`.
+
+- **`age` is not installed — use `rage`** (0.11.4, `/run/current-system/sw/bin`);
+  `agenix` exists for rekeying. Full recipe and traps:
+  `~/docs/learnings/2026-10-23-rage-not-age.md`.
+- **Adding a secret without plaintext on disk:** `hx` (unnamed buffer), paste,
+  `%`, then `:pipe-to tr -d '\n' | rage -e -r … -o ~/.config/nix/secrets/<name>.age`,
+  then `:q!`. `%` is required (`:pipe-to` sends each *selection*, and normal
+  mode's is one character); never `:w`.
+- **Bare key vs dotenv line:** `hermes-*` files are `KEY=<value>` env lines;
+  a consumer that reads the file itself (opencode `{file:…}`) needs the bare
+  key in its own file. One file per consumer so keys rotate independently.
+- **A new `.age` is invisible to `git status`** (`showUntrackedFiles = no`) —
+  add it by explicit path.
+
 ### Machines
 Three machines managed from this repo:
 - **accismus** — macOS laptop (aarch64-darwin, nix-darwin)

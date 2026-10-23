@@ -15,6 +15,11 @@ in {
   # (`DEEPINFRA_API_KEY=<key>`), merged into $HERMES_HOME/.env alongside the
   # OpenRouter key. Separate file per provider so the two rotate independently.
   "/Users/scott/.config/nix/secrets/hermes-deepinfra.age".publicKeys = [sophrosyne accismus-yubikey accismus-host];
+  # DeepInfra API key for OpenCode (the opencode `deepinfra` provider's
+  # `settings.apiKey`, read through a `{file:...}` substitution). Content is the
+  # BARE key, not an env line, because OpenCode reads the file verbatim. Its own
+  # file (not Hermes') so each harness's key rotates independently.
+  "/Users/scott/.config/nix/secrets/opencode-deepinfra.age".publicKeys = [sophrosyne accismus-yubikey accismus-host];
   # Serper web-search key for Raven (tools.web.search.apiKey). Content is the
   # bare key; an activation script merges it into ~/.raven/config.json.
   "/Users/scott/.config/nix/secrets/serper-api-key.age".publicKeys = [sophrosyne accismus-yubikey accismus-host];

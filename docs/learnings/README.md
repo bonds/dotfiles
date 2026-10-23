@@ -35,3 +35,5 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-10-22 — OpenCode V2 ships only through npm, so a GitHub-release overlay cannot find it](2026-10-22-opencode-v2-is-npm-only.md)
 - [2026-10-22 — OpenCode V2 commands silently spawn a background service on a fixed port](2026-10-22-opencode-v2-managed-service.md)
 - [2026-10-23 — `git --work-tree=X` does not make pathspecs relative to X](2026-10-23-work-tree-does-not-scope-pathspecs.md)
+- [2026-10-23 — `age` is not installed; encrypt with `rage`, piped from an unnamed hx buffer](2026-10-23-rage-not-age.md)
+- [2026-10-23 — OpenCode V2 silently drops model references under the legacy `agent` key](2026-10-23-opencode-agent-singular-is-legacy.md)
