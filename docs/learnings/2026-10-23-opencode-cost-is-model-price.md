@@ -34,9 +34,14 @@ exactly 0.49. So billed = list × (1 − discount).
 ## Fix
 
 A server plugin (`plugins/deepinfra-billed-cost.ts`) registers a model
-transform that scales every Deep Infra cost tier by `(1 - discount)` read from
-`api.deepinfra.com/v1/openai/models`, refreshing every 30 minutes. Cost is
-computed *once per step*, so:
+transform that reprices each Deep Infra model **from its own catalogue
+entry**: `metadata.pricing` (the billed base) scaled by
+`(1 - metadata.discount)`, falling back to scaling the configured price when
+the catalogue omits pricing. Discounts are per model — currently 9 of 175
+models are discounted, at 10%–75% — so the map is keyed by `modelID` and
+models with no discount are left alone. It refreshes every 30 minutes and on
+`session.execution.started` (rate-limited to once a minute). Cost is computed
+*once per step*, so:
 
 - history is frozen — recorded costs are never re-priced;
 - a price change only affects steps taken afterwards;
