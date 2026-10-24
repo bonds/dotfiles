@@ -96,4 +96,6 @@ prompt, or `--accept-hooks`); `hermes hooks list` shows `✓ allowed`, and
 Concurrency: the inbox is one file with several writers, so `mem` takes an
 exclusive `flock` around every append. Write it through `mem`, not with `>>`.
 Tests: `bash ~/bin/tests/mem-test.sh` (fixtures under /tmp; never touches the
-real inbox).
+real inbox), and `bash ~/bin/tests/capture-test.sh` for the three capture
+heuristics — which lines are worth recording, and which messages count as a
+correction.
