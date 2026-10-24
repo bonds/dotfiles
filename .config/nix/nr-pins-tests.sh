@@ -851,5 +851,211 @@ run_ov "" - diagnose "$T/oc.log" > "$T/ov8.out" 2>&1
 check_rc 1 $? "second pass (rebuilt, still failing) declines instead of reverting again"
 grep -q 'reverted' "$T/ov8.out" && bad "reverted twice" || ok "did not revert a second time"
 
+# ------------------------------------------------ prebuilt-overlay verify.sh --
+# `verify` runs after a SUCCESSFUL build: a release can build and still be broken
+# at runtime. Each overlay may ship a verify.sh, called as
+# `verify.sh <system> <pname> <out-path>` once per pname its default.nix
+# declares, with the out path resolved from the new system's closure. A failure
+# is undone with the same git revert `diagnose` uses.
+
+hex_a="$(printf 'a%.0s' $(seq 1 32))"
+hex_b="$(printf 'b%.0s' $(seq 1 32))"
+hex_c="$(printf 'c%.0s' $(seq 1 32))"
+
+closure_file() { # closure_file — the fixture's "closure of the built system"
+    {
+        printf '/nix/store/%s-opencode-2.1.4\n' "$hex_a"
+        printf '/nix/store/%s-opencode-desktop-1.19.4\n' "$hex_b"
+        printf '/nix/store/%s-zen-browser-1.2.3\n' "$hex_c"
+        # Look-alikes that must NOT be mistaken for the package: no version, an
+        # age secret, and a different package sharing the pname as a prefix.
+        printf '/nix/store/%s-opencode-deepinfra.age\n' "$hex_a"
+        printf '/nix/store/%s-osaurus-icon.icns\n' "$hex_c"
+        printf '/nix/store/%s-set-osaurus-icon.applescript\n' "$hex_c"
+        printf '/nix/store/%s-ghostty-config\n' "$hex_b"
+    } > "$T/closure.txt"
+}
+
+add_overlay() { # add_overlay <dir> <pname> — an extra prebuilt dir in the fixture
+    local dir="$1" pname="$2"
+    mkdir -p "$T/$dir"
+    printf '{\n  pname = "%s";\n  version = "1.0.0";\n  hash = "sha256-x";\n}\n' "$pname" \
+        > "$T/$dir/default.nix"
+    : > "$T/$dir/update.sh"
+}
+
+add_verify() { # add_verify <dir> <body> — install an executable verify.sh
+    local dir="$1"
+    shift
+    {
+        printf '#!/usr/bin/env bash\nset -euo pipefail\n'
+        cat
+    } > "$T/$dir/verify.sh"
+    chmod +x "$T/$dir/verify.sh"
+}
+
+run_verify() { # run_verify <args...> — verify against the fixture closure
+    env NR_PINS_CLOSURE_FILE="$T/closure.txt" \
+        NR_PINS_FLAKE_DIR="$T" NR_PINS_SNAPSHOT="$T/pins-snapshot.json" \
+        NR_PINS_GIT_DIR="$T/git" NR_PINS_WORK_TREE="$T" \
+        bash "$S" verify "$@"
+}
+
+printf '\n== verify: passing hooks are reported, args are exact ==\n'
+setup_overlays
+closure_file
+add_verify modules/overlays/opencode <<'SH'
+printf '%s|%s|%s\n' "$1" "$2" "$3" >> "$NR_PINS_TEST_ARGS"
+SH
+rm -f "$T/args.txt"
+NR_PINS_TEST_ARGS="$T/args.txt" run_verify --all /run/current-system > "$T/v1.out" 2>&1
+check_rc 0 $? "all hooks pass"
+grep -q 'verified 2 package(s)' "$T/v1.out" && ok "counts the packages it verified" \
+    || bad "wrong count: $(tail -2 "$T/v1.out" | tr '\n' ' ')"
+# The hook is called once per pname, with that pname's own out path — never the
+# other package's, and never a look-alike (age secret, icon, -config dir).
+[ "$(sed -n '1p' "$T/args.txt")" = "/run/current-system|opencode|/nix/store/$hex_a-opencode-2.1.4" ] \
+    && ok "first call: system, pname, opencode out path" \
+    || bad "first call wrong: $(sed -n '1p' "$T/args.txt")"
+[ "$(sed -n '2p' "$T/args.txt")" = "/run/current-system|opencode-desktop|/nix/store/$hex_b-opencode-desktop-1.19.4" ] \
+    && ok "second call: opencode-desktop's own out path" \
+    || bad "second call wrong: $(sed -n '2p' "$T/args.txt")"
+[ "$(wc -l < "$T/args.txt" | tr -d ' ')" -eq 2 ] && ok "one call per pname" \
+    || bad "unexpected call count: $(cat "$T/args.txt")"
+
+printf '\n== verify: a platform-suffixed hook wins over the generic one ==\n'
+setup_overlays
+closure_file
+os_name="$(uname -s | tr '[:upper:]' '[:lower:]')"
+add_verify modules/overlays/zen-browser <<'SH'
+echo "verify: the generic hook must not run" >&2
+exit 1
+SH
+printf '#!/usr/bin/env bash\nexit 0\n' > "$T/modules/overlays/zen-browser/verify-$os_name.sh"
+chmod +x "$T/modules/overlays/zen-browser/verify-$os_name.sh"
+run_verify --all /run/current-system > "$T/v0.out" 2>&1
+check_rc 0 $? "the platform hook is used"
+grep -q 'the generic hook must not run' "$T/v0.out" && bad "ran the generic hook instead" \
+    || ok "the generic hook was skipped"
+
+printf '\n== verify: a failing hook reverts the bump it belongs to ==\n'
+setup_overlays
+closure_file
+overlay_write modules/overlays/zen-browser new
+add_verify modules/overlays/zen-browser <<'SH'
+echo "verify: zen is broken" >&2
+exit 1
+SH
+run_verify --all /run/current-system > "$T/v2.out" 2>&1
+check_rc 3 $? "verify reports the revert"
+grep -q 'FAILED its smoke test' "$T/v2.out" && ok "says which package failed" \
+    || bad "no failure message: $(tail -3 "$T/v2.out" | tr '\n' ' ')"
+grep -q 'version = "2.1.3"' "$T/modules/overlays/zen-browser/default.nix" \
+    && ok "reverted to the last committed pin" || bad "not reverted"
+grep -q '"version": "2.1.3"' "$T/modules/overlays/zen-browser/sources.json" \
+    && ok "sources.json reverted too" || bad "sources.json left bumped"
+# --untracked-files=no: the fixture's verify.sh itself is untracked, and the
+# revert is only expected to restore TRACKED files.
+[ -z "$(fgit status --porcelain --untracked-files=no -- modules/overlays/zen-browser)" ] \
+    && ok "the directory is clean again" || bad "still dirty"
+
+printf '\n== verify: a failing hook on an UNMODIFIED dir is reported, not reverted ==\n'
+setup_overlays
+closure_file
+add_verify modules/overlays/zen-browser <<'SH'
+echo "verify: this committed pin is broken" >&2
+exit 1
+SH
+run_verify --all /run/current-system > "$T/v3.out" 2>&1
+check_rc 1 $? "declines to revert (nothing to undo)"
+grep -q 'the failing pin is already committed' "$T/v3.out" && ok "says why it could not undo it" \
+    || bad "no such message: $(tail -2 "$T/v3.out" | tr '\n' ' ')"
+grep -q 'version = "2.1.3"' "$T/modules/overlays/zen-browser/default.nix" \
+    && ok "left the working tree alone" || bad "modified an unmodified dir"
+
+printf '\n== verify: without --all only the bumped dirs are tested ==\n'
+setup_overlays
+closure_file
+overlay_write modules/overlays/zen-browser new
+add_verify modules/overlays/opencode <<'SH'
+echo "verify: should not have run" >&2
+exit 1
+SH
+run_verify /run/current-system > "$T/v4.out" 2>&1
+check_rc 0 $? "skips the untouched overlay"
+grep -q 'should not have run' "$T/v4.out" && bad "ran an untouched overlay's hook" \
+    || ok "did not run it"
+grep -q 'verified 0 package(s)' "$T/v4.out" && ok "verified nothing" \
+    || bad "unexpected: $(tail -2 "$T/v4.out" | tr '\n' ' ')"
+
+printf '\n== fail-closed: a verify.sh that cannot run is never "verified" ==\n'
+setup_overlays
+closure_file
+add_overlay modules/overlays/ghostty ghostty
+add_verify modules/overlays/ghostty <<'SH'
+exit 0
+SH
+chmod -x "$T/modules/overlays/ghostty/verify.sh"
+run_verify --all /run/current-system > "$T/v5.out" 2>&1
+check_rc 1 $? "refuses to report it as verified"
+grep -q 'is not executable' "$T/v5.out" && ok "says the hook is not executable" \
+    || bad "no such message: $(tail -2 "$T/v5.out" | tr '\n' ' ')"
+
+printf '\n== verify: a package missing from the closure is skipped, not failed ==\n'
+setup_overlays
+closure_file
+add_overlay modules/overlays/osaurus osaurus
+add_verify modules/overlays/osaurus <<'SH'
+echo "verify: must not be called" >&2
+exit 1
+SH
+# osaurus has no pname-only entry in the fixture closure (only look-alikes).
+run_verify --all /run/current-system > "$T/v6.out" 2>&1
+check_rc 0 $? "nothing to verify is not a failure"
+grep -q 'is not in the closure' "$T/v6.out" && ok "says the package is not in the closure" \
+    || bad "no such message: $(tail -2 "$T/v6.out" | tr '\n' ' ')"
+
+printf '\n== verify: an ambiguous package (two versions in the closure) is skipped ==\n'
+setup_overlays
+closure_file
+printf '/nix/store/%s-zen-browser-1.2.4\n' "$hex_a" >> "$T/closure.txt"
+add_verify modules/overlays/zen-browser <<'SH'
+echo "verify: must not be called" >&2
+exit 1
+SH
+run_verify --all /run/current-system > "$T/v7.out" 2>&1
+check_rc 0 $? "does not guess which artifact to test"
+grep -q 'ambiguous, not verifying' "$T/v7.out" && ok "says it is ambiguous" \
+    || bad "no such message: $(tail -2 "$T/v7.out" | tr '\n' ' ')"
+
+printf '\n== verify: a hook without a resolvable pname is refused ==\n'
+setup_overlays
+closure_file
+add_verify modules/overlays/zen-browser <<'SH'
+exit 0
+SH
+printf '{\n  version = "1.2.3";\n}\n' > "$T/modules/overlays/zen-browser/default.nix"
+run_verify --all /run/current-system > "$T/v8.out" 2>&1
+check_rc 1 $? "refuses a hook it cannot attribute"
+grep -q 'has a verify hook but no pname' "$T/v8.out" && ok "says why" \
+    || bad "no such message: $(tail -2 "$T/v8.out" | tr '\n' ' ')"
+
+printf '\n== fail-closed: a revert that cannot run does not report success ==\n'
+setup_overlays
+closure_file
+overlay_write modules/overlays/zen-browser new
+add_verify modules/overlays/zen-browser <<'SH'
+exit 1
+SH
+env NR_PINS_CLOSURE_FILE="$T/closure.txt" \
+    NR_PINS_FLAKE_DIR="$T" NR_PINS_SNAPSHOT="$T/pins-snapshot.json" \
+    NR_PINS_GIT_DIR="$T/no-such-repo" NR_PINS_WORK_TREE="$T" \
+    bash "$S" verify --all /run/current-system > "$T/v9.out" 2>&1
+check_rc 1 $? "declines"
+grep -q 'could not report its state' "$T/v9.out" && ok "reports the failed revert" \
+    || bad "no such message: $(tail -2 "$T/v9.out" | tr '\n' ' ')"
+grep -q 'version = "2.1.4"' "$T/modules/overlays/zen-browser/default.nix" \
+    && ok "left the working tree untouched" || bad "reverted without git"
+
 printf '\n== summarised: %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

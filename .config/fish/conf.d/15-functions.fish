@@ -189,6 +189,7 @@ function nr
     # switch phase is near-instant.
     set -l _nr_pinned no
     set -l _nr_reverted no
+    set -l _nr_verify_failed no
     set -l _nr_attempt 0
     set -l _nr_build_ok 1
     while true
@@ -201,6 +202,32 @@ function nr
             set _nr_build_ok $pipestatus[1]
         end
         if test $_nr_build_ok -eq 0
+            # The build succeeded. Smoke-test the prebuilt packages it produced
+            # before switching to them: a release can build and still be broken
+            # (won't start, wrong payload, broken code signature, a config the
+            # new binary rejects). `nr-pins verify` runs each overlay's optional
+            # verify.sh against the freshly built store path and, on failure,
+            # reverts that bump the same way diagnose undoes a failed build — so
+            # exit 3 means "rebuild with the last-good pin".
+            #
+            # The new system path comes from nh's own output (`>>> /nix/store/…`)
+            # in the log we already tee. A no-change build prints no such line,
+            # and then there is nothing new to verify.
+            set -l _nr_sys (grep -oE '/nix/store/[a-z0-9]{32}-(darwin|nixos)-system[0-9A-Za-z._-]*' $_nr_log 2>/dev/null | tail -1)
+            if test -n "$_nr_sys"
+                bash $HOME/.config/nix/nr-pins verify $_nr_sys
+                set -l _nr_verify $status
+                if test $_nr_verify -eq 3
+                    set _nr_reverted yes
+                    echo "nr: a package failed its smoke test — rolled back to its last-good pin, rebuilding"
+                    continue
+                else if test $_nr_verify -ne 0
+                    echo "nr: a package failed its smoke test and could not be rolled back; not switching" >&2
+                    set _nr_verify_failed yes
+                    set _nr_build_ok 1
+                    break
+                end
+            end
             break
         end
         # The build failed. If this run updated the inputs, ask nr-pins whether
@@ -301,8 +328,13 @@ function nr
             end
         end
     else if test "$_nr_update" = yes
-        echo "nr: nh switch failed (exit $_nr_switch_ok); skipping commit and push"
-        echo "nr: working tree has uncommitted bumps — fix the build, then re-run nr"
+        if test "$_nr_verify_failed" = yes
+            echo "nr: a package failed its smoke test; skipping commit and push"
+            echo "nr: working tree has uncommitted bumps — fix or revert that package, then re-run nr"
+        else
+            echo "nr: nh switch failed (exit $_nr_switch_ok); skipping commit and push"
+            echo "nr: working tree has uncommitted bumps — fix the build, then re-run nr"
+        end
     end
     if test "$_os" = darwin
         set _nr_new_system (command readlink -f /nix/var/nix/profiles/system 2>/dev/null)

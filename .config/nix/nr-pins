@@ -421,7 +421,8 @@ overlay_diff_is_pin_only() { # → 0 when EVERY changed line is a version/hash p
     [ -z "$nonpin" ]
 }
 
-revert_overlay() { # revert_overlay <dir> → 0 reverted · 1 not a bump of this run · 2 could not    local dir="$1" rel changed files
+revert_overlay() { # revert_overlay <dir> → 0 reverted · 1 not a bump of this run · 2 could not
+    local dir="$1" rel changed files
     rel="$(overlay_relpath "$dir")" || {
         log "cannot revert $dir — the flake dir is not inside the git work tree ($DOT_WORK_TREE)"
         return 2
@@ -972,7 +973,7 @@ cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input cause
     return 1
 }
 
-cmd_verify() { # verify <system-path> — smoke-test the packages the build produced
+cmd_verify() { # verify [--all] <system-path> — smoke-test the packages the build produced
     # Runs after a SUCCESSFUL build, before `nr` switches to it. A prebuilt
     # package can build and still be broken: wrong payload, broken ad-hoc
     # signature, a config schema the new binary rejects. Each overlay may ship a
@@ -983,8 +984,21 @@ cmd_verify() { # verify <system-path> — smoke-test the packages the build prod
     # once per package name the overlay's default.nix declares, with the out
     # path resolved from the new system's closure. A failure is undone exactly
     # like a build failure: revert_overlay restores the last committed pin.
-    local sys="${1:-}" dir pnames p matches n failed=0 reverted=0 verified=0
-    [ -n "$sys" ] || die "usage: nr-pins verify <system-path>"
+    local sys="" all=no dir rel hook pnames p matches n failed=0 reverted=0 verified=0
+    local os
+    os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --all) all=yes ;;
+            -*) die "unknown flag for verify: $1" ;;
+            *)
+                [ -z "$sys" ] || die "usage: nr-pins verify [--all] <system-path>"
+                sys="$1"
+                ;;
+        esac
+        shift
+    done
+    [ -n "$sys" ] || die "usage: nr-pins verify [--all] <system-path>"
     [ -n "${NR_PINS_CLOSURE_FILE:-}" ] || [ -d "$sys" ] || die "no such system path: $sys"
     reg_init
     # Script-global, not local: the EXIT trap fires after this function has
@@ -1001,17 +1015,38 @@ cmd_verify() { # verify <system-path> — smoke-test the packages the build prod
         return 1
     fi
     for dir in $(overlay_dirs); do
-        [ -f "$FLAKE_DIR/$dir/verify.sh" ] || continue
-        if [ ! -x "$FLAKE_DIR/$dir/verify.sh" ]; then
+        # Platform-suffixed hook first: the GUI overlays' checks (codesign,
+        # PlistBuddy) only make sense on macOS, while the same directory may be
+        # built on Linux too (zen-browser has a linux.nix). A plain verify.sh
+        # means "valid on every platform this package builds on".
+        hook=""
+        if [ -f "$FLAKE_DIR/$dir/verify-$os.sh" ]; then
+            hook="$FLAKE_DIR/$dir/verify-$os.sh"
+        elif [ -f "$FLAKE_DIR/$dir/verify.sh" ]; then
+            hook="$FLAKE_DIR/$dir/verify.sh"
+        else
+            continue
+        fi
+        # By default only the directories this run actually bumped are tested — a
+        # full sweep costs seconds per Electron app (`codesign --deep` is slow),
+        # and `nr` runs far more often than any overlay changes. `--all` is for
+        # checking a pin that an earlier run committed.
+        if [ "$all" = no ]; then
+            rel="$(overlay_relpath "$dir")" || rel=""
+            if [ -n "$rel" ] && [ -z "$(overlay_changes "$rel")" ]; then
+                continue
+            fi
+        fi
+        if [ ! -x "$hook" ]; then
             # Fail closed: a hook that exists but cannot run would otherwise
             # read as "verified", which is the one thing it must never do.
-            log "$dir/verify.sh is not executable — refusing to report it as verified"
+            log "${hook#"$FLAKE_DIR"/} is not executable — refusing to report it as verified"
             failed=1
             continue
         fi
         pnames="$(overlay_pnames "$dir")"
         [ -n "$pnames" ] || {
-            log "$dir has a verify.sh but no pname — cannot resolve its package"
+            log "$dir has a verify hook but no pname — cannot resolve its package"
             failed=1
             continue
         }
@@ -1031,7 +1066,7 @@ cmd_verify() { # verify <system-path> — smoke-test the packages the build prod
                 continue
             fi
             verified=$((verified + 1))
-            if bash "$FLAKE_DIR/$dir/verify.sh" "$sys" "$p" "$matches"; then
+            if bash "$hook" "$sys" "$p" "$matches"; then
                 log "$dir: $p passed its smoke test"
                 continue
             fi

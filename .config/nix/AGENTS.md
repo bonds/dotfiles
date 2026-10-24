@@ -116,7 +116,8 @@ that built, and lifts the pin automatically once a cache carries the package
 again. When it fails because a hand-pinned prebuilt package's just-bumped
 version is the thing that broke, `nr-pins` instead restores that overlay
 directory from git — the last committed pin — so the bad bump never reaches a
-commit.
+commit. And when a build SUCCEEDS but the package is broken at runtime, the
+overlay's own smoke test catches it and undoes the bump the same way.
 
 - **Registry:** `~/.config/nix/flake-pins.json` is the source of truth. The
   block between `---- BEGIN/END nr-managed input pins` in `flake.nix` is
@@ -149,10 +150,10 @@ commit.
 
 - **`nr --update`** runs `snapshot` → `check` → `nix flake update`, then a
   bounded 3-attempt build retry that calls `diagnose <logfile>` on failure and
-  rebuilds on exit 2 (a pin) or 3 (a revert). Before the flake update it also
-  runs the binary-overlay `update.sh` scripts and `pkgs/pi/update.sh`, which
-  moves the rev-pinned `pi` flake input to the latest GitHub **release** (not
-  `main`).
+  rebuilds on exit 2 (a pin) or 3 (a revert); a successful build is followed by
+  `verify` on the same terms. Before the flake update it also runs the
+  binary-overlay `update.sh` scripts and `pkgs/pi/update.sh`, which moves the
+  rev-pinned `pi` flake input to the latest GitHub **release** (not `main`).
 - **Rev-pinned third-party inputs** (e.g. `pi`) are `base` entries whose URL
   carries `?rev=<sha>`, with a `pnames` list and an optional `note`. They have
   no branch to probe, so the pin engine handles them differently: `diagnose`
@@ -163,11 +164,40 @@ commit.
   `needs_build` would otherwise blame a nixpkgs bump for every failure of it.
 - **Commands:** `snapshot` (record the revs that build now) · `check [attr]`
   (probe each pin against its branch head, drop the cleared ones) ·
-  `diagnose <log>` (undo the culprit of a failed build) · `apply` (re-render the
-  block) · `list` (show the registry). Exit codes: 0 = nothing to do,
-  2 = a pin was written (registry + flake.nix changed), 3 = a prebuilt-overlay
-  bump was reverted (working tree restored, no registry change), 1 = pins
-  remain / could not pin.
+  `diagnose <log>` (undo the culprit of a failed build) · `verify [--all]
+  <system-path>` (smoke-test the prebuilt packages a successful build produced) ·
+  `apply` (re-render the block) · `list` (show the registry). Exit codes:
+  0 = nothing to do, 2 = a pin was written (registry + flake.nix changed),
+  3 = a prebuilt-overlay bump was reverted (working tree restored, no registry
+  change), 1 = pins remain / could not pin.
+- **Overlay smoke tests (`verify`):** a release can build and still be broken —
+  won't start, wrong payload, a code-signature seal broken by our own
+  post-processing, a config schema the new binary rejects. `nr` runs
+  `nr-pins verify <new-system-path>` after a successful build and before the
+  switch, so a failure never reaches the running system or the auto-commit. Each
+  overlay may ship `<dir>/verify-darwin.sh` (or `verify-linux.sh`, or a
+  platform-agnostic `verify.sh`; the suffixed one wins), called as
+  `verify-darwin.sh <system-path> <pname> <package-out-path>` once per `pname`
+  its `default.nix` declares. The out path is resolved from the new system's
+  closure (`nix-store -qR`), so the hook tests exactly the artifact the switch
+  would install. Shared helpers live in `modules/overlays/lib-verify.sh`
+  (`verify_app` = bundle present + `codesign --verify --deep --strict` +
+  `CFBundleShortVersionString` equal to the derivation's version).
+  - **Only bumped dirs by default:** a full sweep costs ~10 s (`codesign --deep`
+    on Zen/Orca is seconds each), so `verify` skips directories with no
+    uncommitted change. `nr-pins verify --all /run/current-system` sweeps
+    everything — use it to check a pin an earlier run already committed.
+  - **Skips, not failures:** a package absent from the closure, or matching two
+    store paths (two versions of it), is reported and skipped — testing the
+    wrong artifact is worse than not testing. A hook that exists but is not
+    executable is a FAILURE (it must never read as "verified").
+  - **The new system path comes from nh's `>>> /nix/store/…` line** in the build
+    log `nr` already tees; a no-change build prints none, and then there is
+    nothing new to verify.
+  - **What it cannot catch:** anything needing a running session — model
+    streaming, auth, plugin-API drift. The opencode hook gets as far as
+    `models --standalone` (config parses, a configured provider still resolves);
+    it treats a network failure as a warning rather than reverting a good bump.
 - **Prebuilt overlays (not flake inputs):** every directory under
   `modules/overlays/` and the prebuilt `pkgs/` that carries a `default.nix`
   plus the `update.sh` rewriting its version + SRI hash is bumped by
@@ -184,10 +214,11 @@ commit.
   `NR_PINS_GIT_DIR` / `NR_PINS_WORK_TREE`.
 - **Safety, enforced in code:** only `owner == NixOS && repo == nixpkgs`
   inputs; never on an eval error; never an input that did not move; never a
-  revert of an unmodified or hand-edited overlay directory; and any error,
-  unreadable or malformed file, failed write or checkout, or empty enumeration
-  KEEPS the pin (or the working tree) rather than reading as "the blocker
-  cleared".
+  revert of an unmodified or hand-edited overlay directory; never a
+  `verify` failure attributed to a directory whose hook could not run or whose
+  package could not be resolved unambiguously; and any error, unreadable or
+  malformed file, failed write or checkout, or empty enumeration KEEPS the pin
+  (or the working tree) rather than reading as "the blocker cleared".
 - **Tests:** `bash ~/.config/nix/nr-pins-tests.sh` — stubbed, runs in
   milliseconds, never touches the real flake.
 

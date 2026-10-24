@@ -39,9 +39,16 @@ queries answer properly — `opencode plugin list` shows a local
 `plugins/*.js` file as `local` with its absolute path, and the log records
 `msg="loading plugin"`, so local plugins do still load on V2 (the plugin *API*
 version is a separate question: `@opencode-ai/plugin` is published only up to
-1.19.4, the V1 line). To drive a real instance use
-`opencode service` (`set port`, status), and put `--standalone` *before* the
-subcommand — a throwaway instance needs its own port so it cannot collide.
+1.19.4, the V1 line). To drive a real instance use `opencode service`
+(`set port`, status).
+
+To drive a *different* binary without touching live state, put `--standalone`
+**after** the subcommand — `opencode models --standalone`, not
+`opencode --standalone models`, which fails with
+`Unrecognized flag: --standalone in command opencode models`. Not every
+subcommand takes it (`debug` rejects it in either position). `--version` needs
+no service at all, and `models --standalone` with a throwaway `HOME` plus a copy
+of `~/.config/opencode/opencode.jsonc` is a ~0.6 s config-compatibility probe.
 
 ## See also
 
