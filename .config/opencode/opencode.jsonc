@@ -41,7 +41,13 @@
             "output": ["text"],
             "reasoning": { "supported": true }
           },
-          "limit": { "context": 1048576, "output": 1048576 },
+          // `output` here is the per-step reply budget, not the model's ceiling.
+          // OpenCode caps it at 256k anyway (OUTPUT_TOKEN_MAX, PR #51962), and
+          // on a 1M-context model that reservation puts the request ceiling
+          // (75.6%) BELOW the compaction ceiling (85%), so long sessions
+          // compact mid-turn or overflow (issue #58463). 64k keeps the request
+          // ceiling at 93.9%, above compaction, with room for long reasoning.
+          "limit": { "context": 1048576, "output": 64000 },
           // No `cost` here on purpose: a cost in the model definition is merged
           // after the plugin's model transform and would overwrite the
           // discounted price with list. The base price comes from the

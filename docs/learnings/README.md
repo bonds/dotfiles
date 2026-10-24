@@ -38,3 +38,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-10-23 — `age` is not installed; encrypt with `rage`, piped from an unnamed hx buffer](2026-10-23-rage-not-age.md)
 - [2026-10-23 — OpenCode V2 silently drops model references under the legacy `agent` key](2026-10-23-opencode-agent-singular-is-legacy.md)
 - [2026-10-23 — OpenCode's cost is the model's configured price, not the provider's bill](2026-10-23-opencode-cost-is-model-price.md)
+- [2026-10-23 — OpenCode requests a step budget, not the model's output limit](2026-10-23-opencode-output-token-ceiling.md)
