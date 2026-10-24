@@ -87,3 +87,13 @@ expect: fix
 prompt: Where do active code repos live on this machine, and what is ~/Documents/undated/repos/ for?
 expect: src/bonds
 expect: archive
+
+### nix-update-heals
+prompt: A nightly dependency bump broke the build on this machine. What undoes it automatically, and where is the list of held-back inputs kept?
+expect: nr-pins
+expect: flake-pins.json
+
+### overlay-smoke-test
+prompt: A prebuilt overlay release builds fine but the app is broken when launched. What catches that before I switch to it?
+expect: verify
+expect: revert

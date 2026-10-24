@@ -92,6 +92,47 @@ becomes a no-op.
 round-trip per tool call; the alternative (default tools only) costs latency
 and tokens on every multi-step task.
 
+## Nix
+
+**opencode tracks the V2 CLI from npm; the desktop app stays on V1.**
+(2026-10-22) V2 is a rewrite published only as npm packages (`@opencode/cli` →
+payload `@opencode/cli-darwin-arm64`); upstream tags `v2.*` but attaches no
+release assets, and `/releases/latest` still points at V1, so the old
+`releases/download/…zip` fetch could only ever pin V1. Rejected: `pkgs.opencode`
+(that *is* the V1 line), waiting for a V2 release asset (none exists), and
+running both lines (same binary name and config dirs, so they cannot coexist).
+Cost: the pin is ours to maintain, and `opencode-desktop` is frozen at 1.19.4
+until upstream ships a V2 desktop artifact.
+
+**A bad prebuilt-overlay bump is reverted from git, not pinned in the registry.**
+(2026-10-23) `nr --update` bumps a version + SRI hash in `modules/overlays/*`
+(and the prebuilt `pkgs/*`); those are files, not flake inputs, so the pin
+registry cannot express them — it renders input declarations, and `reg_init`
+rejects an entry whose input it does not own. So `nr-pins diagnose` matches the
+failing derivation's pname against the overlay's `pname` and restores the
+directory from git, i.e. the last committed pin. Rejected: registry entries
+(wrong layer, breaks the registry's invariants), and leaving it manual — the
+status quo that left a dirty work tree for the next `nr` to sweep into a commit.
+
+**Runtime breakage is caught before the switch, by reverting, not by blocking.**
+(2026-10-24) A prebuilt release can build and still be broken: won't start,
+wrong payload, a code-signature seal broken by our own strip-and-re-sign, a
+config the new binary rejects. `nr` therefore runs each overlay's smoke test
+against the freshly built store path *before* switching and before the
+auto-commit, and undoes a failure with the same git revert. Rejected: checking
+after activation (the machine is already running the broken thing), abort-only
+(leaves the bad bump dirty, and the next `nr --update` re-attempts it with no
+memory of the failure), and verifying every directory on every `nr` (~10 s,
+nearly all of it `codesign --deep` on Zen and Orca) — hence `--all` as an
+explicit audit instead.
+
+**Overlay smoke-test hooks are platform-suffixed (`verify-darwin.sh`).**
+(2026-10-24) `zen-browser` is built on sophrosyne too, where `codesign` and
+`PlistBuddy` do not exist. A generic `verify.sh` with a `uname` guard inside
+would log "passed" for checks that never ran; a suffixed hook is simply absent
+on the other platform, so `nr-pins verify` reports zero packages verified rather
+than a success it did not earn.
+
 ## Agents
 
 **Scott runs the activating rebuild; agents may only build.** `nr` needs no

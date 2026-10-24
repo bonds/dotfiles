@@ -108,119 +108,15 @@ alejandra <file> ...
 nix flake update
 ```
 
-### `nr-pins` — self-expiring flake input pins, and overlay reverts
+### `nr-pins` — self-healing `nr --update`
 
-When `nr --update` fails because an input rev moved and a package must now build
-from source (and its tests fail), `nr-pins` pins that input back to the last rev
-that built, and lifts the pin automatically once a cache carries the package
-again. When it fails because a hand-pinned prebuilt package's just-bumped
-version is the thing that broke, `nr-pins` instead restores that overlay
-directory from git — the last committed pin — so the bad bump never reaches a
-commit. And when a build SUCCEEDS but the package is broken at runtime, the
-overlay's own smoke test catches it and undoes the bump the same way.
-
-- **Registry:** `~/.config/nix/flake-pins.json` is the source of truth. The
-  block between `---- BEGIN/END nr-managed input pins` in `flake.nix` is
-  GENERATED from it — never edit the block; edit the registry and run
-  `bash ~/.config/nix/nr-pins apply` (or `check`, which reconciles).
-- **The block ALWAYS declares every input it owns** — the registry's `base`
-  list. Each base input is rendered as its pinned rev URL while a pin is active
-  for it, and as its normal branch URL otherwise. A pin is only an OVERLAY on a
-  base input; it must never be the sole declaration of one. The rest of
-  `flake.nix` follows `nixpkgs` / `nixpkgs-unstable` by name, so a missing
-  declaration makes every `inputs.X.follows = "nixpkgs"` dangle and fails
-  `nix flake update` hard (`input 'agenix/nixpkgs' follows a non-existent input
-  'nixpkgs'`). **Invariant, enforced fail-closed in `reg_init` before anything is
-  written:** every `follows = "Y"` target found in `flake.nix` must name an input
-  the resulting flake declares — either in this block (`base` ∪ `pins`) or
-  elsewhere in `flake.nix` (e.g. `flake-parts`). Concretely: `base` must be a
-  non-empty array of `{input, url}`; input names must be unique within `base` and
-  within `pins`; every pinned input must appear in `base`; and a `base` that is
-  non-empty but omits a *followed* input is refused loudly, never rendered. When
-  `diagnose` pins an input `base` omits it extends `base` first, so it can never
-  leave a registry that the next command refuses.
-- **`base` is optional.** When the registry has no `base` field the engine
-  defaults to the two inputs the pin mechanism manages (`nixpkgs` →
-  `github:NixOS/nixpkgs/nixos-26.05`, `nixpkgs-unstable` →
-  `github:NixOS/nixpkgs/nixpkgs-unstable`), so a bare `{"pins": []}` registry
-  still renders a valid block.
-- **Recovery:** `bash ~/.config/nix/repair-pins-recovery.sh` repairs a tree
-  broken by the 2026-10-13 bug (an emptied registry had deleted the input
-  declarations). Idempotent, backs up what it replaces, never activates.
-
-- **`nr --update`** runs `snapshot` → `check` → `nix flake update`, then a
-  bounded 3-attempt build retry that calls `diagnose <logfile>` on failure and
-  rebuilds on exit 2 (a pin) or 3 (a revert); a successful build is followed by
-  `verify` on the same terms. Before the flake update it also runs the
-  binary-overlay `update.sh` scripts and `pkgs/pi/update.sh`, which moves the
-  rev-pinned `pi` flake input to the latest GitHub **release** (not `main`).
-- **Rev-pinned third-party inputs** (e.g. `pi`) are `base` entries whose URL
-  carries `?rev=<sha>`, with a `pnames` list and an optional `note`. They have
-  no branch to probe, so the pin engine handles them differently: `diagnose`
-  reverts one whose package is the failing derivation (matching `pnames`), and
-  `check` keeps that pin until the base URL changes — i.e. until a newer
-  release appears, at which point it drops the pin to try it. This runs BEFORE
-  the nixpkgs scan: a from-source package is always in the build plan, so
-  `needs_build` would otherwise blame a nixpkgs bump for every failure of it.
-- **Commands:** `snapshot` (record the revs that build now) · `check [attr]`
-  (probe each pin against its branch head, drop the cleared ones) ·
-  `diagnose <log>` (undo the culprit of a failed build) · `verify [--all]
-  <system-path>` (smoke-test the prebuilt packages a successful build produced) ·
-  `apply` (re-render the block) · `list` (show the registry). Exit codes:
-  0 = nothing to do, 2 = a pin was written (registry + flake.nix changed),
-  3 = a prebuilt-overlay bump was reverted (working tree restored, no registry
-  change), 1 = pins remain / could not pin.
-- **Overlay smoke tests (`verify`):** a release can build and still be broken —
-  won't start, wrong payload, a code-signature seal broken by our own
-  post-processing, a config schema the new binary rejects. `nr` runs
-  `nr-pins verify <new-system-path>` after a successful build and before the
-  switch, so a failure never reaches the running system or the auto-commit. Each
-  overlay may ship `<dir>/verify-darwin.sh` (or `verify-linux.sh`, or a
-  platform-agnostic `verify.sh`; the suffixed one wins), called as
-  `verify-darwin.sh <system-path> <pname> <package-out-path>` once per `pname`
-  its `default.nix` declares. The out path is resolved from the new system's
-  closure (`nix-store -qR`), so the hook tests exactly the artifact the switch
-  would install. Shared helpers live in `modules/overlays/lib-verify.sh`
-  (`verify_app` = bundle present + `codesign --verify --deep --strict` +
-  `CFBundleShortVersionString` equal to the derivation's version).
-  - **Only bumped dirs by default:** a full sweep costs ~10 s (`codesign --deep`
-    on Zen/Orca is seconds each), so `verify` skips directories with no
-    uncommitted change. `nr-pins verify --all /run/current-system` sweeps
-    everything — use it to check a pin an earlier run already committed.
-  - **Skips, not failures:** a package absent from the closure, or matching two
-    store paths (two versions of it), is reported and skipped — testing the
-    wrong artifact is worse than not testing. A hook that exists but is not
-    executable is a FAILURE (it must never read as "verified").
-  - **The new system path comes from nh's `>>> /nix/store/…` line** in the build
-    log `nr` already tees; a no-change build prints none, and then there is
-    nothing new to verify.
-  - **What it cannot catch:** anything needing a running session — model
-    streaming, auth, plugin-API drift. The opencode hook gets as far as
-    `models --standalone` (config parses, a configured provider still resolves);
-    it treats a network failure as a warning rather than reverting a good bump.
-- **Prebuilt overlays (not flake inputs):** every directory under
-  `modules/overlays/` and the prebuilt `pkgs/` that carries a `default.nix`
-  plus the `update.sh` rewriting its version + SRI hash is bumped by
-  `nr --update` but is not a flake input, so the registry cannot hold it back.
-  `diagnose` handles those by matching the failing derivation's pname against
-  the `pname` its `default.nix` declares and then `git checkout HEAD --` that
-  directory (which restores a sibling `sources.json` too). Two deliberate
-  guards: it only reverts when the directory is *modified* (an unmodified one
-  means the failure is not this run's bump, so the input logic gets its turn),
-  and only when the whole diff is a version/hash line — a hand edit in the same
-  directory is never discarded. Reverting is inherently self-expiring: the next
-  `update.sh` run bumps it again. Reverts read the dotfiles bare repo
-  (`~/.local/share/dotfiles`, work tree `$HOME`), overridable for tests via
-  `NR_PINS_GIT_DIR` / `NR_PINS_WORK_TREE`.
-- **Safety, enforced in code:** only `owner == NixOS && repo == nixpkgs`
-  inputs; never on an eval error; never an input that did not move; never a
-  revert of an unmodified or hand-edited overlay directory; never a
-  `verify` failure attributed to a directory whose hook could not run or whose
-  package could not be resolved unambiguously; and any error, unreadable or
-  malformed file, failed write or checkout, or empty enumeration KEEPS the pin
-  (or the working tree) rather than reading as "the blocker cleared".
-- **Tests:** `bash ~/.config/nix/nr-pins-tests.sh` — stubbed, runs in
-  milliseconds, never touches the real flake.
+`nr --update` bumps flake inputs, prebuilt overlays and prebuilt `pkgs/*`, and
+`nr-pins` undoes any of those that break — pinning an input back to the last rev
+that built (self-expiring), reverting an overlay bump from git, or reverting
+after a smoke test fails on a successful build. Registry, exit codes, hook
+contract and invariants: the `nix-updates` skill
+(`.config/nix/agent-skills/nix-updates/SKILL.md`); run
+`bash ~/.config/nix/nr-pins-tests.sh` after touching any of it.
 
 ## Structure
 

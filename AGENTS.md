@@ -85,6 +85,7 @@ wiring rules are in the `pi-harness` skill.
 | `gh-credentials` | filing issues/PRs on third-party repos, or `gh` scope/403 failures |
 | `osaurus-build` | building or testing `~/src/bonds/osaurus` |
 | `pi-harness` | editing pi config or an extension/skill/prompt; a tool, cost or session question |
+| `nix-updates` | `nr --update` behaviour: a dependency bump that failed to build, a pin added or expired, an overlay release that builds but is broken, or touching `nr-pins`/`flake-pins.json`/`verify-*.sh` |
 
 Agents without skill support can read `SKILL.md` directly. The `description` is
 what routes the model to the skill: say what it does **and** when to use it, and
