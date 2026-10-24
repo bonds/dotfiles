@@ -35,6 +35,11 @@ if [[ -n ${PI_EVAL_ARGS:-} ]]; then
     read -r -a extra <<< "$PI_EVAL_ARGS"
 fi
 scratch="${HOME}/.cache/pi-evals"
+# Eval cases fail on purpose — a missing path, a rejected tool call — and the
+# extensions still run under `--no-session`, so without this every run would
+# append its fixture failures to the real shared inbox. `mem` reads the same
+# variable, so the whole capture chain lands in the throwaway dir instead.
+export MEMORY_DIR="${scratch}/.memory"
 timeout_cmd=()
 if command -v timeout > /dev/null 2>&1; then
     timeout_cmd=(timeout 180)
