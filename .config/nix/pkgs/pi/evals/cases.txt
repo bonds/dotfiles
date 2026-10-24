@@ -68,11 +68,11 @@ prompt: Where in the dotfiles repo is pi's configuration declared?
 expect: pkgs/pi
 
 ### inbox-purpose
-prompt: What is ~/.pi/agent/inbox.md for, and what turns it into a permanent fix?
+prompt: What is ~/.agents/memory/inbox.md for, and what turns it into a permanent fix?
 expect: distill
 
 ### inbox-sources
-prompt: What kinds of lesson does ~/.pi/agent/inbox.md collect, and what turns them into a permanent fix?
+prompt: What kinds of lesson does ~/.agents/memory/inbox.md collect, and what turns them into a permanent fix?
 expect: correction
 expect: distill
 
@@ -97,3 +97,8 @@ expect: flake-pins.json
 prompt: A prebuilt overlay release builds fine but the app is broken when launched. What catches that before I switch to it?
 expect: verify
 expect: revert
+
+### memory-shared-across-harnesses
+prompt: If opencode hits a tool failure, where does that lesson land, and which harnesses can read it?
+expect: .agents/memory/inbox.md
+expect: pi

@@ -32,19 +32,23 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-const AGENT_DIR = process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".pi", "agent");
-const INBOX = join(AGENT_DIR, "inbox.md");
+// The inbox is shared with every other harness (see `mem`), so it lives in a
+// neutral directory instead of pi's own agent dir. PI_CODING_AGENT_DIR no longer
+// decides where it goes — one inbox, whoever captured the lesson.
+const MEMORY_DIR = process.env.MEMORY_DIR ?? join(homedir(), ".agents", "memory");
+const INBOX = join(MEMORY_DIR, "inbox.md");
 const ROTATE_BYTES = 64 * 1024;
 const MAX_SIGNATURE = 140;
 
 const HEADER = `# Learnings inbox
 
-Candidates written by the \`learnings-capture\` and \`corrections-capture\`
-extensions when a tool call failed, or when the user corrected the agent or
-stated a rule.
+Candidates appended by every agent harness — pi (\`learnings-capture\` and
+\`corrections-capture\`), opencode and hermes hooks, or \`mem inbox add\` — when a
+tool call failed, or when the user corrected the agent or stated a rule.
 
-Run \`/distill\` to cluster these and promote them (AGENTS.md -> skill -> hook),
-then empty this file. Do not edit by hand: delete lines instead.
+Run \`mem distill\` (or \`/distill\`) to cluster these and promote each one up the
+ladder: AGENTS.md line -> skill -> hook/extension -> automation. Then empty this
+file. Do not edit by hand: delete lines instead.
 `;
 
 /**
@@ -175,7 +179,7 @@ async function record(
 	const existing = await readInbox();
 	if (existing.includes(tag)) return; // already an unresolved candidate
 
-	await mkdir(AGENT_DIR, { recursive: true });
+	await mkdir(MEMORY_DIR, { recursive: true });
 	const sessionId = ctx.sessionManager.getSessionId();
 	const session = sessionId ? sessionId.slice(0, 8) : "unknown";
 	const times = count > 1 ? ` x${count}` : "";

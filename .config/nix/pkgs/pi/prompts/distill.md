@@ -4,16 +4,18 @@ argument-hint: "[focus]"
 ---
 Distill the learnings inbox into durable changes. Focus (optional): ${1:-everything}.
 
-The inbox is `~/.pi/agent/inbox.md`, written by `learnings-capture.ts` when a
-tool call failed and by `corrections-capture.ts` when the user corrected you or
-stated a rule. Each line is one distinct item from one session. Your job is to
-move each one up the ladder so it cannot recur.
+The inbox is `~/.agents/memory/inbox.md` — one inbox shared by every harness:
+pi (`learnings-capture.ts` / `corrections-capture.ts`), the opencode and hermes
+hooks, and anything that ran `mem inbox add`. Read it with `mem inbox show`
+(`mem distill` prints it together with the ladder). Each line is one distinct
+item from one session. Your job is to move each one up the ladder so it cannot
+recur.
 
 Correction lines carry what they were correcting (`"no, use config push" —
 after \`bash\` \`git push\``): that pairing is the lesson, and a bare "no" is
 not. Domain knowledge (a platform quirk, an API lifetime rule) is **not** a
-ladder item — it belongs in the repo's `docs/learnings/` via `learning` or
-`/learn`, so move it there and delete the line.
+ladder item — it belongs in the repo's `docs/learnings/` via `mem learn` (or the
+`learning` tool, or `/learn`), so move it there and delete the line.
 
 ## The ladder
 

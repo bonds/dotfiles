@@ -1,0 +1,474 @@
+#!/usr/bin/env python3
+"""mem — one memory store for every agent harness (pi, opencode, hermes, osaurus).
+
+The store is files, so it is already harness-neutral; this CLI is the neutral
+*interface* to it, so a lesson captured by one harness is readable, promotable
+and recallable from any other:
+
+  ~/.agents/memory/inbox.md     one inbox; every harness appends (flock'd)
+  <repo>/docs/learnings/        one entry per domain lesson, indexed
+  ~/DECISIONS.md                settled choices and their rationale
+  agent-skills/memory/SKILL.md  the policy: when to capture, how to distill
+
+Subcommands:
+  mem learn <slug> --title T --symptom S --cause C --fix F [--repo DIR]
+  mem inbox add <kind> <text> [--session S]
+  mem inbox show
+  mem distill
+  mem recall <query> [--days N] [--limit N] [--source pi|opencode|hermes]
+  mem decisions
+  mem help
+
+Exit codes: 0 ok · 1 nothing to do / refused · 2 usage error.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import fcntl
+import json
+import os
+import pathlib
+import re
+import sqlite3
+import subprocess
+import sys
+
+HOME = pathlib.Path.home()
+MEMORY_DIR = pathlib.Path(os.environ.get("MEMORY_DIR") or os.environ.get("MEM_DIR") or HOME / ".agents" / "memory")
+INBOX = MEMORY_DIR / "inbox.md"
+DECISIONS = HOME / "DECISIONS.md"
+# Recall sources, overridable so the test suite can point at fixtures.
+PI_SESSIONS = pathlib.Path(os.environ.get("MEM_PI_SESSIONS", HOME / ".pi" / "agent" / "sessions"))
+OPENCODE_DB = pathlib.Path(os.environ.get("MEM_OPENCODE_DB", HOME / ".local" / "share" / "opencode" / "opencode.db"))
+HERMES_DB = pathlib.Path(os.environ.get("MEM_HERMES_DB", HOME / ".hermes" / "state.db"))
+
+INBOX_HEADER = """# Learnings inbox
+
+Candidates appended by every agent harness — pi (`learnings-capture` and
+`corrections-capture`), opencode and hermes hooks, or `mem inbox add` — when a
+tool call failed, or when the user corrected the agent or stated a rule.
+
+Run `mem distill` (or `/distill` in any harness) to cluster these and promote
+each one up the ladder: AGENTS.md line -> skill -> hook/extension -> automation.
+Then empty this file. Do not edit by hand: delete lines instead.
+"""
+
+LADDER = """\
+Promotion ladder — a candidate is only resolved when it moves UP a rung:
+
+  1. AGENTS.md line      a rule worth always having in context
+  2. skill               a rule needed on demand, or detail AGENTS.md must not hold
+  3. hook / extension    a rule that should not depend on the agent remembering
+  4. automation          a script, so it cannot be forgotten at all
+
+Seen twice -> rung 3. AGENTS.md must not grow: moving a paragraph into a skill
+is part of the same edit. A correction that is really a fact about a project
+belongs in that repo's docs/learnings/ instead (mem learn), not here."""
+
+
+def die(msg: str, code: int = 1) -> "NoReturn":  # type: ignore[name-defined]
+    print(f"mem: {msg}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def today() -> str:
+    return dt.date.today().isoformat()
+
+
+def now_stamp() -> str:
+    return dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+
+# --------------------------------------------------------------------- inbox --
+
+
+def append_locked(line: str) -> bool:
+    """Append one line to the inbox under an exclusive lock.
+
+    flock, not a read-then-write race: several harnesses write this file, and a
+    half-written line would corrupt the one thing every agent reads. Returns
+    False when the same text is already present (the inbox is a set of
+    unresolved lessons, not a log).
+    """
+    MEMORY_DIR.mkdir(parents=True, exist_ok=True)
+    body = line.rstrip("\n")
+    with open(INBOX, "a+", encoding="utf-8") as fh:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        try:
+            fh.seek(0)
+            existing = fh.read()
+            # Whole-line identity, not a substring test: "parallel line 1" is a
+            # substring of "parallel line 11", and a substring dedupe silently
+            # swallowed the shorter lesson.
+            if any(ln.rstrip() == body for ln in existing.splitlines()):
+                return False
+            # The header is written INSIDE the lock: two harnesses capturing
+            # their first lesson at the same moment must not both create the
+            # file, the second truncating the first one's line.
+            if not existing.strip():
+                fh.write(INBOX_HEADER + "\n")
+            fh.write(body + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        finally:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+    return True
+
+
+def cmd_inbox_add(args) -> int:
+    text = " ".join(args.text).strip()
+    if not text:
+        die("inbox add needs some text", 2)
+    line = f"- [{now_stamp()}] {args.kind} — {text}"
+    if args.session:
+        line += f" — ~ — session {args.session}"
+    if append_locked(line):
+        print(f"mem: captured ({args.kind})")
+        return 0
+    print("mem: already in the inbox", file=sys.stderr)
+    return 1
+
+
+def inbox_candidates() -> list[str]:
+    if not INBOX.exists():
+        return []
+    return [ln for ln in INBOX.read_text(encoding="utf-8").splitlines() if ln.startswith("- [")]
+
+
+def cmd_inbox_show(_args) -> int:
+    if not INBOX.exists():
+        print(f"mem: no inbox yet at {INBOX}")
+        return 0
+    sys.stdout.write(INBOX.read_text(encoding="utf-8"))
+    return 0
+
+
+def cmd_distill(_args) -> int:
+    cands = inbox_candidates()
+    if not cands:
+        print(f"mem: inbox is empty ({INBOX}) — nothing to distill")
+        return 0
+    print(f"{len(cands)} candidate(s) in {INBOX}\n")
+    for c in cands:
+        print(c)
+    print("\n" + LADDER)
+    print("\nWhen done: delete the lines you promoted (do not edit them).")
+    return 0
+
+
+# -------------------------------------------------------------------- learn --
+
+
+def slugify(text: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return re.sub(r"-{2,}", "-", s)[:60] or "lesson"
+
+
+def git_toplevel(start: pathlib.Path | None = None) -> pathlib.Path | None:
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(start or pathlib.Path.cwd()),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    return pathlib.Path(out) if out else None
+
+
+def cmd_learn(args) -> int:
+    repo = pathlib.Path(args.repo).expanduser() if args.repo else git_toplevel()
+    if repo is None:
+        die(
+            "not inside a git repository, so there is nowhere for this to live — "
+            "pass --repo DIR for a repo elsewhere, or use `mem inbox add` for an "
+            "agent-behaviour lesson"
+        )
+    learnings = repo / "docs" / "learnings"
+    if not learnings.is_dir():
+        die(f"{learnings} does not exist — create it (with a README.md index) or pass --repo")
+    slug = slugify(args.slug or args.title)
+    path = learnings / f"{today()}-{slug}.md"
+    if path.exists() and not args.force:
+        die(f"{path.relative_to(repo)} already exists (use --force to overwrite)")
+    body = f"""# {args.title}
+
+**Date:** {today()}
+
+## Symptom
+
+{args.symptom}
+
+## Cause
+
+{args.cause}
+
+## Fix
+
+{args.fix}
+"""
+    if args.see:
+        body += "\n## See also\n\n" + "\n".join(f"- {s}" for s in args.see) + "\n"
+    path.write_text(body, encoding="utf-8")
+    index = learnings / "README.md"
+    entry = f"- [{today()} — {args.title}]({path.name})"
+    if index.exists():
+        text = index.read_text(encoding="utf-8")
+        if path.name not in text:
+            if not text.endswith("\n"):
+                text += "\n"
+            if "## Entries" not in text:
+                text += "\n## Entries\n\n"
+            index.write_text(text + entry + "\n", encoding="utf-8")
+    else:
+        index.write_text(
+            f"# Learnings\n\nDomain lessons: symptom / cause / fix, one per file.\n\n## Entries\n\n{entry}\n",
+            encoding="utf-8",
+        )
+    print(f"mem: wrote {path.relative_to(repo)}")
+    print(f"mem: indexed in {(index.relative_to(repo))}")
+    return 0
+
+
+def cmd_decisions(_args) -> int:
+    if not DECISIONS.exists():
+        die(f"no {DECISIONS}")
+    sys.stdout.write(DECISIONS.read_text(encoding="utf-8"))
+    return 0
+
+
+# ------------------------------------------------------------------- recall --
+
+
+def _words(q: str) -> list[str]:
+    return [w.lower() for w in re.findall(r"[A-Za-z0-9_./:@+-]+", q)]
+
+
+def _matches(text: str, words: list[str]) -> bool:
+    low = text.lower()
+    return all(w in low for w in words)
+
+
+def _snippet(text: str, words: list[str], width: int = 150) -> str:
+    flat = " ".join(text.split())
+    low = flat.lower()
+    pos = min((low.find(w) for w in words if w in low), default=0)
+    start = max(0, pos - width // 3)
+    out = flat[start : start + width]
+    return ("…" if start else "") + out + ("…" if start + width < len(flat) else "")
+
+
+def recall_pi(words: list[str], since: float, limit: int) -> list[dict]:
+    hits: list[dict] = []
+    if not PI_SESSIONS.is_dir():
+        return hits
+    for path in sorted(PI_SESSIONS.rglob("*.jsonl"), key=lambda p: -p.stat().st_mtime):
+        if path.stat().st_mtime < since:
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for raw in lines:
+            try:
+                obj = json.loads(raw)
+            except ValueError:
+                continue
+            if obj.get("type") != "message":
+                continue
+            msg = obj.get("message") or {}
+            content = msg.get("content")
+            if isinstance(content, str):
+                text = content
+            elif isinstance(content, list):
+                text = " ".join(
+                    b.get("text", "") for b in content if isinstance(b, dict) and isinstance(b.get("text"), str)
+                )
+            else:
+                continue
+            if not text or not _matches(text, words):
+                continue
+            hits.append(
+                {
+                    "source": "pi",
+                    "when": obj.get("timestamp", ""),
+                    "session": obj.get("id") or path.stem,
+                    "role": msg.get("role", ""),
+                    "text": _snippet(text, words),
+                }
+            )
+            break  # one hit per session is enough
+        if len(hits) >= limit:
+            break
+    return hits
+
+
+def recall_opencode(words: list[str], since: float, limit: int) -> list[dict]:
+    if not OPENCODE_DB.exists():
+        return []
+    hits: list[dict] = []
+    ms = int(since * 1000)
+    try:
+        con = sqlite3.connect(f"file:{OPENCODE_DB}?mode=ro", uri=True, timeout=5)
+    except sqlite3.Error:
+        return []
+    try:
+        cur = con.execute(
+            """
+            SELECT s.id, s.title, p.time_created, p.data
+            FROM part p JOIN session s ON s.id = p.session_id
+            WHERE p.time_created >= ? AND p.data LIKE ?
+            ORDER BY p.time_created DESC LIMIT ?
+            """,
+            (ms, f"%{words[0]}%", limit * 20),
+        )
+        for sid, title, ts, data in cur:
+            text = data
+            try:
+                parsed = json.loads(data)
+                text = parsed.get("text") or parsed.get("content") or data
+                if isinstance(text, list):
+                    text = " ".join(str(x) for x in text)
+            except ValueError:
+                pass
+            if not _matches(str(text), words):
+                continue
+            hits.append(
+                {
+                    "source": "opencode",
+                    "when": dt.datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d %H:%M"),
+                    "session": title or sid,
+                    "role": "",
+                    "text": _snippet(str(text), words),
+                }
+            )
+            if len(hits) >= limit:
+                break
+    except sqlite3.Error:
+        return hits
+    finally:
+        con.close()
+    return hits
+
+
+def recall_hermes(words: list[str], since: float, limit: int) -> list[dict]:
+    if not HERMES_DB.exists():
+        return []
+    hits: list[dict] = []
+    try:
+        con = sqlite3.connect(f"file:{HERMES_DB}?mode=ro", uri=True, timeout=5)
+    except sqlite3.Error:
+        return []
+    try:
+        cur = con.execute(
+            """
+            SELECT m.session_id, COALESCE(s.title, ''), m.timestamp, m.role, m.content
+            FROM messages m LEFT JOIN sessions s ON s.id = m.session_id
+            WHERE m.timestamp >= ? AND m.content LIKE ?
+            ORDER BY m.timestamp DESC LIMIT ?
+            """,
+            (since, f"%{words[0]}%", limit * 20),
+        )
+        for sid, title, ts, role, content in cur:
+            if not content or not _matches(str(content), words):
+                continue
+            hits.append(
+                {
+                    "source": "hermes",
+                    "when": dt.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M"),
+                    "session": title or sid,
+                    "role": role or "",
+                    "text": _snippet(str(content), words),
+                }
+            )
+            if len(hits) >= limit:
+                break
+    except sqlite3.Error:
+        return hits
+    finally:
+        con.close()
+    return hits
+
+
+def cmd_recall(args) -> int:
+    words = _words(args.query)
+    if not words:
+        die("recall needs a query", 2)
+    since = (dt.datetime.now() - dt.timedelta(days=args.days)).timestamp()
+    sources = {
+        "pi": recall_pi,
+        "opencode": recall_opencode,
+        "hermes": recall_hermes,
+    }
+    want = [args.source] if args.source != "all" else list(sources)
+    hits: list[dict] = []
+    for name in want:
+        fn = sources.get(name)
+        if fn is None:
+            die(f"unknown source {name} (pi, opencode, hermes, all)", 2)
+        hits.extend(fn(words, since, args.limit))
+    if not hits:
+        print(f"mem: nothing in the last {args.days}d matching {' '.join(words)}")
+        return 0
+    hits.sort(key=lambda h: h["when"], reverse=True)
+    for h in hits[: args.limit * len(want)]:
+        role = f" ({h['role']})" if h["role"] else ""
+        print(f"{h['when'][:16]:16}  {h['source']:8}  {str(h['session'])[:36]:36}{role}")
+        print(f"    {h['text']}")
+    return 0
+
+
+# --------------------------------------------------------------------- main --
+
+
+def main(argv: list[str]) -> int:
+    p = argparse.ArgumentParser(prog="mem", add_help=True, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    learn = sub.add_parser("learn", help="write a docs/learnings entry and index it")
+    learn.add_argument("slug", nargs="?")
+    learn.add_argument("--repo", help="repo root (default: git toplevel of cwd)")
+    learn.add_argument("--title", required=True)
+    learn.add_argument("--symptom", required=True)
+    learn.add_argument("--cause", required=True)
+    learn.add_argument("--fix", required=True)
+    learn.add_argument("--see", action="append", help="see-also reference (repeatable)")
+    learn.add_argument("--force", action="store_true")
+    learn.set_defaults(fn=cmd_learn)
+
+    inbox = sub.add_parser("inbox", help="the shared inbox")
+    inbox_sub = inbox.add_subparsers(dest="inbox_cmd", required=True)
+    add = inbox_sub.add_parser("add", help="append a candidate line")
+    add.add_argument("kind", help="bash, correction, learning, note, …")
+    add.add_argument("text", nargs="+")
+    add.add_argument("--session")
+    add.set_defaults(fn=cmd_inbox_add)
+    show = inbox_sub.add_parser("show", help="print the inbox")
+    show.set_defaults(fn=cmd_inbox_show)
+
+    distill = sub.add_parser("distill", help="print the inbox and the promotion ladder")
+    distill.set_defaults(fn=cmd_distill)
+
+    recall = sub.add_parser("recall", help="search past sessions of every harness")
+    recall.add_argument("query")
+    recall.add_argument("--days", type=int, default=30)
+    recall.add_argument("--limit", type=int, default=6)
+    recall.add_argument("--source", default="all", choices=["all", "pi", "opencode", "hermes"])
+    recall.set_defaults(fn=cmd_recall)
+
+    dec = sub.add_parser("decisions", help="print ~/DECISIONS.md")
+    dec.set_defaults(fn=cmd_decisions)
+
+    args = p.parse_args(argv)
+    return args.fn(args)
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main(sys.argv[1:]))
+    except KeyboardInterrupt:
+        raise SystemExit(130)

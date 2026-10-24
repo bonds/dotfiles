@@ -145,6 +145,18 @@ Secretive signs only after approval and a fresh agent shell usually has no
 identities. Rejected: retrying the push, which just burns turns; and using the
 `gh` token, which is read-only for push.
 
+**One memory store, shared by every harness** (2026-10-24). The inbox, the
+learnings entries and `DECISIONS.md` are plain files, and `mem`
+(`~/bin/mem`) is the only interface to them: `inbox add`, `learn`, `distill`,
+`recall`. pi's extensions, an opencode plugin and a hermes `post_tool_call`
+hook all append to `~/.agents/memory/inbox.md`, under one `flock`, so a lesson
+captured by one harness is promotable from any other. Rejected: per-harness
+memory (pi's inbox, hermes' `MEMORY.md`, osaurus' own store) — each is invisible
+to the others, so the same mistake is re-learned in every harness. Cost:
+osaurus only participates through `~/AGENTS.md` and `mem` in its sandbox (it has
+no hooks), and hermes does not read `AGENTS.md` at all, so its context comes
+from the `memory` skill.
+
 **Lessons are recorded where they were learned** (`docs/learnings/` per repo,
-`~/.pi/agent/inbox.md` for tool failures) rather than only in chat. A lesson
+the shared inbox for tool failures) rather than only in chat. A lesson
 that lives only in a session is lost when the session is compacted away.

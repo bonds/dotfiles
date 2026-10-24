@@ -99,7 +99,7 @@ next session loads, and there are two kinds, with two homes:
 
 | Lesson | Home | Trigger |
 |---|---|---|
-| Agent conduct ("never force-push", "doas needs full paths") | `~/.pi/agent/inbox.md` → `/distill` | a tool failed, or the user corrected you |
+| Agent conduct ("never force-push", "doas needs full paths") | `~/.agents/memory/inbox.md` → `mem distill` | a tool failed, or the user corrected you |
 | Domain knowledge ("`openFile` also delivers argv") | `<repo>/docs/learnings/` | the world surprised you while working |
 
 Agent lessons climb a ladder, and promoting past the current rung is the point:
@@ -112,19 +112,27 @@ next to the code as symptom / cause / fix entries, indexed in
 `docs/learnings/README.md`, committed with it, and superseded rather than
 deleted. Use the `learning` tool, or `/learn`.
 
+The store is shared by every harness — pi, opencode, hermes and osaurus read and
+write the same inbox and the same `docs/learnings/` — and `mem` is the neutral
+interface to it (`mem inbox add`, `mem learn`, `mem distill`, `mem recall`). The
+`memory` skill holds the policy; the per-harness wiring is there too.
+
 The loop:
 
 - **Capture.** `learnings-capture.ts` writes one line per distinct tool failure
   to the inbox; `corrections-capture.ts` writes one per correction or stated
-  rule ("from now on…", "always…"), recording the action being corrected. Read
+  rule ("from now on…", "always…"), recording the action being corrected. The
+  opencode plugin and a hermes `post_tool_call` hook write to the same file. Read
   it, do not edit it.
-- **Distill.** `/distill` clusters the inbox and promotes each item up the
-  ladder, then deletes what it processed.
+- **Distill.** `mem distill` (or `/distill`) clusters the inbox and promotes
+  each item up the ladder, then deletes what it processed.
 - **Verify.** After changing `AGENTS.md`, a skill description, or
   `DECISIONS.md`, run `~/.config/nix/pkgs/pi/evals/run.sh`. A failure means the
   wording got worse, not the model.
-- **Recall.** The `recall` tool searches past session JSONL for earlier work on
-  the same problem; use it before re-deriving an answer.
+- **Recall.** `mem recall "<words>"` searches past sessions of *every* harness
+  (pi JSONL, opencode and hermes SQLite) for earlier work on the same problem;
+  pi's `recall` tool does the same for pi alone. Use it before re-deriving an
+  answer.
 
 ## Conventions
 

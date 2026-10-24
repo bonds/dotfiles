@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""hermes-memory-hook — capture hermes tool failures into the shared inbox.
+
+Hermes runs shell hooks declared in `~/.hermes/config.yaml`. This one is
+registered for `post_tool_call` and gets a JSON payload on stdin:
+
+    {"hook_event_name": "post_tool_call", "tool_name": …, "tool_input": …,
+     "session_id": …, "cwd": …, "profile": …, "extra": {…}}
+
+Only failures are captured, and only as one inbox line — the shared inbox at
+`~/.agents/memory/inbox.md` is drained by `mem distill` from any harness.
+
+It must never interfere with a run: any error, any unexpected payload, and even
+a missing `mem` exits 0 with no output. A hook that blocks or fails is worse
+than a missed candidate.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import pathlib
+import re
+import subprocess
+import sys
+
+MEM = pathlib.Path.home() / "bin" / "mem"
+MAX_TEXT = 140
+
+
+def clip(text: str) -> str:
+    flat = " ".join(str(text).split())
+    return flat[: MAX_TEXT - 1] + "…" if len(flat) > MAX_TEXT else flat
+
+
+def looks_like_failure(extra: dict) -> str | None:
+    """The payload's error channel is not fixed, so read it defensively.
+
+    post_tool_call carries the tool result under `extra`; different tools report
+    failure differently (an `error` field, an `is_error` flag, or an output that
+    says so). Only a positive signal counts — silence is not a failure.
+    """
+    for key in ("error", "error_message", "exception"):
+        value = extra.get(key)
+        if value:
+            return str(value)
+    if extra.get("is_error") is True or extra.get("ok") is False:
+        return str(extra.get("result") or extra.get("output") or "tool failed")
+    status = str(extra.get("status") or "").lower()
+    if status in {"error", "failed", "failure"}:
+        return str(extra.get("result") or extra.get("output") or "tool failed")
+    result = str(extra.get("result") or extra.get("output") or "")
+    if re.search(r"\b(exit code|traceback|command not found|no such file|permission denied)\b", result, re.I):
+        return result
+    return None
+
+
+def main() -> int:
+    try:
+        payload = json.load(sys.stdin)
+    except Exception:
+        return 0
+    if not isinstance(payload, dict):
+        return 0
+    if payload.get("hook_event_name") not in (None, "post_tool_call"):
+        return 0
+    extra = payload.get("extra")
+    if not isinstance(extra, dict):
+        return 0
+    detail = looks_like_failure(extra)
+    if not detail:
+        return 0
+    tool = payload.get("tool_name") or "tool"
+    text = f"`{tool}` — {clip(detail)} — {clip(payload.get('cwd') or os.getcwd())}"
+    args = [str(MEM), "inbox", "add", "bash", text]
+    session = payload.get("session_id")
+    if session:
+        args += ["--session", str(session)[:8]]
+    try:
+        subprocess.run(args, timeout=5, capture_output=True, check=False)
+    except Exception:
+        pass
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

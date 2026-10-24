@@ -7,7 +7,7 @@ is not rediscovered.
 
 This is **domain knowledge** — a platform quirk, an API lifetime rule, an
 undefined-behavior trap. Agent-behaviour lessons ("never force-push") belong in
-`~/.pi/agent/inbox.md` for `/distill`, not here.
+`~/.agents/memory/inbox.md` for `/distill`, not here.
 
 1. If the repo has no `docs/learnings/`, create it with a `README.md` that has
    an `## Entries` heading and the symptom / cause / fix template — copy the
@@ -25,5 +25,7 @@ undefined-behavior trap. Agent-behaviour lessons ("never force-push") belong in
    makes the practice survive: the rule has lived in `~/AGENTS.md` for a while
    and was followed in exactly the one repo that repeated it locally.
 
-Prefer the `learning` tool when it is available — it does steps 1–3 in a single
-call. Leave the result uncommitted for the normal review flow.
+Prefer `mem learn <slug> --title … --symptom … --cause … --fix …` — one call,
+works from any harness, and it does steps 1–3 (including the index line). In pi,
+the `learning` tool does the same thing. Leave the result uncommitted for the
+normal review flow.
