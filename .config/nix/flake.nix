@@ -21,7 +21,7 @@
     # nixpkgs-unstable — not pinned, normally nixpkgs-unstable
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     #
-    # pi — not pinned, normally git+https://github.com/earendil-works/pi?rev=71023aec1546d6d677a65669c5665c0927ce0dd0
+    # pi — not pinned, normally git+https://github.com/earendil-works/pi?rev=4a080252f06caf63a525d7873c5d94d3c23887e0
     #   Rev-pinned to a GitHub release: a from-source npm build with no
     #   binary cache, so chasing main would build a random commit on every
     #   `nr --update`. pkgs/pi/update.sh moves this to the latest release;
@@ -29,7 +29,7 @@
     #   the last-good rev and `check` keeps it there until a newer release
     #   appears. FOLLOWS nixpkgs-unstable on purpose (upstream targets
     #   nixos-unstable); unstable->unstable is safe and dedupes flake.lock.
-    pi.url = "git+https://github.com/earendil-works/pi?rev=71023aec1546d6d677a65669c5665c0927ce0dd0";
+    pi.url = "git+https://github.com/earendil-works/pi?rev=4a080252f06caf63a525d7873c5d94d3c23887e0";
     # ---- END nr-managed input pins -----------------------------------------------
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";

@@ -9,6 +9,8 @@
 #   nr-pins check               before `nix flake update` — drop pins no longer needed
 #   nr-pins diagnose <logfile>  after a failed build — pin the culprit input (or
 #                               revert a bad prebuilt-overlay bump), then retry
+#   nr-pins verify <system>     after a SUCCESSFUL build — smoke-test the built
+#                               prebuilt packages, revert a bad bump, retry
 #   nr-pins list                show the registry
 #   nr-pins apply               re-render the pin block in flake.nix from the registry
 #
@@ -42,6 +44,11 @@
 #     inputs. When the failing derivation is one of those packages, diagnose
 #     restores the directory from git instead: the last committed pin. See
 #     "overlay pins" below.
+#   * prebuilt-overlay smoke tests — a build can succeed and the package still be
+#     broken at runtime (won't start, wrong version, broken code signature, a
+#     config schema the new binary rejects). `verify` runs each overlay's
+#     optional verify.sh against the freshly built store path, before `nr`
+#     switches to it, and reverts the same way on failure.
 #
 # Exit codes: 0 = nothing to do · 2 = registry/flake.nix rewritten (a pin) ·
 # 3 = a prebuilt-overlay bump was reverted (no registry change) · 1 = pins
@@ -414,8 +421,7 @@ overlay_diff_is_pin_only() { # → 0 when EVERY changed line is a version/hash p
     [ -z "$nonpin" ]
 }
 
-revert_overlay() { # revert_overlay <dir> → 0 reverted · 1 not a bump of this run · 2 could not
-    local dir="$1" rel changed files
+revert_overlay() { # revert_overlay <dir> → 0 reverted · 1 not a bump of this run · 2 could not    local dir="$1" rel changed files
     rel="$(overlay_relpath "$dir")" || {
         log "cannot revert $dir — the flake dir is not inside the git work tree ($DOT_WORK_TREE)"
         return 2
@@ -966,6 +972,89 @@ cmd_diagnose() { # after a failed build: pin whichever moved nixpkgs input cause
     return 1
 }
 
+cmd_verify() { # verify <system-path> — smoke-test the packages the build produced
+    # Runs after a SUCCESSFUL build, before `nr` switches to it. A prebuilt
+    # package can build and still be broken: wrong payload, broken ad-hoc
+    # signature, a config schema the new binary rejects. Each overlay may ship a
+    # verify.sh (discovered exactly like update.sh); it is called as
+    #
+    #     verify.sh <system-path> <pname> <package-out-path>
+    #
+    # once per package name the overlay's default.nix declares, with the out
+    # path resolved from the new system's closure. A failure is undone exactly
+    # like a build failure: revert_overlay restores the last committed pin.
+    local sys="${1:-}" dir pnames p matches n failed=0 reverted=0 verified=0
+    [ -n "$sys" ] || die "usage: nr-pins verify <system-path>"
+    [ -n "${NR_PINS_CLOSURE_FILE:-}" ] || [ -d "$sys" ] || die "no such system path: $sys"
+    reg_init
+    # Script-global, not local: the EXIT trap fires after this function has
+    # returned, where a local would already be out of scope (and `set -u` turns
+    # that into "closure: unbound variable" at exit).
+    VERIFY_CLOSURE="$(mktemp)" || die "cannot create a temp file"
+    closure="$VERIFY_CLOSURE"
+    trap 'rm -f "$VERIFY_CLOSURE"' EXIT
+    if [ -n "${NR_PINS_CLOSURE_FILE:-}" ]; then
+        # Test seam: the fixture supplies the closure listing instead of nix.
+        cp "$NR_PINS_CLOSURE_FILE" "$closure" || die "cannot read $NR_PINS_CLOSURE_FILE"
+    elif ! nix-store -qR "$sys" > "$closure" 2> /dev/null; then
+        log "cannot list the closure of $sys — nothing verified"
+        return 1
+    fi
+    for dir in $(overlay_dirs); do
+        [ -f "$FLAKE_DIR/$dir/verify.sh" ] || continue
+        if [ ! -x "$FLAKE_DIR/$dir/verify.sh" ]; then
+            # Fail closed: a hook that exists but cannot run would otherwise
+            # read as "verified", which is the one thing it must never do.
+            log "$dir/verify.sh is not executable — refusing to report it as verified"
+            failed=1
+            continue
+        fi
+        pnames="$(overlay_pnames "$dir")"
+        [ -n "$pnames" ] || {
+            log "$dir has a verify.sh but no pname — cannot resolve its package"
+            failed=1
+            continue
+        }
+        for p in $pnames; do
+            # Exactly one store path in the closure may be this package at this
+            # version: `<hash>-<pname>-<version>`. Anything else (none, or two
+            # versions of it) means we cannot tell which artifact to test, and
+            # testing the wrong one is worse than not testing.
+            matches="$(sed -nE "s#^(/nix/store/[a-z0-9]{32}-$(rescape "$p")-[0-9][^/]*)\$#\1#p" "$closure")"
+            n="$(printf '%s' "$matches" | grep -c . || true)"
+            if [ "$n" -eq 0 ]; then
+                log "$dir: $p is not in the closure of $sys — nothing to verify"
+                continue
+            fi
+            if [ "$n" -gt 1 ]; then
+                log "$dir: $p matches $n store paths in the closure — ambiguous, not verifying"
+                continue
+            fi
+            verified=$((verified + 1))
+            if bash "$FLAKE_DIR/$dir/verify.sh" "$sys" "$p" "$matches"; then
+                log "$dir: $p passed its smoke test"
+                continue
+            fi
+            log "$dir: $p FAILED its smoke test"
+            failed=1
+            revert_overlay "$dir"
+            case $? in
+                0) reverted=1 ;;
+                1) log "$dir: nothing to revert — the failing pin is already committed" ;;
+            esac
+            break # one failure per directory is enough
+        done
+    done
+    if [ "$reverted" -eq 1 ]; then
+        return 3
+    fi
+    if [ "$failed" -eq 1 ]; then
+        return 1
+    fi
+    log "verified $verified package(s)"
+    return 0
+}
+
 cmd_list() {
     reg_init
     local n
@@ -985,6 +1074,7 @@ case "${1:-}" in
     snapshot) cmd_snapshot ;;
     check) shift; cmd_check "$@" ;;
     diagnose) shift; cmd_diagnose "$@" ;;
+    verify) shift; cmd_verify "$@" ;;
     list) cmd_list ;;
     apply) cmd_apply ;;
     ""|-h|--help|help) usage ;;

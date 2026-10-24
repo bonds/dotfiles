@@ -1,5 +1,5 @@
 {
-  "$comment": "Managed by `nr` (see .config/nix/nr-pins). A pin freezes a flake input at the last rev that built, because that input's branch head would force a package to be built from source whose own tests fail here. `nr --update` probes each pin against its branch head before updating and drops it as soon as a substituter carries the package again. flake.nix's pin block is generated from this file \u2014 edit this file, not the block. `base` lists the inputs the block owns and ALWAYS declares: the pinned rev URL while a pin exists, the normal branch URL otherwise (a pin may only overlay an input listed here). `base` is optional \u2014 when absent it defaults to the two nixpkgs inputs below. `$retired` is metadata only \u2014 no command reads it \u2014 and holds pins removed by hand, with the reason they could be. A base entry may be rev-pinned (its URL contains ?rev=<sha>): pkgs/pi/update.sh moves it to the latest release, diagnose reverts it by matching the failing derivation's package name, and check keeps that pin until the base URL changes. Such entries carry pnames (the packages they build) and an optional note, rendered in the block. Prebuilt-overlay bumps (modules/overlays/*, and the prebuilt pkgs/* with an update.sh) are deliberately NOT registry entries: they are not flake inputs, so `nr-pins diagnose` reverts them from git instead (see the overlay pins section of nr-pins).",
+  "$comment": "Managed by `nr` (see .config/nix/nr-pins). A pin freezes a flake input at the last rev that built, because that input's branch head would force a package to be built from source whose own tests fail here. `nr --update` probes each pin against its branch head before updating and drops it as soon as a substituter carries the package again. flake.nix's pin block is generated from this file — edit this file, not the block. `base` lists the inputs the block owns and ALWAYS declares: the pinned rev URL while a pin exists, the normal branch URL otherwise (a pin may only overlay an input listed here). `base` is optional — when absent it defaults to the two nixpkgs inputs below. `$retired` is metadata only — no command reads it — and holds pins removed by hand, with the reason they could be. A base entry may be rev-pinned (its URL contains ?rev=<sha>): pkgs/pi/update.sh moves it to the latest release, diagnose reverts it by matching the failing derivation's package name, and check keeps that pin until the base URL changes. Such entries carry pnames (the packages they build) and an optional note, rendered in the block. Prebuilt-overlay bumps (modules/overlays/*, and the prebuilt pkgs/* with an update.sh) are deliberately NOT registry entries: they are not flake inputs, so `nr-pins diagnose` reverts them from git instead (see the overlay pins section of nr-pins).",
   "base": [
     {
       "input": "nixpkgs",
@@ -11,7 +11,7 @@
     },
     {
       "input": "pi",
-      "url": "git+https://github.com/earendil-works/pi?rev=71023aec1546d6d677a65669c5665c0927ce0dd0",
+      "url": "git+https://github.com/earendil-works/pi?rev=4a080252f06caf63a525d7873c5d94d3c23887e0",
       "pnames": [
         "pi"
       ],
@@ -30,7 +30,7 @@
       "since": "2026-10-09",
       "retired": "2026-10-15",
       "reason": "it moved CPython to 3.12.15, which backports gh-156793 / CVE-2026-19553 (SSLContext.wrap_bio() rejects server_hostname in server mode); anyio 4.14.2's own pytest suite fails on it. Arrives through hermes-agent's python env.",
-      "retiredReason": "the failing suite no longer decides whether the tree builds: modules/packages/hermes-agent-fixed.nix hands the hermes-agent venv a python312 whose anyio is built with `doCheck = false`, so anyio builds at ANY nixpkgs-unstable rev. Retired by hand rather than by `check`, which cannot drop it \u2014 `check` drops a pin when the package SUBSTITUTES at the branch head, and skipping anyio's tests makes it buildable, not substitutable."
+      "retiredReason": "the failing suite no longer decides whether the tree builds: modules/packages/hermes-agent-fixed.nix hands the hermes-agent venv a python312 whose anyio is built with `doCheck = false`, so anyio builds at ANY nixpkgs-unstable rev. Retired by hand rather than by `check`, which cannot drop it — `check` drops a pin when the package SUBSTITUTES at the branch head, and skipping anyio's tests makes it buildable, not substitutable."
     }
   ]
 }
