@@ -1,21 +1,37 @@
-// Keep a session's model in step with its agent's configured model.
+// Keep a session's model and reasoning effort in step with its agent.
 //
 // `agents.<id>.model` only chooses the model a session *starts* with: the
 // selected model is stored on the session, and switching agents does not
-// re-apply it. The V2 agents guide is explicit — "A session stores its
-// selected model separately. Selecting a primary agent by ID does not change
-// that model." So a session begun in Build stays on Build's #low when it
-// switches to Plan, and per-agent effort settings never take effect.
+// re-apply it (V2 agents guide: "A session stores its selected model
+// separately. Selecting a primary agent by ID does not change that model.").
+// Worse, the TUI keeps its own per-session, per-agent model memory and
+// re-commits it during the agent-switch submit, so it can undo a server-side
+// switch a few milliseconds after it lands.
 //
-// This plugin closes that gap: on `session.agent.selected`, apply the agent's
-// own model ref through `session.switchModel`. The config stays the single
-// source of truth. An agent without a configured model is left alone (it
-// inherits), and child sessions keep their own model.
+// Two mechanisms, deliberately belt and braces:
+//
+//   - The request hook is the guarantee. Every agent-loop request gets the
+//     agent's configured effort as a request override, so the very first turn
+//     after a switch runs at the right effort no matter what the session model
+//     or the client did.
+//   - The event reconciliation is for the indicator. On `session.agent.selected`
+//     the session model is switched to the agent's model, and a conflicting
+//     `session.model.selected` inside a short window is corrected, so the
+//     footer/model picker converge too. Outside the window a manual model
+//     choice is left alone.
+//
+// The variant values live under `settings.reasoningEffort` in opencode.jsonc,
+// not `body`: a raw body overlay is applied after request options and would
+// clobber the hook. An agent with no configured model is left alone, and child
+// sessions keep their own model.
+
+const CORRECTION_WINDOW_MS = 1000;
+const MAX_CORRECTIONS = 2;
 
 export default {
   id: "agent-model",
 
-  setup(ctx) {
+  async setup(ctx) {
     const controller = new AbortController();
     const here = ctx?.location?.directory;
 
@@ -30,35 +46,113 @@ export default {
       a.id === b.id &&
       (a.variant ?? "") === (b.variant ?? "");
 
+    // agentID -> configured model ref. The agent config is the single source
+    // of truth for both mechanisms, so refresh it when agents change.
+    const agents = new Map();
+    const loadAgents = async () => {
+      try {
+        const list = payload(await ctx.agent.list()) ?? [];
+        agents.clear();
+        for (const agent of list) {
+          if (agent?.id && agent.model?.id && agent.model.providerID) {
+            agents.set(agent.id, agent.model);
+          }
+        }
+      } catch {
+        // Keep the previous map; a failed refresh must not break requests.
+      }
+    };
+    await loadAgents();
+
+    // Guarantee: the request effort follows the agent, whatever the session
+    // model says. Only applies while the request uses the agent's configured
+    // model, so a deliberately different model is not given Deep Infra knobs.
+    let effortHook;
+    try {
+      effortHook = await ctx.session.hook("context", (event) => {
+        const want = agents.get(event.agent);
+        if (!want?.variant) return;
+        if (event.model?.providerID !== want.providerID || event.model?.id !== want.id) return;
+        event.options.reasoningEffort = want.variant;
+      });
+    } catch {
+      // Without the hook the reconciliation below still runs.
+    }
+
+    // sessionID -> the model the agent switch asked for, and how long that
+    // request stays authoritative.
+    const pending = new Map();
+
+    const owns = (session) =>
+      !here || !session?.location?.directory || session.location.directory === here;
+
     void (async () => {
       try {
         for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
-          if (event.type !== "session.agent.selected") continue;
-          const data = event.data;
-          if (!data?.sessionID || !data.agent) continue;
-          // One event reaches every loaded location's instance; only the owner
-          // acts. The field is optional, and when it is missing the session
-          // check below still makes a duplicate switch a no-op.
-          if (event.location?.directory && here && event.location.directory !== here) continue;
+          if (event.type === "agent.updated") {
+            await loadAgents();
+            continue;
+          }
 
+          const data = event?.data;
+          if (!data?.sessionID) continue;
+
+          if (event.type === "session.agent.selected") {
+            if (!data.agent) continue;
+            // One event reaches every loaded location's instance; only the
+            // owner acts. The field is optional, and a duplicate switch is a
+            // state no-op anyway.
+            if (event.location?.directory && here && event.location.directory !== here) continue;
+
+            try {
+              const session = payload(await ctx.session.get({ sessionID: data.sessionID }));
+              // A subagent session owns its model; it must not inherit the
+              // parent's agent selection.
+              if (!session?.id || session.parentID || !owns(session)) continue;
+
+              const agent = payload(await ctx.agent.get({ agentID: data.agent }));
+              const want = agent?.model;
+              if (!want?.id || !want.providerID) {
+                pending.delete(data.sessionID);
+                continue;
+              }
+
+              pending.set(data.sessionID, {
+                want,
+                until: Date.now() + CORRECTION_WINDOW_MS,
+                corrections: 0,
+              });
+              if (!sameRef(session.model, want)) {
+                await ctx.session.switchModel({ sessionID: data.sessionID, model: want });
+              }
+            } catch {
+              // A failed switch must not end the subscription.
+            }
+            continue;
+          }
+
+          if (event.type !== "session.model.selected") continue;
+
+          // The TUI commits its own selection right after an agent switch. If
+          // that write lands after ours, put the agent's model back — but only
+          // inside the window, so a later manual choice is respected.
+          const intent = pending.get(data.sessionID);
+          if (!intent) continue;
+          if (Date.now() > intent.until) {
+            pending.delete(data.sessionID);
+            continue;
+          }
+          if (sameRef(data.model, intent.want)) continue;
+          if (intent.corrections >= MAX_CORRECTIONS) {
+            pending.delete(data.sessionID);
+            continue;
+          }
+
+          intent.corrections += 1;
           try {
-            const session = payload(await ctx.session.get({ sessionID: data.sessionID }));
-            // A subagent session owns its model; it must not inherit the
-            // parent's agent selection.
-            if (!session?.id || session.parentID) continue;
-            // Authoritative owner check: every loaded location receives the
-            // event, but only the one whose directory owns this session may
-            // switch it. Falls back to the event filter when either is absent.
-            if (here && session.location?.directory && session.location.directory !== here) continue;
-
-            const agent = payload(await ctx.agent.get({ agentID: data.agent }));
-            const want = agent?.model;
-            if (!want?.id || !want.providerID) continue;
-            if (sameRef(session.model, want)) continue;
-
-            await ctx.session.switchModel({ sessionID: data.sessionID, model: want });
+            await ctx.session.switchModel({ sessionID: data.sessionID, model: intent.want });
           } catch {
-            // A failed switch must not end the subscription.
+            // Keep the subscription alive even if the correction fails.
           }
         }
       } catch {
@@ -66,6 +160,9 @@ export default {
       }
     })();
 
-    return () => controller.abort();
+    return async () => {
+      controller.abort();
+      await effortHook?.dispose?.();
+    };
   },
 };

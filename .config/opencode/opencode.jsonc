@@ -55,9 +55,13 @@
           "variants": [
             // Deep Infra's own knob. It accepts none|minimal|low|medium|high|xhigh|max
             // even though the docs list only none|low|medium|high.
-            { "id": "low", "body": { "reasoning_effort": "low" } },
-            { "id": "high", "body": { "reasoning_effort": "high" } },
-            { "id": "max", "body": { "reasoning_effort": "max" } }
+            //
+            // `settings`, not `body`: a raw body overlay is applied after
+            // request options, so it would clobber the per-agent effort the
+            // agent-model plugin sets on the request.
+            { "id": "low", "settings": { "reasoningEffort": "low" } },
+            { "id": "high", "settings": { "reasoningEffort": "high" } },
+            { "id": "max", "settings": { "reasoningEffort": "max" } }
           ]
         }
       }
