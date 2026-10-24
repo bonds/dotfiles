@@ -53,6 +53,7 @@ cd ~ && git --git-dir=$GITDIR --work-tree=$HOME status
 | see tracked files | `config ls-files` |
 | start tracking a file | `config add <path>` (no `-f`: respect `.gitignore`) |
 | stop tracking, keep on disk | `config rm --cached <path>` |
+| verify a push landed on every remote | `for r in main origin/main sophrosyne/main; do git --git-dir=$HOME/.local/share/dotfiles rev-parse --short "$r"; done` — `rev-parse --short` takes exactly one revision, so passing all three exits 128 with `fatal: Needed a single revision` |
 | sync `$HOME` to the tip of `main` | `git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME checkout main -- .` |
 
 That last one is needed because a plain `git checkout main` only prints

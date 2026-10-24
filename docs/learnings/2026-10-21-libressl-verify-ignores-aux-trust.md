@@ -17,6 +17,17 @@ The same binary also printed its usage screen for `-show_chain` (an option it
 does not implement), so a bad invocation looks like a failed verification
 rather than an unsupported flag.
 
+`x509` has the same gap. LibreSSL has no `-ext`, so a script asking it for a
+certificate's extensions got a usage dump instead:
+
+```console
+$ /usr/bin/openssl x509 -noout -ext subjectAltName -in leaf.pem
+unknown option -ext
+usage: x509 [-C] [-addreject arg] ...
+```
+
+Any modern `x509` flag is OpenSSL-3-only.
+
 ## Cause
 
 `/usr/bin/openssl` on macOS is LibreSSL, and its `verify` ignores the aux trust
@@ -34,6 +45,10 @@ Judge a trust store with OpenSSL 3, not the system one:
 OSSL=$(ls /nix/store/*-openssl-3*-bin/bin/openssl | head -1)
 $OSSL verify -show_chain -CAfile <bundle> -untrusted <chain> <chain>
 ```
+
+The same binary covers `x509 -ext`, or skip the CLI altogether and parse the
+PEM with python's `cryptography` (`x509.load_pem_x509_certificate(...)`), which
+is what the forging test ended up doing.
 
 And prefer a real handshake over a store query — that is what a client
 actually does:

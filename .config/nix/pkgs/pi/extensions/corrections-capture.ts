@@ -117,6 +117,11 @@ function classify(text: string): Quote | undefined {
 	if (EXPLICIT_POLICY.some((pattern) => pattern.test(text))) {
 		return { kind: "policy", text: sentenceAround(text, EXPLICIT_POLICY) };
 	}
+	// A question is not a correction. `\bdon'?t\b` matches "what if I don't do
+	// anything further for now?", which asks for advice rather than rejecting
+	// what the agent did (2026-10-22), and "should we always…?" is a question
+	// about a policy, not a policy.
+	if (/\?\s*$/.test(text.trim())) return undefined;
 	if (CORRECTION.some((pattern) => pattern.test(text))) {
 		return { kind: "correction", text: sentenceAround(text, CORRECTION) };
 	}

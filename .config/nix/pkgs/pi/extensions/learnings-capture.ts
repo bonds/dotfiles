@@ -104,8 +104,19 @@ const NOISE = [
 /** "Command exited with code 1" — the only signal a silent failure carries. */
 const EXIT_CODE = /(?:exited with code|exit code|exit status)\s+(\d+)/i;
 
-/** A line that names the failure, rather than echoing a path or a usage dump. */
-const SIGNAL = /error|denied|not found|refus|blocked|fail|invalid|unknown|cannot|unable|no such/i;
+/**
+ * A line that *reports* a failure, rather than merely mentioning one: a
+ * `fatal: …` / `error: …` banner or a tool-name prefix (`rg: unrecognized
+ * flag`, `ls: /x: No such file`). A bare keyword scan is not enough — a dump
+ * of a file or a log contains "fail" and "error" in prose, and the line it
+ * picks then names nothing (2026-10-24: "11: * tool call fails. …"). `usage:`
+ * is excluded: it is the banner a bad invocation prints, never the reason.
+ */
+const ERROR_PREFIX = /^(?!usage:)[a-z][\w.+-]*:\s/i;
+const ERROR_PHRASE =
+	/No such file or directory|Permission denied|command not found|operation not permitted|\b(unknown|unrecognized|invalid) (option|flag|argument)/i;
+/** Results, not lessons: 1 is a search that found nothing, 141 is `… | head` SIGPIPE. */
+const NEGATIVE_EXIT = new Set([1, 141]);
 
 function describe(raw: string): Failure {
 	const exitCode = Number(EXIT_CODE.exec(raw)?.[1]);
@@ -115,8 +126,13 @@ function describe(raw: string): Failure {
 		.map((line) => line.trim())
 		.filter((line) => line.length > 0 && !NOISE.some((pattern) => pattern.test(line)));
 
-	// Prefer a line that names the failure; fall back to whatever came first.
-	const chosen = lines.find((line) => SIGNAL.test(line)) ?? lines[0];
+	// Prefer a line that reports the failure. If none does, a negative exit
+	// means the output is the result of a search — the first line of a dump
+	// names nothing, so record nothing at all.
+	const errorLine = lines.find((line) => ERROR_PREFIX.test(line) || ERROR_PHRASE.test(line));
+	const chosen =
+		errorLine ??
+		(exitCode !== undefined && NEGATIVE_EXIT.has(exitCode) ? undefined : lines[0]);
 	const silent = chosen === undefined;
 	// Carry the exit code into the signature when there is no text: otherwise
 	// every silent failure — a denied operation, a failed assertion, a missing
@@ -210,8 +226,9 @@ export default function (pi: ExtensionAPI) {
 
 		// Nothing matched is a result, not a lesson. Agents search for strings
 		// that are not there constantly (`rg`/`grep` exit 1, `fd` and `diff`
-		// too), so this is the single biggest source of inbox noise.
-		if (failure.silent && failure.exitCode === 1) return;
+		// too, and `… | head` exits 141 on SIGPIPE), so this is the single
+		// biggest source of inbox noise.
+		if (failure.silent && NEGATIVE_EXIT.has(failure.exitCode ?? -1)) return;
 
 		const seen = (counts.get(failure.key) ?? 0) + 1;
 		counts.set(failure.key, seen);

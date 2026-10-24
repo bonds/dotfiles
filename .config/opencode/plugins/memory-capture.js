@@ -53,10 +53,19 @@ const NOISE = [
   /^command exited with/i,
   /^\(no output\)$/i,
 ];
-// Prefer a line that names the failure over one that echoes a path or usage.
-const SIGNAL = /error|denied|not found|refus|blocked|fail|invalid|unknown|cannot|unable|no such/i;
+// A line that *reports* a failure, rather than merely mentioning one: a
+// `fatal: …` / `error: …` banner or a tool-name prefix (`rg: unrecognized
+// flag`, `ls: /x: No such file`). A bare keyword scan is not enough — a dump
+// of a file or a log contains "fail" and "error" in prose, and the line it
+// picks then names nothing (2026-10-24: "11: * tool call fails. …"). `usage:`
+// is excluded: it is the banner a bad invocation prints, never the reason.
+const ERROR_PREFIX = /^(?!usage:)[a-z][\w.+-]*:\s/i;
+const ERROR_PHRASE = /No such file or directory|Permission denied|command not found|operation not permitted|\b(unknown|unrecognized|invalid) (option|flag|argument)/i;
+// Results, not lessons: 1 is a search that found nothing (`rg`/`grep`/`fd`),
+// 141 is SIGPIPE from `… | head`. Both are the biggest source of inbox noise.
+const NEGATIVE_EXIT = new Set([1, 141]);
 
-// A shell command's failure: first line that names it, else the first real
+// A shell command's failure: first line that reports it, else the first real
 // line, else a banner naming the exit code. Mirrors pi's learnings-capture.
 function commandFailure(content, exit) {
   const lines = textOf(content)
@@ -64,11 +73,12 @@ function commandFailure(content, exit) {
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !NOISE.some((pattern) => pattern.test(line)));
-  const chosen = lines.find((line) => SIGNAL.test(line)) ?? lines[0];
-  // A silent exit 1 is a result, not a lesson: `rg`/`grep`/`fd`/`diff` report
-  // "nothing matched" that way, and it is the biggest source of inbox noise.
-  if (chosen === undefined && exit === 1) return null;
-  return chosen ?? `(no output, exit ${exit})`;
+  const errorLine = lines.find((line) => ERROR_PREFIX.test(line) || ERROR_PHRASE.test(line));
+  if (errorLine) return errorLine;
+  // Nothing error-shaped: on a negative exit code the output is the result of
+  // a search, and its first line names nothing anyway.
+  if (NEGATIVE_EXIT.has(exit)) return null;
+  return lines[0] ?? `(no output, exit ${exit})`;
 }
 
 function errorFailure(error) {
