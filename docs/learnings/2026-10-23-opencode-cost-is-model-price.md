@@ -51,6 +51,27 @@ Transforms replay from the source definition, so scaling the configured price
 cannot compound across reloads. Failure to fetch the catalogue leaves the
 configured (list) prices in force.
 
+### Gotcha: a model definition's `cost` is merged after model transforms
+
+A model declared under `providers.<id>.models` overrides the transform's
+output: its `cost` is applied when OpenCode commits the model, *after* model
+transforms run, so a repriced value is silently replaced by list. Two ways to
+lose the discount:
+
+- a short alias (`"deepseek-v4.1-flash-1017"` with `modelID` set to the
+  catalogue id) creates a **second** model with the same `modelID`; the
+  transform reprices the catalogue entry, the alias stays at list, and the
+  agent config picks the alias;
+- keying the override by the catalogue id but leaving `cost` in it replaces
+  the repriced value with the configured one.
+
+Fix: key the override by the catalogue id and **omit `cost`**. The catalogue
+price then flows through the transform and a configured price cannot shadow
+it; the cache-write tier also comes out at 0, which is what Deep Infra bills.
+`editor.update` does not report a miss, so the plugin reads the committed
+models back after each reload and warns about any discounted model still at
+list.
+
 Verify: `session_message.data` stores per-step `cost` + `tokens` (and
 `session_v2.cost` the running total), so
 

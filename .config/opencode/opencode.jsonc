@@ -9,12 +9,12 @@
       // "model": "opencode-go/glm-5.2"
       // "model": "opencode-go/qwen3.7-max"
       // "model": "opencode-go/mimo-v2.5"
-      "model": "deepinfra/deepseek-v4.1-flash-1017#max"
+      "model": "deepinfra/deepseek-ai/DeepSeek-V4.1-Flash-1017#max"
     },
     "build": {
       // "model": "opencode-go/deepseek-v4-flash-new"
       // "model": "opencode-go/mimo-v2.5"
-      "model": "deepinfra/deepseek-v4.1-flash-1017#low"
+      "model": "deepinfra/deepseek-ai/DeepSeek-V4.1-Flash-1017#low"
     }
   },
   "disabled_providers": [],
@@ -28,7 +28,11 @@
         "apiKey": "{file:/run/agenix/opencode-deepinfra}"
       },
       "models": {
-        "deepseek-v4.1-flash-1017": {
+        // Keyed by the catalogue id: a shorter alias makes a second model with
+        // the same modelID, and Deep Infra's discount (applied by the
+        // deepinfra-billed-cost plugin through a model transform) only reaches
+        // the catalogue entry. See docs/learnings/2026-10-23-opencode-cost-is-model-price.md.
+        "deepseek-ai/DeepSeek-V4.1-Flash-1017": {
           "modelID": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
           "name": "DeepSeek V4.1 Flash 1017",
           "capabilities": {
@@ -38,11 +42,10 @@
             "reasoning": { "supported": true }
           },
           "limit": { "context": 1048576, "output": 1048576 },
-          "cost": {
-            "input": 0.2,
-            "output": 0.6,
-            "cache": { "read": 0.006, "write": 0.2 }
-          },
+          // No `cost` here on purpose: a cost in the model definition is merged
+          // after the plugin's model transform and would overwrite the
+          // discounted price with list. The base price comes from the
+          // catalogue, which is also the fail-safe list price.
           "variants": [
             // Deep Infra's own knob. It accepts none|minimal|low|medium|high|xhigh|max
             // even though the docs list only none|low|medium|high.

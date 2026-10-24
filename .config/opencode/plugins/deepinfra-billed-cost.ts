@@ -102,7 +102,24 @@ export default Plugin.define({
 
     let lastFetch = 0
     let warned = false
+    let warnedUnrepriced = ""
     let running: Promise<void> | null = null
+
+    // `editor.update` ignores an id it cannot find, so a model that shadows a
+    // catalogue entry (e.g. a config alias with the same modelID) silently
+    // keeps its list price. Read the committed models back and name any that
+    // are still priced at catalogue list.
+    const unrepriced = async (): Promise<string[]> => {
+      const models = (await ctx.model.list()).filter((model) => model.providerID === PROVIDER_ID)
+      const missed: string[] = []
+      for (const model of models) {
+        const list = catalog.get(model.modelID)?.pricing?.input_tokens
+        const base = model.cost.find((tier) => tier.tier === undefined)
+        if (list == null || base === undefined) continue
+        if (Math.abs(base.input - list) < 1e-9) missed.push(model.id)
+      }
+      return missed
+    }
 
     const refresh = async (force = false): Promise<void> => {
       if (running) return running
@@ -114,6 +131,16 @@ export default Plugin.define({
           lastFetch = Date.now()
           warned = false
           await ctx.model.reload()
+
+          const missed = await unrepriced()
+          if (missed.length === 0) {
+            warnedUnrepriced = ""
+          } else if (missed.join() !== warnedUnrepriced) {
+            warnedUnrepriced = missed.join()
+            console.warn(
+              `deepinfra.billed-cost: still at list price: ${missed.join(", ")}`,
+            )
+          }
         } catch (error) {
           // Keep list prices; warn once so a persistent outage is not noisy.
           if (!warned) {
