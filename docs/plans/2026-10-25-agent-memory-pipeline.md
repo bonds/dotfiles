@@ -1,8 +1,8 @@
 # Agent memory pipeline — design plan
 
 Status: **phase 0 code complete** (2026-10-25); phases 1–6 not started.
-§9.1 manual checks 1–4 are still outstanding (they need the Osaurus GUI and a
-launchd-packaged proxy).
+§9.1 checks 1–2 verified on accismus; 3 (fail-open) still needs a
+launchd-packaged proxy; 4 (wire snapshots) outstanding.
 
 Phase 0 lives at `~/.config/nix/pkgs/agent-proxy/` — a transparent, SSE-safe
 passthrough with 9 tests against a local mock, plus an end-to-end check against
@@ -128,6 +128,39 @@ Consequence to accept: the memory agent runs folder-scoped rather than
 VM-isolated. That is the right trade for the one agent that must write to the
 system of record, and it is the same boundary `AGENTS.md` has today. Code
 execution stays sandboxed and simply cannot reach the store.
+
+**Verified on this machine (2026-10-25).**
+
+1. *Working Folder writes through.* A throwaway agent pointed at
+   `~/tmp/scratch` with the sandbox off created `hello.txt` there, owned
+   `scott:staff`. Nothing appeared under `~/.osaurus/container/workspace/`, so
+   it wrote to the real path rather than to a copy.
+2. *The sandbox cannot reach it, and its writes go elsewhere.* With the sandbox
+   on, `file_read` on the same absolute host path was rejected — "absolute host
+   paths outside the sandbox aren't visible" — and `file_search` found no copy.
+   A file written in that mode landed at
+   `~/.osaurus/container/workspace/agents/<id>/sandbox-test.txt` on the host,
+   not in the working folder, which still held only `hello.txt`.
+
+So the two modes are genuinely exclusive, not just documented that way.
+
+**Discovered constraint: the workspace must stay small.** `shell_run` refused
+to run at all — "can't snapshot /workspace/shared is too large to snapshot" —
+because `/workspace` is `~/.osaurus/container/workspace/` mounted by VirtioFS,
+and it had grown to 7.8 GB of leftover Swift build artifacts. `file_read` and
+`file_write` kept working, so the sandbox looked healthy while no command could
+run. There is no size setting; the ceiling is a fixed internal limit below 8 GB.
+See `docs/learnings/2026-10-25-osaurus-shell-run-needs-a-small-workspace.md`.
+
+Two consequences:
+
+- **D15 is empirical, not just documented.** The memory agent must run with the
+  sandbox off. Not only for write-through: `mem` would be invoked via
+  `shell_run`, which is precisely the tool that needs the snapshot, so a
+  sandboxed memory agent could not run `mem` at all.
+- **D16 gets its strongest argument.** Nothing large may ever live under
+  `/workspace`. The raw archive at ~2 GB/year would break command execution by
+  existing.
 
 If a *sandboxed* agent ever needs recall, the supported route is the Host API
 Bridge (`osaurus-host agent memory query`), via a small plugin. Out of scope for
@@ -386,13 +419,12 @@ Automated:
 Manual, one-off — must pass before phase 1 starts, because phases 1–6 assume
 them:
 
-1. **Osaurus Working Folder writes through.** Create a scratch dir, point a
-   throwaway agent at it with the sandbox off, have it write `probe.txt`, and
-   confirm the file lands on the host with the expected contents. This is the
-   claim §3.1 rests on, and it is only documented, not proven.
-2. **Osaurus sandbox isolation.** Same agent with the sandbox on: `file_read`
-   works under `/workspace`, and the host path is not visible. Confirms the
-   two modes really are mutually exclusive.
+1. ✅ **Osaurus Working Folder writes through** (2026-10-25). `hello.txt`
+   created on the host at `~/tmp/scratch`, owned `scott:staff`; nothing written
+   under `~/.osaurus/container/workspace/`.
+2. ✅ **Osaurus sandbox isolation** (2026-10-25). Host path rejected as
+   invisible; a sandbox write landed in
+   `~/.osaurus/container/workspace/agents/<id>/` instead of the working folder.
 3. **Proxy fail-open.** Stop the launchd agent mid-stream: the request dies, the
    harness recovers, and a retry through `deepinfra-direct` succeeds. Confirms
    the D7 switch is real rather than theoretical.

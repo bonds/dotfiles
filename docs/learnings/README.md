@@ -43,3 +43,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-10-24 — A dead opencode plugin reload poisons the server's provider registry](2026-10-24-opencode-plugin-reload-breaks-provider-registry.md)
 - [2026-10-25 — OpenCode remembers a variant per model, and `default_agent` emits no selection](2026-10-25-opencode-remembers-variant-per-model.md)
 - [2026-10-25 — `new URL(path, origin)` turns a leading `//` into a different host](2026-10-25-url-relative-path-becomes-host.md)
+- [2026-10-25 — Osaurus `shell_run` dies when `/workspace` cannot be snapshotted](2026-10-25-osaurus-shell-run-needs-a-small-workspace.md)
