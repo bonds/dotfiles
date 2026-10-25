@@ -1,62 +1,71 @@
-# Osaurus `shell_run` dies when `/workspace` cannot be snapshotted
+# Osaurus sandbox change tracking gives up above 2 GiB or 25 000 entries
 
 ## Symptom
 
-Inside an Osaurus sandbox, every `shell_run` was refused:
+Inside an Osaurus sandbox, `shell_run` would not run. `file_read`, `file_write`
+and `file_search` all worked, so the sandbox looked healthy while no command
+could execute. The agent explained it as:
 
 ```
 can't snapshot /workspace/shared is too large to snapshot
 ```
 
-`file_read`, `file_write` and `file_search` still worked, so the sandbox looked
-healthy — but the agent could not run a single command, and fell back to asking
-the user to paste file contents into the chat. The failure reads like a
-permissions or provisioning problem, which is misleading.
+That string **appears nowhere in the source**. It was the model paraphrasing an
+error, and it sent the investigation at the wrong mechanism for a while. Treat
+any error a model quotes as a paraphrase until it matches a literal.
 
 ## Cause
 
-`shell_run` snapshots the mounted workspace before it executes, and refuses
-when the workspace is too large. `/workspace` is the host directory
-`~/.osaurus/container/workspace/`, mounted by VirtioFS — so its size includes
-everything that accumulated there, not just what the current task needs.
+Two budgets live in
+`Packages/OsaurusCore/Services/Sandbox/SandboxWorkspaceChangeTracker.swift`
+(Osaurus 0.25.25):
 
-Here it was 7.8 GB, almost all leftovers from building the Osaurus source
-inside the sandbox:
-
-```
-5.8G  build/     arm64-apple-macosx, build.db, checkouts  (derived data)
-912M  mc/        *.swiftmodule caches
-326M  vendor/    SentryLocal, SparkleLocal dependency checkouts
-107M  osaurus/   source checkout (only build-time path edits)
-720M  Sentry-*.zip, sparkle.zip
+```swift
+private static let maxTrackedEntries = 25_000          // entries
+static let maxBaselineBytes: Int64 = 2 * 1024 * 1024 * 1024   // 2 GiB
 ```
 
-There is no size setting to raise: `~/.osaurus/config/sandbox.json` covers
-cpus/memory/network, and `tools.json` only carries `browser_snapshot` policy.
-The ceiling is a fixed internal limit. Measured on accismus: **8.9 GB refused,
-1.1 GB ran fine**, so it sits inside that band — comfortably above ordinary
-use, and well below a build tree.
+`maxBaselineBytes` counts **tracked file content**: directories and symlinks
+count as zero, so it is the sum of file sizes in the tree.
 
-The guest sees `/workspace/agents/<agent-id>/` (its own home) and
-`/workspace/shared`; the host's `$HOME` is not visible at all.
+Crossing either budget does *not* fail the call. `withinBudget` logs and returns
+nil, `beginCheckpoint` returns a token with no pre-manifests, and the tool runs
+anyway — the only loss is the Changes/undo record:
+
+```swift
+guard bytes <= Self.maxBaselineBytes else {
+    Self.log.warning("skipping change tracking for …: … tracked bytes exceed the baseline budget")
+    return nil
+}
+```
+
+So the size gate cannot deny a command by itself. What the size really costs is
+the **scan**: `beginCheckpoint` walks the entire tree to build a manifest before
+every mutation-capable call, and `shell_run` is one of them
+(`mutatesSandboxWorkspace = true`). On an 8.9 GB build tree that walk is the
+plausible reason the call never completed — the code comment on
+`maxTrackedEntries` is explicit that the entry limit exists to avoid "stalling
+every tool call on a giant scan".
+
+Unconfirmed: whether the original denial was that walk timing out, an approval
+gate, or the model declining for its own reasons. The measured facts are below;
+the mechanism is inference.
 
 ## Fix
 
-Treat `/workspace` as a durable shared folder, not scratch space. After any
-sandboxed build, delete the derived artifacts — `build/`, module caches,
-dependency checkouts — because they are regenerable and they are what pushes
-the workspace past the limit.
+Keep `/workspace` (host: `~/.osaurus/container/workspace/`, mounted by
+VirtioFS) **under 2 GiB of file content and 25 000 entries**. It is a durable
+shared folder, not scratch: after any sandboxed build, delete the derived
+artifacts — `build/`, `*.swiftmodule` caches, dependency checkouts — because
+they are regenerable and they are what pushes the tree over both budgets.
 
-Symptom to recognise: tools that touch files work while `shell_run` fails with
-a message about snapshotting. Check `du -sh ~/.osaurus/container/workspace`
-first, not the sandbox configuration.
+Measured on accismus 2026-10-25: 8.9 GB → `shell_run` did not work; 1.1 GB →
+it did (exit 0). Clearing a `build/` tree of 5.8 GB, 912 MB of module caches and
+326 MB of vendored checkouts was the fix.
 
 Related, and the reason this matters for the memory store: a sandboxed agent
-must be given a *small* root. Anything mounted at `/workspace` — a raw
-transcript archive, a build tree — eventually breaks command execution for
-every agent using that sandbox. When an agent needs a host directory, or a
-directory that grows without bound, use **Working Folder** mode with the
-sandbox off: it writes through to real host files and does not snapshot.
-
-Verified 2026-10-25 — working-folder write-through, sandbox read isolation, and
-this snapshot ceiling, all on accismus.
+must be given a small root. Anything that grows without bound — a raw transcript
+archive, a build tree — eventually stops command execution for every agent
+sharing that sandbox, or at minimum silently disables undo. When an agent needs
+a host directory or an unbounded one, use **Working Folder** mode with the
+sandbox off: it writes through to real host files and snapshots nothing.

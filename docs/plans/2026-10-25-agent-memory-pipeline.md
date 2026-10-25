@@ -144,14 +144,22 @@ execution stays sandboxed and simply cannot reach the store.
 
 So the two modes are genuinely exclusive, not just documented that way.
 
-**Discovered constraint: the workspace must stay small.** `shell_run` refused
-to run at all — "can't snapshot /workspace/shared is too large to snapshot" —
-because `/workspace` is `~/.osaurus/container/workspace/` mounted by VirtioFS,
-and it had grown to 8.9 GB of leftover Swift build artifacts. `file_read` and
-`file_write` kept working, so the sandbox looked healthy while no command could
-run. There is no size setting. After clearing the leftovers the workspace was
-1.1 GB and `shell_run` worked, so the ceiling sits between **1.1 and 8.9 GB** —
-comfortably above normal use, well below a build tree.
+**Discovered constraint: the workspace must stay small.** `shell_run` did not
+run while `/workspace` held 8.9 GB of leftover Swift build artifacts, and it did
+run once the tree was down to 1.1 GB. `/workspace` is
+`~/.osaurus/container/workspace/`, mounted by VirtioFS.
+
+Reading the source pins the numbers: `SandboxWorkspaceChangeTracker` sets
+`maxBaselineBytes = 2 GiB` of tracked file content and
+`maxTrackedEntries = 25_000`. Crossing either **skips change tracking for that
+call** — it logs and returns, and the tool still executes — so the gate cannot
+deny a command by itself. The real cost is the manifest scan that precedes every
+mutation-capable call, which walks the whole tree.
+
+Treat the budget as 2 GiB / 25k entries regardless: that is where undo tracking
+stops and where the scan gets slow. The agent's quoted "too large to snapshot"
+string appears nowhere in the source, so the original denial's exact cause stays
+unconfirmed — the remediation is measured, the mechanism is inferred.
 See `docs/learnings/2026-10-25-osaurus-shell-run-needs-a-small-workspace.md`.
 
 Two consequences:
