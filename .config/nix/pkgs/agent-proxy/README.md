@@ -11,7 +11,7 @@ proves a request survives the hop unchanged and, critically, that SSE is
 forwarded chunk-by-chunk rather than buffered. A buffering proxy would stall
 every harness; header rewriting would corrupt streaming or truncate JSON.
 
-Design notes and the full plan: `~/.opencode/plan/2026-10-25-agent-memory-pipeline.md`.
+Design notes and the full plan: `~/docs/plans/2026-10-25-agent-memory-pipeline.md`.
 
 ## Run
 
