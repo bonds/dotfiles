@@ -147,9 +147,11 @@ So the two modes are genuinely exclusive, not just documented that way.
 **Discovered constraint: the workspace must stay small.** `shell_run` refused
 to run at all — "can't snapshot /workspace/shared is too large to snapshot" —
 because `/workspace` is `~/.osaurus/container/workspace/` mounted by VirtioFS,
-and it had grown to 7.8 GB of leftover Swift build artifacts. `file_read` and
+and it had grown to 8.9 GB of leftover Swift build artifacts. `file_read` and
 `file_write` kept working, so the sandbox looked healthy while no command could
-run. There is no size setting; the ceiling is a fixed internal limit below 8 GB.
+run. There is no size setting. After clearing the leftovers the workspace was
+1.1 GB and `shell_run` worked, so the ceiling sits between **1.1 and 8.9 GB** —
+comfortably above normal use, well below a build tree.
 See `docs/learnings/2026-10-25-osaurus-shell-run-needs-a-small-workspace.md`.
 
 Two consequences:

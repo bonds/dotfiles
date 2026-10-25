@@ -33,7 +33,9 @@ inside the sandbox:
 
 There is no size setting to raise: `~/.osaurus/config/sandbox.json` covers
 cpus/memory/network, and `tools.json` only carries `browser_snapshot` policy.
-The ceiling is a fixed internal limit somewhere below 8 GB.
+The ceiling is a fixed internal limit. Measured on accismus: **8.9 GB refused,
+1.1 GB ran fine**, so it sits inside that band — comfortably above ordinary
+use, and well below a build tree.
 
 The guest sees `/workspace/agents/<agent-id>/` (its own home) and
 `/workspace/shared`; the host's `$HOME` is not visible at all.
