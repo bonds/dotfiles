@@ -5,7 +5,7 @@ git behaviour, nix-managed paths, tooling traps. The point is to stop
 re-discovering the same things every session.
 
 Domain knowledge lives here, next to the config it concerns. Agent *conduct*
-rules are different: those go to `~/.agents/memory/inbox.md` (`mem inbox add`,
+rules are different: those go to `~/.local/share/agents/memory/inbox.md` (`mem inbox add`,
 or a harness hook) and get promoted via `/distill` (see `AGENTS.md` →
 Compounding).
 

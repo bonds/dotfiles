@@ -7,7 +7,7 @@ is not rediscovered.
 
 This is **domain knowledge** — a platform quirk, an API lifetime rule, an
 undefined-behavior trap. Agent-behaviour lessons ("never force-push") belong in
-`~/.agents/memory/inbox.md` for `/distill`, not here.
+`~/.local/share/agents/memory/inbox.md` for `/distill`, not here.
 
 1. If the repo has no `docs/learnings/`, create it with a `README.md` that has
    an `## Entries` heading and the symptom / cause / fix template — copy the

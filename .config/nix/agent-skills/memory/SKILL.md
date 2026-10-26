@@ -1,6 +1,6 @@
 ---
 name: memory
-description: "The shared memory system for every agent harness (pi, opencode, hermes, osaurus): one inbox at ~/.agents/memory/inbox.md, `mem` for capturing and recalling, ~/DECISIONS.md for settled choices, and <repo>/docs/learnings/ for domain facts. Use when something surprised you, a tool failed, the user corrected you or stated a rule, when asked to distill the inbox, or when deciding where a lesson belongs."
+description: "The shared memory system for every agent harness (pi, opencode, hermes, osaurus): one inbox at ~/.local/share/agents/memory/inbox.md, `mem` for capturing and recalling, ~/DECISIONS.md for settled choices, and <repo>/docs/learnings/ for domain facts. Use when something surprised you, a tool failed, the user corrected you or stated a rule, when asked to distill the inbox, or when deciding where a lesson belongs."
 ---
 
 One store, four readers. The files are harness-neutral on purpose — pi, opencode,
@@ -9,7 +9,7 @@ interface so no harness needs its own copy of the logic.
 
 | Store | What goes there | Write it with |
 |---|---|---|
-| `~/.agents/memory/inbox.md` | agent conduct: a tool failed, the user corrected you, a rule was stated | `mem inbox add <kind> "…"` (hooks do it for you) |
+| `~/.local/share/agents/memory/inbox.md` | agent conduct: a tool failed, the user corrected you, a rule was stated | `mem inbox add <kind> "…"` (hooks do it for you) |
 | `<repo>/docs/learnings/` | domain facts: a platform quirk, an API lifetime rule | `mem learn <slug> --title … --symptom … --cause … --fix …` |
 | `~/DECISIONS.md` | settled choices and their rejected alternatives | edit `.config/nix/pkgs/pi/decisions.md`, then `nr` |
 | `agent-skills/*/SKILL.md` | promoted rules, loaded on demand | edit the repo, then `nr` |

@@ -8,7 +8,7 @@ registered for `post_tool_call` and gets a JSON payload on stdin:
      "session_id": …, "cwd": …, "profile": …, "extra": {…}}
 
 Only failures are captured, and only as one inbox line — the shared inbox at
-`~/.agents/memory/inbox.md` is drained by `mem distill` from any harness.
+`~/.local/share/agents/memory/inbox.md` is drained by `mem distill` from any harness.
 
 It must never interfere with a run: any error, any unexpected payload, and even
 a missing `mem` exits 0 with no output. A hook that blocks or fails is worse

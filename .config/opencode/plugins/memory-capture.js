@@ -1,6 +1,6 @@
 // Memory capture for OpenCode — append failed tool calls to the shared inbox.
 //
-// The inbox at ~/.agents/memory/inbox.md is written by every harness (pi's
+// The inbox at ~/.local/share/agents/memory/inbox.md is written by every harness (pi's
 // extensions, this plugin, a hermes shell hook, `mem inbox add`), and drained
 // by `mem distill` / `/distill`. One file, so a lesson captured in opencode is
 // promotable from pi.

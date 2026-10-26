@@ -35,7 +35,9 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 // The inbox is shared with every other harness (see `mem`), so it lives in a
 // neutral directory instead of pi's own agent dir. PI_CODING_AGENT_DIR no longer
 // decides where it goes — one inbox, whoever captured the lesson.
-const MEMORY_DIR = process.env.MEMORY_DIR ?? join(homedir(), ".agents", "memory");
+// XDG_DATA_HOME by default, matching `mem` — the store is agent-neutral data.
+const DATA_HOME = process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share");
+const MEMORY_DIR = process.env.MEMORY_DIR ?? join(DATA_HOME, "agents", "memory");
 const INBOX = join(MEMORY_DIR, "inbox.md");
 const ROTATE_BYTES = 64 * 1024;
 const MAX_SIGNATURE = 140;

@@ -99,7 +99,7 @@ next session loads, and there are two kinds, with two homes:
 
 | Lesson | Home | Trigger |
 |---|---|---|
-| Agent conduct ("never force-push", "doas needs full paths") | `~/.agents/memory/inbox.md` → `mem distill` | a tool failed, or the user corrected you |
+| Agent conduct ("never force-push", "doas needs full paths") | `~/.local/share/agents/memory/inbox.md` → `mem distill` | a tool failed, or the user corrected you |
 | Domain knowledge ("`openFile` also delivers argv") | `<repo>/docs/learnings/` | the world surprised you while working |
 
 Agent lessons climb a ladder, and promoting past the current rung is the point:

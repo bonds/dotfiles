@@ -4,7 +4,7 @@ description: Distill the shared learnings inbox into durable changes
 
 Read the `memory` skill first (`.config/nix/agent-skills/memory/SKILL.md`) — it
 holds the promotion ladder and the two-kinds-of-lesson rule. Then run
-`mem distill` to print the inbox at `~/.agents/memory/inbox.md` together with
+`mem distill` to print the inbox at `~/.local/share/agents/memory/inbox.md` together with
 that ladder.
 
 Work the candidates in that inbox:

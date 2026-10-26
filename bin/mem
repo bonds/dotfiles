@@ -5,7 +5,7 @@ The store is files, so it is already harness-neutral; this CLI is the neutral
 *interface* to it, so a lesson captured by one harness is readable, promotable
 and recallable from any other:
 
-  ~/.agents/memory/inbox.md     one inbox; every harness appends (flock'd)
+  ~/.local/share/agents/memory/inbox.md   one inbox; every harness appends (flock'd)
   <repo>/docs/learnings/        one entry per domain lesson, indexed
   ~/DECISIONS.md                settled choices and their rationale
   agent-skills/memory/SKILL.md  the policy: when to capture, how to distill
@@ -36,7 +36,21 @@ import subprocess
 import sys
 
 HOME = pathlib.Path.home()
-MEMORY_DIR = pathlib.Path(os.environ.get("MEMORY_DIR") or os.environ.get("MEM_DIR") or HOME / ".agents" / "memory")
+
+
+def _xdg_data_home() -> pathlib.Path:
+    """`$XDG_DATA_HOME`, or the XDG default `~/.local/share` when unset."""
+    configured = os.environ.get("XDG_DATA_HOME")
+    return pathlib.Path(configured) if configured else HOME / ".local" / "share"
+
+
+# The store is agent-neutral data, not config and not cache, so it lives under
+# XDG_DATA_HOME. MEMORY_DIR/MEM_DIR still win, which is what the tests use.
+MEMORY_DIR = pathlib.Path(
+    os.environ.get("MEMORY_DIR")
+    or os.environ.get("MEM_DIR")
+    or _xdg_data_home() / "agents" / "memory"
+)
 INBOX = MEMORY_DIR / "inbox.md"
 DECISIONS = HOME / "DECISIONS.md"
 # Recall sources, overridable so the test suite can point at fixtures.

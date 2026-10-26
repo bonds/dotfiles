@@ -34,7 +34,7 @@ nix-store symlinks.
 | `notify.ts` | OSC 777 desktop notification on `agent_settled` |
 | `custom-footer.ts` | `/footer` toggles branch + tokens + cost |
 | `plan-mode/` | read-only `/plan` mode, `ctrl+alt+p` |
-| `learnings-capture.ts` | appends tool failures to the shared inbox at `~/.agents/memory/inbox.md` |
+| `learnings-capture.ts` | appends tool failures to the shared inbox at `~/.local/share/agents/memory/inbox.md` |
 | `corrections-capture.ts` | appends user corrections and stated rules to the same inbox, with the action being corrected |
 | `record-learning.ts` | `learning` tool: writes + indexes `<repo>/docs/learnings/` |
 | `session-recall.ts` | `recall` tool: search past session JSONL |
@@ -124,7 +124,7 @@ lifetime rule) stays in the repo next to the code, indexed, and never climbs
 anything.
 
 1. **Capture** — `learnings-capture.ts` writes one line per distinct failure
-   signature to the shared inbox at `~/.agents/memory/inbox.md` (immediately for policy/permission
+   signature to the shared inbox at `~/.local/share/agents/memory/inbox.md` (immediately for policy/permission
    failures, on the second occurrence otherwise); `corrections-capture.ts`
    writes one line per correction or stated rule, tagged `correction`/`policy`,
    quoting the sentence and recording what it was correcting ("no" after

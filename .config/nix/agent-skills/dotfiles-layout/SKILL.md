@@ -154,7 +154,7 @@ That last one is needed because a plain `git checkout main` only prints
 ### Agent harness
 - `AGENTS.md` — always-loaded agent instructions for `$HOME` (routing + non-negotiables; detail belongs in a skill)
 - `DECISIONS.md` — settled choices and their rationale, so they stop being re-litigated (symlink into `.config/nix/pkgs/pi/decisions.md`)
-- `~/.agents/memory/inbox.md` — **untracked**, written by every harness (pi's capture extensions, the opencode plugin, the hermes hook, `mem inbox add`); drained by `mem distill`
+- `~/.local/share/agents/memory/inbox.md` — **untracked**, written by every harness (pi's capture extensions, the opencode plugin, the hermes hook, `mem inbox add`); drained by `mem distill`
 - `~/.pi/agent/sessions/` — **untracked** JSONL session tree, searchable with the `recall` tool
 - `docs/learnings/` — per-repo lesson notes, written by `/learn` (symptom / cause / takeaway)
 

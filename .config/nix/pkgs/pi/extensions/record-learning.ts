@@ -120,7 +120,7 @@ export default function (pi: ExtensionAPI) {
 			const root = repoRoot(ctx.cwd);
 			if (!root) {
 				throw new Error(
-					`learning: ${ctx.cwd} is not inside a git repository, so there is nowhere for this to live. Agent-behaviour lessons go to the shared inbox (~/.agents/memory/inbox.md) via 'mem inbox add <kind> "…"'; /learn is for a note without an index.`,
+					`learning: ${ctx.cwd} is not inside a git repository, so there is nowhere for this to live. Agent-behaviour lessons go to the shared inbox (~/.local/share/agents/memory/inbox.md) via 'mem inbox add <kind> "…"'; /learn is for a note without an index.`,
 				);
 			}
 

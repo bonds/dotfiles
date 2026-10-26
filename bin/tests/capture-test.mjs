@@ -9,7 +9,7 @@
 // noise, so they get regression coverage.
 //
 // Every case runs against a throwaway MEMORY_DIR, so the real inbox,
-// ~/.agents/memory and the real `mem` store are never touched:
+// ~/.local/share/agents/memory and the real `mem` store are never touched:
 //
 //   bash ~/bin/tests/capture-test.sh
 //

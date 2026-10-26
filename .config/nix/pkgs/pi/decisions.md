@@ -149,7 +149,7 @@ identities. Rejected: retrying the push, which just burns turns; and using the
 learnings entries and `DECISIONS.md` are plain files, and `mem`
 (`~/bin/mem`) is the only interface to them: `inbox add`, `learn`, `distill`,
 `recall`. pi's extensions, an opencode plugin and a hermes `post_tool_call`
-hook all append to `~/.agents/memory/inbox.md`, under one `flock`, so a lesson
+hook all append to `~/.local/share/agents/memory/inbox.md`, under one `flock`, so a lesson
 captured by one harness is promotable from any other. Rejected: per-harness
 memory (pi's inbox, hermes' `MEMORY.md`, osaurus' own store) — each is invisible
 to the others, so the same mistake is re-learned in every harness. Cost:

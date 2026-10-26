@@ -4,7 +4,7 @@ argument-hint: "[focus]"
 ---
 Distill the learnings inbox into durable changes. Focus (optional): ${1:-everything}.
 
-The inbox is `~/.agents/memory/inbox.md` — one inbox shared by every harness:
+The inbox is `~/.local/share/agents/memory/inbox.md` — one inbox shared by every harness:
 pi (`learnings-capture.ts` / `corrections-capture.ts`), the opencode and hermes
 hooks, and anything that ran `mem inbox add`. Read it with `mem inbox show`
 (`mem distill` prints it together with the ladder). Each line is one distinct
