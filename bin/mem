@@ -1993,6 +1993,186 @@ def cmd_summarize(args) -> int:
     return 0
 
 
+# ------------------------------------------------------------- principles --
+#
+# Phase 5's first half, deliberately the cheap half: cluster the summaries by
+# signals that already exist in the archive (the edges), then let a model
+# articulate principles only inside those clusters. Clustering 1,045 summaries
+# in one call gives mush; clustering by what the sessions actually touched is
+# deterministic, reproducible, and hands each candidate its evidence set.
+#
+# Nothing here writes to a skill or AGENTS.md. Output is a proposal document for
+# review — the plan's highest hard rule.
+
+PRINCIPLES = MEMORY_DIR / "principles"
+MAX_PRINCIPLES = 3
+
+PRINCIPLE_PROMPT = """The summaries below come from separate sessions that share \
+one signal (an error signature, a file, or a command). Several may describe the
+same underlying lesson.
+
+Propose at most 3 durable principles this evidence supports.
+
+For each, output exactly:
+### <short-kebab-id>
+**Statement**: one or two sentences, imperative, addressed to a future agent.
+**Applies when**: the conditions where this helps — task type, harness, path globs.
+**Evidence**: one anchor per supporting claim, as
+`session://<harness>/<session-id>#turn-N`, using only turn numbers that appear
+in the summaries below.
+**Suggested rung**: agents-md | skill | hook | automation — and one clause on why.
+
+Rules:
+- A principle with no supporting evidence is not a principle; drop it.
+- Restate nothing the summaries do not support.
+- If the signal is shared but teaches nothing durable, reply exactly NO PRINCIPLE."""
+
+# Signals that cluster by *tooling* rather than by cause: every session runs git,
+# and "traceback" names a thousand different bugs. A principle derived from them
+# would be mush, so they are excluded rather than ranked low.
+_GENERIC_SIGNALS = {
+    "file:~", "file:~/.config", "file:~/.config/nix",
+    "cmd:ls", "cmd:cat", "cmd:cd", "cmd:echo", "cmd:git", "cmd:rg", "cmd:grep",
+    "cmd:sed", "cmd:awk", "cmd:find", "cmd:fd", "cmd:head", "cmd:tail", "cmd:wc",
+    "error:webfetch failed", "error:traceback (most recent call last):",
+}
+_SIGNAL_RANK = {"error": 0, "file": 1, "cmd": 2}
+
+
+def normalize_signal(kind: str, dst: str) -> str:
+    dst = dst.strip()
+    home = str(pathlib.Path.home())
+    if dst.startswith(home):
+        dst = "~" + dst[len(home):]
+    if kind == "command":
+        return "cmd:" + (dst.split() or [""])[0][:40]
+    if kind == "file":
+        return "file:" + dst[:120]
+    return "error:" + re.sub(r"\s+", " ", dst.lower())[:120]
+
+
+def load_summaries() -> list:
+    out = []
+    for path in sorted(SUMMARIES.rglob("*.md")):
+        text = path.read_text()
+        # The file opens with "---", so partition on the opening delimiter alone
+        # would return an empty meta and swallow the real body.
+        rest = text[3:] if text.startswith("---") else text
+        meta, _, body = rest.partition("---")
+        fields = {}
+        for line in meta.splitlines():
+            if ":" in line:
+                key, _, value = line.partition(":")
+                fields[key.strip()] = value.strip()
+        if fields.get("declined") == "true":
+            continue
+        session = fields.get("session")
+        if not session:
+            continue
+        out.append({
+            "harness": fields.get("harness", path.parent.name),
+            "session": session,
+            "turns": fields.get("turns", "0"),
+            "body": body.strip(),
+        })
+    return out
+
+
+def session_signals(harness: str, session: str) -> set:
+    found = list((RAW_DIR / "sessions").glob(f"{harness}/*/*/{session}/edges.jsonl"))
+    if not found:
+        return set()
+    signals = set()
+    for line in found[0].read_text().splitlines():
+        if not line.strip():
+            continue
+        edge = json.loads(line)
+        signals.add(normalize_signal(edge["kind"], edge["dst"]))
+    return signals
+
+
+def build_clusters(min_sessions: int = 2) -> list:
+    summaries = load_summaries()
+    by_signal: dict = {}
+    for summary in summaries:
+        for signal in session_signals(summary["harness"], summary["session"]):
+            by_signal.setdefault(signal, []).append(summary)
+
+    clusters = [(signal, members) for signal, members in by_signal.items()
+                if len(members) >= min_sessions and signal not in _GENERIC_SIGNALS]
+    # Specific failures first: an error signature shared by several sessions is
+    # the strongest evidence of a repeated lesson; a file or a command shared by
+    # several is usually just "this is the project I was working in".
+    clusters.sort(key=lambda c: (_SIGNAL_RANK.get(c[0].split(":", 1)[0], 9),
+                                 -len(c[1])))
+
+    # Drop clusters that are subsets of a larger one: the same sessions would be
+    # sent to the model twice and produce duplicate principles.
+    kept = []
+    for signal, members in clusters:
+        if any(set(m["session"] for m in members) <= set(m["session"] for m in other)
+               for _, other in kept):
+            continue
+        kept.append((signal, members))
+    return kept
+
+
+def cmd_principles(args) -> int:
+    clusters = build_clusters(args.min_sessions)
+    if not clusters:
+        print("mem: no clusters — run `mem summarize` first")
+        return 0
+    clusters = clusters[: args.max_clusters]
+
+    print(f"mem: {len(clusters)} cluster(s) from {len(load_summaries())} summaries")
+    for signal, members in clusters:
+        print(f"  {len(members):3} sessions  {signal[:100]}")
+
+    if args.cluster_only or args.dry_run:
+        return 0
+
+    key = deepinfra_key()
+    spent = 0.0
+    proposals = []
+    for signal, members in clusters:
+        if spent >= args.budget:
+            print(f"mem: budget ${args.budget:.2f} reached")
+            break
+        evidence = []
+        for m in members[:8]:
+            body = m["body"][:3000]
+            evidence.append(f"--- session://{m['harness']}/{m['session']} ({m['turns']} turns)\n{body}")
+        user = f"Shared signal: {signal}\n\n" + "\n\n".join(evidence)
+        text, tin, tout = chat(key, PRINCIPLE_PROMPT, user)
+        spent += summary_cost(tin, tout)
+        if text.upper().startswith("NO PRINCIPLE"):
+            print(f"  declined        {signal[:70]}")
+            continue
+        proposals.append(f"## Signal: {signal}\n\nSessions: {len(members)}, "
+                         f"e.g. `session://{members[0]['harness']}/{members[0]['session']}`\n\n{text}\n")
+        print(f"  proposed        {signal[:70]}")
+
+    if not proposals:
+        print(f"mem: no principles proposed, ${spent:.4f}")
+        return 0
+
+    target = PRINCIPLES / f"proposed-{today()}.md"
+    write_atomic(target, (
+        "---\n"
+        "kind: principle-proposals\n"
+        "generated: true\n"
+        f"model: {SUMMARY_MODEL}\n"
+        f"cost_usd: {spent:.4f}\n"
+        f"created: {dt.datetime.now().isoformat(timespec='seconds')}\n"
+        "---\n\n"
+        "# Proposed principles\n\n"
+        "Generated from the archive. Nothing here is in effect: promoting one means\n"
+        "editing the skill it names, as a diff, for review.\n\n"
+        + "\n".join(proposals)))
+    print(f"mem: wrote {target} ({len(proposals)} cluster(s), ${spent:.4f})")
+    return 0
+
+
 # --------------------------------------------------------------------- main --
 
 
@@ -2035,6 +2215,14 @@ def main(argv: list[str]) -> int:
     ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode", "hermes", "osaurus"])
     ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
     ing.set_defaults(fn=cmd_ingest)
+
+    prin = sub.add_parser("principles", help="cluster summaries into principle proposals")
+    prin.add_argument("--min-sessions", type=int, default=2)
+    prin.add_argument("--max-clusters", type=int, default=12)
+    prin.add_argument("--budget", type=float, default=0.50)
+    prin.add_argument("--cluster-only", action="store_true", help="cluster, no model call")
+    prin.add_argument("--dry-run", action="store_true")
+    prin.set_defaults(fn=cmd_principles)
 
     summ = sub.add_parser("summarize", help="summarize archived sessions (network)")
     summ.add_argument("--harness", choices=["pi", "opencode", "hermes", "osaurus"])

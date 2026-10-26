@@ -383,6 +383,18 @@ else
     ok "matching source_digest skips the session"
 fi
 
+echo "== principles: clusters from edges (no network) =="
+out="$(MEMORY_DIR="$T/mem" MEMORY_RAW="$T/raw" "$MEM" principles --cluster-only --min-sessions 1 2>&1)"
+case "$out" in
+    *"cluster(s) from"*) ok "clusters built from session edges" ;;
+    *) bad "no clusters built: $(printf '%s' "$out" | head -1)" ;;
+esac
+if printf '%s' "$out" | grep -q '^  *[0-9]* sessions  '; then
+    ok "each cluster reports its session count"
+else
+    bad "cluster listing missing session counts"
+fi
+
 echo
 printf 'summarized: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
