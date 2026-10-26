@@ -878,6 +878,160 @@ def ingest_opencode_session(con, sess, state: dict, dry_run: bool) -> dict:
     return result
 
 
+# ------------------------------------------------------------------ hermes --
+#
+# hermes never rewrites a message's content. Compaction flags the originals
+# (`active=0, compacted=0`) and clones the carried tail under fresh ids
+# (hermes_state_messages.py), so the archive can keep a plain snapshot of every
+# row and still preserve what compaction did: the originals are still there,
+# flagged, and the clones carry new ids.
+#
+# Two consequences drive the code below. The watermark must hash the flags as
+# well as the content, because flags change without content changing. And the
+# system prompt is not in `messages` at all — only a hash is on the session row,
+# with the text in `system_prompts`, so it is joined and stored as its own
+# content-addressed message.
+
+_HERMES_SQL = """
+select id, role, content, tool_calls, tool_call_id, tool_name, api_content,
+       reasoning_content, timestamp, token_count, finish_reason,
+       active, compacted, display_order
+  from messages where session_id = ? order by id
+"""
+
+
+def sec_to_iso(value) -> str | None:
+    if not value:
+        return None
+    return dt.datetime.fromtimestamp(float(value), dt.timezone.utc).isoformat(timespec="milliseconds")
+
+
+def hermes_digest(rows) -> str:
+    """Hash everything that can change without a row being added."""
+    seen = []
+    for r in rows:
+        seen.append([
+            r["id"],
+            hashlib.sha256((r["content"] or "").encode()).hexdigest()[:16],
+            hashlib.sha256((r["tool_calls"] or "").encode()).hexdigest()[:16],
+            hashlib.sha256((r["api_content"] or "").encode()).hexdigest()[:16],
+            int(r["active"] or 0),
+            int(r["compacted"] or 0),
+        ])
+    return hashlib.sha256(canonical(seen).encode()).hexdigest()
+
+
+def ingest_hermes_session(con, sess, state: dict, dry_run: bool) -> dict:
+    sid = sess["id"]
+    result = {"id": sid, "turns": 0, "created": 0, "skipped": False}
+
+    rows = con.execute(_HERMES_SQL, (sid,)).fetchall()
+    if not rows:
+        result["skipped"] = True
+        return result
+
+    digest = hermes_digest(rows)
+    prev = state["sessions"].get(sid) or {}
+    if prev.get("digest") == digest:
+        result["skipped"] = True
+        return result
+
+    turns: list = []
+    tally = [0]
+    started = sec_to_iso(sess["started_at"]) or sec_to_iso(rows[0]["timestamp"])
+
+    # The system prompt comes from `system_prompts` by hash, not from `messages`.
+    prompt_hash = sess["system_prompt_hash"]
+    if prompt_hash:
+        hit = con.execute(
+            "select prompt from system_prompts where hash = ?", (prompt_hash,)
+        ).fetchone()
+        if hit and hit["prompt"]:
+            doc = redact_obj({"v": 1, "role": "system",
+                              "content": [{"type": "text", "text": hit["prompt"]}]}, tally)
+            msg, created = store_message(doc, dry_run)
+            result["created"] += 1 if created else 0
+            turns.append({"i": 0, "ts": started, "role": "system", "msg": msg,
+                          "synthetic": True, "prompt_hash": prompt_hash})
+            result["turns"] += 1
+
+    for r in rows:
+        role = r["role"] or "unknown"
+        parts = [{"type": "text", "text": (cap_text(r["content"]) if role == "tool" else (r["content"] or ""))}]
+        if r["reasoning_content"]:
+            parts.append({"type": "reasoning", "text": r["reasoning_content"]})
+
+        doc = {"v": 1, "role": role, "content": parts}
+        if r["tool_calls"]:
+            try:
+                doc["tool_calls"] = json.loads(r["tool_calls"])
+            except json.JSONDecodeError:
+                doc["tool_calls_raw"] = r["tool_calls"]
+        if r["tool_call_id"]:
+            doc["tool_call_id"] = r["tool_call_id"]
+        if r["tool_name"]:
+            doc["tool_name"] = r["tool_name"]
+        if r["api_content"]:
+            # Byte-fidelity sidecar: the exact string sent to the API when it
+            # differed from `content` (hermes_state_messages.py).
+            doc["api_content"] = cap_text(r["api_content"])
+        doc = {k: v for k, v in doc.items() if v is not None}
+
+        msg, created = store_message(redact_obj(doc, tally), dry_run)
+        result["created"] += 1 if created else 0
+
+        turn = {
+            "i": len(turns),
+            "src_id": r["id"],
+            "ts": sec_to_iso(r["timestamp"]),
+            "role": role,
+            "msg": msg,
+            "active": int(r["active"] or 0),
+            "compacted": int(r["compacted"] or 0),
+        }
+        if r["display_order"] is not None:
+            turn["display_order"] = r["display_order"]
+        if r["token_count"]:
+            turn["tokens"] = r["token_count"]
+        if r["finish_reason"]:
+            turn["finish_reason"] = r["finish_reason"]
+        turns.append(turn)
+        result["turns"] += 1
+
+    chained = chain_turns(turns, sid)
+    manifest = {
+        "v": 1,
+        "id": sid,
+        "harness": "hermes",
+        "parent": sess["parent_session_id"],
+        "started": started,
+        "ended": sec_to_iso(sess["ended_at"]) or sec_to_iso(rows[-1]["timestamp"]),
+        "cwd": sess["cwd"],
+        "title": sess["title"],
+        "git_branch": sess["git_branch"],
+        "model": sess["model"],
+        "model_config": sess["model_config"],
+        "system_prompt_hash": prompt_hash,
+        "turns": len(chained),
+        "usage": {
+            "input": int(sess["input_tokens"] or 0),
+            "output": int(sess["output_tokens"] or 0),
+            "cache_read": int(sess["cache_read_tokens"] or 0),
+            "cache_write": int(sess["cache_write_tokens"] or 0),
+            "reasoning": int(sess["reasoning_tokens"] or 0),
+        },
+        "cost_usd": round(float(sess["actual_cost_usd"] or sess["estimated_cost_usd"] or 0), 6),
+        "cost_source": sess["cost_source"],
+        "redactions": tally[0],
+        "retention": "hot",
+        "source": {"db": str(HERMES_DB), "session_id": sid,
+                   "messages": len(rows), "digest": digest},
+    }
+    write_session("hermes", sid, manifest, chained, dry_run)
+    result["digest"] = digest
+    return result
+
+
 def _ingest_state(harness: str) -> tuple[pathlib.Path, dict]:
     path = RAW_DIR / "state" / f"{harness}.json"
     state = {"v": 1, "sessions": {}}
@@ -960,12 +1114,56 @@ def _ingest_opencode(args) -> int:
     return _finish_ingest("opencode", args, state_path, state, processed, turns, created, skipped)
 
 
+def _ingest_hermes(args) -> int:
+    if not HERMES_DB.exists():
+        die(f"no hermes database at {HERMES_DB}", 1)
+    state_path, state = _ingest_state("hermes")
+    processed = skipped = turns = created = 0
+    try:
+        con = sqlite3.connect(f"file:{HERMES_DB}?mode=ro", uri=True, timeout=10)
+    except sqlite3.Error as exc:
+        die(f"cannot open {HERMES_DB}: {exc}", 1)
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            "select id, parent_session_id, cwd, title, git_branch, model, model_config,"
+            " system_prompt_hash, started_at, ended_at, input_tokens, output_tokens,"
+            " cache_read_tokens, cache_write_tokens, reasoning_tokens,"
+            " estimated_cost_usd, actual_cost_usd, cost_source"
+            " from sessions order by started_at"
+        ).fetchall()
+        for sess in rows:
+            try:
+                result = ingest_hermes_session(con, sess, state, args.dry_run)
+            except sqlite3.OperationalError as exc:
+                # A lock means another writer holds the lease. Fail the run
+                # rather than skip: a silently skipped session is invisible,
+                # a failed ingest is not.
+                die(f"hermes database unavailable mid-run ({exc}); rerun when idle", 1)
+            if result["skipped"]:
+                skipped += 1
+                continue
+            processed += 1
+            turns += result["turns"]
+            created += result["created"]
+            if not args.dry_run:
+                state["sessions"][sess["id"]] = {
+                    "digest": result.get("digest"),
+                    "updated": dt.datetime.now().isoformat(timespec="seconds"),
+                }
+    finally:
+        con.close()
+    return _finish_ingest("hermes", args, state_path, state, processed, turns, created, skipped)
+
+
 def cmd_ingest(args) -> int:
     if args.harness == "pi":
         return _ingest_pi(args)
     if args.harness == "opencode":
         return _ingest_opencode(args)
-    die(f"no importer for {args.harness} (available: pi, opencode)", 2)
+    if args.harness == "hermes":
+        return _ingest_hermes(args)
+    die(f"no importer for {args.harness} (available: pi, opencode, hermes)", 2)
 
 
 # --------------------------------------------------------------------- main --
@@ -1007,7 +1205,7 @@ def main(argv: list[str]) -> int:
     recall.set_defaults(fn=cmd_recall)
 
     ing = sub.add_parser("ingest", help="copy a harness's sessions into the archive")
-    ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode"])
+    ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode", "hermes"])
     ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
     ing.set_defaults(fn=cmd_ingest)
 

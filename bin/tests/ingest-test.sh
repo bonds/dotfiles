@@ -188,6 +188,87 @@ fi
 out="$(run_oc 2>&1)"
 check "opencode re-ingest is idempotent" "0" "$(printf '%s' "$out" | sed -n 's/.*ingested \([0-9]*\) opencode session(s).*/\1/p')"
 
+echo "== hermes: flags, api_content, system_prompts join =="
+HDB="$T/hermes.db"
+python3 - "$HDB" <<'PY'
+import sqlite3, sys
+
+con = sqlite3.connect(sys.argv[1])
+con.executescript("""
+create table sessions (id text primary key, parent_session_id text, cwd text, title text,
+  git_branch text, model text, model_config text, system_prompt_hash text,
+  started_at real, ended_at real, input_tokens int, output_tokens int,
+  cache_read_tokens int, cache_write_tokens int, reasoning_tokens int,
+  estimated_cost_usd real, actual_cost_usd real, cost_source text);
+create table system_prompts (hash text primary key, prompt text);
+create table messages (id integer primary key, session_id text, role text, content text,
+  tool_calls text, tool_call_id text, tool_name text, api_content text,
+  reasoning_content text, timestamp real, token_count int, finish_reason text,
+  active int, compacted int, display_order int);
+""")
+con.execute("insert into system_prompts values ('abc123', 'you are hermes')")
+con.execute(
+    "insert into sessions values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    ("hs1", None, "/tmp/h", "A hermes title", "main", "m", "{}", "abc123",
+     1761300000.0, 1761300100.0, 10, 5, 0, 0, 0, 0.1, 0.12, "provider"),
+)
+# (id, role, content, tool_calls, tool_call_id, tool_name, api_content,
+#  reasoning_content, timestamp, token_count, finish_reason, active, compacted,
+#  display_order)
+rows = [
+    (1, "user", "hello", None, None, None, None, None, 1761300001.0, 0, None, 1, 0, 1),
+    (2, "assistant", "hi there", None, None, None, "hi there", None,
+     1761300002.0, 0, "stop", 1, 0, 2),
+    (3, "user", "superseded", None, None, None, None, None,
+     1761300003.0, 0, None, 0, 1, 3),
+]
+for r in rows:
+    con.execute(
+        "insert into messages values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (r[0], "hs1", *r[1:]),
+    )
+con.commit()
+con.close()
+PY
+
+run_hm() {
+    MEMORY_DIR="$T/mem" MEMORY_RAW="$T/raw" MEM_HERMES_DB="$HDB" "$MEM" ingest hermes "$@"
+}
+out="$(run_hm 2>&1)"
+check "hermes session ingested" "1" "$(printf '%s' "$out" | sed -n 's/.*ingested \([0-9]*\) hermes session(s).*/\1/p')"
+hd="$(ls -d "$T"/raw/sessions/hermes/*/*/hs1)"
+check "all rows archived, incl. the inactive one" "4" "$(wc -l < "$hd/turns.jsonl" | tr -d ' ')"
+check "actual cost preferred over estimate" "0.12" "$(sed -n 's/.*"cost_usd": \([0-9.]*\).*/\1/p' "$hd/session.json")"
+if grep -q '"synthetic":true' "$hd/turns.jsonl" && grep -rq 'you are hermes' "$T/raw/messages"; then
+    ok "system prompt joined from system_prompts"
+else
+    bad "system prompt not joined"
+fi
+if grep -rq '"api_content":"hi there"' "$T/raw/messages"; then
+    ok "api_content sidecar stored"
+else
+    bad "api_content missing"
+fi
+if grep -q '"active":0' "$hd/turns.jsonl"; then
+    ok "inactive flags preserved"
+else
+    bad "inactive flags lost"
+fi
+
+out="$(run_hm 2>&1)"
+check "hermes re-ingest is idempotent" "0" "$(printf '%s' "$out" | sed -n 's/.*ingested \([0-9]*\) hermes session(s).*/\1/p')"
+
+# A flag flip changes nothing but flags; a digest over content alone would miss it.
+python3 - "$HDB" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.execute("update messages set active=1 where id=3")
+con.commit()
+con.close()
+PY
+out="$(run_hm 2>&1)"
+check "a flag-only change triggers re-ingest" "1" "$(printf '%s' "$out" | sed -n 's/.*ingested \([0-9]*\) hermes session(s).*/\1/p')"
+
 echo
 printf 'summarised: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

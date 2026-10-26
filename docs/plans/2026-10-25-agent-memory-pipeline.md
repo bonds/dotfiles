@@ -49,7 +49,7 @@ everything above it with explicit provenance links.
 | D14 | **The proxy is packaged as a nix module + launchd agent**, but is developed and tested outside nix until phase 1 passes. | Nix from day one — every test iteration becomes a rebuild hand-off. |
 | D15 | **Osaurus uses Working Folder mode pointed at the curated root**, sandbox off for that one agent; sandboxed agents cannot see the store. | A link farm into `/workspace` — symlinks do not cross the VM boundary (verified, §3.1); and putting the store inside `~/.osaurus/container/workspace/` would make the container dir the system of record. |
 | D16 | **Two indexes**: a small curated index inside the agent root, a large transcript index beside `raw/`. | One index over everything — it would reach hundreds of MB/year and force the snapshot root to grow with the raw archive. |
-| D17 | **Ingest incrementally, against a per-store watermark, before compaction can rewrite history.** | One-off exports — hermes rewrites messages in place (`compacted`, `_compressed_summary`), so any delayed export silently loses the pre-compaction text. |
+| D17 | **Ingest incrementally, against a per-store watermark, before compaction can replace history.** | One-off exports — hermes compaction does not rewrite content, it sets `active=0, compacted=0` on the originals and *clones* the carried tail with fresh ids (`hermes_state_messages.py`), so a delayed export sees re-sequenced rows and duplicates with no way to tell which the model actually saw. |
 
 ### Known conflict, resolved by D10
 
@@ -349,7 +349,8 @@ harnesses, a single point of failure, and a bug class phase 0 actually hit.
 So capture becomes **ingest**: read the stores, normalise, archive. The archive
 is still the system of record (D1), because the stores are not durable —
 opencode may prune, pi rotates, osaurus's `activity.sqlite` is already 5 GB, and
-hermes rewrites history in place. That is what D17 is for.
+hermes re-sequences a session when it compacts — cloning carried messages under
+new ids and flagging the originals. That is what D17 is for.
 
 The proxy code stays in the tree, archived: the streaming and SSRF work is
 sound and wire truth may be wanted later. It is not shipped, and no harness
@@ -477,9 +478,10 @@ Remaining:
 1. **Osaurus ingest scope.** `activity.sqlite` is 5 GB, 99.5% embeddings.
    Ingest inference only (5,138 rows in 22 days, ~451 KB each) — the rest is
    not conversation.
-2. **Hermes `api_content`.** It looks like the content actually sent to the
-   API rather than the stored message. If so, hermes alone gives near-wire
-   fidelity and check 5 is mostly answered for it.
+2. ~~Hermes `api_content`~~ — resolved from the source: it is a "byte-fidelity
+   sidecar, the exact string sent to the API when it differed from `content`".
+   So hermes alone keeps the wire string wherever it diverged, which answers
+   check 5 for it and means no proxy is needed for that harness.
 3. **Watermark per store.** pi has file mtime plus append-only lines; opencode
    has monotonic ids; hermes has ids *and* a `compacted` flag; osaurus has
    `seq`. Each needs its own resume rule, and all must be idempotent.
