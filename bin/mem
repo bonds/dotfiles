@@ -414,38 +414,50 @@ def cmd_recall(args) -> int:
     words = _words(args.query)
     if not words:
         die("recall needs a query", 2)
-    if args.source in ("archive", "all") and (RAW_DIR / "messages").is_dir():
-        archived = recall_archive(words, args.days, args.limit)
-        if archived or args.source == "archive":
-            if not archived:
-                print(f"mem: nothing in the archive for {' '.join(words)}")
-                return 0
-            for h in archived:
-                print(f"{h['when'][:16]:16}  {h['source']:16}  {str(h['session'])[:20]:20} ({h['role']})")
-                print(f"    {h['text']}")
-            return 0
 
-    since = (dt.datetime.now() - dt.timedelta(days=args.days)).timestamp()
-    sources = {
-        "pi": recall_pi,
-        "opencode": recall_opencode,
-        "hermes": recall_hermes,
-    }
-    want = [args.source] if args.source != "all" else list(sources)
     hits: list[dict] = []
-    for name in want:
-        fn = sources.get(name)
-        if fn is None:
-            die(f"unknown source {name} (pi, opencode, hermes, all)", 2)
-        hits.extend(fn(words, since, args.limit))
+    stores = {"pi": recall_pi, "opencode": recall_opencode, "hermes": recall_hermes}
+
+    if args.source in stores:
+        since = (dt.datetime.now() - dt.timedelta(days=args.days)).timestamp()
+        hits.extend(stores[args.source](words, since, args.limit))
+    else:
+        if args.source in ("archive", "all") and (RAW_DIR / "messages").is_dir():
+            hits.extend(recall_archive(words, args.days, args.limit))
+        if args.source in ("docs", "all"):
+            hits.extend(recall_docs(words, args.days, args.limit, args.include_archive))
+        # The stores stay the fallback, as the plan says: they are the only
+        # source for a session newer than the last ingest, and asking them when
+        # the archive already answered would return every hit twice.
+        if args.source == "all" and not hits:
+            since = (dt.datetime.now() - dt.timedelta(days=args.days)).timestamp()
+            for fn in stores.values():
+                hits.extend(fn(words, since, args.limit))
+
     if not hits:
         print(f"mem: nothing in the last {args.days}d matching {' '.join(words)}")
         return 0
-    hits.sort(key=lambda h: h["when"], reverse=True)
-    for h in hits[: args.limit * len(want)]:
-        role = f" ({h['role']})" if h["role"] else ""
-        print(f"{h['when'][:16]:16}  {h['source']:8}  {str(h['session'])[:36]:36}{role}")
-        print(f"    {h['text']}")
+    # Curated first, transcripts second. Sorting the two together by date would
+    # bury every learnings entry under this week's conversation it came out of,
+    # which inverts the point: the distilled answer is the answer, the session is
+    # its evidence.
+    curated = sorted((h for h in hits if h["source"].startswith("docs/")),
+                     key=lambda h: h["when"], reverse=True)
+    evidence = sorted((h for h in hits if not h["source"].startswith("docs/")),
+                      key=lambda h: h["when"], reverse=True)
+
+    def show(group, cap):
+        for h in group[:cap]:
+            role = f" ({h['role']})" if h.get("role") else ""
+            print(f"{h['when'][:16]:16}  {h['source']:16}  {str(h['session'])[:22]:22}{role}")
+            print(f"    {h['text']}")
+
+    if curated:
+        print(f"mem: {len(curated)} curated, {len(evidence)} from transcripts")
+        show(curated, args.limit)
+        if evidence:
+            print("  -- transcripts --")
+    show(evidence, args.limit * (1 if curated else 2))
     return 0
 
 
@@ -1698,6 +1710,66 @@ def recall_archive(words, days, limit) -> list:
     return hits[: limit * 4]
 
 
+# MEM_DOCS points the curated search at a fixture, the same way MEMORY_RAW does.
+_DOC_ENV = os.environ.get("MEM_DOCS")
+DOC_ROOTS = (
+    (("docs", pathlib.Path(_DOC_ENV)),) if _DOC_ENV else (
+        ("learnings", HOME / "docs" / "learnings"),
+        ("plans", HOME / "docs" / "plans"),
+        ("decisions", HOME / "DECISIONS.md"),
+    )
+)
+
+
+def recall_docs(words, days, limit, include_archive=False) -> list:
+    """Search the curated markdown: the distilled layer, not the transcripts.
+
+    Separate root rather than extra content in the archive: a learnings entry and
+    the session that produced it *should* both match a query — that is the
+    provenance chain, not duplication — so the two are labelled and merged.
+    """
+    roots = [(label, root) for label, root in DOC_ROOTS if root.exists()]
+    if include_archive:
+        roots.append(("archive", HOME / "docs" / "archive"))
+    if not roots:
+        return []
+
+    pattern = "|".join(re.escape(w) for w in words)
+    cutoff = (dt.date.today() - dt.timedelta(days=days)).isoformat()
+    hits = []
+    for label, root in roots:
+        proc = subprocess.run(
+            ["rg", "-l", "-i", "--no-messages", "--", pattern, str(root)],
+            capture_output=True, text=True)
+        for found in proc.stdout.splitlines():
+            if not found.strip():
+                continue
+            path = pathlib.Path(found)
+            # An index file is a list of links; a hit there points at a lesson
+            # without being one.
+            if path.name == "README.md":
+                continue
+            stamped = re.match(r"(\d{4}-\d{2}-\d{2})", path.name)
+            when = stamped.group(1) if stamped else dt.date.fromtimestamp(
+                path.stat().st_mtime).isoformat()
+            if when < cutoff:
+                continue
+            body = path.read_text()
+            text = ""
+            for line in body.splitlines():
+                if all(word.lower() in line.lower() for word in words):
+                    text = _snippet(line, words, width=200)
+                    break
+            hits.append({
+                "when": when,
+                "source": f"docs/{label}",
+                "session": path.stem,
+                "role": "",
+                "text": text or _snippet(body[:4000], words, width=200),
+            })
+    return hits
+
+
 def show_anchor(anchor: str) -> int:
     raw = anchor[len("session://"):] if anchor.startswith("session://") else anchor
     match = re.match(r"^(?P<harness>[\w-]+)/(?P<session>[^#]+)(?:#turn-(?P<turn>\d+))?$", raw)
@@ -2208,7 +2280,10 @@ def main(argv: list[str]) -> int:
     recall.add_argument("query")
     recall.add_argument("--days", type=int, default=30)
     recall.add_argument("--limit", type=int, default=6)
-    recall.add_argument("--source", default="all", choices=["all", "archive", "pi", "opencode", "hermes"])
+    recall.add_argument("--source", default="all",
+                        choices=["all", "archive", "docs", "pi", "opencode", "hermes"])
+    recall.add_argument("--include-archive", action="store_true",
+                        help="also search docs/archive (abandoned approaches)")
     recall.set_defaults(fn=cmd_recall)
 
     ing = sub.add_parser("ingest", help="copy a harness's sessions into the archive")

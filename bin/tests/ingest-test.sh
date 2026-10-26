@@ -395,6 +395,21 @@ else
     bad "cluster listing missing session counts"
 fi
 
+echo "== recall: curated docs are a separate, labelled root =="
+mkdir -p "$T/docs"
+printf -- '---\ntitle: pipefail\n---\n\nAlways set `set -o pipefail` before piping a state-changing command.\n' \
+    > "$T/docs/2026-10-19-pipe-masks-exit-code.md"
+out="$(MEM_DOCS="$T/docs" MEMORY_DIR="$T/mem" MEMORY_RAW="$T/raw" "$MEM" recall pipefail --source docs --days 3650 2>&1)"
+case "$out" in
+    *docs/docs*pipe-masks*) ok "docs recall finds a curated entry and labels it" ;;
+    *) bad "docs recall missed the entry: $(printf '%s' "$out" | head -2)" ;;
+esac
+out="$(MEM_DOCS="$T/docs" MEMORY_DIR="$T/mem" MEMORY_RAW="$T/raw" "$MEM" recall nonexistentterm --source docs --days 3650 2>&1)"
+case "$out" in
+    *"nothing in the last"*) ok "docs recall reports a miss" ;;
+    *) bad "docs recall invented a hit" ;;
+esac
+
 echo
 printf 'summarized: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

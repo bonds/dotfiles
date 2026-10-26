@@ -1,0 +1,4 @@
+# Session deliverables, not tracked config.
+# They are outputs: the session that produced each one is in the archive.
+*
+!.gitignore
