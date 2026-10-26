@@ -410,6 +410,21 @@ case "$out" in
     *) bad "docs recall invented a hit" ;;
 esac
 
+echo "== anchors: fabricated citations are dropped, real ones kept =="
+out=$(python3 -c '
+import importlib.machinery, importlib.util, pathlib
+loader = importlib.machinery.SourceFileLoader("m", str(pathlib.Path.home() / "bin/mem"))
+spec = importlib.util.spec_from_loader("m", loader)
+m = importlib.util.module_from_spec(spec); loader.exec_module(m)
+body, repaired = m.repair_anchors("[turn-0] real [turn-9] invented [turn-1] real", {0, 1})
+print(f"{repaired}|{body}")
+')
+check "counts the fabricated anchor" "1|" "${out%%|*}|"
+case "$out" in
+    *"[turn-0] real  invented [turn-1] real"*) ok "keeps valid anchors, drops the rest" ;;
+    *) bad "anchor repair wrong: $out" ;;
+esac
+
 echo
 printf 'summarized: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
