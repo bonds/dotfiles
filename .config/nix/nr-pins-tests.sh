@@ -1057,5 +1057,5 @@ grep -q 'could not report its state' "$T/v9.out" && ok "reports the failed rever
 grep -q 'version = "2.1.4"' "$T/modules/overlays/zen-browser/default.nix" \
     && ok "left the working tree untouched" || bad "reverted without git"
 
-printf '\n== summarised: %d passed, %d failed ==\n' "$pass" "$fail"
+printf '\n== summarized: %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

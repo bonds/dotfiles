@@ -245,5 +245,5 @@ for (const c of CORRECTIONS) {
 	else bad(`${c.want ? "captures" : "ignores"} ${JSON.stringify(c.text.slice(0, 46))}`, `captured=${captured}`);
 }
 
-console.log(`\n== summarised: ${pass} passed, ${fail} failed ==\n`);
+console.log(`\n== summarized: ${pass} passed, ${fail} failed ==\n`);
 process.exit(fail === 0 ? 0 : 1);

@@ -384,5 +384,5 @@ else
 fi
 
 echo
-printf 'summarised: %d passed, %d failed\n' "$pass" "$fail"
+printf 'summarized: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

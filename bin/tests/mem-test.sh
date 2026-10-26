@@ -164,5 +164,5 @@ done
 [ "$(grep -c 'parallel line' "$T/mem/inbox.md")" -eq 12 ] && ok "each of the 12 texts appears exactly once" \
     || bad "duplicate or missing texts"
 
-printf '\n== summarised: %d passed, %d failed ==\n' "$pass" "$fail"
+printf '\n== summarized: %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

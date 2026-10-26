@@ -1735,7 +1735,7 @@ def show_anchor(anchor: str) -> int:
 # Design notes from the phase-4 spike (8 substantial sessions, 10 trivial ones):
 #   - anchors work: every [turn-N] the model emitted resolved, across 8 sessions
 #   - shortening the transcript is lossy, not free: a 4,121-turn session
-#     summarised its first portion and never saw the rest, so long sessions are
+#     summarized its first portion and never saw the rest, so long sessions are
 #     chunked and then consolidated
 #   - the model *does* decline: 4 of 10 trivial sessions came back
 #     `NO DURABLE LESSONS`, so "no lesson inflation" is enforceable
@@ -1751,7 +1751,7 @@ TRANSCRIPT_CHARS = 110_000
 MESSAGE_CHARS = 1_400
 DECLINE = "NO DURABLE LESSONS"
 
-SUMMARY_PROMPT = """You summarise one recorded agent session so a future session can learn \
+SUMMARY_PROMPT = """You summarize one recorded agent session so a future session can learn \
 from it without rereading it.
 
 Return markdown with these sections, omitting any with nothing to say:
@@ -1957,9 +1957,9 @@ def cmd_summarize(args) -> int:
             f"{body}\n"))
         done += 1
         print(f"  {harness:9} {session[:28]:28} turns={manifest.get('turns', 0):5} "
-              f"{'declined' if is_decline else 'summarised':10} ${cost:.4f}")
+              f"{'declined' if is_decline else 'summarized':10} ${cost:.4f}")
 
-    verb = "would summarise" if args.dry_run else "summarised"
+    verb = "would summarize" if args.dry_run else "summarized"
     print(f"mem: {verb} {done} session(s), {skipped} up to date, {declined} declined, "
           f"spent ${spent:.4f}")
     return 0
@@ -2008,7 +2008,7 @@ def main(argv: list[str]) -> int:
     ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
     ing.set_defaults(fn=cmd_ingest)
 
-    summ = sub.add_parser("summarize", help="summarise archived sessions (network)")
+    summ = sub.add_parser("summarize", help="summarize archived sessions (network)")
     summ.add_argument("--harness", choices=["pi", "opencode", "hermes", "osaurus"])
     summ.add_argument("--limit", type=int, default=50)
     summ.add_argument("--budget", type=float, default=1.0)

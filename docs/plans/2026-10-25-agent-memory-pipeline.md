@@ -13,7 +13,7 @@ found a bug worth keeping the lesson from: `new URL(path, origin)` treats a
 leading `//` as protocol-relative and would have forwarded the caller's bearer
 token to an attacker-chosen host
 (`docs/learnings/2026-10-25-url-relative-path-becomes-host.md`).
-Scope: capture → summarise → derive → distribute → maintain, across pi,
+Scope: capture → summarize → derive → distribute → maintain, across pi,
 opencode, hermes and osaurus.
 
 ---
@@ -47,7 +47,7 @@ everything above it with explicit provenance links.
 | D10 | **Per-repo `docs/learnings/` are mirrored into the memory dir** as a *derived, gitignored* copy, with a tracked index carrying source path + commit sha. The repo copy stays authoritative. | A tracked second copy — two writable sources of truth that drift silently. |
 | D11 | **Osaurus is a backfill source, not a proxy client.** It already records wire bodies in `~/.osaurus/activity/activity.sqlite` behind a hash chain; the proxy covers pi, opencode and hermes only. | Pointing osaurus at the proxy as well — it would duplicate a *richer* log (tool calls, compaction) and give up the hash chain for nothing. |
 | D12 | **Subagent runs get their own session records**, linked to the parent; cost is recorded per session and rolled up on read. | Folding them into the parent — loses turn boundaries and makes anchors ambiguous. |
-| D13 | **Summarisation runs on DeepSeek V4.1 Flash at low effort**; escalate to medium only for claims that will become principles. | High effort everywhere — the saving is negligible either way, so the tiering is about verification, not cost. |
+| D13 | **Summarization runs on DeepSeek V4.1 Flash at low effort**; escalate to medium only for claims that will become principles. | High effort everywhere — the saving is negligible either way, so the tiering is about verification, not cost. |
 | D14 | **The proxy is packaged as a nix module + launchd agent**, but is developed and tested outside nix until phase 1 passes. | Nix from day one — every test iteration becomes a rebuild hand-off. |
 | D15 | **Osaurus uses Working Folder mode pointed at the curated root**, sandbox off for that one agent; sandboxed agents cannot see the store. | A link farm into `/workspace` — symlinks do not cross the VM boundary (verified, §3.1); and putting the store inside `~/.osaurus/container/workspace/` would make the container dir the system of record. |
 | D16 | **Two search roots, no indexes**: curated markdown, and the transcript archive searched with `rg` plus an in-memory digest map. | FTS or vector indexes — measured at 1.35 s for a full archive sweep, so an index would save ~1.3 s per query and add a rebuild step and a staleness class. Revisit at the same 2 GB trigger as packing, where the scan reaches ~15 s. |
@@ -438,7 +438,7 @@ with `~/.local/share` and `~/.config` as fallbacks.
 | **2** | **Parked** until the 2 GB / 100k-message trigger. Then: pack one file per session, *then* compress — per-file zstd saves nothing at 2.4 KB average. | `test_pack_roundtrip`; `test_stream_decompress_matches` |
 | **3** | ✅ `mem recall` over the archive and `mem show <anchor>`. **No index** — see §8: rg plus an in-memory digest map is 1.35 s over 51k files. | `test_recall_returns_cited_turn` |
 | **3.5** | ✅ Entity edges per session: file paths, commands, error signatures from tool calls (13.8k / 20.2k / 65). Derived in `write_session` so every importer contributes. | `test_edge_extracted_from_tool_call` |
-| **4** | Summariser: goals / tried / worked / failed / gotchas / dead ends, with turn anchors. Triage first (edges make it free), and chunk long sessions — turns per session run to a median of 5 for osaurus and a max of 4,121 for opencode, so one context per session does not exist. | `test_no_durable_lessons_outcome`; `test_every_claim_has_anchor`; `test_budget_cap_stops_run`; `test_idempotent_summarize`; `test_long_session_chunked` |
+| **4** | Summarizer: goals / tried / worked / failed / gotchas / dead ends, with turn anchors. Triage first (edges make it free), and chunk long sessions — turns per session run to a median of 5 for osaurus and a max of 4,121 for opencode, so one context per session does not exist. | `test_no_durable_lessons_outcome`; `test_every_claim_has_anchor`; `test_budget_cap_stops_run`; `test_idempotent_summarize`; `test_long_session_chunked` |
 | **5** | Principle proposals as a diff; `mem doctor`; decay and contradiction passes | `test_principle_requires_anchor`; `test_conflict_detected_by_scope`; `test_doctor_reports_token_cost`; `test_proposal_is_a_diff_not_a_write` |
 | **6** | Behavioural evals per principle (A/B with/without, N≈5–10) | `test_eval_harness_records_arm_and_outcome` |
 
@@ -478,7 +478,7 @@ Phase 1 — before ingest is called done:
 3. **No secret is written, ever**, including in a test fixture.
 4. **Every generated artifact is marked** `generated: true` + source hash, so it
    can be regenerated or reverted wholesale.
-5. **The summariser must be able to say "no durable lessons."** Lesson
+5. **The summarizer must be able to say "no durable lessons."** Lesson
    inflation is a failure mode, not a success metric.
 6. **Budgets are explicit**: max tokens per always-loaded surface (target ≤4k),
    max spend per nightly run.
