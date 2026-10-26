@@ -75,6 +75,11 @@ in {
         per-machine setup (accismus, sophrosyne, metanoia), the firesafe backup
         and photos pipeline, the GitHub token split, the osaurus build lane,
         and the code-review workflow.
+
+        Hermes does not read AGENTS.md: the rules for this machine live in
+        ~/AGENTS.md — read it before changing anything. Memory is `mem` (see the
+        memory skill): `mem recall "<words>"` before re-deriving an answer, and
+        `mem inbox add` to capture a lesson.
       '';
 
       # pi only READS models.json (its writable, auto-refreshed catalog is

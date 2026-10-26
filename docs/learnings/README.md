@@ -45,3 +45,6 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-10-25 — `new URL(path, origin)` turns a leading `//` into a different host](2026-10-25-url-relative-path-becomes-host.md)
 - [2026-10-25 — Osaurus `shell_run` dies when `/workspace` cannot be snapshotted](2026-10-25-osaurus-shell-run-needs-a-small-workspace.md)
 - [2026-10-25 — opencode plan mode rejects writes to its own plan directory](2026-10-25-opencode-plan-dir-guard.md)
+- [2026-10-26 — Osaurus launches a stdio MCP provider as one executable, with no arguments](2026-10-26-osaurus-mcp-stdio-single-executable.md)
+- [2026-10-26 — Osaurus spawns MCP servers with `cwd=/` and a minimal environment](2026-10-26-osaurus-mcp-spawn-environment.md)
+- [2026-10-26 — Osaurus keeps its own memory, and it is not where ours belongs](2026-10-26-osaurus-has-its-own-memory.md)
