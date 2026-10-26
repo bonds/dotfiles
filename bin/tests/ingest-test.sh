@@ -360,6 +360,29 @@ check "truncated stream flagged on the turn" "1" "$(grep -c '"truncated":true' "
 out="$(run_os 2>&1)"
 check "osaurus re-ingest is idempotent" "0" "$(printf '%s' "$out" | sed -n 's/.*ingested \([0-9]*\) osaurus session(s).*/\1/p')"
 
+echo "== summaries: windowing and idempotence (no network) =="
+out="$(MEMORY_DIR="$T/mem" MEMORY_RAW="$T/raw" "$MEM" summarize --dry-run --limit 20 2>&1)"
+listed="$(printf '%s' "$out" | grep -c '^  [a-z]' | tr -d ' ')"
+if [ "$listed" -ge 4 ]; then ok "dry run lists every fixture session ($listed)"; else bad "dry run listed $listed sessions"; fi
+if [ -e "$T/mem/summaries" ]; then
+    bad "dry run wrote a summaries directory"
+else
+    ok "dry run wrote nothing"
+fi
+
+# A stored summary whose source_digest matches must be skipped, with no API call.
+od2="$(ls -d "$T"/raw/sessions/opencode/*/*/ses_test)"
+digest="$(shasum -a 256 "$od2/turns.jsonl" | cut -d' ' -f1)"
+mkdir -p "$T/mem/summaries/opencode"
+printf -- '---\nharness: opencode\nsession: ses_test\nsource_digest: %s\n---\n\nNO DURABLE LESSONS\n' "$digest" \
+    > "$T/mem/summaries/opencode/ses_test.md"
+out="$(MEMORY_DIR="$T/mem" MEMORY_RAW="$T/raw" "$MEM" summarize --dry-run --limit 20 2>&1)"
+if printf '%s' "$out" | grep -q 'ses_test'; then
+    bad "a matching source_digest was not skipped"
+else
+    ok "matching source_digest skips the session"
+fi
+
 echo
 printf 'summarised: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

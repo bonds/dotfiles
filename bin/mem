@@ -1728,6 +1728,243 @@ def show_anchor(anchor: str) -> int:
     return 0
 
 
+# ------------------------------------------------------------- summarize --
+#
+# The only command in `mem` that touches the network. Everything else is files.
+#
+# Design notes from the phase-4 spike (8 substantial sessions, 10 trivial ones):
+#   - anchors work: every [turn-N] the model emitted resolved, across 8 sessions
+#   - shortening the transcript is lossy, not free: a 4,121-turn session
+#     summarised its first portion and never saw the rest, so long sessions are
+#     chunked and then consolidated
+#   - the model *does* decline: 4 of 10 trivial sessions came back
+#     `NO DURABLE LESSONS`, so "no lesson inflation" is enforceable
+#   - turn count is a weak triage signal, since 6 of those 10 short sessions held
+#     something real. Send sessions; let the model decline.
+#   - 900 output tokens truncated most summaries; 1500 is the floor.
+
+SUMMARIES = MEMORY_DIR / "summaries"
+KEY_FILE = pathlib.Path(os.environ.get("MEM_DEEPINFRA_KEY_FILE", "/run/agenix/hermes-deepinfra"))
+SUMMARY_MODEL = os.environ.get("MEM_SUMMARY_MODEL", "deepseek-ai/DeepSeek-V4.1-Flash-1017")
+SUMMARY_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
+TRANSCRIPT_CHARS = 110_000
+MESSAGE_CHARS = 1_400
+DECLINE = "NO DURABLE LESSONS"
+
+SUMMARY_PROMPT = """You summarise one recorded agent session so a future session can learn \
+from it without rereading it.
+
+Return markdown with these sections, omitting any with nothing to say:
+## Goal
+## What was tried
+## What worked
+## What failed
+## Gotchas
+## Dead ends
+
+Rules:
+- End every factual claim with an anchor like [turn-12] referring to the numbered turns.
+- Quote exact error text where it matters.
+- If the session holds nothing durable — no reusable fact, no surprise, no lesson
+  worth a future session's context — reply with exactly `NO DURABLE LESSONS` and
+  nothing else. Routine work that went as expected is not durable.
+- Bullet points, no preamble."""
+
+CONSOLIDATE_PROMPT = """Below are summaries of consecutive windows of one long agent \
+session. Merge them into a single summary in the same format, keeping every
+anchor exactly as written and dropping repetition.
+
+Rules:
+- Keep the same sections: ## Goal / ## What was tried / ## What worked /
+  ## What failed / ## Gotchas / ## Dead ends.
+- Keep [turn-N] anchors; do not invent new ones.
+- If the windows together hold nothing durable, reply with exactly
+  `NO DURABLE LESSONS`."""
+
+
+def deepinfra_key() -> str:
+    try:
+        for line in KEY_FILE.read_text().splitlines():
+            if line.startswith("DEEPINFRA_API_KEY="):
+                return line.split("=", 1)[1].strip()
+    except OSError as exc:
+        die(f"cannot read {KEY_FILE}: {exc}", 1)
+    die(f"no DEEPINFRA_API_KEY in {KEY_FILE}", 1)
+
+
+def chat(key: str, system: str, user: str, max_tokens: int = 1500) -> tuple:
+    import urllib.request
+
+    payload = {
+        "model": SUMMARY_MODEL,
+        "max_tokens": max_tokens,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": user}],
+    }
+    req = urllib.request.Request(
+        SUMMARY_URL, data=json.dumps(payload).encode(),
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            data = json.loads(resp.read())
+    except Exception as exc:  # noqa: BLE001 - surfaced to the user, never retried
+        die(f"summary request failed: {exc}", 1)
+    usage = data.get("usage") or {}
+    tin = int(usage.get("prompt_tokens") or 0)
+    tout = int(usage.get("completion_tokens") or 0)
+    text = (data.get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
+    return text.strip(), tin, tout
+
+
+def summary_cost(tin: int, tout: int) -> float:
+    # DeepSeek Flash list price: $0.20/M in, $0.60/M out.
+    return tin / 1e6 * 0.20 + tout / 1e6 * 0.60
+
+
+def summary_path(harness: str, session: str) -> pathlib.Path:
+    return SUMMARIES / harness / f"{session}.md"
+
+
+def stored_digest(path: pathlib.Path) -> str:
+    if not path.exists():
+        return ""
+    for line in path.read_text().splitlines()[:12]:
+        if line.startswith("source_digest:"):
+            return line.split(":", 1)[1].strip()
+        if line.startswith("---") and line != "---":
+            continue
+    return ""
+
+
+def turn_text(digest: str) -> str:
+    path = message_path(digest) if digest else None
+    if not path or not path.exists():
+        return ""
+    try:
+        doc = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return ""
+    out = []
+    for part in doc.get("content") or []:
+        kind = part.get("type")
+        if kind in ("text", "reasoning"):
+            out.append(part.get("text") or "")
+        elif kind == "tool_call":
+            args = part.get("arguments") or part.get("input")
+            out.append(f"{part.get('name')}({args if isinstance(args, str) else canonical(args)})")
+    return "\n".join(o for o in out if o)[:MESSAGE_CHARS]
+
+
+def transcript_windows(folder: pathlib.Path) -> list:
+    """Split a session into windows that fit, preserving global turn numbers."""
+    lines = []
+    for line in (folder / "turns.jsonl").read_text().splitlines():
+        if not line.strip():
+            continue
+        turn = json.loads(line)
+        lines.append(f"[turn-{turn['i']}] {turn['role']}: {turn_text(turn['msg'])}")
+
+    windows, current, size = [], [], 0
+    for line in lines:
+        if size + len(line) > TRANSCRIPT_CHARS and current:
+            windows.append("\n\n".join(current))
+            current, size = [], 0
+        current.append(line)
+        size += len(line)
+    if current:
+        windows.append("\n\n".join(current))
+    return windows
+
+
+def cmd_summarize(args) -> int:
+    key = deepinfra_key() if not args.dry_run else ""
+    budget = args.budget
+    spent = 0.0
+    done = skipped = declined = 0
+    sessions = sorted(RAW_DIR.glob("sessions/*/*/*/*/session.json"))
+
+    for manifest_file in sessions:
+        manifest = json.loads(manifest_file.read_text())
+        harness = manifest.get("harness", "?")
+        session = manifest.get("id", manifest_file.parent.name)
+        if args.harness and harness != args.harness:
+            continue
+        if manifest.get("turns", 0) < 2:
+            skipped += 1
+            continue
+
+        folder = manifest_file.parent
+        digest = hashlib.sha256((folder / "turns.jsonl").read_bytes()).hexdigest()
+        target = summary_path(harness, session)
+        if not args.force and stored_digest(target) == digest:
+            skipped += 1
+            continue
+        if done >= args.limit:
+            break
+        if spent >= budget:
+            print(f"mem: budget ${budget:.2f} reached after {done} summar{'y' if done == 1 else 'ies'}")
+            break
+
+        windows = transcript_windows(folder)
+        if args.dry_run:
+            estimate = sum(len(w) for w in windows) // 4
+            print(f"  {harness:9} {session[:28]:28} turns={manifest.get('turns', 0):5} "
+                  f"windows={len(windows)} est_tokens={estimate:,}")
+            done += 1
+            continue
+
+        tin = tout = 0
+        if len(windows) == 1:
+            body, a, b = chat(key, SUMMARY_PROMPT, f"Session:\n\n{windows[0]}")
+            tin += a
+            tout += b
+        else:
+            partials = []
+            for number, window in enumerate(windows, 1):
+                part, a, b = chat(key, SUMMARY_PROMPT,
+                                  f"Part {number} of {len(windows)} of one session:\n\n{window}")
+                tin += a
+                tout += b
+                if part.upper().startswith(DECLINE):
+                    continue
+                partials.append(f"### Part {number}\n{part}")
+            if not partials:
+                body = DECLINE
+            else:
+                body, a, b = chat(key, CONSOLIDATE_PROMPT, "\n\n".join(partials))
+                tin += a
+                tout += b
+
+        cost = summary_cost(tin, tout)
+        spent += cost
+        is_decline = body.upper().startswith(DECLINE)
+        declined += 1 if is_decline else 0
+        target.parent.mkdir(parents=True, exist_ok=True)
+        write_atomic(target, (
+            "---\n"
+            f"harness: {harness}\n"
+            f"session: {session}\n"
+            f"turns: {manifest.get('turns', 0)}\n"
+            f"model: {SUMMARY_MODEL}\n"
+            f"source_digest: {digest}\n"
+            f"generated: true\n"
+            f"declined: {'true' if is_decline else 'false'}\n"
+            f"cost_usd: {cost:.6f}\n"
+            f"tokens_in: {tin}\n"
+            f"tokens_out: {tout}\n"
+            f"created: {dt.datetime.now().isoformat(timespec='seconds')}\n"
+            "---\n\n"
+            f"{body}\n"))
+        done += 1
+        print(f"  {harness:9} {session[:28]:28} turns={manifest.get('turns', 0):5} "
+              f"{'declined' if is_decline else 'summarised':10} ${cost:.4f}")
+
+    verb = "would summarise" if args.dry_run else "summarised"
+    print(f"mem: {verb} {done} session(s), {skipped} up to date, {declined} declined, "
+          f"spent ${spent:.4f}")
+    return 0
+
+
 # --------------------------------------------------------------------- main --
 
 
@@ -1770,6 +2007,14 @@ def main(argv: list[str]) -> int:
     ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode", "hermes", "osaurus"])
     ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
     ing.set_defaults(fn=cmd_ingest)
+
+    summ = sub.add_parser("summarize", help="summarise archived sessions (network)")
+    summ.add_argument("--harness", choices=["pi", "opencode", "hermes", "osaurus"])
+    summ.add_argument("--limit", type=int, default=50)
+    summ.add_argument("--budget", type=float, default=1.0)
+    summ.add_argument("--force", action="store_true", help="redo existing summaries")
+    summ.add_argument("--dry-run", action="store_true", help="list what would be done")
+    summ.set_defaults(fn=cmd_summarize)
 
     show = sub.add_parser("show", help="print a turn from the archive by anchor")
     show.add_argument("anchor", help="session://<harness>/<session-id>[#turn-N]")
