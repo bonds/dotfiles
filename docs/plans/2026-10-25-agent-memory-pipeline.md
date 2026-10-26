@@ -95,10 +95,15 @@ Nothing an agent needs is spread across XDG slots.
 the Agent Skills standard location — so this move does not eliminate `.agents`.
 Only the store relocates: XDG-correct, and a clean root for Osaurus.
 
-`memory/` and `raw/` are **two repos** under one parent, not one. `raw/` carries
-`*.zst binary -diff -merge` so the curated history stays readable, and the one
-thing you might ever need to rewrite (a leaked secret in a transcript) is
-isolated from decision history.
+`memory/` and `raw/` are **two repos** under one parent, not one, so the curated
+history stays readable and the one thing you might ever need to rewrite (a leaked
+secret in a transcript) is isolated from decision history.
+
+`raw/` currently marks `*.json` and `*.jsonl` as `text eol=lf`; phase 2 adds
+`*.zst binary -diff -merge`. It has a `sophrosyne` remote — a bare repo on the
+server, 33 MB packed against a 193 MB working tree, which is the per-file block
+overhead collapsing in git's object store. Every harness store lives on
+accismus, so ingest runs only there and that remote is purely a backup.
 
 Why the split: `memory/` grows at roughly **10 MB/year** (summaries ~4 MB,
 principles ~0.4 MB, curated index ~1–2 MB), so it stays snapshot-able
