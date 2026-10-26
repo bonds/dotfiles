@@ -12,7 +12,7 @@ This is deliberately *not* the same as:
   A plan is a proposal; a learning is a finding.
 - **`~/DECISIONS.md`** — the settled *why* behind a choice that is already in
   effect. A plan's decisions get lifted there once the plan is built.
-- **`~/.agents/memory/inbox.md`** — agent conduct rules awaiting promotion.
+- **`~/.local/share/agents/memory/inbox.md`** — agent conduct rules awaiting promotion.
 
 ## Conventions
 

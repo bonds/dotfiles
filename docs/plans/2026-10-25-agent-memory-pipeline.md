@@ -43,7 +43,7 @@ everything above it with explicit provenance links.
 | D8 | **Raw transcripts live in a separate, rewritable repo** under the same parent dir. | Committing them to the curated repo — binary blobs, unreadable history, and no way to rewrite a leaked secret without touching decision history. |
 | D9 | **Markdown is the source of truth for derived artifacts**; SQLite is a disposable, rebuildable index. | SQLite as the store — loses grep-ability and diffs. |
 | D10 | **Per-repo `docs/learnings/` are mirrored into the memory dir** as a *derived, gitignored* copy, with a tracked index carrying source path + commit sha. The repo copy stays authoritative. | A tracked second copy — two writable sources of truth that drift silently. |
-| D11 | **Osaurus is captured for remote providers only.** Local MLX inference is explicitly out of scope. | Intercepting the local model server — not in use, and it would add a second integration path for no benefit. |
+| D11 | **Osaurus is a backfill source, not a proxy client.** It already records wire bodies in `~/.osaurus/activity/activity.sqlite` behind a hash chain; the proxy covers pi, opencode and hermes only. | Pointing osaurus at the proxy as well — it would duplicate a *richer* log (tool calls, compaction) and give up the hash chain for nothing. |
 | D12 | **Subagent runs get their own session records**, linked to the parent; cost is recorded per session and rolled up on read. | Folding them into the parent — loses turn boundaries and makes anchors ambiguous. |
 | D13 | **Summarisation runs on DeepSeek V4.1 Flash at low effort**; escalate to medium only for claims that will become principles. | High effort everywhere — the saving is negligible either way, so the tiering is about verification, not cost. |
 | D14 | **The proxy is packaged as a nix module + launchd agent**, but is developed and tested outside nix until phase 1 passes. | Nix from day one — every test iteration becomes a rebuild hand-off. |
@@ -89,6 +89,10 @@ Nothing an agent needs is spread across XDG slots.
 
 ~/.config/agents/                  # proxy config, nix-managed, not agent-facing
 ```
+
+`~/.agents/skills/` deliberately stays where it is — pi reads it natively as
+the Agent Skills standard location — so this move does not eliminate `.agents`.
+Only the store relocates: XDG-correct, and a clean root for Osaurus.
 
 `memory/` and `raw/` are **two repos** under one parent, not one. `raw/` carries
 `*.zst binary -diff -merge` so the curated history stays readable, and the one
@@ -226,6 +230,17 @@ to the original. Accepted.
 live capture and backfill. Fall back to `sha256(system + messages + params)`
 when absent.
 
+Borrowed from Osaurus's own activity log (`InsightsService` / `activity.sqlite`),
+which reached this design independently and does two things we had missed:
+
+- **A redaction count on every record.** Osaurus calls it `redacted_count`, we
+  call it `redactions`; the point is the same, and it belongs on every record so
+  an incomplete body is visibly incomplete rather than silently clean.
+- **A `prev_hash` / `hash` chain in ingest order.** Cheap to compute, and it
+  makes a retroactive edit to the archive visible. Without it, auditable means
+  only that we wrote it down; with it, it means we can show it was not changed
+  afterwards.
+
 ### 4.3 Session manifest
 
 ```json
@@ -318,14 +333,13 @@ Rules:
 | pi | `~/.pi/agent/models.json` | `providers.deepinfra.baseUrl` |
 | opencode | `~/.config/opencode/opencode.jsonc` | `provider.<id>.options.baseURL` |
 | hermes | `~/.hermes/config.yaml` | `model.base_url` |
-| osaurus | `~/.osaurus/providers/remote.json` | `host` + `basePath` + `providerProtocol: http` |
 
 Plus a second, disabled-by-default provider entry `deepinfra-direct` pointing at
 the real upstream — the D7 switch.
 
-For osaurus this covers **remote providers only** (D11), and the entry is
-`providers/remote.json` with `providerProtocol: http`. It is independent of the
-Working Folder / sandbox split in §3.1.
+Osaurus is deliberately absent from this table: it captures itself (D11), so it
+is backfilled rather than proxied. Its Working Folder / sandbox split is
+independent of the proxy — see §3.1.
 
 ### 5.3 Failure semantics
 
@@ -438,9 +452,11 @@ them:
 3. **Proxy fail-open.** Stop the launchd agent mid-stream: the request dies, the
    harness recovers, and a retry through `deepinfra-direct` succeeds. Confirms
    the D7 switch is real rather than theoretical.
-4. **Osaurus wire snapshots.** Locate where provider request/response bodies are
-   stored, if they are. Decides whether open question #5 is a usable backfill
-   source or dead weight.
+4. ✅ **Osaurus wire snapshots** (2026-10-25). Already captured:
+   `~/.osaurus/activity/activity.sqlite`, a hash-chained `activity` table with
+   `payload` bodies (capped at 256 KiB by `InsightsService.maxBodySize`), token
+   counts, `session_id`/`turn_id`/`request_id`/`agent_name`, and
+   `redacted_count`. 5,138 inference rows in 22 days at ~451 KB each.
 
 ## 10. Hard rules
 
@@ -469,10 +485,10 @@ answered by §3.1. Remaining:
 3. **Port.** 8787 assumed — confirm nothing on accismus already binds it.
 4. **Mirror refresh trigger.** `mem learnings sync` runs on ingest; `mem doctor`
    reports any tracked index entry whose source sha has moved.
-5. **Osaurus wire snapshots.** The sandbox docs mention "remote-provider wire
-   snapshots" already being redacted and stored. If those are readable, they are
-   a free backfill source for osaurus and make the proxy non-critical for that
-   harness. Resolved by acceptance check 4 in §9.1.
+5. ~~Osaurus wire snapshots~~ — resolved by §9.1 check 4: they are in
+   `activity.sqlite`, so osaurus is backfilled rather than proxied (D11). Open
+   sub-question: `redacted_count > 0` on zero of 1.75 M rows, so confirm the
+   scrubber is actually wired before trusting that store as a safe source.
 6. **One memory agent or several.** A single folder-scoped agent is simplest;
    per-task agents would each need the same Working Folder.
 
