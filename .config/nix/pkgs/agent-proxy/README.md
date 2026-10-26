@@ -1,3 +1,10 @@
+> **Archived 2026-10-25.** This was phase 0 of the memory pipeline and it works,
+> but the design dropped it: pi, opencode, hermes and osaurus each already record
+> the system prompt, tool schemas, tokens and cost, so capture is now ingest
+> rather than interception. Nothing points at this, and nix does not build it.
+> Kept because the streaming and SSRF work is sound and wire truth may be wanted
+> later. See `~/docs/plans/2026-10-25-agent-memory-pipeline.md` §5.
+
 # agent-proxy
 
 A local, transparent HTTP proxy in front of the model provider. It exists so

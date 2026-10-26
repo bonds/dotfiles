@@ -32,6 +32,7 @@ This is deliberately *not* the same as:
 ## Index
 
 - [2026-10-25 — Agent memory pipeline](2026-10-25-agent-memory-pipeline.md) —
-  wire capture via a local proxy, summaries, principles with evidence anchors,
-  and the Osaurus Working Folder split. Phase 0 (the passthrough) is built;
-  phases 1–6 are proposed.
+  ingest from the native harness stores, summaries, principles with evidence
+  anchors, and the Osaurus Working Folder split. Phase 0 (a proxy) was built and
+  then superseded once the stores turned out to hold the same data; phases 1–6
+  are proposed.

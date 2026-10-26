@@ -1,16 +1,15 @@
 # Agent memory pipeline — design plan
 
-Status: **phase 0 code complete** (2026-10-25); phases 1–6 not started.
-§9.1 checks 1–2 verified on accismus; 3 (fail-open) still needs a
-launchd-packaged proxy; 4 (wire snapshots) outstanding.
+Status: **revised 2026-10-25** — capture is *ingest*, not interception (§5).
+Phase 0 (the proxy) was built, tested, then dropped, because every harness
+already records the same facts. Phases 1–6 not started.
 
-Phase 0 lives at `~/.config/nix/pkgs/agent-proxy/` — a transparent, SSE-safe
-passthrough with 9 tests against a local mock, plus an end-to-end check against
-Deep Infra (TTFB 0.47 s, total 1.86 s, so streaming is genuinely unbuffered).
-One blocking bug found in review and fixed: `new URL(path, origin)` treats a
-leading `//` as protocol-relative, which would have forwarded the caller's
-bearer token to an attacker-chosen host. See
-`docs/learnings/2026-10-25-url-relative-path-becomes-host.md`.
+Phase 0's code stays at `~/.config/nix/pkgs/agent-proxy/`, archived. It works —
+9 tests, verified end-to-end against Deep Infra at TTFB 0.47 s — and the review
+found a bug worth keeping the lesson from: `new URL(path, origin)` treats a
+leading `//` as protocol-relative and would have forwarded the caller's bearer
+token to an attacker-chosen host
+(`docs/learnings/2026-10-25-url-relative-path-becomes-host.md`).
 Scope: capture → summarise → derive → distribute → maintain, across pi,
 opencode, hermes and osaurus.
 
@@ -34,7 +33,7 @@ everything above it with explicit provenance links.
 | # | Decision | Rejected alternatives |
 |---|---|---|
 | D1 | **The memory dir is the system of record.** Harness stores (pi JSONL, opencode/hermes/osaurus SQLite) are backfill sources and caches. | Treating harness stores as primary and indexing them in place — they are pruned, schema-churned, and lost when a harness is replaced. |
-| D2 | **Capture at the wire via a local proxy**, one implementation for all four harnesses. | Per-harness hooks only — osaurus has no hooks, hermes' hook is untracked and machine-local, and hooks record intent rather than what the model actually saw. |
+| D2 | **Capture by ingesting the native harness stores**, not by intercepting traffic. All four already record the system prompt, tool schemas, tokens and cost (§5). | A local proxy — it bought a uniform schema and per-request wire bodies, at the cost of a supervised service in front of every model call, for information the stores already held. |
 | D3 | **Store each message once, content-addressed**, with a per-request manifest. | Storing full request bodies per turn — quadratic; 10–50× the bytes for long sessions. |
 | D4 | **Everything is recorded forever, hot, no tiers.** | Cold archive (`xz`) — saves ~60 MB/year for 5–10× the CPU and a new failure mode. |
 | D5 | **Tool outputs capped at capture** (~16 KB inline; head+tail+sha256 beyond), pointer to the harness store retained. | Recording them in full — 80–90% of bytes, almost none of the causal-chain value. |
@@ -49,6 +48,7 @@ everything above it with explicit provenance links.
 | D14 | **The proxy is packaged as a nix module + launchd agent**, but is developed and tested outside nix until phase 1 passes. | Nix from day one — every test iteration becomes a rebuild hand-off. |
 | D15 | **Osaurus uses Working Folder mode pointed at the curated root**, sandbox off for that one agent; sandboxed agents cannot see the store. | A link farm into `/workspace` — symlinks do not cross the VM boundary (verified, §3.1); and putting the store inside `~/.osaurus/container/workspace/` would make the container dir the system of record. |
 | D16 | **Two indexes**: a small curated index inside the agent root, a large transcript index beside `raw/`. | One index over everything — it would reach hundreds of MB/year and force the snapshot root to grow with the raw archive. |
+| D17 | **Ingest incrementally, against a per-store watermark, before compaction can rewrite history.** | One-off exports — hermes rewrites messages in place (`compacted`, `_compressed_summary`), so any delayed export silently loses the pre-compaction text. |
 
 ### Known conflict, resolved by D10
 
@@ -308,61 +308,46 @@ Rules:
 - `verify_after_days` is re-checked by the maintenance pass, and by
   `nr --update` for principles whose `applies_when` touches nix.
 
-## 5. Proxy
+## 5. Why there is no proxy
 
-### 5.1 Shape
+The first draft captured traffic with a local HTTP proxy in front of the
+provider. Phase 0 built it and it worked. It was then dropped, because every
+harness was already recording the same facts — and in places, more.
 
-- `127.0.0.1:8787`, plaintext HTTP in, TLS upstream.
-- Route: `/v1/openai/*` → `https://api.deepinfra.com/v1/openai/*`.
-- No TLS interception, no custom CA: each harness gets an explicit base URL.
-- Managed by launchd (`KeepAlive`, `RunAtLoad`) on accismus; a second instance
-  on sophrosyne later. The *store* syncs; the proxy does not.
-- **Credential-free.** The proxy forwards the client's `Authorization` header
-  and holds no key of its own, so no secret enters the nix store.
-- Packaged as a nix module + `launchd.agents` entry (D14), but developed and
-  tested outside nix until phase 1 passes, so the test loop is not gated on `nr`.
-- Known gotcha: a `nr` switch restarts launchd agents, so a rebuild during a
-  long streaming request kills it mid-stream. `KeepAlive` recovers in seconds;
-  the harness sees a dropped connection and retries. Acceptable, but do not
-  rebuild while a long autonomous run is in flight.
+| | system prompt | tool schemas | model / params | tokens | cost | reasoning | tool calls |
+|---|---|---|---|---|---|---|---|
+| **pi** | full `content` plus named `sections` | `toolsAdded`, with descriptions | model, provider, thinking level | in / out / cache read / cache write / reasoning | itemised per turn | ✅ | results with `isError`, `durationMs` |
+| **opencode** | `instruction_blob`, content-addressed, pinned per session by `instruction_state` | its own blob | agent, mode, model, provider | per session and per step | per step | reasoning parts | `tool` parts with call state |
+| **hermes** | `system_prompts` hash → 46 KB prompt, plus `session.system_prompt_hash` | `tool_names` | model, `model_config` | incl. cache and reasoning | estimated **and** actual, with source and pricing version | `reasoning_content` | `tool_calls`, `api_content` |
+| **osaurus** | `activity.sqlite` payloads | — | — | ✅ | billing ledger | — | `mcp_tool_call` |
 
-### 5.2 Harness config (one line each, all verified present)
+opencode reaching this design independently is the telling part: its
+`instruction_blob` is a hash → content store and `instruction_state` pins which
+blobs composed a given session. That is content addressing, arrived at for the
+same reason this plan argues for it.
 
-| Harness | File | Key |
-|---|---|---|
-| pi | `~/.pi/agent/models.json` | `providers.deepinfra.baseUrl` |
-| opencode | `~/.config/opencode/opencode.jsonc` | `provider.<id>.options.baseURL` |
-| hermes | `~/.hermes/config.yaml` | `model.base_url` |
+What a proxy bought that these do not:
 
-Plus a second, disabled-by-default provider entry `deepinfra-direct` pointing at
-the real upstream — the D7 switch.
+- **A uniform schema.** A mapping problem, which phase 1 has either way.
+- **Sampling parameters exactly as sent.** Partial in all four; none is a
+  reason to run a service.
+- **Provider-side truth** about retries and routing. Thinner than it sounds —
+  hermes already records actual *and* estimated cost with a `cost_source`.
+- **The exact per-request message array.** Reconstructible from the turn
+  sequence, and arguably better: you can rebuild the context at any turn
+  boundary, not only at the sampled ones.
 
-Osaurus is deliberately absent from this table: it captures itself (D11), so it
-is backfilled rather than proxied. Its Working Folder / sandbox split is
-independent of the proxy — see §3.1.
+Against that: a supervised service in front of every model call for three
+harnesses, a single point of failure, and a bug class phase 0 actually hit.
 
-### 5.3 Failure semantics
+So capture becomes **ingest**: read the stores, normalise, archive. The archive
+is still the system of record (D1), because the stores are not durable —
+opencode may prune, pi rotates, osaurus's `activity.sqlite` is already 5 GB, and
+hermes rewrites history in place. That is what D17 is for.
 
-| Failure | Behaviour |
-|---|---|
-| Disk write error | Request unaffected; error counted, logged once per minute |
-| Queue full | Drop oldest, increment `dropped`; request unaffected |
-| Upstream error | Pass through unchanged; capture the error body |
-| Proxy process dead | Harness fails; switch to `deepinfra-direct` (one line, documented) |
-| Redaction exception | Fail **closed** on the capture record (drop the record), never on the request |
-
-`GET /healthz` → `{ok, queue_depth, dropped, last_write, upstream}`.
-`mem proxy status` reads it and reports which provider entry is active.
-
-**No disk I/O in the request path.** Writes are queued and flushed asynchronously;
-the streaming tee only appends to an in-memory buffer.
-
-### 5.4 Streaming
-
-SSE must be forwarded chunk-by-chunk as it arrives. The capture buffer
-accumulates the same chunks and is finalised on stream close. Test asserts the
-client receives byte-identical chunks with no added latency beyond a fixed
-threshold.
+The proxy code stays in the tree, archived: the streaming and SSRF work is
+sound and wire truth may be wanted later. It is not shipped, and no harness
+points at it.
 
 ## 6. Redaction
 
@@ -420,43 +405,40 @@ with `~/.local/share` and `~/.config` as fallbacks.
 
 | Phase | Delivers | Failing test written first |
 |---|---|---|
-| **0** | ✅ Proxy passthrough, no capture; verify Osaurus modes (§9.1) | 9 tests green; p50 added latency measured well under 20 ms |
-| **1** | Capture, schema, redaction, content addressing | `test_linear_storage` (100-turn synthetic session < 1.2× sum of messages); redaction table; `test_capture_failure_does_not_break_response`; `test_queue_overflow_drops_and_counts`; `test_no_auth_header_written` |
-| **2** | Backfill + normalisation from pi JSONL, opencode/hermes/osaurus SQLite | `test_idempotent_reingest`; `test_watermark_resume`; per-harness import fixtures |
-| **3** | Compression, dictionary, rollover, FTS index, `mem recall` | `test_stream_decompress_matches`; `test_index_rebuild_from_raw`; `test_recall_returns_cited_turn` |
+| **0** | Proxy passthrough — built, tested, then superseded by §5. Archived, not shipped. | (retired) |
+| **1** | Ingest + normalise: pi JSONL, opencode SQLite, hermes SQLite, osaurus `activity.sqlite` → content-addressed messages and request manifests, per-store watermark, redaction on the write path, hash chain | `test_idempotent_reingest`; `test_watermark_resume`; `test_message_survives_compaction`; redaction table; `test_linear_storage` |
+| **2** | Compression, trained dictionary, hot/cold rollover | `test_stream_decompress_matches`; `test_dictionary_training_deterministic` |
+| **3** | FTS index (curated + transcripts), `mem recall` and `mem show` over the archive | `test_index_rebuild_from_raw`; `test_recall_returns_cited_turn` |
 | **4** | Summariser: goals / tried / worked / failed / gotchas / dead ends | `test_no_durable_lessons_outcome`; `test_every_claim_has_anchor`; `test_budget_cap_stops_run`; `test_idempotent_summarize` |
-| **5** | Principle proposals as a diff; `mem doctor`; decay + contradiction passes | `test_principle_requires_anchor`; `test_conflict_detected_by_scope`; `test_doctor_reports_token_cost`; `test_proposal_is_a_diff_not_a_write` |
+| **5** | Principle proposals as a diff; `mem doctor`; decay and contradiction passes | `test_principle_requires_anchor`; `test_conflict_detected_by_scope`; `test_doctor_reports_token_cost`; `test_proposal_is_a_diff_not_a_write` |
 | **6** | Behavioural evals per principle (A/B with/without, N≈5–10) | `test_eval_harness_records_arm_and_outcome` |
 
-Each phase is independently useful and revertable. Phases 0–1 are the risky
-infrastructure; 2–6 are additive. Phases 0–1 are built and tested outside nix
-(D14); packaging lands once phase 1 is green.
+Each phase is independently useful and revertable. Phase 1 is the risky one;
+2–6 are additive on top of a working archive. Phases 1–2 are built and tested
+outside nix (D14); packaging lands once ingest is green.
 
-### 9.1 Phase 0 acceptance checks
+### 9.1 Acceptance checks
 
-Automated:
+Phase 0 — done:
 
-- Response through the proxy is byte-identical to direct, streaming included.
-- p50 added latency < 20 ms across 50 requests.
-- Proxy killed mid-stream: the client sees a closed connection, not a hang.
+1. ✅ **Working Folder writes through** (2026-10-25). `hello.txt` created on the
+   host, owned `scott:staff`; nothing written under the container workspace.
+2. ✅ **Sandbox isolation** (2026-10-25). Host path rejected as invisible; a
+   sandbox write landed in `~/.osaurus/container/workspace/agents/<id>/`.
+3. ~~Proxy fail-open~~ — moot, there is no proxy (§5).
+4. ✅ **Osaurus wire snapshots located** (2026-10-25) — `activity.sqlite`.
 
-Manual, one-off — must pass before phase 1 starts, because phases 1–6 assume
-them:
+Phase 1 — before ingest is called done:
 
-1. ✅ **Osaurus Working Folder writes through** (2026-10-25). `hello.txt`
-   created on the host at `~/tmp/scratch`, owned `scott:staff`; nothing written
-   under `~/.osaurus/container/workspace/`.
-2. ✅ **Osaurus sandbox isolation** (2026-10-25). Host path rejected as
-   invisible; a sandbox write landed in
-   `~/.osaurus/container/workspace/agents/<id>/` instead of the working folder.
-3. **Proxy fail-open.** Stop the launchd agent mid-stream: the request dies, the
-   harness recovers, and a retry through `deepinfra-direct` succeeds. Confirms
-   the D7 switch is real rather than theoretical.
-4. ✅ **Osaurus wire snapshots** (2026-10-25). Already captured:
-   `~/.osaurus/activity/activity.sqlite`, a hash-chained `activity` table with
-   `payload` bodies (capped at 256 KiB by `InsightsService.maxBodySize`), token
-   counts, `session_id`/`turn_id`/`request_id`/`agent_name`, and
-   `redacted_count`. 5,138 inference rows in 22 days at ~451 KB each.
+5. **Reconstruction is sufficient.** Rebuild the message array for one real pi
+   turn from the session log and diff it against what followed in the next
+   request. Confirms the turn sequence replaces the wire body.
+6. **Compaction does not lose history.** Ingest a hermes session that has since
+   been compacted, and show the pre-compaction messages survived.
+7. **Idempotence.** Ingest the same stores twice: zero new rows, identical
+   hashes.
+8. **Redaction.** A fixture with a fake key in a tool result comes out as
+   `[REDACTED:…]`, with the count recorded on the record.
 
 ## 10. Hard rules
 
@@ -474,32 +456,36 @@ them:
 
 ## 11. Open questions
 
-The original five are resolved (D10–D14), and the Osaurus mount question is
-answered by §3.1. Remaining:
+Settled: the harness paths (D2), the two Osaurus modes (§3.1), the proxy (§5),
+and the store location (§3).
 
-1. **Budget cap.** A capped session is ~60k tokens in, ~4k out, so ~$0.015 per
-   summary at Flash pricing and ~$2–3/month at current volume. Set $2/night as
-   a circuit breaker, not a cost control.
-2. **Subagent summaries.** Skipped by default: their turns are indexed and
-   recallable, but the narrative belongs to the parent session.
-3. **Port.** 8787 assumed — confirm nothing on accismus already binds it.
-4. **Mirror refresh trigger.** `mem learnings sync` runs on ingest; `mem doctor`
-   reports any tracked index entry whose source sha has moved.
-5. ~~Osaurus wire snapshots~~ — resolved by §9.1 check 4: they are in
-   `activity.sqlite`, so osaurus is backfilled rather than proxied (D11). Open
-   sub-question: `redacted_count > 0` on zero of 1.75 M rows, so confirm the
-   scrubber is actually wired before trusting that store as a safe source.
-6. **One memory agent or several.** A single folder-scoped agent is simplest;
-   per-task agents would each need the same Working Folder.
+Remaining:
 
-## 12. Non-goals (phase 1)
+1. **Osaurus ingest scope.** `activity.sqlite` is 5 GB, 99.5% embeddings.
+   Ingest inference only (5,138 rows in 22 days, ~451 KB each) — the rest is
+   not conversation.
+2. **Hermes `api_content`.** It looks like the content actually sent to the
+   API rather than the stored message. If so, hermes alone gives near-wire
+   fidelity and check 5 is mostly answered for it.
+3. **Watermark per store.** pi has file mtime plus append-only lines; opencode
+   has monotonic ids; hermes has ids *and* a `compacted` flag; osaurus has
+   `seq`. Each needs its own resume rule, and all must be idempotent.
+4. **`redacted_count` is 0 on 1.75 M rows.** Confirm the scrubber is wired
+   before treating osaurus's store as a safe source.
+5. **Budget cap.** ~$0.015 per summary at Flash pricing, ~$2–3/month. Cap at
+   $2/night as a circuit breaker, not a cost control.
+6. **Subagent runs.** Own session records with `parent` set, own cost only,
+   subtree totals rolled up on read; summaries skipped by default.
 
-- Injection of principles at the wire (phase 2 at the earliest; needs cache-prefix
-  discipline given 0.006 vs 0.2 per M cache read/write).
-- Cold archive / tiering (D4).
-- OTEL spans as an alternative capture path.
-- Multi-user or multi-tenant anything.
-- Replacing harness stores — they stay, as backfill sources.
+## 12. Non-goals
+
+- **Wire-level capture** by proxy (§5). The code exists, archived; nothing
+  points at it.
+- **Injection at the wire.** That was a proxy dividend. Without a proxy it
+  would be a harness plugin or `AGENTS.md`, so it is out of scope entirely.
+- **Cold archive / tiering** (D4) — everything stays hot.
+- **Multi-user or multi-tenant anything.**
+- **Replacing harness stores.** They stay, as ingest sources.
 
 ## 13. Size expectations
 
