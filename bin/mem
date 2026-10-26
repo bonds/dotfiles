@@ -437,19 +437,40 @@ def cmd_recall(args) -> int:
     if not hits:
         print(f"mem: nothing in the last {args.days}d matching {' '.join(words)}")
         return 0
+    # One long session can otherwise answer every question with itself: the
+    # conversation you are in mentions everything you are asking about, and 556
+    # turns of it will fill any result limit. Cap how much one session may
+    # contribute, and rank by how many query words a hit actually contains
+    # before ranking by recency.
+    grouped: dict = {}
+    for hit in hits:
+        grouped.setdefault((hit["source"], hit["session"]), []).append(hit)
+    hits = []
+    for group in grouped.values():
+        group.sort(key=lambda h: (h.get("score", 0), h["when"]), reverse=True)
+        hits.extend(group[:2])
+
     # Curated first, transcripts second. Sorting the two together by date would
     # bury every learnings entry under this week's conversation it came out of,
     # which inverts the point: the distilled answer is the answer, the session is
     # its evidence.
     curated = sorted((h for h in hits if h["source"].startswith("docs/")),
-                     key=lambda h: h["when"], reverse=True)
+                     key=lambda h: (h.get("score", 0), h["when"]), reverse=True)
     evidence = sorted((h for h in hits if not h["source"].startswith("docs/")),
-                      key=lambda h: h["when"], reverse=True)
+                      key=lambda h: (h.get("score", 0), h["when"]), reverse=True)
+
+    ordered = curated + evidence
+    if args.json:
+        # Same order the display would use, so an eval tests the ranking a
+        # reader actually sees. Records instead of text: the display truncates
+        # ids and snippets, and assertions should not care.
+        print(json.dumps(ordered, indent=2))
+        return 0
 
     def show(group, cap):
         for h in group[:cap]:
             role = f" ({h['role']})" if h.get("role") else ""
-            print(f"{h['when'][:16]:16}  {h['source']:16}  {str(h['session'])[:22]:22}{role}")
+            print(f"{h['when'][:16]:16}  {h['source']:16}  {str(h['session'])[:38]:38}{role}")
             print(f"    {h['text']}")
 
     if curated:
@@ -457,7 +478,7 @@ def cmd_recall(args) -> int:
         show(curated, args.limit)
         if evidence:
             print("  -- transcripts --")
-    show(evidence, args.limit * (1 if curated else 2))
+    show(evidence, args.limit * 2)
     return 0
 
 
@@ -1690,7 +1711,7 @@ def recall_archive(words, days, limit) -> list:
         return []
     cutoff = (dt.datetime.now() - dt.timedelta(days=days)).isoformat()[:19]
     index = archive_index()
-    hits = []
+    by_session: dict = {}
     for digest in digests:
         for harness, session, ts, role in index.get(digest, []):
             if ts and ts[:19] < cutoff:
@@ -1698,16 +1719,23 @@ def recall_archive(words, days, limit) -> list:
             text = message_text(digest)
             if not text:
                 continue
-            hits.append({
+            lower = text.lower()
+            by_session.setdefault((harness, session), []).append({
                 "when": ts or "",
                 "source": f"archive/{harness}",
                 "session": session,
                 "role": role,
                 "text": _snippet(text, words, width=200),
                 "digest": digest,
+                "score": sum(1 for word in words if word.lower() in lower),
             })
-    hits.sort(key=lambda h: h["when"], reverse=True)
-    return hits[: limit * 4]
+    # Cap while collecting, not after: truncating first let one long session
+    # take every slot, because it is both the largest and the most recent.
+    hits = []
+    for group in by_session.values():
+        group.sort(key=lambda h: (h["score"], h["when"]), reverse=True)
+        hits.extend(group[:2])
+    return hits
 
 
 # MEM_DOCS points the curated search at a fixture, the same way MEMORY_RAW does.
@@ -1760,12 +1788,14 @@ def recall_docs(words, days, limit, include_archive=False) -> list:
                 if all(word.lower() in line.lower() for word in words):
                     text = _snippet(line, words, width=200)
                     break
+            lower = body.lower()
             hits.append({
                 "when": when,
                 "source": f"docs/{label}",
                 "session": path.stem,
                 "role": "",
                 "text": text or _snippet(body[:4000], words, width=200),
+                "score": sum(1 for word in words if word.lower() in lower),
             })
     return hits
 
@@ -2282,6 +2312,7 @@ def main(argv: list[str]) -> int:
     recall.add_argument("--limit", type=int, default=6)
     recall.add_argument("--source", default="all",
                         choices=["all", "archive", "docs", "pi", "opencode", "hermes"])
+    recall.add_argument("--json", action="store_true", help="emit records instead of text")
     recall.add_argument("--include-archive", action="store_true",
                         help="also search docs/archive (abandoned approaches)")
     recall.set_defaults(fn=cmd_recall)
