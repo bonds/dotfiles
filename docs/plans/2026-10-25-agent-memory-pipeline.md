@@ -1,10 +1,11 @@
 # Agent memory pipeline — design plan
 
-Status: **phase 1 complete 2026-10-25** — capture is *ingest*, not interception
-(§5). Phase 0 (the proxy) was built, tested, then dropped, because every harness
-already records the same facts. All four importers are live: pi, opencode,
-hermes, osaurus. 1,005 sessions and 50,372 turns archived, 0 chain errors,
-0 live secrets.
+Status: **phases 1 and 3 complete 2026-10-25** — capture is *ingest*, not
+interception (§5). Phase 0 (the proxy) was built, tested, then dropped, because
+every harness already records the same facts. All four importers are live, the
+archive answers queries, and every session carries entity edges. 1,045 sessions
+and ~52k turns archived, 0 chain errors, 0 live secrets. Phase 4 (summaries) is
+next; phase 2 is parked behind its size trigger.
 
 Phase 0's code stays at `~/.config/nix/pkgs/agent-proxy/`, archived. It works —
 9 tests, verified end-to-end against Deep Infra at TTFB 0.47 s — and the review
@@ -49,7 +50,7 @@ everything above it with explicit provenance links.
 | D13 | **Summarisation runs on DeepSeek V4.1 Flash at low effort**; escalate to medium only for claims that will become principles. | High effort everywhere — the saving is negligible either way, so the tiering is about verification, not cost. |
 | D14 | **The proxy is packaged as a nix module + launchd agent**, but is developed and tested outside nix until phase 1 passes. | Nix from day one — every test iteration becomes a rebuild hand-off. |
 | D15 | **Osaurus uses Working Folder mode pointed at the curated root**, sandbox off for that one agent; sandboxed agents cannot see the store. | A link farm into `/workspace` — symlinks do not cross the VM boundary (verified, §3.1); and putting the store inside `~/.osaurus/container/workspace/` would make the container dir the system of record. |
-| D16 | **Two indexes**: a small curated index inside the agent root, a large transcript index beside `raw/`. | One index over everything — it would reach hundreds of MB/year and force the snapshot root to grow with the raw archive. |
+| D16 | **Two search roots, no indexes**: curated markdown, and the transcript archive searched with `rg` plus an in-memory digest map. | FTS or vector indexes — measured at 1.35 s for a full archive sweep, so an index would save ~1.3 s per query and add a rebuild step and a staleness class. Revisit at the same 2 GB trigger as packing, where the scan reaches ~15 s. |
 | D17 | **Ingest incrementally, against a per-store watermark, before compaction can replace history.** | One-off exports — hermes compaction does not rewrite content, it sets `active=0, compacted=0` on the originals and *clones* the carried tail with fresh ids (`hermes_state_messages.py`), so a delayed export sees re-sequenced rows and duplicates with no way to tell which the model actually saw. |
 
 ### Known conflict, resolved by D10
@@ -333,6 +334,11 @@ opencode reaching this design independently is the telling part: its
 blobs composed a given session. That is content addressing, arrived at for the
 same reason this plan argues for it.
 
+One trap worth recording: opencode's V1 `session` table stopped being written on
+2026-09-30 while messages kept arriving in `session_message` under V2 ids. An
+importer that enumerates sessions from `session` silently archives a month-stale
+subset (479 of 518 here, missing every recent session). Read `session_v2`.
+
 What a proxy bought that these do not:
 
 - **A uniform schema.** A mapping problem, which phase 1 has either way.
@@ -430,8 +436,9 @@ with `~/.local/share` and `~/.config` as fallbacks.
 | **0** | Proxy passthrough — built, tested, then superseded by §5. Archived, not shipped. | (retired) |
 | **1** | ✅ Ingest + normalise → content-addressed messages and per-session turn logs, per-store watermark, redaction on the write path, hash chain. All four importers live: pi 19, opencode 479, hermes 111, osaurus 396 sessions. | `test_idempotent_reingest`; `test_watermark_resume`; `test_message_survives_compaction`; redaction table; `test_linear_storage` |
 | **2** | **Parked** until the 2 GB / 100k-message trigger. Then: pack one file per session, *then* compress — per-file zstd saves nothing at 2.4 KB average. | `test_pack_roundtrip`; `test_stream_decompress_matches` |
-| **3** | FTS index (curated + transcripts), `mem recall` and `mem show` over the archive | `test_index_rebuild_from_raw`; `test_recall_returns_cited_turn` |
-| **4** | Summariser: goals / tried / worked / failed / gotchas / dead ends | `test_no_durable_lessons_outcome`; `test_every_claim_has_anchor`; `test_budget_cap_stops_run`; `test_idempotent_summarize` |
+| **3** | ✅ `mem recall` over the archive and `mem show <anchor>`. **No index** — see §8: rg plus an in-memory digest map is 1.35 s over 51k files. | `test_recall_returns_cited_turn` |
+| **3.5** | ✅ Entity edges per session: file paths, commands, error signatures from tool calls (13.8k / 20.2k / 65). Derived in `write_session` so every importer contributes. | `test_edge_extracted_from_tool_call` |
+| **4** | Summariser: goals / tried / worked / failed / gotchas / dead ends, with turn anchors. Triage first (edges make it free), and chunk long sessions — turns per session run to a median of 5 for osaurus and a max of 4,121 for opencode, so one context per session does not exist. | `test_no_durable_lessons_outcome`; `test_every_claim_has_anchor`; `test_budget_cap_stops_run`; `test_idempotent_summarize`; `test_long_session_chunked` |
 | **5** | Principle proposals as a diff; `mem doctor`; decay and contradiction passes | `test_principle_requires_anchor`; `test_conflict_detected_by_scope`; `test_doctor_reports_token_cost`; `test_proposal_is_a_diff_not_a_write` |
 | **6** | Behavioural evals per principle (A/B with/without, N≈5–10) | `test_eval_harness_records_arm_and_outcome` |
 
