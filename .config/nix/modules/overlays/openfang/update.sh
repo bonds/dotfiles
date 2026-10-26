@@ -14,14 +14,16 @@ if [ -z "$version" ] || [ "$version" = "null" ]; then
 fi
 echo "Latest version: $version"
 
-# Map asset name -> published sha256 hex digest (if GitHub populated .digest).
-# Cross-check the download against it so a transient/mid-publish snapshot can
-# never corrupt the pin. Fall back to a warning when the release has no digest.
-declare -A PUBLISHED
-while read -r name hex; do
-  PUBLISHED["$name"]="$hex"
-done < <(echo "$release_json" \
-  | jq -r '.assets[] | select(.digest != null) | "\(.name) \(.digest | sub("^sha256:"; ""))"')
+# Look up GitHub's published sha256 digest for one asset (empty when absent).
+# GitHub publishes a per-asset digest as part of every release; we cross-check
+# our download against it so a bad or mid-publish snapshot can never corrupt the
+# pin with bytes that don't match the official release. A jq lookup keeps this
+# free of associative arrays, so it runs on macOS's bash 3.2.
+published_digest() {
+  echo "$release_json" \
+    | jq -r --arg name "$1" \
+        '.assets[] | select(.name == $name and .digest != null) | .digest | sub("^sha256:"; "")'
+}
 
 ASSET="OpenFang_aarch64.app.tar.gz"
 URL="https://github.com/RightNow-AI/openfang/releases/download/v${version}/${ASSET}"
@@ -32,7 +34,7 @@ trap 'rm -f "$tmp"' EXIT
 echo "Downloading $URL ..."
 curl -fsSL -o "$tmp" "$URL"
 
-expected="${PUBLISHED[$ASSET]:-}"
+expected=$(published_digest "$ASSET")
 if [ -n "$expected" ]; then
   hex=$(shasum -a 256 -b "$tmp" | awk '{print $1}')
   if [ "$hex" != "$expected" ]; then

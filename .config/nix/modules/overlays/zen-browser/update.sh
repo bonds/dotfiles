@@ -15,16 +15,16 @@ if [ -z "$version" ] || [ "$version" = "null" ]; then
 fi
 echo "Latest version: $version"
 
-# Map asset name -> published sha256 hex digest.
+# Look up GitHub's published sha256 digest for one asset (empty when absent).
 # GitHub publishes a per-asset digest as part of every release; we cross-check
-# our download against it so a transient/mid-publish snapshot (or a CDN mirror
-# that's briefly stale) can never corrupt the pin with bytes that don't match
-# the official release.
-declare -A PUBLISHED
-while read -r name hex; do
-  PUBLISHED["$name"]="$hex"
-done < <(echo "$release_json" \
-  | jq -r '.assets[] | select(.digest != null) | "\(.name) \(.digest | sub("^sha256:"; ""))"')
+# our download against it so a bad or mid-publish snapshot can never corrupt the
+# pin with bytes that don't match the official release. A jq lookup keeps this
+# free of associative arrays, so it runs on macOS's bash 3.2.
+published_digest() {
+  echo "$release_json" \
+    | jq -r --arg name "$1" \
+        '.assets[] | select(.name == $name and .digest != null) | .digest | sub("^sha256:"; "")'
+}
 
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
@@ -42,7 +42,8 @@ fetch_verified() {
 
   # Refuse to continue if the download's bytes don't match GitHub's published
   # digest. Under `set -e`, returning 1 aborts before any hash is written.
-  local expected="${PUBLISHED[$asset]:-}"
+  local expected
+  expected=$(published_digest "$asset")
   if [ -n "$expected" ]; then
     local hex
     hex=$(shasum -a 256 -b "$file" | awk '{print $1}')
