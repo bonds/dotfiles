@@ -2248,7 +2248,104 @@ def build_clusters(min_sessions: int = 2) -> list:
     return kept
 
 
+_STOPWORDS = {
+    "the", "and", "that", "with", "from", "this", "will", "when", "then", "than",
+    "into", "must", "should", "never", "always", "before", "after", "which",
+    "there", "their", "them", "they", "have", "been", "being", "does", "does",
+    "your", "yours", "only", "also", "just", "like", "make", "makes", "made",
+    "such", "some", "each", "over", "under", "more", "most", "very", "what",
+    "where", "while", "without", "within", "would", "could", "about", "because",
+}
+
+
+def curated_corpus() -> list:
+    """The documents a proposal should be checked against before review."""
+    roots = [HOME / "AGENTS.md", HOME / "DECISIONS.md"]
+    roots += sorted((HOME / ".config" / "nix" / "agent-skills").glob("*/SKILL.md"))
+    roots += sorted((HOME / "docs" / "learnings").glob("*.md"))
+    corpus = []
+    for path in roots:
+        if not path.exists() or path.name == "README.md":
+            continue
+        try:
+            corpus.append((str(path).replace(str(HOME), "~"), path.read_text().lower()))
+        except OSError:
+            continue
+    return corpus
+
+
+def key_terms(text: str, limit: int = 10) -> list:
+    words = re.findall(r"[a-z][a-z0-9_-]{3,}", text.lower())
+    seen, terms = set(), []
+    for word in sorted(words, key=len, reverse=True):
+        if word in _STOPWORDS or word in seen:
+            continue
+        seen.add(word)
+        terms.append(word)
+        if len(terms) >= limit:
+            break
+    return terms
+
+
+def documentation_hit(statement: str, corpus: list) -> tuple:
+    """Best matching curated doc and how many of the statement's key terms it holds."""
+    terms = key_terms(statement)
+    if not terms:
+        return (None, 0, 0)
+    best, best_hits = None, 0
+    for path, text in corpus:
+        hits = sum(1 for term in terms if term in text)
+        if hits > best_hits:
+            best, best_hits = path, hits
+    return (best, best_hits, len(terms))
+
+
+def audit_proposals(path: pathlib.Path) -> int:
+    blocks = re.split(r"(?m)^### ", path.read_text())[1:]
+    corpus = curated_corpus()
+    statements = []
+    print(f"{len(blocks)} proposal(s) checked against {len(corpus)} curated document(s)\n")
+    rows = []
+    for block in blocks:
+        ident = block.splitlines()[0].strip()
+        match = re.search(r"\*\*Statement\*\*:\s*(.+)", block)
+        statement = match.group(1).strip() if match else ""
+        statements.append((ident, statement))
+        where, hits, total = documentation_hit(statement, corpus)
+        share = hits / total if total else 0
+        verdict = "documented" if (hits >= 3 and share >= 0.5) else "new"
+        rows.append((verdict, ident, hits, total, where))
+    for verdict, ident, hits, total, where in sorted(rows):
+        mark = "DOC " if verdict == "documented" else "NEW "
+        print(f"  {mark} {ident[:52]:52} {hits}/{total} terms  {where or ''}")
+
+    # The same lesson proposed twice is also a duplicate, even when neither copy
+    # is documented yet.
+    print()
+    duplicate_pairs = 0
+    for i in range(len(statements)):
+        for j in range(i + 1, len(statements)):
+            a, b = set(key_terms(statements[i][1])), set(key_terms(statements[j][1]))
+            if not a or not b:
+                continue
+            shared = len(a & b) / min(len(a), len(b))
+            if shared >= 0.5:
+                duplicate_pairs += 1
+                print(f"  DUP {statements[i][0][:40]:40} ~ {statements[j][0][:40]:40} ({shared:.0%})")
+    new = sum(1 for r in rows if r[0] == "new")
+    print(f"\nmem: {new} new, {len(rows) - new} already documented, {duplicate_pairs} overlapping pair(s)")
+    return 0
+
+
 def cmd_principles(args) -> int:
+    if args.audit:
+        if args.audit == "latest":
+            found = sorted(PRINCIPLES.glob("proposed-*.md"))
+            if not found:
+                die("no proposal file to audit; run `mem principles` first", 1)
+            return audit_proposals(found[-1])
+        return audit_proposals(pathlib.Path(args.audit))
+
     clusters = build_clusters(args.min_sessions)
     if not clusters:
         print("mem: no clusters — run `mem summarize` first")
@@ -2356,6 +2453,7 @@ def main(argv: list[str]) -> int:
     prin.add_argument("--max-clusters", type=int, default=12)
     prin.add_argument("--budget", type=float, default=0.50)
     prin.add_argument("--cluster-only", action="store_true", help="cluster, no model call")
+    prin.add_argument("--audit", nargs="?", const="latest", help="dedupe an existing proposal file")
     prin.add_argument("--dry-run", action="store_true")
     prin.set_defaults(fn=cmd_principles)
 

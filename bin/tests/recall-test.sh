@@ -15,6 +15,9 @@ set -uo pipefail
 
 MEM="$HOME/bin/mem"
 TOP=3
+
+ok() { printf '  PASS  %s\n' "$1"; pass=$((pass + 1)); }
+bad() { printf '  FAIL  %s\n' "$1"; fail=$((fail + 1)); }
 pass=0
 fail=0
 details=()
@@ -60,6 +63,18 @@ check "opencode plugin reload registry"   "plugin-reload-breaks"
 check "opencode remembers variant"        "remembers-variant-per-model"
 check "showuntrackedfiles hides untracked" "showuntrackedfiles-hides"
 check "url resolution is a library bug"   "url-relative-path-becomes-host"
+
+echo "== proposals: audit against the curated docs =="
+out=$("$MEM" principles --audit 2>&1)
+case "$out" in
+    *"already documented"*) ok "audit classifies proposals as documented or new" ;;
+    *) bad "audit produced no verdict: $(printf '%s' "$out" | head -1)" ;;
+esac
+if printf '%s' "$out" | grep -qE '^  (DOC|NEW) '; then
+    ok "audit lists each proposal with its verdict"
+else
+    bad "audit produced no per-proposal rows"
+fi
 
 echo
 if [ ${#details[@]} -gt 0 ]; then
