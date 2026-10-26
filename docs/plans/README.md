@@ -31,6 +31,10 @@ This is deliberately *not* the same as:
 
 ## Index
 
+- [2026-10-26 — Doctor and the context budget](2026-10-26-doctor-and-budget.md) —
+  `mem doctor`: six checks over the always-loaded budget, the skills layer, the
+  learnings index and the archive; plus the 4,000-token target and the no-net-growth
+  rule that enforces it. Proposed; slice 1 is next.
 - [2026-10-25 — Agent memory pipeline](2026-10-25-agent-memory-pipeline.md) —
   ingest from the native harness stores, summaries, principles with evidence
   anchors, and the Osaurus Working Folder split. Phase 0 (a proxy) was built and
