@@ -1800,34 +1800,210 @@ def recall_docs(words, days, limit, include_archive=False) -> list:
     return hits
 
 
-def show_anchor(anchor: str) -> int:
+def anchor_text(anchor: str) -> str:
+    """Resolve an anchor to readable text. Raises ValueError rather than exiting,
+    so the MCP server can return an error to the model instead of dying."""
     raw = anchor[len("session://"):] if anchor.startswith("session://") else anchor
     match = re.match(r"^(?P<harness>[\w-]+)/(?P<session>[^#]+)(?:#turn-(?P<turn>\d+))?$", raw)
     if not match:
-        die("anchor should look like session://<harness>/<session-id>#turn-N", 2)
+        raise ValueError("anchor should look like session://<harness>/<session-id>#turn-N")
     harness, session, turn_no = match.group("harness"), match.group("session"), match.group("turn")
 
     found = list(RAW_DIR.glob(f"sessions/{harness}/*/*/{session}/turns.jsonl"))
     if not found:
-        die(f"no archived session {harness}/{session}", 1)
+        raise ValueError(f"no archived session {harness}/{session}")
     turns = [json.loads(line) for line in found[0].read_text().splitlines() if line.strip()]
     if turn_no is not None:
         picked = [t for t in turns if str(t.get("i")) == turn_no]
         if not picked:
-            die(f"turn {turn_no} not in {harness}/{session} (has {len(turns)})", 1)
+            raise ValueError(f"turn {turn_no} not in {harness}/{session} (has {len(turns)})")
         turns = picked
 
     manifest = json.loads((found[0].parent / "session.json").read_text())
-    print(f"{harness}/{session}  {manifest.get('started','')[:19]}  "
-          f"{manifest.get('models') or manifest.get('model') or ''}")
+    out = [f"{harness}/{session}  {manifest.get('started', '')[:19]}  "
+           f"{manifest.get('models') or manifest.get('model') or ''}"]
     for turn in turns:
-        print(f"\n[{turn.get('i')}] {turn.get('role')}  {str(turn.get('ts'))[:19]}")
+        out.append(f"\n[{turn.get('i')}] {turn.get('role')}  {str(turn.get('ts'))[:19]}")
         if turn.get("model"):
-            print(f"    model={turn['model']} tokens={turn.get('tokens')} "
-                  f"cost={turn.get('cost_usd')} {('truncated' if turn.get('truncated') else '')}")
+            out.append(f"    model={turn['model']} tokens={turn.get('tokens')} "
+                       f"cost={turn.get('cost_usd')} {('truncated' if turn.get('truncated') else '')}")
         text = message_text(turn["msg"])
-        print("\n".join("    " + line for line in text.splitlines()[:60]) or "    (empty)")
+        out.append("\n".join("    " + line for line in text.splitlines()[:60]) or "    (empty)")
+    return "\n".join(out)
+
+
+def show_anchor(anchor: str) -> int:
+    try:
+        print(anchor_text(anchor))
+    except ValueError as exc:
+        die(str(exc), 1)
     return 0
+
+
+# -------------------------------------------------------------------- mcp --
+#
+# Osaurus can spawn a stdio MCP command on the host; verified 2026-10-26 with a
+# probe that read all three memory paths as uid 501. That makes this the one
+# integration that gives it the archive, without copying anything into its own
+# memory store (which would duplicate, double-distil and decay).
+#
+# Read-only on purpose. The client called the probe tool twice in one session; a
+# read is idempotent, a write would have filed the same lesson twice. Capture
+# already flows from Osaurus through activity.sqlite ingestion.
+
+MCP_TOOLS = [
+    {
+        "name": "recall",
+        "description": (
+            "Search Scott's accumulated memory before re-deriving an answer: every archived "
+            "session from pi, opencode, hermes and osaurus, plus the curated notes in "
+            "~/docs/learnings. Returns hits with session ids and [turn-N] anchors."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "words to look for"},
+                "days": {"type": "integer", "description": "how far back (default 365)"},
+                "limit": {"type": "integer", "description": "hits per source (default 6)"},
+                "source": {"type": "string", "enum": ["all", "archive", "docs"]},
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "show",
+        "description": (
+            "Print the turns of an archived session by anchor, e.g. "
+            "session://opencode/ses_abc#turn-12, to check the evidence behind a recall hit."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"anchor": {"type": "string"}},
+            "required": ["anchor"],
+        },
+    },
+    {
+        "name": "learnings",
+        "description": "List the curated domain lessons in ~/docs/learnings: date, slug and title.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+]
+
+
+def mcp_recall(arguments: dict) -> str:
+    words = _words(str(arguments.get("query") or ""))
+    if not words:
+        raise ValueError("query is required")
+    days = int(arguments.get("days") or 365)
+    limit = int(arguments.get("limit") or 6)
+    source = str(arguments.get("source") or "all")
+    hits = []
+    if source in ("all", "archive") and (RAW_DIR / "messages").is_dir():
+        hits.extend(recall_archive(words, days, limit))
+    if source in ("all", "docs"):
+        hits.extend(recall_docs(words, days, limit, False))
+    curated = sorted((h for h in hits if h["source"].startswith("docs/")),
+                     key=lambda h: (h.get("score", 0), h["when"]), reverse=True)
+    evidence = sorted((h for h in hits if not h["source"].startswith("docs/")),
+                      key=lambda h: (h.get("score", 0), h["when"]), reverse=True)
+    lines = []
+    for group, cap in ((curated, limit), (evidence, limit * 2)):
+        for h in group[:cap]:
+            role = f" ({h['role']})" if h.get("role") else ""
+            lines.append(f"{h['when'][:16]}  {h['source']}  {h['session']}{role}")
+            lines.append(f"    {h['text']}")
+    if not lines:
+        return f"Nothing matching {' '.join(words)}."
+    return "\n".join(lines)
+
+
+def mcp_learnings(_arguments: dict) -> str:
+    rows = []
+    for path in sorted((HOME / "docs" / "learnings").glob("*.md")):
+        if path.name == "README.md":
+            continue
+        title = ""
+        for line in path.read_text().splitlines():
+            if line.startswith("# "):
+                title = line[2:].strip()
+                break
+        rows.append(f"{path.name[:10]}  {path.stem}  {title}")
+    return "\n".join(rows) or "No learnings recorded."
+
+
+def mcp_call(name: str, arguments: dict) -> dict:
+    handler = {"recall": mcp_recall, "learnings": mcp_learnings}.get(name)
+    try:
+        if name == "show":
+            text = anchor_text(str(arguments.get("anchor") or ""))
+        elif handler:
+            text = handler(arguments)
+        else:
+            return {"content": [{"type": "text", "text": f"unknown tool {name}"}],
+                    "isError": True}
+    except ValueError as exc:
+        return {"content": [{"type": "text", "text": str(exc)}], "isError": True}
+    return {"content": [{"type": "text", "text": text}]}
+
+
+def cmd_mcp(_args) -> int:
+    out = sys.stdout.buffer
+
+    def send(payload: dict, framed: bool) -> None:
+        body = json.dumps(payload).encode()
+        out.write((b"Content-Length: %d\r\n\r\n" % len(body) + body) if framed else body + b"\n")
+        out.flush()
+
+    while True:
+        line = sys.stdin.buffer.readline()
+        if not line:
+            return 0
+        framed = line.lower().startswith(b"content-length:")
+        if framed:
+            try:
+                length = int(line.split(b":", 1)[1].strip())
+            except ValueError:
+                continue
+            while True:
+                header = sys.stdin.buffer.readline()
+                if header in (b"\r\n", b"\n", b""):
+                    break
+            payload = sys.stdin.buffer.read(length).decode("utf-8", "replace")
+        else:
+            payload = line.decode("utf-8", "replace").strip()
+            if not payload:
+                continue
+
+        try:
+            message = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+
+        method = message.get("method")
+        ident = message.get("id")
+
+        if method == "initialize":
+            send({"jsonrpc": "2.0", "id": ident, "result": {
+                "protocolVersion": (message.get("params") or {}).get("protocolVersion", "2024-11-05"),
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "mem", "version": "1.0.0"}}}, framed)
+        elif method in ("notifications/initialized", "notifications/cancelled"):
+            continue
+        elif method == "tools/list":
+            send({"jsonrpc": "2.0", "id": ident, "result": {"tools": MCP_TOOLS}}, framed)
+        elif method == "tools/call":
+            params = message.get("params") or {}
+            send({"jsonrpc": "2.0", "id": ident,
+                  "result": mcp_call(str(params.get("name") or ""),
+                                     params.get("arguments") or {})}, framed)
+        elif method == "ping":
+            send({"jsonrpc": "2.0", "id": ident, "result": {}}, framed)
+        elif ident is not None:
+            send({"jsonrpc": "2.0", "id": ident,
+                  "error": {"code": -32601, "message": f"unknown method {method}"}}, framed)
+
+
+# ------------------------------------------------------------- summarize --
 
 
 # ------------------------------------------------------------- summarize --
@@ -2447,6 +2623,9 @@ def main(argv: list[str]) -> int:
     ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode", "hermes", "osaurus"])
     ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
     ing.set_defaults(fn=cmd_ingest)
+
+    mcp_p = sub.add_parser("mcp", help="serve memory over MCP on stdio (for Osaurus)")
+    mcp_p.set_defaults(fn=cmd_mcp)
 
     prin = sub.add_parser("principles", help="cluster summaries into principle proposals")
     prin.add_argument("--min-sessions", type=int, default=2)

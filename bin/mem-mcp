@@ -1,0 +1,8 @@
+#!/bin/sh
+# Single-executable entry point for MCP clients.
+#
+# Osaurus launches a stdio MCP provider as one executable with no arguments
+# (verified 2026-10-26: a command with arguments failed with spawnFailed naming
+# only the script's basename), so this shim exists instead of configuring
+# `/Users/scott/bin/mem mcp`. The same file works in Claude Desktop and Cursor.
+exec "$HOME/bin/mem" mcp "$@"
