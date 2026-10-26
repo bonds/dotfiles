@@ -94,45 +94,13 @@ YAML and the harness skips the skill silently.
 
 ## Compounding
 
-pi has no weight updates. It gets better only because lessons land in files the
-next session loads, and there are two kinds, with two homes:
+Two kinds of lesson, two homes: agent conduct goes to the inbox (`mem inbox add`,
+drained by `mem distill`); domain knowledge goes to `<repo>/docs/learnings/`. The
+rung ladder (AGENTS.md -> skill -> hook -> automation), `mem recall` across every
+harness, and the rest of the shared store are in the `memory` skill.
 
-| Lesson | Home | Trigger |
-|---|---|---|
-| Agent conduct ("never force-push", "doas needs full paths") | `~/.local/share/agents/memory/inbox.md` → `mem distill` | a tool failed, or the user corrected you |
-| Domain knowledge ("`openFile` also delivers argv") | `<repo>/docs/learnings/` | the world surprised you while working |
-
-Agent lessons climb a ladder, and promoting past the current rung is the point:
-`AGENTS.md` line → skill → hook/extension → automation. A rule seen twice
-belongs on rung 3, and `AGENTS.md` must not grow — move a paragraph into a
-skill in the same edit. `~/DECISIONS.md` holds the settled *why*.
-
-Domain learnings climb nothing: they are facts about a project, so they stay
-next to the code as symptom / cause / fix entries, indexed in
-`docs/learnings/README.md`, committed with it, and superseded rather than
-deleted. Use the `learning` tool, or `/learn`.
-
-The store is shared by every harness — pi, opencode, hermes and osaurus read and
-write the same inbox and the same `docs/learnings/` — and `mem` is the neutral
-interface to it (`mem inbox add`, `mem learn`, `mem distill`, `mem recall`). The
-`memory` skill holds the policy; the per-harness wiring is there too.
-
-The loop:
-
-- **Capture.** `learnings-capture.ts` writes one line per distinct tool failure
-  to the inbox; `corrections-capture.ts` writes one per correction or stated
-  rule ("from now on…", "always…"), recording the action being corrected. The
-  opencode plugin and a hermes `post_tool_call` hook write to the same file. Read
-  it, do not edit it.
-- **Distill.** `mem distill` (or `/distill`) clusters the inbox and promotes
-  each item up the ladder, then deletes what it processed.
-- **Verify.** After changing `AGENTS.md`, a skill description, or
-  `DECISIONS.md`, run `~/.config/nix/pkgs/pi/evals/run.sh`. A failure means the
-  wording got worse, not the model.
-- **Recall.** `mem recall "<words>"` searches past sessions of *every* harness
-  (pi JSONL, opencode and hermes SQLite) for earlier work on the same problem;
-  pi's `recall` tool does the same for pi alone. Use it before re-deriving an
-  answer.
+**AGENTS.md must not grow: every addition is paid for by moving a paragraph into a
+skill in the same edit.** `mem doctor` reports the always-loaded budget.
 
 ## Conventions
 
@@ -146,21 +114,15 @@ The loop:
 - Shell prompt: starship with UTF-8 symbols (falls back to plain on non-UTF-8 terminals)
 - Shell history: atuin (synced database)
 - Password management: passage (age-encrypted, not GPG)
-- Nix formatting: alejandra (`nix fmt` — unreliable, prefer `alejandra <file>` directly)
+- **Nix repo work — `flake.lock`, version bumps, releasing, packaging: read `.config/nix/AGENTS.md`** (it loads automatically when you are in that tree).
+- **Remote deploys, rebuild verification and sophrosyne's shell: the `machines-and-services` skill.**
 - **Prefer `rg` (ripgrep) and `fd` over `grep` and `find`.** Both are installed and much faster. Use `rg` for content search and `fd` for file discovery; fall back to `grep`/`find` only where they're unavailable (e.g. a minimal remote host). Never print a whole large document into the transcript: tool output is capped at 256 KiB, and a truncated JSON parse fails at `char 262144` — select fields (`jq`, `python3 -c`) or write to a file instead.
-- **Tag and release when you bump a version.** A Git tag is not a GitHub release — create the release too, with notes built from `git log` since the previous tag (auto-generated notes are empty on repos with no PRs): `gh release create <tag> --notes-file <file>`. Creating releases needs `Contents: write`; the fine-grained `gh` PAT may lack it (HTTP 403) — the classic `public_repo` token in the `gh-public-token` Keychain item works for public repos. Worked example: `~/src/bonds/polyptych/AGENTS.md` → Releasing.
 - **Log surprises next to the code** — see **Compounding**: domain knowledge to the repo's `docs/learnings/`, agent rules to the inbox. Worked example: `~/src/bonds/polyptych/docs/learnings/`.
 - Before committing any changes, run a code review using the current harness's available code-review skill or tool, and ask the user how to proceed
 - After each batch of changes, commit and push to all remotes (`config push origin && config push sophrosyne`). Never force-push (`--force` / `config push -f`) to any remote. If sophrosyne rejects the push because of divergent histories (e.g. a `git commit --amend` or rebase on either side), pull or merge first to reconcile. The sophrosyne bare repo has a `post-receive` hook that checks out the work tree on push — no special `receive.denyCurrentBranch` config needed.
 - **Rebuilds are Scott's; pushes need his TouchID.** `nr` / `darwin-rebuild` / `nixos-rebuild` are passwordless, but passwordless is not permission: agents verify with `nh darwin build` and hand over the switch. `git push` over SSH is the one step needing TouchID approval via Secretive, and the `gh` token is often read-only (403). A failed push is a hand-off, not a retry loop: `Permission denied (publickey)`, `Connection closed by … port 22`, or a 403 all mean the approval prompt went unanswered — ask Scott to push when he's back; once he is, `ssh-add -l` plus **one** retry separates an empty agent from an unanswered prompt. Never "resolve" it by running the rebuild yourself. Signatures and diagnosis: `docs/learnings/2026-10-19-secretive-touchid-closes-the-connection.md`.
 - **Never pipe a state-changing command to `tail`/`rg`/`sed`.** The pipeline reports the *last* command's status, so `git push … | tail` exits 0 even when the push failed — and `learnings-capture.ts` never sees the failure. Verify with `rev-parse origin/main` (one ref per call — `--short` rejects multiple), or use `pipefail` / `$pipestatus[1]`. See `docs/learnings/2026-10-19-pipe-masks-exit-code.md`.
 - Active code repos live in `~/src/` (`~/src/bonds/<name>/`, `~/src/hihello`). `~/Documents/undated/repos/` is an **archive** — read-only reference, never work in it, never delete it; see the `dotfiles-layout` skill.
-- **Nix deployments to remote machines:** Never attempt a cross-build from the local machine (aarch64-darwin cannot build x86_64-linux derivations that have `allowSubstitutes = false`, such as `arion-compose`). Instead, push the commit and then SSH directly to the target machine and a rebuild via **`fish -c 'nr'`** (runs detached in tmux session `nr-build`, mirroring local agent use) — or `fish -i -c 'nr'` to wait for the result: `ssh sophrosyne "fish -c 'nr'"`. `nr` handles the split build + exact-path `doas` switch, matching the noPass rules. Only fall back to `/run/current-system/sw/bin/nixos-rebuild` directly if `nr` itself is broken. Use the full `/run/current-system/sw/bin/nixos-rebuild` path if you do call it directly, so the `noPass` doas rule matches.
-- **Remote rebuilds must run to completion — a background/no-TTY SSH job silently no-ops.** Any remote deploy that can't get a TTY or forward the agent (e.g. Hermes running it in `terminal(background=true)`, or a bare `nixos-rebuild` with `doas` when the agent isn't forwarded) fails to authenticate with doas, prints **nothing, and exits 0 while creating NO new generation** — it looks like success but changes nothing. Run the deploy in the foreground and verify a new generation actually landed: `readlink -f /nix/var/nix/profiles/system` (must differ from before) and look for the `Done. The new configuration is ...` line. Don't trust the exit code alone.
-- **sophrosyne's shell is fish.** Inline one-liners passed to `ssh sophrosyne '...'` must be fish-compatible: bash-isms abort the whole line before anything runs — e.g. appending `echo "RC=$?"` makes fish error on `$?` (treated as a command), killing the entire remote command. Use `$status` for exit codes on the remote side.
-- **Version bump policy for `what-changed`:** Bump the minor version (e.g. `0.4.0` → `0.5.0`) whenever user-facing features, behavior, or dependencies change. Bug fixes and internal refactors get a patch if there's a prior tagged release, otherwise batch into the next minor. Keep `default.nix` and `pyproject.toml` in sync.
-- **`config add` WITHOUT `-f` for `nix-what-changed`:** The directory has a `.gitignore` that excludes `__pycache__/`. Using `config add -f` overrides it and tracks `.pyc` files, which then need a cleanup commit. Use plain `config add .config/nix/pkgs/nix-what-changed/what_changed/<file>.py` for individual files, or `config add .config/nix/pkgs/nix-what-changed/` (without `-f`) to respect the gitignore. A pre-commit hook (`.config/git/hooks/pre-commit`) rejects `.pyc` files automatically if you forget.
-- **`flake.lock` changes:** When a commit includes a `flake.lock` update (e.g. after `nr --update`), push both remotes normally (`config push origin && config push sophrosyne`). The sophrosyne post-receive hook does a force checkout so there is no "dirty work tree" rejection. If sophrosyne independently updated its flake.lock (via `nr --update` on the server), the next push from accismus will overwrite it — this is intentional. If you need sophrosyne to pull changes without accismus pushing:
   1. `ssh sophrosyne "config pull origin main"`
   2. The post-receive hook won't fire (it only runs on push), so the work tree will be updated by the checkout. If for some reason the work tree is stale: `ssh sophrosyne "cd ~ && git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME checkout -f main"`
 

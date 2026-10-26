@@ -392,3 +392,13 @@ can win and produce "damaged".
 
 - **Build-green is NOT done.** For GUI apps, prove `spctl -a -vvv -t exec <app>` accepts the bundle; for CLI apps, actually run the binary (`--version`, `--help`, or the failing subcommand) from the built system out-path.
 - **Prefer fast checks** (`nix-instantiate --parse`, targeted `nix eval`) over full builds / `nix flake check` — long ones can blow a 30-minute agent time budget. The pre-push hook runs `nix flake check --no-build` for the heavy validation on push anyway. (Non-activating build-only verification — Scott runs `nr` himself — is already documented under Commands above.)
+
+## Repo workflow
+
+Moved out of the always-loaded `~/AGENTS.md` so it costs nothing until you are
+working in this repo:
+
+- **Tag and release when you bump a version.** A Git tag is not a GitHub release — create the release too, with notes built from `git log` since the previous tag (auto-generated notes are empty on repos with no PRs): `gh release create <tag> --notes-file <file>`. Creating releases needs `Contents: write`; the fine-grained `gh` PAT may lack it (HTTP 403) — the classic `public_repo` token in the `gh-public-token` Keychain item works for public repos. Worked example: `~/src/bonds/polyptych/AGENTS.md` → Releasing.
+- **Version bump policy for `what-changed`:** Bump the minor version (e.g. `0.4.0` → `0.5.0`) whenever user-facing features, behavior, or dependencies change. Bug fixes and internal refactors get a patch if there's a prior tagged release, otherwise batch into the next minor. Keep `default.nix` and `pyproject.toml` in sync.
+- **`config add` WITHOUT `-f` for `nix-what-changed`:** The directory has a `.gitignore` that excludes `__pycache__/`. Using `config add -f` overrides it and tracks `.pyc` files, which then need a cleanup commit. Use plain `config add .config/nix/pkgs/nix-what-changed/what_changed/<file>.py` for individual files, or `config add .config/nix/pkgs/nix-what-changed/` (without `-f`) to respect the gitignore. A pre-commit hook (`.config/git/hooks/pre-commit`) rejects `.pyc` files automatically if you forget.
+- **`flake.lock` changes:** When a commit includes a `flake.lock` update (e.g. after `nr --update`), push both remotes normally (`config push origin && config push sophrosyne`). The sophrosyne post-receive hook does a force checkout so there is no "dirty work tree" rejection. If sophrosyne independently updated its flake.lock (via `nr --update` on the server), the next push from accismus will overwrite it — this is intentional. If you need sophrosyne to pull changes without accismus pushing:
