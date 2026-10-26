@@ -2,7 +2,14 @@
 # Single-executable entry point for MCP clients.
 #
 # Osaurus launches a stdio MCP provider as one executable with no arguments
-# (verified 2026-10-26: a command with arguments failed with spawnFailed naming
-# only the script's basename), so this shim exists instead of configuring
+# (verified 2026-10-26: a command plus args failed with spawnFailed naming only
+# the script's basename), so this shim exists instead of configuring
 # `/Users/scott/bin/mem mcp`. The same file works in Claude Desktop and Cursor.
-exec "$HOME/bin/mem" mcp "$@"
+#
+# Absolute paths and an explicit PATH because the spawn environment is not
+# guaranteed: the probe reported `cwd=/`, and under `env -i` a version of this
+# shim using `$HOME` tried to exec `/bin/mem`. A memory server that fails to
+# launch is invisible to the agent that needed it.
+PATH=/usr/bin:/bin:/usr/sbin:/sbin${PATH:+:$PATH}
+export PATH
+exec /Users/scott/bin/mem mcp "$@"
