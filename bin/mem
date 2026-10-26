@@ -605,6 +605,40 @@ def chain_turns(turns: list, session_id: str) -> list:
 _PATH_KEYS = ("path", "file", "file_path", "filename", "target", "dir", "directory", "cwd")
 _CMD_KEYS = ("cmd", "command", "script", "bash", "shell")
 
+# Harnesses disagree on how a failed tool call is recorded: pi flags the result
+# message, opencode puts `status: error` on the tool part, osaurus carries an
+# HTTP status on the turn, and hermes records nothing at all. The phrase list is
+# the same one the capture hooks use, so "what counts as a failure" stays
+# consistent between the inbox and the graph.
+_ERROR_PHRASE = re.compile(
+    r"(?i)(no such file or directory|permission denied|command not found"
+    r"|operation not permitted|traceback \(most recent call last\)|segmentation fault"
+    r"|fatal:|exit code [1-9]|is not a function|unknown option|invalid option)")
+
+
+def unwrap_output(text: str) -> str:
+    """hermes stores a tool result as JSON: {"output": ..., "exit_code": ...}."""
+    stripped = text.strip()
+    if not stripped.startswith("{"):
+        return text
+    try:
+        obj = json.loads(stripped)
+    except json.JSONDecodeError:
+        return text
+    if isinstance(obj, dict):
+        for key in ("output", "content", "message", "error"):
+            value = obj.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+    return text
+
+
+def first_error_line(text: str) -> str:
+    for line in str(text or "").splitlines():
+        if _ERROR_PHRASE.search(line):
+            return line.strip()[:160]
+    return ""
+
 
 def looks_like_path(value: str) -> bool:
     if not value or len(value) > 240 or "\n" in value:
@@ -632,6 +666,19 @@ def extract_edges(doc: dict, cwd: str | None) -> list:
                 args = {"raw": args}
         if not isinstance(args, dict):
             continue
+        status = str(part.get("status") or "").lower()
+        if status in ("error", "failed"):
+            output = unwrap_output(str(part.get("output") or ""))
+            # `rg`/`grep`/`glob` exit non-zero for "no matches", which is a
+            # result, not a failure — the capture hooks learned this the same
+            # way. Require a recognizable signature, or enough output to be a
+            # real error rather than an empty result.
+            signature = first_error_line(output)
+            if not signature and len(output.strip()) >= 80:
+                signature = output.strip().splitlines()[0][:160]
+            if signature:
+                edges.append(("error", signature))
+
         for key, value in args.items():
             if not isinstance(value, str) or not value.strip():
                 continue
@@ -641,9 +688,13 @@ def extract_edges(doc: dict, cwd: str | None) -> list:
             elif low in _PATH_KEYS or looks_like_path(value):
                 edges.append(("file", value[:200]))
 
-    if role == "tool" and (doc.get("is_error") or doc.get("status") in ("error", "failed")):
-        text = " ".join(str(p.get("text") or "") for p in doc.get("content") or [])
-        if text.strip():
+    if role == "tool":
+        text = unwrap_output(" ".join(str(p.get("text") or "") for p in doc.get("content") or ""))
+        flagged = bool(doc.get("is_error")) or str(doc.get("status") or "").lower() in ("error", "failed")
+        signature = first_error_line(text)
+        if signature:
+            edges.append(("error", signature))
+        elif flagged and len(text.strip()) >= 80:
             edges.append(("error", text.strip().splitlines()[0][:160]))
 
     # Dedupe, and cap: a turn that touched 200 files is not more useful than one
@@ -693,6 +744,11 @@ def write_session(harness: str, session_id: str, manifest: dict, turns: list, dr
             continue
         for edge in extract_edges(doc, cwd):
             edges.append({**edge, "turn": turn.get("i"), "ts": turn.get("ts")})
+        # osaurus records an HTTP status per call rather than flagging content.
+        status = turn.get("status")
+        if isinstance(status, int) and status >= 400:
+            edges.append({"kind": "error", "dst": f"http {status} {turn.get('path') or ''}".strip()[:160],
+                          "turn": turn.get("i"), "ts": turn.get("ts")})
     if edges:
         write_atomic(out / "edges.jsonl", "".join(canonical(e) + "\n" for e in edges))
 

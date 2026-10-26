@@ -155,6 +155,10 @@ rows = [
              "state": {"status": "completed",
                        "input": {"cmd": "cat /etc/hosts", "path": "/etc/hosts"},
                        "output": "a\nb"}},
+            # a failed tool call: status on the part, signature in the output
+            {"type": "tool", "id": "call-2", "name": "bash",
+             "state": {"status": "error", "input": {"cmd": "nope"},
+                       "output": "/bin/bash: nope: command not found"}},
         ],
     }),
     ("m4", 4, "compaction", {"summary": "earlier context summary", "status": "completed",
@@ -191,6 +195,11 @@ if grep -q '"dst":"/etc/hosts"' "$T/raw/sessions/opencode"/*/*/ses_test/edges.js
     ok "file edge extracted from a tool call"
 else
     bad "no file edge for the tool's path"
+fi
+if grep -q 'command not found' "$T/raw/sessions/opencode"/*/*/ses_test/edges.jsonl 2>/dev/null; then
+    ok "error edge carries the failure signature"
+else
+    bad "no error edge for the failed tool call"
 fi
 out="$(MEMORY_DIR="$T/mem" MEMORY_RAW="$T/raw" "$MEM" show "session://opencode/ses_test#turn-1" 2>&1)"
 case "$out" in
