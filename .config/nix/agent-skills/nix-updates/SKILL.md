@@ -73,6 +73,20 @@ real `opencode.jsonc` copied in). `--standalone` goes **after** the subcommand.
 Write a hook to assert only what is deterministic: a network-dependent check
 must warn, not fail, or an offline `nr --update` reverts a good release.
 
+## Changelogs during `nr --update`
+
+- **A blank changelog is usually a failed URL guess, not an absent upstream.**
+  `nix-what-changed` guesses `nixpkgs#<name>.meta.*` then
+  `github.com/<pkg>/<pkg>`, which misses Python sub-packages, local derivations,
+  date-tagged repos and upstreams with no releases. Look for null metadata in the
+  on-disk cache and add an explicit `KNOWN_URLS` entry — that is the override
+  point, and it has to stay in sync with both version files and the tests.
+- **Test it through the flake environment, not the host Python.** Run the edited
+  source from the flake's `python3.withPackages` (or with
+  `PYTHONPATH="$PWD:$PYTHONPATH"` and a temporary cache): the system interpreter
+  lacks the package's dependencies, so a plain `python3 tool.py` fails for
+  reasons unrelated to the change.
+
 ## Working on this
 
 - **Run the suite:** `bash ~/.config/nix/nr-pins-tests.sh` — 190 stubbed cases
