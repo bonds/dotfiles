@@ -2577,6 +2577,166 @@ def cmd_principles(args) -> int:
     return 0
 
 
+# ------------------------------------------------------------------ doctor --
+#
+# Report only. Nothing here edits a skill or AGENTS.md — the same hard rule as
+# the principle proposals. Exit code is non-zero when any check fails, so it can
+# gate a commit.
+#
+# Slice 1 covers the three checks that already found something by hand: the
+# always-loaded budget (4,827 tokens against a 4,000 target), the skills layer (a
+# 1.1 MB opencode-only duplicate and an unroutable skill with no description),
+# and whether a skill's referenced paths still exist (the unroutable one was a
+# stale copy of a document that had moved on).
+
+_WIRED_SKILL_DIRS = (
+    ".agents/skills",
+    ".claude/skills",
+    ".config/opencode/skills",
+    ".hermes/skills/dotfiles",
+)
+
+# Deliberately a fixed list rather than every backticked token: `nr` and `config`
+# are fish functions, so `which` alone reports false failures, and probing every
+# word-shaped token would drown the report in `true`, `null` and `int`.
+_DOCTOR_COMMANDS = ("nr", "nh", "mem", "alejandra", "gh", "nix", "git", "rg", "fd", "hx", "ssh")
+
+DOCTOR_AGENTS = pathlib.Path(os.environ.get("MEM_DOCTOR_AGENTS") or HOME / "AGENTS.md")
+DOCTOR_SKILLS = pathlib.Path(os.environ.get("MEM_DOCTOR_SKILLS") or HOME / ".config" / "nix" / "agent-skills")
+_DOCTOR_WIRED_ENV = os.environ.get("MEM_DOCTOR_WIRED")
+
+
+def _tokens(text: str) -> int:
+    return len(text) // 4
+
+
+def _skills(root: pathlib.Path) -> dict:
+    out = {}
+    for skill in sorted(root.glob("*/SKILL.md")):
+        body = skill.read_text()
+        found = re.search(r"(?m)^description:\s*(.*)$", body)
+        out[skill.parent.name] = (found.group(1).strip() if found else "", body)
+    return out
+
+
+def _resolvable(command: str) -> bool:
+    import shutil
+
+    if shutil.which(command):
+        return True
+    try:  # fish functions like `nr` are not binaries
+        return subprocess.run(["fish", "-c", f"type -q {command}"],
+                              capture_output=True, timeout=5).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def cmd_doctor(args) -> int:
+    findings = []  # (level, section, text)
+
+    # --- budget ---------------------------------------------------------
+    agents_tokens = _tokens(DOCTOR_AGENTS.read_text()) if DOCTOR_AGENTS.exists() else 0
+    skills = _skills(DOCTOR_SKILLS)
+    desc_tokens = sum(len(d) for d, _ in skills.values()) // 4
+    total = agents_tokens + desc_tokens
+    findings.append(("info", "budget", f"AGENTS.md            {agents_tokens:5} tokens"))
+    findings.append(("info", "budget", f"skill descriptions   {desc_tokens:5} tokens ({len(skills)} skills)"))
+    level = "fail" if total > args.budget else ("warn" if total > args.budget * 0.95 else "ok")
+    findings.append((level, "budget", f"always-loaded total  {total:5} / {args.budget} tokens"))
+
+    for label, path in ((".config/nix/AGENTS.md", HOME / ".config" / "nix" / "AGENTS.md"),
+                        ("docs/plans/", HOME / "docs" / "plans"),
+                        ("DECISIONS.md", HOME / "DECISIONS.md")):
+        if not path.exists():
+            continue
+        size = path.read_text() if path.is_file() else "".join(
+            f.read_text() for f in path.glob("*.md"))
+        findings.append(("info", "conditional",
+                         f"{label:22} {_tokens(size):5} tokens (loads only in context)"))
+
+    # --- skill inventory ------------------------------------------------
+    canonical = set(skills)
+    for name, (desc, _body) in skills.items():
+        if not desc:
+            findings.append(("fail", "skills", f"{name}: no description — nothing can route to it"))
+
+    wired = (_DOCTOR_WIRED_ENV.split(":") if _DOCTOR_WIRED_ENV
+             else [str(HOME / d) for d in _WIRED_SKILL_DIRS])
+    for directory in wired:
+        path = pathlib.Path(directory)
+        if not path.is_dir():
+            findings.append(("fail", "skills", f"{str(path).replace(str(HOME), '~')}: missing"))
+            continue
+        entries = {p.name for p in path.iterdir() if p.is_dir() and not p.name.startswith(".")}
+        extras = sorted(entries - canonical)
+        missing = sorted(canonical - entries)
+        for extra in extras:
+            findings.append(("fail", "skills",
+                             f"{str(path).replace(str(HOME), '~')}: {extra} is not in the shared store"))
+        for gone in missing:
+            findings.append(("fail", "skills",
+                             f"{str(path).replace(str(HOME), '~')}: {gone} missing"))
+        for entry in sorted(entries & canonical):
+            if not (path / entry).is_symlink():
+                findings.append(("warn", "skills",
+                                 f"{str(path).replace(str(HOME), '~')}/{entry} is a real directory, not a nix link"))
+        if not extras and not missing:
+            findings.append(("ok", "skills", f"{str(path).replace(str(HOME), '~')}: {len(entries)} skills, in step"))
+
+    # --- skill truth ----------------------------------------------------
+    # A skill that documents where something *used to* live is correct, not stale:
+    # "moved here from ~/.gitconfig, which is gone" would otherwise be reported
+    # twice. Likewise macOS app-support paths, which are noisy and rarely ours.
+    absent = re.compile(
+        r"(?i)\b(gone|moved from|no longer|instead|removed|not link|historic|deprecated|absent"
+        r"|do not|don't|never|must not)\b")
+    # A path that lives on another machine is not missing here, and a file the
+    # caller supplies (`--body-file ~/body.md`) is not a broken reference.
+    elsewhere = re.compile(r"(?i)\b(sophrosyne|metanoia|remote host|home\.ggr\.com)\b")
+    supplied = re.compile(r"--(body|notes)-file|-F\b")
+    for name, (_desc, body) in skills.items():
+        for line in body.splitlines():
+            # Strip emphasis before matching: "do **not** also link" is a
+            # negation, but markdown bold puts asterisks inside the phrase.
+            flat = line.replace("**", "").replace("__", "")
+            if absent.search(flat) or elsewhere.search(flat) or supplied.search(flat):
+                continue
+            for match in re.finditer(r"(?:~/|/Users/scott/)[A-Za-z0-9._/@+-]+", line):
+                raw = match.group(0).rstrip(".,;:)")
+                if any(ch in raw for ch in "<>*$") or raw.startswith(("~/Library", "/Users/scott/Library")):
+                    continue
+                target = pathlib.Path(raw.replace("~", str(HOME), 1))
+                if not target.exists():
+                    findings.append(("warn", "truth", f"{name}: references missing {raw}"))
+    mentioned = {cmd for cmd in _DOCTOR_COMMANDS
+                 if any(re.search(rf"`{cmd}[ `]", body) for _, body in skills.values())}
+    for command in sorted(mentioned):
+        if not _resolvable(command):
+            findings.append(("warn", "truth", f"`{command}` is referenced by a skill but not resolvable"))
+
+    # --- report ---------------------------------------------------------
+    if args.json:
+        print(json.dumps({
+            "budget": {"agents": agents_tokens, "skills": desc_tokens,
+                       "total": total, "target": args.budget},
+            "skills": sorted(canonical),
+            "findings": [{"level": lvl, "section": sec, "text": txt} for lvl, sec, txt in findings],
+            "ok": not any(lvl == "fail" for lvl, _, _ in findings),
+        }, indent=2))
+    else:
+        section = None
+        for level, sec, text in findings:
+            if sec != section:
+                print(f"\n{sec}")
+                section = sec
+            print(f"  {level:4}  {text}")
+        fails = sum(1 for level, _, _ in findings if level == "fail")
+        warns = sum(1 for level, _, _ in findings if level == "warn")
+        print(f"\nmem: {fails} failing, {warns} warning(s)")
+
+    return 1 if any(level == "fail" for level, _, _ in findings) else 0
+
+
 # --------------------------------------------------------------------- main --
 
 
@@ -2623,6 +2783,11 @@ def main(argv: list[str]) -> int:
     ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode", "hermes", "osaurus"])
     ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
     ing.set_defaults(fn=cmd_ingest)
+
+    doc = sub.add_parser("doctor", help="audit the budget, skills and skill references")
+    doc.add_argument("--budget", type=int, default=4000, help="always-loaded token target")
+    doc.add_argument("--json", action="store_true")
+    doc.set_defaults(fn=cmd_doctor)
 
     mcp_p = sub.add_parser("mcp", help="serve memory over MCP on stdio (for Osaurus)")
     mcp_p.set_defaults(fn=cmd_mcp)
