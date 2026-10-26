@@ -59,8 +59,18 @@ guessed.
 
 ## 4. Slices
 
-**Slice 1** — budget, skill inventory, skill truth. The three that already found
-something, and the budget one is what enforces §2.
+**Slice 1** — ✅ built 2026-10-26: budget, skill inventory, skill truth. The
+budget one is what enforces §2. Reports 0 failing and 0 warnings on the live tree
+(3,511 / 4,000 tokens); 12 tests, most against a fixture so the logic is exercised
+rather than today's state.
+
+Two checks needed tuning before they were trustworthy. A skill that documents
+where something *used to* live ("moved here from `~/.gitconfig`, which is gone")
+is correct, not stale — lines with negation markers are skipped, after stripping
+markdown emphasis, since "do **not** also link" broke the phrase match. And a path
+on another machine, or a file the caller supplies (`--body-file ~/body.md`), is
+not a dangling reference. Without both, the first run reported four false
+positives out of four.
 
 **Slice 2** — learnings hygiene, archive health, summary health. Mostly arithmetic
 over what is already on disk.
