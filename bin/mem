@@ -414,6 +414,17 @@ def cmd_recall(args) -> int:
     words = _words(args.query)
     if not words:
         die("recall needs a query", 2)
+    if args.source in ("archive", "all") and (RAW_DIR / "messages").is_dir():
+        archived = recall_archive(words, args.days, args.limit)
+        if archived or args.source == "archive":
+            if not archived:
+                print(f"mem: nothing in the archive for {' '.join(words)}")
+                return 0
+            for h in archived:
+                print(f"{h['when'][:16]:16}  {h['source']:16}  {str(h['session'])[:20]:20} ({h['role']})")
+                print(f"    {h['text']}")
+            return 0
+
     since = (dt.datetime.now() - dt.timedelta(days=args.days)).timestamp()
     sources = {
         "pi": recall_pi,
@@ -591,6 +602,69 @@ def chain_turns(turns: list, session_id: str) -> list:
     return chained
 
 
+_PATH_KEYS = ("path", "file", "file_path", "filename", "target", "dir", "directory", "cwd")
+_CMD_KEYS = ("cmd", "command", "script", "bash", "shell")
+
+
+def looks_like_path(value: str) -> bool:
+    if not value or len(value) > 240 or "\n" in value:
+        return False
+    if value.startswith(("http://", "https://")):
+        return False
+    return value.startswith(("/", "~/", "./", "../")) or ("/" in value and " " not in value.strip())
+
+
+def extract_edges(doc: dict, cwd: str | None) -> list:
+    """Deterministic entities from a message: the things a provenance graph needs."""
+    edges = []
+    role = doc.get("role")
+
+    for part in doc.get("content") or []:
+        if part.get("type") != "tool_call":
+            continue
+        args = part.get("arguments")
+        if args is None:
+            args = part.get("input")
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except json.JSONDecodeError:
+                args = {"raw": args}
+        if not isinstance(args, dict):
+            continue
+        for key, value in args.items():
+            if not isinstance(value, str) or not value.strip():
+                continue
+            low = key.lower()
+            if low in _CMD_KEYS or (isinstance(value, str) and value.startswith("#!/")):
+                edges.append(("command", value[:200]))
+            elif low in _PATH_KEYS or looks_like_path(value):
+                edges.append(("file", value[:200]))
+
+    if role == "tool" and (doc.get("is_error") or doc.get("status") in ("error", "failed")):
+        text = " ".join(str(p.get("text") or "") for p in doc.get("content") or [])
+        if text.strip():
+            edges.append(("error", text.strip().splitlines()[0][:160]))
+
+    # Dedupe, and cap: a turn that touched 200 files is not more useful than one
+    # that touched 20, but it is much more expensive to query.
+    seen = set()
+    unique = []
+    for kind, value in edges:
+        if kind == "file":
+            value = str(pathlib.PurePath(value))
+            if cwd and not value.startswith(("/", "~")) and (pathlib.Path(cwd) / value).exists():
+                value = str(pathlib.Path(cwd) / value)
+        key = (kind, value)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append({"kind": kind, "dst": value})
+        if len(unique) >= 25:
+            break
+    return unique
+
+
 def write_session(harness: str, session_id: str, manifest: dict, turns: list, dry_run: bool) -> None:
     if dry_run:
         return
@@ -603,6 +677,24 @@ def write_session(harness: str, session_id: str, manifest: dict, turns: list, dr
     out = RAW_DIR / "sessions" / harness / year / month / session_id
     write_atomic(out / "session.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     write_atomic(out / "turns.jsonl", "".join(canonical(t) + "\n" for t in turns))
+
+    # Edges are derived from the messages already on disk, so every importer
+    # gets them without knowing they exist.
+    cwd = manifest.get("cwd")
+    edges = []
+    for turn in turns:
+        digest = turn.get("msg")
+        path = message_path(digest) if digest else None
+        if not path or not path.exists():
+            continue
+        try:
+            doc = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        for edge in extract_edges(doc, cwd):
+            edges.append({**edge, "turn": turn.get("i"), "ts": turn.get("ts")})
+    if edges:
+        write_atomic(out / "edges.jsonl", "".join(canonical(e) + "\n" for e in edges))
 
 
 def ms_to_iso(value) -> str | None:
@@ -1348,7 +1440,10 @@ def _ingest_opencode(args) -> int:
             "select id, parent_id, directory, title, agent, model, cost,"
             " tokens_input, tokens_output, tokens_reasoning,"
             " tokens_cache_read, tokens_cache_write, time_created, time_updated"
-            " from session order by time_created"
+            # session_v2, not session: V1 stopped being written on 2026-09-30
+            # while V2 kept going, and messages are keyed to V2 ids. Reading V1
+            # silently archived a month-stale subset (479 of 518 sessions).
+            " from session_v2 order by time_created"
         ).fetchall()
         for sess in rows:
             result = ingest_opencode_session(con, sess, state, args.dry_run)
@@ -1456,6 +1551,127 @@ def cmd_ingest(args) -> int:
     die(f"no importer for {args.harness} (available: pi, opencode, hermes, osaurus)", 2)
 
 
+# ----------------------------------------------------------------- query --
+#
+# No index. Measured on the real archive: an `rg` sweep of 51,536 files takes
+# ~1.1 s, and the digest -> location map builds in 0.32 s, so archive recall is
+# ~1.4 s end to end. An FTS table would cut that to tens of milliseconds and add
+# a rebuild step and a staleness class for a query an agent runs a few times a
+# session. The scan is ~15 s at 2 GB — that is the point to revisit, and it is
+# the same trigger as packing.
+
+_MESSAGES = RAW_DIR / "messages"
+
+
+def message_path(digest: str) -> pathlib.Path:
+    return _MESSAGES / digest[:2] / f"{digest}.json"
+
+
+def message_text(digest: str) -> str:
+    path = message_path(digest)
+    if not path.exists():
+        return ""
+    try:
+        doc = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return ""
+    chunks = []
+    for part in doc.get("content") or []:
+        kind = part.get("type")
+        if kind in ("text", "reasoning"):
+            chunks.append(part.get("text") or "")
+        elif kind == "tool_call":
+            args = part.get("arguments") or part.get("input")
+            chunks.append(f"{part.get('name')}({args if isinstance(args, str) else canonical(args)})")
+    return "\n".join(c for c in chunks if c)
+
+
+def archive_index() -> dict:
+    """digest -> [(harness, session, ts, role)] over the whole archive."""
+    index: dict = {}
+    for f in RAW_DIR.glob("sessions/*/*/*/*/turns.jsonl"):
+        harness = f.parts[-5]
+        session = f.parent.name
+        try:
+            lines = f.read_text().splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            if not line.strip():
+                continue
+            turn = json.loads(line)
+            index.setdefault(turn["msg"], []).append(
+                (harness, session, turn.get("ts") or "", turn.get("role") or ""))
+    return index
+
+
+def archive_session_ids() -> list:
+    return sorted(p.parent.name for p in RAW_DIR.glob("sessions/*/*/*/*/session.json"))
+
+
+def recall_archive(words, days, limit) -> list:
+    """Search the archived messages, then resolve them to sessions and turns."""
+    if not _MESSAGES.is_dir():
+        return []
+    pattern = "|".join(re.escape(w) for w in words)
+    proc = subprocess.run(
+        ["rg", "-l", "-i", "--no-messages", "--", pattern, str(_MESSAGES)],
+        capture_output=True, text=True)
+    digests = [pathlib.Path(line).stem for line in proc.stdout.splitlines() if line.strip()]
+    if not digests:
+        return []
+    cutoff = (dt.datetime.now() - dt.timedelta(days=days)).isoformat()[:19]
+    index = archive_index()
+    hits = []
+    for digest in digests:
+        for harness, session, ts, role in index.get(digest, []):
+            if ts and ts[:19] < cutoff:
+                continue
+            text = message_text(digest)
+            if not text:
+                continue
+            hits.append({
+                "when": ts or "",
+                "source": f"archive/{harness}",
+                "session": session,
+                "role": role,
+                "text": _snippet(text, words, width=200),
+                "digest": digest,
+            })
+    hits.sort(key=lambda h: h["when"], reverse=True)
+    return hits[: limit * 4]
+
+
+def show_anchor(anchor: str) -> int:
+    raw = anchor[len("session://"):] if anchor.startswith("session://") else anchor
+    match = re.match(r"^(?P<harness>[\w-]+)/(?P<session>[^#]+)(?:#turn-(?P<turn>\d+))?$", raw)
+    if not match:
+        die("anchor should look like session://<harness>/<session-id>#turn-N", 2)
+    harness, session, turn_no = match.group("harness"), match.group("session"), match.group("turn")
+
+    found = list(RAW_DIR.glob(f"sessions/{harness}/*/*/{session}/turns.jsonl"))
+    if not found:
+        die(f"no archived session {harness}/{session}", 1)
+    turns = [json.loads(line) for line in found[0].read_text().splitlines() if line.strip()]
+    if turn_no is not None:
+        picked = [t for t in turns if str(t.get("i")) == turn_no]
+        if not picked:
+            die(f"turn {turn_no} not in {harness}/{session} (has {len(turns)})", 1)
+        turns = picked
+
+    manifest = json.loads((found[0].parent / "session.json").read_text())
+    print(f"{harness}/{session}  {manifest.get('started','')[:19]}  "
+          f"{manifest.get('models') or manifest.get('model') or ''}")
+    for turn in turns:
+        print(f"\n[{turn.get('i')}] {turn.get('role')}  {str(turn.get('ts'))[:19]}")
+        if turn.get("model"):
+            print(f"    model={turn['model']} tokens={turn.get('tokens')} "
+                  f"cost={turn.get('cost_usd')} {('truncated' if turn.get('truncated') else '')}")
+        text = message_text(turn["msg"])
+        print("\n".join("    " + line for line in text.splitlines()[:60]) or "    (empty)")
+    return 0
+
+
 # --------------------------------------------------------------------- main --
 
 
@@ -1491,13 +1707,17 @@ def main(argv: list[str]) -> int:
     recall.add_argument("query")
     recall.add_argument("--days", type=int, default=30)
     recall.add_argument("--limit", type=int, default=6)
-    recall.add_argument("--source", default="all", choices=["all", "pi", "opencode", "hermes"])
+    recall.add_argument("--source", default="all", choices=["all", "archive", "pi", "opencode", "hermes"])
     recall.set_defaults(fn=cmd_recall)
 
     ing = sub.add_parser("ingest", help="copy a harness's sessions into the archive")
     ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode", "hermes", "osaurus"])
     ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
     ing.set_defaults(fn=cmd_ingest)
+
+    show = sub.add_parser("show", help="print a turn from the archive by anchor")
+    show.add_argument("anchor", help="session://<harness>/<session-id>[#turn-N]")
+    show.set_defaults(fn=lambda a: show_anchor(a.anchor))
 
     dec = sub.add_parser("decisions", help="print ~/DECISIONS.md")
     dec.set_defaults(fn=cmd_decisions)

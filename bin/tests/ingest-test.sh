@@ -129,7 +129,7 @@ import json, sqlite3, sys
 
 con = sqlite3.connect(sys.argv[1])
 con.executescript("""
-create table session (id text primary key, parent_id text, directory text, title text,
+create table session_v2 (id text primary key, parent_id text, directory text, title text,
   agent text, model text, cost real, tokens_input int, tokens_output int,
   tokens_reasoning int, tokens_cache_read int, tokens_cache_write int,
   time_created int, time_updated int);
@@ -137,7 +137,7 @@ create table session_message (id text primary key, session_id text, type text, s
   time_created int, time_updated int, data text);
 """)
 con.execute(
-    "insert into session values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    "insert into session_v2 values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     ("ses_test", "ses_parent", "/tmp/proj", "A title", "build", "kimi-k2.6", 0.25,
      100, 50, 0, 10, 0, 1761300000000, 1761300100000),
 )
@@ -152,7 +152,9 @@ rows = [
             {"type": "reasoning", "text": "thinking"},
             {"type": "text", "text": "here is the answer"},
             {"type": "tool", "id": "call-1", "name": "bash",
-             "state": {"status": "completed", "input": {"cmd": "ls"}, "output": "a\nb"}},
+             "state": {"status": "completed",
+                       "input": {"cmd": "cat /etc/hosts", "path": "/etc/hosts"},
+                       "output": "a\nb"}},
         ],
     }),
     ("m4", 4, "compaction", {"summary": "earlier context summary", "status": "completed",
@@ -185,6 +187,16 @@ if grep -rq 'here is the answer' "$T/raw/messages" && grep -rq '"type":"tool_cal
 else
     bad "assistant parts not normalised"
 fi
+if grep -q '"dst":"/etc/hosts"' "$T/raw/sessions/opencode"/*/*/ses_test/edges.jsonl 2>/dev/null; then
+    ok "file edge extracted from a tool call"
+else
+    bad "no file edge for the tool's path"
+fi
+out="$(MEMORY_DIR="$T/mem" MEMORY_RAW="$T/raw" "$MEM" show "session://opencode/ses_test#turn-1" 2>&1)"
+case "$out" in
+    *"opencode/ses_test"*) ok "show resolves an anchor to its turn" ;;
+    *) bad "show did not resolve the anchor" ;;
+esac
 out="$(run_oc 2>&1)"
 check "opencode re-ingest is idempotent" "0" "$(printf '%s' "$out" | sed -n 's/.*ingested \([0-9]*\) opencode session(s).*/\1/p')"
 
