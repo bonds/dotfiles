@@ -389,12 +389,19 @@ Second gate: entropy scan in `raw/.git/hooks/pre-commit`.
   rollover.
 - Tool output cap (D5) applied before hashing.
 
-**Known cost: block overhead, not redundancy.** One file per message means one
-4 KB block per message: 4,478 messages measured 11.1 MB of content but 21 MB on
-disk. zstd cannot help — the waste is allocation, not repetition. If the archive
-passes ~2 GB or ~100k messages, the fix is one file per session plus a digest
-index, not better compression. Deferred deliberately: at a fortnight ≈ 23 MB the
-arithmetic does not justify the complexity.
+**Measured 2026-10-25, and it reverses this phase's order.** The archive holds
+51,536 files: 140.6 MB of content occupying 289.5 MB of disk — a 2.06x overhead,
+so half the disk is allocation slack. Message files average 2.4 KB against a
+4 KB block.
+
+That makes per-file zstd **counterproductive**: shrinking a 2.4 KB file to
+0.8 KB still occupies a 4 KB block, so the CPU is spent and nothing is saved.
+The fix is packing — one file per session, which would be 1,005 packfiles with a
+4.1 MB block floor instead of 263 MB — and only then compression.
+
+So the order is **pack, then compress**, not the reverse. Neither is due: the
+trigger is ~2 GB or ~100k messages, and we are at 0.3 GB and 49.5k. Phase 2 is
+parked until then; phase 3 (the index) is the next thing worth building.
 
 ## 8. Index
 
@@ -422,7 +429,7 @@ with `~/.local/share` and `~/.config` as fallbacks.
 |---|---|---|
 | **0** | Proxy passthrough — built, tested, then superseded by §5. Archived, not shipped. | (retired) |
 | **1** | ✅ Ingest + normalise → content-addressed messages and per-session turn logs, per-store watermark, redaction on the write path, hash chain. All four importers live: pi 19, opencode 479, hermes 111, osaurus 396 sessions. | `test_idempotent_reingest`; `test_watermark_resume`; `test_message_survives_compaction`; redaction table; `test_linear_storage` |
-| **2** | Compression, trained dictionary, hot/cold rollover | `test_stream_decompress_matches`; `test_dictionary_training_deterministic` |
+| **2** | **Parked** until the 2 GB / 100k-message trigger. Then: pack one file per session, *then* compress — per-file zstd saves nothing at 2.4 KB average. | `test_pack_roundtrip`; `test_stream_decompress_matches` |
 | **3** | FTS index (curated + transcripts), `mem recall` and `mem show` over the archive | `test_index_rebuild_from_raw`; `test_recall_returns_cited_turn` |
 | **4** | Summariser: goals / tried / worked / failed / gotchas / dead ends | `test_no_durable_lessons_outcome`; `test_every_claim_has_anchor`; `test_budget_cap_stops_run`; `test_idempotent_summarize` |
 | **5** | Principle proposals as a diff; `mem doctor`; decay and contradiction passes | `test_principle_requires_anchor`; `test_conflict_detected_by_scope`; `test_doctor_reports_token_cost`; `test_proposal_is_a_diff_not_a_write` |
@@ -505,7 +512,22 @@ Remaining:
 
 ## 13. Size expectations
 
-Measured 2026-10-25: ~1,414 sessions, ~76k turns, ~710 MB of harness content
-over ~5 months → **~1.5–2 GB/year raw**, **~100–200 MB/year compressed** with
-zstd + dictionary. Naive full-request capture would be 10–50× larger, which is
-why D3 is not optional.
+Measured 2026-10-25 after all four importers were live:
+
+| | sessions | turns | messages | content | on disk |
+|---|---:|---:|---:|---:|---:|
+| pi | 19 | 4,542 | 4,478 | 9.4 MB | 21 MB |
+| opencode | 479 | 30,653 | 29,656 | 61.6 MB | 193 MB |
+| hermes | 111 | 6,453 | 6,026 | ~13 MB | ~25 MB |
+| osaurus | 396 | 8,724 | 8,300 | ~57 MB | ~50 MB |
+| **total** | **1,005** | **50,372** | **48,460** | **140.6 MB** | **289.5 MB** |
+
+About six months of use per harness. The earlier estimate in this section
+(~1.5–2 GB/year) was extrapolated from pi alone and is roughly 4x too high for
+the ingest model: pi's log is verbose JSONL per line, while opencode's V2 store
+is already compact.
+
+At this rate the archive grows ~300 MB/year on disk and ~140 MB/year of content,
+so the 2 GB packing trigger is roughly five years out unless usage changes
+sharply. Naive per-request capture would still have been 10–50x larger, which is
+why D3 stands — but for identity and idempotence, not compression.
