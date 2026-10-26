@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import fcntl
+import hashlib
 import json
 import os
 import pathlib
@@ -436,6 +437,310 @@ def cmd_recall(args) -> int:
     return 0
 
 
+# ---------------------------------------------------------------- archive --
+#
+# Capture is ingestion, not interception. Every harness already records what a
+# proxy would have captured: the system prompt, the tool schemas, token counts,
+# cost. So the archive is built by reading those stores, normalising each
+# message into a content-addressed record, and keeping a derived per-session
+# turn log that points at them.
+#
+# The archive is the system of record because the stores are not durable: pi's
+# session files rotate, opencode and hermes compact in place, osaurus prunes
+# activity rows. Copying out, with our own integrity story, is the whole point —
+# hence the hash chain over each session's turns.
+
+RAW_DIR = pathlib.Path(os.environ.get("MEMORY_RAW") or MEMORY_DIR.parent / "raw")
+GENESIS = "mem-archive-v1"
+
+# Longest and most specific first, so the generic assignment pattern cannot
+# swallow a variable name that a narrower pattern already claimed.
+_SECRETS = [
+    (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"), "private_key"),
+    (re.compile(r"\bsk-[A-Za-z0-9_\-]{20,}"), "api_key"),
+    (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}"), "gh_token"),
+    (re.compile(r"\bghp_[A-Za-z0-9]{20,}"), "gh_token"),
+    (re.compile(r"\bxox[baprs]-[A-Za-z0-9\-]{10,}"), "slack_token"),
+    (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "aws_key"),
+    (re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-]{16,}"), "bearer"),
+]
+
+# Assignments need a judgement call, not a pattern. `maxTokens = 1048576`,
+# `const apiKey = config.value` and `NOPASSWD: ALL` are configuration and code,
+# and redacting them corrupts the transcripts this archive exists to preserve.
+# Real credentials in a transcript look like an ENV assignment: an upper-case
+# name with an underscore, and a value with a digit or a symbol.
+_ASSIGNMENT = re.compile(
+    r"\b([A-Z][A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD)[A-Z0-9_]*)"
+    r"\s*[:=]\s*([\"']?)([^\s\"',;}\]){(]{16,})"
+)
+
+
+def looks_secret(value: str) -> bool:
+    """True when a value looks like a credential rather than a number or code."""
+    if len(value) < 16 or not any(c.isalpha() for c in value):
+        return False  # 1048576 is a context window, not a key
+    return (
+        any(c.isdigit() for c in value)
+        or any(not c.isalnum() for c in value)
+        or len(value) >= 24  # a long all-alphabetic value is still suspicious
+    )
+
+
+def canonical(obj) -> str:
+    """Stable JSON: sorted keys, no whitespace, so a digest means one thing."""
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def redact_text(text: str) -> tuple[str, int]:
+    """Replace secrets with a marker; returns the text and how many were hit."""
+    count = 0
+    for pattern, kind in _SECRETS:
+        marker = f"[REDACTED:{kind}]"
+        if pattern.groups:
+            text, hits = pattern.subn(lambda m: f"{m.group(1)} {marker}", text)
+        else:
+            text, hits = pattern.subn(marker, text)
+        count += hits
+
+    def swap(match) -> str:
+        nonlocal count
+        name = match.group(1)
+        # An env-style name has an underscore, or is the bare word. That alone
+        # drops `NOPASSWD`, which contains PASSWD but is a sudoers permission.
+        if "_" not in name and name not in ("KEY", "TOKEN", "SECRET", "PASSWORD"):
+            return match.group(0)
+        if "REDACTED" in match.group(3) or not looks_secret(match.group(3)):
+            return match.group(0)  # already marked, or not credential-shaped
+        count += 1
+        return f"{name} {match.group(2)}[REDACTED:assignment]"
+
+    text = _ASSIGNMENT.sub(swap, text)
+    return text, count
+
+
+def redact_obj(obj, tally: list) -> object:
+    if isinstance(obj, str):
+        text, hits = redact_text(obj)
+        tally[0] += hits
+        return text
+    if isinstance(obj, list):
+        return [redact_obj(v, tally) for v in obj]
+    if isinstance(obj, dict):
+        return {k: redact_obj(v, tally) for k, v in obj.items()}
+    return obj
+
+
+def write_atomic(path: pathlib.Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
+
+
+def store_message(doc: dict, dry_run: bool = False) -> tuple[str, bool]:
+    """Write one message under its content digest. Returns (digest, created)."""
+    body = canonical(doc)
+    digest = hashlib.sha256(body.encode()).hexdigest()
+    path = RAW_DIR / "messages" / digest[:2] / f"{digest}.json"
+    if path.exists():
+        return digest, False
+    if not dry_run:
+        write_atomic(path, body + "\n")
+    return digest, True
+
+
+# pi content parts are already close to ours; keep the mapping explicit rather
+# than pass them through, so a harness reshaping its parts shows up as an
+# unknown part instead of silently changing what we store.
+def pi_parts(raw) -> list:
+    if not isinstance(raw, list):
+        raw = [{"type": "text", "text": "" if raw is None else raw}]
+    parts = raw
+    out = []
+    for part in parts:
+        if not isinstance(part, dict):
+            out.append({"type": "text", "text": str(part)})
+            continue
+        kind = part.get("type")
+        if kind == "text":
+            out.append({"type": "text", "text": part.get("text", "")})
+        elif kind == "thinking":
+            out.append({"type": "reasoning", "text": part.get("thinking", "")})
+        elif kind == "toolCall":
+            out.append({
+                "type": "tool_call",
+                "id": part.get("id"),
+                "name": part.get("name"),
+                "arguments": part.get("arguments"),
+            })
+        else:
+            out.append(part)  # unknown shape: keep it verbatim rather than lose it
+    return out
+
+
+def ingest_pi_session(path: pathlib.Path, state: dict, dry_run: bool) -> dict:
+    """Normalise one pi session file. Idempotent: every write is content-addressed."""
+    result = {"id": None, "turns": 0, "created": 0, "skipped": False}
+    st = path.stat()
+    key = str(path)
+    prev = state["sessions"].get(key) or {}
+    if prev.get("size") == st.st_size and prev.get("mtime_ns") == st.st_mtime_ns:
+        result["skipped"] = True
+        return result
+
+    lines = []
+    for line in path.read_text(errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            lines.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue  # a half-written trailing line; the next pass picks it up
+
+    head = next((o for o in lines if o.get("type") == "session"), {})
+    session_id = str(head.get("id") or path.stem)
+    result["id"] = session_id
+
+    turns: list = []
+    changes: list = []
+    models: list = []
+    tally = [0]
+    usage = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0, "reasoning": 0}
+    cost = 0.0
+
+    for obj in lines:
+        kind = obj.get("type")
+        if kind in ("model_change", "thinking_level_change"):
+            changes.append({k: v for k, v in obj.items() if k != "type"} | {"type": kind})
+            continue
+        if kind != "message":
+            continue
+
+        msg = obj.get("message") or {}
+        role = msg.get("role")
+        if role == "toolResult":
+            role = "tool"
+
+        doc = {"v": 1, "role": role, "content": pi_parts(msg.get("content"))}
+        if role == "tool":
+            doc["tool_call_id"] = msg.get("toolCallId")
+            doc["tool_name"] = msg.get("toolName")
+            doc["is_error"] = msg.get("isError")
+        doc = {k: v for k, v in doc.items() if v is not None}
+        digest, created = store_message(redact_obj(doc, tally), dry_run)
+        result["created"] += 1 if created else 0
+
+        turn = {"i": len(turns), "ts": obj.get("timestamp"), "role": role, "msg": digest}
+        if role == "assistant":
+            turn.update({
+                "model": msg.get("model"),
+                "provider": msg.get("provider"),
+                "thinking_level": msg.get("thinkingLevel"),
+                "stop_reason": msg.get("stopReason"),
+                "response_id": msg.get("responseId"),
+                "duration_ms": msg.get("durationMs"),
+            })
+            turn = {k: v for k, v in turn.items() if v is not None}
+            spend = msg.get("usage") or {}
+            for src, dst in (("input", "input"), ("output", "output"), ("cacheRead", "cache_read"),
+                             ("cacheWrite", "cache_write"), ("reasoning", "reasoning")):
+                usage[dst] += int(spend.get(src) or 0)
+            billed = spend.get("cost")
+            if isinstance(billed, dict):
+                cost += float(billed.get("total") or sum(
+                    v for v in billed.values() if isinstance(v, (int, float))))
+            elif isinstance(billed, (int, float)):
+                cost += float(billed)
+            model = msg.get("model")
+            if model and model not in models:
+                models.append(model)
+        turns.append(turn)
+        result["turns"] += 1
+
+    # Chain the turns so a later edit to the archive is visible.
+    prev_hash = hashlib.sha256(f"{GENESIS}:{session_id}".encode()).hexdigest()
+    chained = []
+    for turn in turns:
+        digest = hashlib.sha256(canonical(turn).encode()).hexdigest()
+        chained.append({**turn, "prev": prev_hash, "hash": digest})
+        prev_hash = digest
+
+    started = head.get("timestamp") or (turns[0]["ts"] if turns else None)
+    stamp = str(started or "")
+    year, month = (stamp[:4], stamp[5:7]) if len(stamp) >= 7 and stamp[4] == "-" else (
+        dt.datetime.now().strftime("%Y"), dt.datetime.now().strftime("%m"))
+
+    manifest = {
+        "v": 1,
+        "id": session_id,
+        "harness": "pi",
+        "started": started,
+        "ended": turns[-1]["ts"] if turns else started,
+        "cwd": head.get("cwd"),
+        "models": models or ([head.get("modelId")] if head.get("modelId") else []),
+        "thinking_level": head.get("thinkingLevel"),
+        "turns": len(chained),
+        "usage": usage,
+        "cost_usd": round(cost, 6),
+        "redactions": tally[0],
+        "retention": "hot",
+        "changes": changes,
+        "source": {"path": key, "size": st.st_size, "mtime_ns": st.st_mtime_ns},
+    }
+
+    if not dry_run:
+        out = RAW_DIR / "sessions" / "pi" / year / month / session_id
+        write_atomic(out / "session.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+        write_atomic(out / "turns.jsonl", "".join(canonical(t) + "\n" for t in chained))
+    return result
+
+
+def cmd_ingest(args) -> int:
+    if args.harness != "pi":
+        die(f"no importer for {args.harness} yet (available: pi)", 2)
+    if not PI_SESSIONS.is_dir():
+        die(f"no pi sessions at {PI_SESSIONS}", 1)
+
+    state_path = RAW_DIR / "state" / "pi.json"
+    state = {"v": 1, "sessions": {}}
+    if state_path.exists():
+        try:
+            state = json.loads(state_path.read_text())
+        except json.JSONDecodeError:
+            die(f"corrupt ingest state at {state_path}; move it aside to rebuild", 1)
+    state.setdefault("sessions", {})
+
+    processed = skipped = turns = created = 0
+    for path in sorted(PI_SESSIONS.rglob("*.jsonl")):
+        result = ingest_pi_session(path, state, args.dry_run)
+        if result["skipped"]:
+            skipped += 1
+            continue
+        processed += 1
+        turns += result["turns"]
+        created += result["created"]
+        if not args.dry_run:
+            st = path.stat()
+            state["sessions"][str(path)] = {
+                "size": st.st_size,
+                "mtime_ns": st.st_mtime_ns,
+                "id": result["id"],
+                "updated": dt.datetime.now().isoformat(timespec="seconds"),
+            }
+
+    if not args.dry_run:
+        state["updated"] = dt.datetime.now().isoformat(timespec="seconds")
+        write_atomic(state_path, json.dumps(state, indent=2, sort_keys=True) + "\n")
+
+    verb = "would ingest" if args.dry_run else "ingested"
+    print(f"mem: {verb} {processed} session(s): {turns} turn(s), {created} new message(s), "
+          f"{skipped} unchanged")
+    print(f"mem: archive at {RAW_DIR}")
+    return 0
+
+
 # --------------------------------------------------------------------- main --
 
 
@@ -473,6 +778,11 @@ def main(argv: list[str]) -> int:
     recall.add_argument("--limit", type=int, default=6)
     recall.add_argument("--source", default="all", choices=["all", "pi", "opencode", "hermes"])
     recall.set_defaults(fn=cmd_recall)
+
+    ing = sub.add_parser("ingest", help="copy a harness's sessions into the archive")
+    ing.add_argument("harness", nargs="?", default="pi", choices=["pi"])
+    ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
+    ing.set_defaults(fn=cmd_ingest)
 
     dec = sub.add_parser("decisions", help="print ~/DECISIONS.md")
     dec.set_defaults(fn=cmd_decisions)

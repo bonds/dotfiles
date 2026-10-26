@@ -1,8 +1,9 @@
 # Agent memory pipeline — design plan
 
-Status: **revised 2026-10-25** — capture is *ingest*, not interception (§5).
-Phase 0 (the proxy) was built, tested, then dropped, because every harness
-already records the same facts. Phases 1–6 not started.
+Status: **in progress 2026-10-25** — capture is *ingest*, not interception
+(§5). Phase 0 (the proxy) was built, tested, then dropped, because every harness
+already records the same facts. Phase 1 is live for pi; opencode, hermes and
+osaurus importers are still to write.
 
 Phase 0's code stays at `~/.config/nix/pkgs/agent-proxy/`, archived. It works —
 9 tests, verified end-to-end against Deep Infra at TTFB 0.47 s — and the review
@@ -34,7 +35,7 @@ everything above it with explicit provenance links.
 |---|---|---|
 | D1 | **The memory dir is the system of record.** Harness stores (pi JSONL, opencode/hermes/osaurus SQLite) are backfill sources and caches. | Treating harness stores as primary and indexing them in place — they are pruned, schema-churned, and lost when a harness is replaced. |
 | D2 | **Capture by ingesting the native harness stores**, not by intercepting traffic. All four already record the system prompt, tool schemas, tokens and cost (§5). | A local proxy — it bought a uniform schema and per-request wire bodies, at the cost of a supervised service in front of every model call, for information the stores already held. |
-| D3 | **Store each message once, content-addressed**, with a per-request manifest. | Storing full request bodies per turn — quadratic; 10–50× the bytes for long sessions. |
+| D3 | **Store each message once, content-addressed**, with a per-session turn log that references the digests. | Storing full request bodies per turn — quadratic, 10–50× the bytes. That was the *proxy's* problem, and ingest does not have it: the stores already hold each message once (measured: 1.4% duplicates within pi), so dedupe is now about identity for anchors and idempotent re-ingest, not about saving bytes. |
 | D4 | **Everything is recorded forever, hot, no tiers.** | Cold archive (`xz`) — saves ~60 MB/year for 5–10× the CPU and a new failure mode. |
 | D5 | **Tool outputs capped at capture** (~16 KB inline; head+tail+sha256 beyond), pointer to the harness store retained. | Recording them in full — 80–90% of bytes, almost none of the causal-chain value. |
 | D6 | **Proxy is local to each machine**, bound to `127.0.0.1`. | One proxy on sophrosyne serving both — adds a network hop to every model call and a shared failure domain. |
@@ -381,6 +382,13 @@ Second gate: entropy scan in `raw/.git/hooks/pre-commit`.
   rollover.
 - Tool output cap (D5) applied before hashing.
 
+**Known cost: block overhead, not redundancy.** One file per message means one
+4 KB block per message: 4,478 messages measured 11.1 MB of content but 21 MB on
+disk. zstd cannot help — the waste is allocation, not repetition. If the archive
+passes ~2 GB or ~100k messages, the fix is one file per session plus a digest
+index, not better compression. Deferred deliberately: at a fortnight ≈ 23 MB the
+arithmetic does not justify the complexity.
+
 ## 8. Index
 
 Two FTS5 databases, because they differ in size and audience:
@@ -406,7 +414,7 @@ with `~/.local/share` and `~/.config` as fallbacks.
 | Phase | Delivers | Failing test written first |
 |---|---|---|
 | **0** | Proxy passthrough — built, tested, then superseded by §5. Archived, not shipped. | (retired) |
-| **1** | Ingest + normalise: pi JSONL, opencode SQLite, hermes SQLite, osaurus `activity.sqlite` → content-addressed messages and request manifests, per-store watermark, redaction on the write path, hash chain | `test_idempotent_reingest`; `test_watermark_resume`; `test_message_survives_compaction`; redaction table; `test_linear_storage` |
+| **1** | Ingest + normalise → content-addressed messages and per-session turn logs, per-store watermark, redaction on the write path, hash chain. ✅ **pi** (19 sessions, 4,542 turns, 0 chain errors, 0 live secrets); opencode, hermes, osaurus pending. | `test_idempotent_reingest`; `test_watermark_resume`; `test_message_survives_compaction`; redaction table; `test_linear_storage` |
 | **2** | Compression, trained dictionary, hot/cold rollover | `test_stream_decompress_matches`; `test_dictionary_training_deterministic` |
 | **3** | FTS index (curated + transcripts), `mem recall` and `mem show` over the archive | `test_index_rebuild_from_raw`; `test_recall_returns_cited_turn` |
 | **4** | Summariser: goals / tried / worked / failed / gotchas / dead ends | `test_no_durable_lessons_outcome`; `test_every_claim_has_anchor`; `test_budget_cap_stops_run`; `test_idempotent_summarize` |
