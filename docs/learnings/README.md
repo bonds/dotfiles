@@ -44,3 +44,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-10-25 — OpenCode remembers a variant per model, and `default_agent` emits no selection](2026-10-25-opencode-remembers-variant-per-model.md)
 - [2026-10-25 — `new URL(path, origin)` turns a leading `//` into a different host](2026-10-25-url-relative-path-becomes-host.md)
 - [2026-10-25 — Osaurus `shell_run` dies when `/workspace` cannot be snapshotted](2026-10-25-osaurus-shell-run-needs-a-small-workspace.md)
+- [2026-10-25 — opencode plan mode rejects writes to its own plan directory](2026-10-25-opencode-plan-dir-guard.md)
