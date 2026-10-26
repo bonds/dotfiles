@@ -102,6 +102,8 @@ fi
 echo "== the real tree =="
 out="$("$MEM" doctor 2>&1)"; rc=$?
 if [ "$rc" -eq 0 ]; then ok "the live repo passes doctor"; else bad "live repo fails doctor:"; printf '%s\n' "$out" | tail -3; fi
+if printf '%s' "$out" | grep -q '^freshness'; then ok "live doctor reports freshness"; else bad "no freshness section"; fi
+if printf '%s' "$out" | grep -qE 'last ingest [0-9]{4}-'; then ok "reports a last-ingest timestamp per harness"; else bad "no ingest timestamps"; fi
 
 echo
 printf 'summarized: %d passed, %d failed\n' "$pass" "$fail"

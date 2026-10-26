@@ -72,8 +72,14 @@ on another machine, or a file the caller supplies (`--body-file ~/body.md`), is
 not a dangling reference. Without both, the first run reported four false
 positives out of four.
 
-**Slice 2** — learnings hygiene, archive health, summary health. Mostly arithmetic
-over what is already on disk.
+**Slice 2** — ✅ built 2026-10-26 as *freshness*: last ingest per harness, sessions
+not yet summarized, summaries behind their session, and the learnings index. This
+is the check that would have caught yesterday's data being served today — the
+archive is only as true as its last ingest, and everything built on it degrades
+silently as it ages.
+
+It reported 2 unsummarised sessions and 1 drifted summary on the first run, which
+is exactly the loop closing: doctor names the work, `mem summarize` does it.
 
 Both are testable without network. The checks need `MEM_DOCS`-style overrides so
 fixtures can stand in for the real tree, as `recall` already has.

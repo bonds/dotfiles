@@ -2714,6 +2714,73 @@ def cmd_doctor(args) -> int:
         if not _resolvable(command):
             findings.append(("warn", "truth", f"`{command}` is referenced by a skill but not resolvable"))
 
+    # --- freshness ------------------------------------------------------
+    # The archive is only as true as its last ingest, and every claim built on it
+    # — recall finding things, principles being current, the MCP server answering
+    # for Osaurus — quietly degrades as it ages. Nothing else in doctor looks at
+    # time, so this is the check that would have caught yesterday's data being
+    # served today.
+    now = dt.datetime.now()
+    for harness in ("pi", "opencode", "hermes", "osaurus"):
+        state_file = RAW_DIR / "state" / f"{harness}.json"
+        if not state_file.exists():
+            findings.append(("warn", "freshness", f"{harness}: never ingested"))
+            continue
+        try:
+            stamped = str(json.loads(state_file.read_text()).get("updated") or "")
+            when = dt.datetime.fromisoformat(stamped)
+        except ValueError:
+            findings.append(("warn", "freshness", f"{harness}: unreadable ingest state"))
+            continue
+        sessions = list((RAW_DIR / "sessions" / harness).glob("*/*/*/session.json"))
+        age = now - when
+        level = "warn" if age > dt.timedelta(days=3) else "ok"
+        findings.append((level, "freshness",
+                         f"{harness}: last ingest {stamped[:16]} ({age.days}d), "
+                         f"{len(sessions)} sessions"))
+
+    missing = drifted = 0
+    for manifest_file in RAW_DIR.glob("sessions/*/*/*/*/session.json"):
+        try:
+            manifest = json.loads(manifest_file.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if manifest.get("turns", 0) < 2:
+            continue  # the summarizer skips these by design
+        harness = manifest.get("harness") or manifest_file.parts[-5]
+        session = manifest.get("id") or manifest_file.parent.name
+        target = SUMMARIES / harness / f"{session}.md"
+        if not target.exists():
+            missing += 1
+            continue
+        current = hashlib.sha256(
+            (manifest_file.parent / "turns.jsonl").read_bytes()).hexdigest()
+        recorded = stored_digest(target)
+        if recorded and recorded != current:
+            drifted += 1
+    if missing:
+        findings.append(("info", "freshness", f"{missing} session(s) not summarized yet"))
+    findings.append(("warn" if drifted else "ok", "freshness",
+                     f"{drifted} summary(ies) behind their session" if drifted
+                     else "summaries match their sessions"))
+
+    learn_root = HOME / "docs" / "learnings"
+    index_file = learn_root / "README.md"
+    if index_file.exists():
+        listed = set(re.findall(r"\((\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md)\)",
+                                index_file.read_text()))
+        files = {f.name for f in learn_root.glob("*.md") if f.name != "README.md"}
+        dangling = sorted(listed - files)
+        unlisted = sorted(files - listed)
+        for name in dangling:
+            findings.append(("fail", "freshness", f"docs/learnings index points at missing {name}"))
+        if unlisted:
+            findings.append(("warn", "freshness",
+                             f"{len(unlisted)} learnings missing from the index, e.g. {unlisted[0]}"))
+        if not dangling and not unlisted:
+            findings.append(("ok", "freshness",
+                             f"docs/learnings: {len(files)} entries, index in step"))
+
     # --- report ---------------------------------------------------------
     if args.json:
         print(json.dumps({
