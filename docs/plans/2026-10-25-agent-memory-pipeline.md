@@ -1,9 +1,10 @@
 # Agent memory pipeline — design plan
 
-Status: **in progress 2026-10-25** — capture is *ingest*, not interception
+Status: **phase 1 complete 2026-10-25** — capture is *ingest*, not interception
 (§5). Phase 0 (the proxy) was built, tested, then dropped, because every harness
-already records the same facts. Phase 1 is live for pi; opencode, hermes and
-osaurus importers are still to write.
+already records the same facts. All four importers are live: pi, opencode,
+hermes, osaurus. 1,005 sessions and 50,372 turns archived, 0 chain errors,
+0 live secrets.
 
 Phase 0's code stays at `~/.config/nix/pkgs/agent-proxy/`, archived. It works —
 9 tests, verified end-to-end against Deep Infra at TTFB 0.47 s — and the review
@@ -420,7 +421,7 @@ with `~/.local/share` and `~/.config` as fallbacks.
 | Phase | Delivers | Failing test written first |
 |---|---|---|
 | **0** | Proxy passthrough — built, tested, then superseded by §5. Archived, not shipped. | (retired) |
-| **1** | Ingest + normalise → content-addressed messages and per-session turn logs, per-store watermark, redaction on the write path, hash chain. ✅ **pi** (19 sessions, 4,542 turns, 0 chain errors, 0 live secrets); opencode, hermes, osaurus pending. | `test_idempotent_reingest`; `test_watermark_resume`; `test_message_survives_compaction`; redaction table; `test_linear_storage` |
+| **1** | ✅ Ingest + normalise → content-addressed messages and per-session turn logs, per-store watermark, redaction on the write path, hash chain. All four importers live: pi 19, opencode 479, hermes 111, osaurus 396 sessions. | `test_idempotent_reingest`; `test_watermark_resume`; `test_message_survives_compaction`; redaction table; `test_linear_storage` |
 | **2** | Compression, trained dictionary, hot/cold rollover | `test_stream_decompress_matches`; `test_dictionary_training_deterministic` |
 | **3** | FTS index (curated + transcripts), `mem recall` and `mem show` over the archive | `test_index_rebuild_from_raw`; `test_recall_returns_cited_turn` |
 | **4** | Summariser: goals / tried / worked / failed / gotchas / dead ends | `test_no_durable_lessons_outcome`; `test_every_claim_has_anchor`; `test_budget_cap_stops_run`; `test_idempotent_summarize` |

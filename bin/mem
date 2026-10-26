@@ -58,6 +58,7 @@ DECISIONS = HOME / "DECISIONS.md"
 PI_SESSIONS = pathlib.Path(os.environ.get("MEM_PI_SESSIONS", HOME / ".pi" / "agent" / "sessions"))
 OPENCODE_DB = pathlib.Path(os.environ.get("MEM_OPENCODE_DB", HOME / ".local" / "share" / "opencode" / "opencode.db"))
 HERMES_DB = pathlib.Path(os.environ.get("MEM_HERMES_DB", HOME / ".hermes" / "state.db"))
+OSAURUS_DB = pathlib.Path(os.environ.get("MEM_OSAURUS_DB", HOME / ".osaurus" / "activity" / "activity.sqlite"))
 
 INBOX_HEADER = """# Learnings inbox
 
@@ -1032,6 +1033,260 @@ def ingest_hermes_session(con, sess, state: dict, dry_run: bool) -> dict:
     return result
 
 
+# ----------------------------------------------------------------- osaurus --
+#
+# osaurus is the only harness whose log already contains the wire bodies
+# (`wireRequestBody` / `wireResponseBody`), so nothing here has to reconstruct
+# what was sent. It is also the only one that streams: most responses are SSE
+# with `data: [DONE]`, so the parser reassembles deltas rather than reading a
+# `choices[0].message`.
+#
+# Two filters matter. `/internal/...` paths are utility calls (chat titles,
+# memory distillation) with synthetic prompts, not conversation. And Chat UI
+# rows carry no `session_id` — their conversation identity is the first segment
+# of `request_id` (`<chat-uuid>:<turn>:r0-...`), which is what groups them.
+
+_OSAURUS_SQL = """
+select seq, ts_ms, source, path, status, model, provider_id, agent_id, agent_name,
+       session_id, turn_id, request_id, input_tokens, output_tokens, duration_ms,
+       error_message, payload
+  from activity
+ where category = 'inference' and path not like '/internal/%'
+ order by seq
+"""
+
+
+def osaurus_session_key(row) -> str | None:
+    if row["session_id"]:
+        return row["session_id"]
+    rid = row["request_id"] or ""
+    if ":" in rid:
+        return "chat-" + rid.split(":", 1)[0].lower()
+    return None
+
+
+def openai_parts(msg: dict) -> list:
+    """Normalise an OpenAI-shaped message, as found in a request body."""
+    parts = []
+    content = msg.get("content")
+    if isinstance(content, str) and content:
+        parts.append({"type": "text", "text": cap_text(content)})
+    elif isinstance(content, list):
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text":
+                parts.append({"type": "text", "text": part.get("text", "")})
+            elif isinstance(part, dict):
+                parts.append(part)
+    if msg.get("reasoning_content"):
+        parts.append({"type": "reasoning", "text": msg["reasoning_content"]})
+    for call in msg.get("tool_calls") or []:
+        fn = call.get("function") or {}
+        parts.append({"type": "tool_call", "id": call.get("id"),
+                      "name": fn.get("name"), "arguments": fn.get("arguments")})
+    return parts
+
+
+def parse_osaurus_completion(body) -> dict:
+    """Reassemble a completion from a JSON body or an SSE stream."""
+    text = (body or "").strip()
+    if not text:
+        return {"parts": [], "usage": None, "finish_reason": None}
+
+    if not text.startswith("data:"):
+        try:
+            obj = json.loads(text)
+        except json.JSONDecodeError:
+            return {"parts": [{"type": "text", "text": cap_text(text)}],
+                    "usage": None, "finish_reason": None, "raw": True}
+        choices = obj.get("choices") or []
+        if not choices:
+            return {"parts": [], "usage": obj.get("usage"), "finish_reason": None}
+        msg = choices[0].get("message") or {}
+        return {"parts": openai_parts(msg), "usage": obj.get("usage"),
+                "finish_reason": choices[0].get("finish_reason")}
+
+    said: list = []
+    tools: dict = {}
+    usage = None
+    finish = None
+    for line in text.splitlines():
+        line = line.strip()
+        if not line.startswith("data:"):
+            continue
+        chunk = line[5:].strip()
+        if not chunk or chunk == "[DONE]":
+            continue
+        try:
+            obj = json.loads(chunk)
+        except json.JSONDecodeError:
+            continue  # a body truncated at the 256 KiB cap ends mid-chunk
+        if obj.get("usage"):
+            usage = obj["usage"]
+        for choice in obj.get("choices") or []:
+            delta = choice.get("delta") or {}
+            if delta.get("content"):
+                said.append(delta["content"])
+            # Providers disagree on the key: OpenAI-compatible ones use
+            # `reasoning_content`, OpenRouter-shaped ones use `reasoning`.
+            reasoning_delta = delta.get("reasoning_content") or delta.get("reasoning")
+            if reasoning_delta:
+                tools.setdefault("_reasoning", []).append(reasoning_delta)
+            for call in delta.get("tool_calls") or []:
+                slot = tools.setdefault(call.get("index", 0),
+                                        {"id": None, "name": None, "arguments": ""})
+                if call.get("id"):
+                    slot["id"] = call["id"]
+                fn = call.get("function") or {}
+                if fn.get("name"):
+                    slot["name"] = fn["name"]
+                if fn.get("arguments"):
+                    slot["arguments"] += fn["arguments"]
+            if choice.get("finish_reason"):
+                finish = choice["finish_reason"]
+
+    parts = []
+    reasoning = tools.pop("_reasoning", None)
+    if reasoning:
+        parts.append({"type": "reasoning", "text": "".join(reasoning)})
+    if said:
+        parts.append({"type": "text", "text": "".join(said)})
+    for _, slot in sorted(tools.items()):
+        parts.append({"type": "tool_call", "id": slot["id"], "name": slot["name"],
+                      "arguments": slot["arguments"]})
+    # An SSE body that never reached `[DONE]` was cut at the 256 KiB capture
+    # cap. Say so on the record: a truncated answer that looks complete is
+    # worse than one that admits it.
+    truncated = not text.rstrip().endswith("[DONE]")
+    return {"parts": parts, "usage": usage, "finish_reason": finish,
+            "truncated": truncated}
+
+
+def ingest_osaurus_session(rows, key: str, state: dict, dry_run: bool) -> dict:
+    result = {"id": key, "turns": 0, "created": 0, "skipped": False, "count": len(rows),
+              "seq": max(int(r["seq"]) for r in rows)}
+    prev = state["sessions"].get(key) or {}
+    if prev.get("count") == result["count"] and prev.get("seq") == result["seq"]:
+        result["skipped"] = True
+        return result
+
+    turns: list = []
+    models: list = []
+    sources: list = []
+    tally = [0]
+    usage = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0, "reasoning": 0}
+    duration = 0.0
+    last_digest = None
+    system_stored = False
+
+    for row in rows:
+        try:
+            payload = json.loads(row["payload"])
+        except json.JSONDecodeError:
+            continue
+        if row["source"] and row["source"] not in sources:
+            sources.append(row["source"])
+
+        body = payload.get("wireRequestBody") or payload.get("requestBody") or ""
+        try:
+            request = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            request = {}
+        messages = request.get("messages") or []
+
+        # The system prompt is the same on every call in a session; store once.
+        if messages and messages[0].get("role") == "system" and not system_stored:
+            doc = {"v": 1, "role": "system", "content": openai_parts(messages[0])}
+            msg, created = store_message(redact_obj(doc, tally), dry_run)
+            result["created"] += 1 if created else 0
+            turns.append({"i": 0, "ts": ms_to_iso(row["ts_ms"]), "role": "system",
+                          "msg": msg, "synthetic": True})
+            system_stored = True
+            last_digest = msg
+            result["turns"] += 1
+
+        # And the message that triggered this call is the last one in the array.
+        if messages:
+            prompt = messages[-1]
+            doc = {"v": 1, "role": prompt.get("role") or "user",
+                   "content": openai_parts(prompt)}
+            if prompt.get("tool_call_id"):
+                doc["tool_call_id"] = prompt["tool_call_id"]
+            doc = {k: v for k, v in doc.items() if v is not None}
+            digest, created = store_message(redact_obj(doc, tally), dry_run)
+            result["created"] += 1 if created else 0
+            if digest != last_digest:
+                turns.append({"i": len(turns), "ts": ms_to_iso(row["ts_ms"]),
+                              "role": doc["role"], "msg": digest})
+                last_digest = digest
+                result["turns"] += 1
+
+        completion = parse_osaurus_completion(
+            payload.get("wireResponseBody") or payload.get("responseBody"))
+        doc = {"v": 1, "role": "assistant", "content": completion["parts"]}
+        if completion.get("raw"):
+            doc["raw"] = True
+        if completion.get("truncated"):
+            doc["truncated"] = True
+        doc = {k: v for k, v in doc.items() if v is not None}
+        digest, created = store_message(redact_obj(doc, tally), dry_run)
+        result["created"] += 1 if created else 0
+
+        model = payload.get("model") or row["model"]
+        if model and model not in models:
+            models.append(model)
+        spend = completion.get("usage") or {}
+        usage["input"] += int(spend.get("prompt_tokens") or payload.get("inputTokens") or 0)
+        usage["output"] += int(spend.get("completion_tokens") or payload.get("outputTokens") or 0)
+        cached = (spend.get("prompt_tokens_details") or {}).get("cached_tokens")
+        if cached:
+            usage["cache_read"] += int(cached)
+        if payload.get("durationMs"):
+            duration += float(payload["durationMs"])
+
+        turn = {
+            "i": len(turns),
+            "seq": int(row["seq"]),
+            "ts": ms_to_iso(row["ts_ms"]),
+            "role": "assistant",
+            "msg": digest,
+            "model": model,
+            "provider": row["provider_id"],
+            "path": row["path"],
+            "status": row["status"],
+            "duration_ms": round(float(row["duration_ms"]), 1) if row["duration_ms"] else None,
+            "finish_reason": completion.get("finish_reason"),
+            "prompt_messages": len(messages),
+            "truncated": completion.get("truncated"),
+        }
+        turns.append({k: v for k, v in turn.items() if v is not None})
+        last_digest = digest
+        result["turns"] += 1
+
+    chained = chain_turns(turns, key)
+    first = rows[0]
+    manifest = {
+        "v": 1,
+        "id": key,
+        "harness": "osaurus",
+        "started": ms_to_iso(first["ts_ms"]),
+        "ended": ms_to_iso(rows[-1]["ts_ms"]),
+        "agent_id": first["agent_id"],
+        "agent_name": first["agent_name"],
+        "sources": sources,
+        "models": models,
+        "calls": len(rows),
+        "turns": len(chained),
+        "usage": usage,
+        "avg_duration_ms": round(duration / len(rows), 1) if rows else None,
+        "redactions": tally[0],
+        "retention": "hot",
+        "source": {"db": str(OSAURUS_DB), "category": "inference",
+                   "seq": result["seq"], "count": result["count"]},
+    }
+    write_session("osaurus", key, manifest, chained, dry_run)
+    return result
+
+
 def _ingest_state(harness: str) -> tuple[pathlib.Path, dict]:
     path = RAW_DIR / "state" / f"{harness}.json"
     state = {"v": 1, "sessions": {}}
@@ -1156,6 +1411,39 @@ def _ingest_hermes(args) -> int:
     return _finish_ingest("hermes", args, state_path, state, processed, turns, created, skipped)
 
 
+def _ingest_osaurus(args) -> int:
+    if not OSAURUS_DB.exists():
+        die(f"no osaurus activity database at {OSAURUS_DB}", 1)
+    state_path, state = _ingest_state("osaurus")
+    processed = skipped = turns = created = 0
+    con = sqlite3.connect(f"file:{OSAURUS_DB}?mode=ro", uri=True, timeout=10)
+    con.row_factory = sqlite3.Row
+    try:
+        buckets: dict = {}
+        for row in con.execute(_OSAURUS_SQL):
+            key = osaurus_session_key(row)
+            if key is None:
+                continue
+            buckets.setdefault(key, []).append(row)
+        for key in sorted(buckets, key=lambda k: buckets[k][0]["seq"]):
+            result = ingest_osaurus_session(buckets[key], key, state, args.dry_run)
+            if result["skipped"]:
+                skipped += 1
+                continue
+            processed += 1
+            turns += result["turns"]
+            created += result["created"]
+            if not args.dry_run:
+                state["sessions"][key] = {
+                    "count": result["count"],
+                    "seq": result["seq"],
+                    "updated": dt.datetime.now().isoformat(timespec="seconds"),
+                }
+    finally:
+        con.close()
+    return _finish_ingest("osaurus", args, state_path, state, processed, turns, created, skipped)
+
+
 def cmd_ingest(args) -> int:
     if args.harness == "pi":
         return _ingest_pi(args)
@@ -1163,7 +1451,9 @@ def cmd_ingest(args) -> int:
         return _ingest_opencode(args)
     if args.harness == "hermes":
         return _ingest_hermes(args)
-    die(f"no importer for {args.harness} (available: pi, opencode, hermes)", 2)
+    if args.harness == "osaurus":
+        return _ingest_osaurus(args)
+    die(f"no importer for {args.harness} (available: pi, opencode, hermes, osaurus)", 2)
 
 
 # --------------------------------------------------------------------- main --
@@ -1205,7 +1495,7 @@ def main(argv: list[str]) -> int:
     recall.set_defaults(fn=cmd_recall)
 
     ing = sub.add_parser("ingest", help="copy a harness's sessions into the archive")
-    ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode", "hermes"])
+    ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode", "hermes", "osaurus"])
     ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
     ing.set_defaults(fn=cmd_ingest)
 

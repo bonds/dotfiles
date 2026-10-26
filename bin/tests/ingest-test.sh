@@ -269,6 +269,76 @@ PY
 out="$(run_hm 2>&1)"
 check "a flag-only change triggers re-ingest" "1" "$(printf '%s' "$out" | sed -n 's/.*ingested \([0-9]*\) hermes session(s).*/\1/p')"
 
+echo "== osaurus: SSE reassembly, reasoning keys, truncation =="
+ODB="$T/osaurus.db"
+python3 - "$ODB" <<'PY'
+import json, sqlite3, sys
+
+con = sqlite3.connect(sys.argv[1])
+con.executescript("""
+create table activity (seq integer primary key, id text, ts_ms integer, category text,
+  locality text, source text, method text, path text, status integer, is_error integer,
+  duration_ms real, model text, provider_id text, destination_host text,
+  destination_label text, transport text, mode text, agent_id text, agent_name text,
+  session_id text, turn_id text, request_id text, plugin_id text, access_key_id text,
+  audience text, input_tokens int, output_tokens int, tokens_per_second real,
+  bytes_sent int, bytes_received int, privacy_filter_applied int, redacted_count int,
+  finish_reason text, error_message text, title text, payload blob, prev_hash text, hash text);
+""")
+
+def sse(chunks, done=True):
+    body = "\n\n".join("data: " + json.dumps(c) for c in chunks)
+    return body + ("\n\ndata: [DONE]" if done else "\n\ndata: {\"trunc")
+
+req = {"messages": [
+    {"role": "system", "content": "you are a test"},
+    {"role": "user", "content": "say hello"},
+]}
+part1 = {"choices": [{"delta": {"role": "assistant", "reasoning": "think"}}]}
+part2 = {"choices": [{"delta": {"content": "hello "}}]}
+part3 = {"choices": [{"delta": {"content": "world"}, "finish_reason": "stop"}]}
+rows = [
+    (1, 1761300000000, "Agent", "/v1/openai/chat/completions", 200, "m", "p",
+     "a1", "Osaurus", "sess-a", None, "SESS-A:1:r0", 10, 5, 100.0,
+     json.dumps({"wireRequestBody": json.dumps(req),
+                 "wireResponseBody": sse([part1, part2, part3]),
+                 "model": "m", "inputTokens": 10, "outputTokens": 5, "durationMs": 100.0})),
+    (2, 1761300060000, "Agent", "/v1/openai/chat/completions", 200, "m", "p",
+     "a1", "Osaurus", "sess-a", None, "SESS-A:2:r0", 11, 0, 50.0,
+     json.dumps({"wireRequestBody": json.dumps(req),
+                 "wireResponseBody": sse([part2], done=False),
+                 "model": "m", "inputTokens": 11, "outputTokens": 0, "durationMs": 50.0})),
+]
+for r in rows:
+    con.execute(
+        "insert into activity (seq, ts_ms, source, path, status, model, provider_id,"
+        " agent_id, agent_name, session_id, turn_id, request_id, input_tokens,"
+        " output_tokens, duration_ms, payload, category)"
+        " values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'inference')", r)
+con.commit(); con.close()
+PY
+
+run_os() {
+    MEMORY_DIR="$T/mem" MEMORY_RAW="$T/raw" MEM_OSAURUS_DB="$ODB" "$MEM" ingest osaurus "$@"
+}
+out="$(run_os 2>&1)"
+check "osaurus session ingested" "1" "$(printf '%s' "$out" | sed -n 's/.*ingested \([0-9]*\) osaurus session(s).*/\1/p')"
+od="$(ls -d "$T"/raw/sessions/osaurus/*/*/sess-a)"
+if grep -rq '"text":"hello world"' "$T/raw/messages"; then
+    ok "SSE deltas reassembled into one text"
+else
+    bad "SSE deltas not reassembled"
+fi
+# canonical JSON sorts keys, so match the two fields rather than one ordering
+if grep -rq '"text":"think"' "$T/raw/messages" && grep -rq '"type":"reasoning"' "$T/raw/messages"; then
+    ok "reasoning captured from the \`reasoning\` key"
+else
+    bad "reasoning delta dropped"
+fi
+check "truncated stream flagged on the turn" "1" "$(grep -c '"truncated":true' "$od/turns.jsonl" | tr -d ' ')"
+out="$(run_os 2>&1)"
+check "osaurus re-ingest is idempotent" "0" "$(printf '%s' "$out" | sed -n 's/.*ingested \([0-9]*\) osaurus session(s).*/\1/p')"
+
 echo
 printf 'summarised: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
