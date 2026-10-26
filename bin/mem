@@ -730,7 +730,10 @@ def cmd_ingest(args) -> int:
                 "updated": dt.datetime.now().isoformat(timespec="seconds"),
             }
 
-    if not args.dry_run:
+    # Only touch the state file when something actually changed: rewriting a
+    # timestamp on a no-op run dirtying the archive repo is exactly the kind of
+    # false signal that makes "git status is clean" useless as a check.
+    if not args.dry_run and processed:
         state["updated"] = dt.datetime.now().isoformat(timespec="seconds")
         write_atomic(state_path, json.dumps(state, indent=2, sort_keys=True) + "\n")
 
