@@ -579,6 +579,56 @@ def pi_parts(raw) -> list:
     return out
 
 
+def chain_turns(turns: list, session_id: str) -> list:
+    """Chain turns so an edit to the archive is visible rather than only unverified."""
+    prev_hash = hashlib.sha256(f"{GENESIS}:{session_id}".encode()).hexdigest()
+    chained = []
+    for turn in turns:
+        digest = hashlib.sha256(canonical(turn).encode()).hexdigest()
+        chained.append({**turn, "prev": prev_hash, "hash": digest})
+        prev_hash = digest
+    return chained
+
+
+def write_session(harness: str, session_id: str, manifest: dict, turns: list, dry_run: bool) -> None:
+    if dry_run:
+        return
+    stamp = str(manifest.get("started") or "")
+    if len(stamp) >= 7 and stamp[4] == "-":
+        year, month = stamp[:4], stamp[5:7]
+    else:
+        now = dt.datetime.now()
+        year, month = now.strftime("%Y"), now.strftime("%m")
+    out = RAW_DIR / "sessions" / harness / year / month / session_id
+    write_atomic(out / "session.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    write_atomic(out / "turns.jsonl", "".join(canonical(t) + "\n" for t in turns))
+
+
+def ms_to_iso(value) -> str | None:
+    if not value:
+        return None
+    return dt.datetime.fromtimestamp(int(value) / 1000, dt.timezone.utc).isoformat(timespec="milliseconds")
+
+
+def cap_text(text, limit: int = 16 * 1024) -> str:
+    """Keep head and tail of a large tool output (plan D5).
+
+    Tool results are most of the bytes and least of the causal chain; a rendered
+    build log or file dump pushes a session into the hundreds of KB without
+    telling a later reader anything the head and tail do not.
+    """
+    if not isinstance(text, str) or len(text) <= limit:
+        return text
+    head = limit // 2
+    tail = limit // 4
+    digest = hashlib.sha256(text.encode()).hexdigest()[:12]
+    return (
+        text[:head]
+        + f"\n…[truncated {len(text)} chars, sha256:{digest}]…\n"
+        + text[-tail:]
+    )
+
+
 def ingest_pi_session(path: pathlib.Path, state: dict, dry_run: bool) -> dict:
     """Normalise one pi session file. Idempotent: every write is content-addressed."""
     result = {"id": None, "turns": 0, "created": 0, "skipped": False}
@@ -660,17 +710,9 @@ def ingest_pi_session(path: pathlib.Path, state: dict, dry_run: bool) -> dict:
         result["turns"] += 1
 
     # Chain the turns so a later edit to the archive is visible.
-    prev_hash = hashlib.sha256(f"{GENESIS}:{session_id}".encode()).hexdigest()
-    chained = []
-    for turn in turns:
-        digest = hashlib.sha256(canonical(turn).encode()).hexdigest()
-        chained.append({**turn, "prev": prev_hash, "hash": digest})
-        prev_hash = digest
+    chained = chain_turns(turns, session_id)
 
     started = head.get("timestamp") or (turns[0]["ts"] if turns else None)
-    stamp = str(started or "")
-    year, month = (stamp[:4], stamp[5:7]) if len(stamp) >= 7 and stamp[4] == "-" else (
-        dt.datetime.now().strftime("%Y"), dt.datetime.now().strftime("%m"))
 
     manifest = {
         "v": 1,
@@ -690,28 +732,181 @@ def ingest_pi_session(path: pathlib.Path, state: dict, dry_run: bool) -> dict:
         "source": {"path": key, "size": st.st_size, "mtime_ns": st.st_mtime_ns},
     }
 
-    if not dry_run:
-        out = RAW_DIR / "sessions" / "pi" / year / month / session_id
-        write_atomic(out / "session.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-        write_atomic(out / "turns.jsonl", "".join(canonical(t) + "\n" for t in chained))
+    write_session("pi", session_id, manifest, chained, dry_run)
     return result
 
 
-def cmd_ingest(args) -> int:
-    if args.harness != "pi":
-        die(f"no importer for {args.harness} yet (available: pi)", 2)
+# ---------------------------------------------------------------- opencode --
+#
+# opencode's V2 store keeps one row per turn in `session_message` (type + seq +
+# a JSON `data`), which is both simpler and richer than the V1 message/part
+# pair: it carries the composed system prompt as text, and the compaction events
+# with their summaries. Those compaction rows are why this reads V2 — they are
+# the pre-compaction narrative that D17 says an archive must not lose.
+
+_OPENCODE_ROLES = {
+    "user": "user",
+    "assistant": "assistant",
+    "system": "system",
+    "synthetic": "synthetic",
+    "compaction": "compaction",
+}
+
+_EVENT_TYPES = ("idle", "model-switched", "agent-switched")
+
+
+def opencode_parts(content) -> list:
+    out = []
+    for part in content or []:
+        if not isinstance(part, dict):
+            out.append({"type": "text", "text": str(part)})
+            continue
+        kind = part.get("type")
+        if kind == "text":
+            out.append({"type": "text", "text": part.get("text", "")})
+        elif kind == "reasoning":
+            out.append({"type": "reasoning", "text": part.get("text", "")})
+        elif kind == "tool":
+            state = part.get("state") or {}
+            out.append({
+                "type": "tool_call",
+                "id": part.get("id"),
+                "name": part.get("name"),
+                "status": state.get("status"),
+                "input": state.get("input"),
+                "output": cap_text(state.get("output")),
+            })
+        else:
+            out.append(part)
+    return out
+
+
+def ingest_opencode_session(con, sess, state: dict, dry_run: bool) -> dict:
+    result = {"id": sess["id"], "turns": 0, "created": 0, "skipped": False}
+    count, max_seq = con.execute(
+        "select count(*), coalesce(max(seq), 0) from session_message where session_id = ?",
+        (sess["id"],),
+    ).fetchone()
+    count, max_seq = int(count or 0), int(max_seq or 0)
+    if not count:
+        result["skipped"] = True
+        return result
+
+    prev = state["sessions"].get(sess["id"]) or {}
+    if prev.get("count") == count and prev.get("seq") == max_seq:
+        result["skipped"] = True
+        return result
+
+    turns: list = []
+    models: list = []
+    tally = [0]
+
+    for kind, seq, ts_ms, data in con.execute(
+        "select type, seq, time_created, data from session_message"
+        " where session_id = ? order by seq",
+        (sess["id"],),
+    ):
+        try:
+            payload = json.loads(data)
+        except json.JSONDecodeError:
+            continue
+
+        role = _OPENCODE_ROLES.get(kind, "event")
+        if kind == "assistant":
+            parts = opencode_parts(payload.get("content"))
+        elif kind == "compaction":
+            parts = [{"type": "text", "text": cap_text(payload.get("summary") or "")}]
+        elif kind in _EVENT_TYPES:
+            parts = [{"type": "event", "name": kind,
+                      "data": {k: v for k, v in payload.items() if k != "time"}}]
+        else:
+            parts = [{"type": "text", "text": payload.get("text") or ""}]
+
+        doc = {"v": 1, "role": role, "content": parts}
+        if kind == "compaction":
+            doc["status"] = payload.get("status")
+            doc["reason"] = payload.get("reason")
+        doc = {k: v for k, v in doc.items() if v is not None}
+        digest, created = store_message(redact_obj(doc, tally), dry_run)
+        result["created"] += 1 if created else 0
+
+        turn = {"i": len(turns), "seq": seq, "ts": ms_to_iso(ts_ms), "role": role, "msg": digest}
+        if kind == "assistant":
+            model = payload.get("model") or {}
+            turn.update({
+                "model": model.get("id"),
+                "provider": model.get("providerID"),
+                "variant": model.get("variant"),
+                "agent": payload.get("agent"),
+                "cost_usd": payload.get("cost"),
+            })
+            if model.get("id") and model["id"] not in models:
+                models.append(model["id"])
+        turns.append({k: v for k, v in turn.items() if v is not None})
+        result["turns"] += 1
+
+    chained = chain_turns(turns, sess["id"])
+    started = ms_to_iso(sess["time_created"])
+    manifest = {
+        "v": 1,
+        "id": sess["id"],
+        "harness": "opencode",
+        "parent": sess["parent_id"],
+        "started": started,
+        "ended": ms_to_iso(sess["time_updated"]) or (turns[-1]["ts"] if turns else started),
+        "cwd": sess["directory"],
+        "title": sess["title"],
+        "agent": sess["agent"],
+        "models": models or ([sess["model"]] if sess["model"] else []),
+        "turns": len(chained),
+        "usage": {
+            "input": int(sess["tokens_input"] or 0),
+            "output": int(sess["tokens_output"] or 0),
+            "cache_read": int(sess["tokens_cache_read"] or 0),
+            "cache_write": int(sess["tokens_cache_write"] or 0),
+            "reasoning": int(sess["tokens_reasoning"] or 0),
+        },
+        "cost_usd": round(float(sess["cost"] or 0), 6),
+        "redactions": tally[0],
+        "retention": "hot",
+        "source": {"db": str(OPENCODE_DB), "session_id": sess["id"],
+                   "seq": max_seq, "count": count},
+    }
+    write_session("opencode", sess["id"], manifest, chained, dry_run)
+    result["count"] = count
+    result["seq"] = max_seq
+    return result
+
+
+def _ingest_state(harness: str) -> tuple[pathlib.Path, dict]:
+    path = RAW_DIR / "state" / f"{harness}.json"
+    state = {"v": 1, "sessions": {}}
+    if path.exists():
+        try:
+            state = json.loads(path.read_text())
+        except json.JSONDecodeError:
+            die(f"corrupt ingest state at {path}; move it aside to rebuild", 1)
+    state.setdefault("sessions", {})
+    return path, state
+
+
+def _finish_ingest(harness, args, state_path, state, processed, turns, created, skipped) -> int:
+    # Only touch state when something changed, so a no-op run leaves the archive
+    # repo clean — that is what makes `git status` usable as an idempotence check.
+    if not args.dry_run and processed:
+        state["updated"] = dt.datetime.now().isoformat(timespec="seconds")
+        write_atomic(state_path, json.dumps(state, indent=2, sort_keys=True) + "\n")
+    verb = "would ingest" if args.dry_run else "ingested"
+    print(f"mem: {verb} {processed} {harness} session(s): {turns} turn(s), "
+          f"{created} new message(s), {skipped} unchanged")
+    print(f"mem: archive at {RAW_DIR}")
+    return 0
+
+
+def _ingest_pi(args) -> int:
     if not PI_SESSIONS.is_dir():
         die(f"no pi sessions at {PI_SESSIONS}", 1)
-
-    state_path = RAW_DIR / "state" / "pi.json"
-    state = {"v": 1, "sessions": {}}
-    if state_path.exists():
-        try:
-            state = json.loads(state_path.read_text())
-        except json.JSONDecodeError:
-            die(f"corrupt ingest state at {state_path}; move it aside to rebuild", 1)
-    state.setdefault("sessions", {})
-
+    state_path, state = _ingest_state("pi")
     processed = skipped = turns = created = 0
     for path in sorted(PI_SESSIONS.rglob("*.jsonl")):
         result = ingest_pi_session(path, state, args.dry_run)
@@ -729,19 +924,48 @@ def cmd_ingest(args) -> int:
                 "id": result["id"],
                 "updated": dt.datetime.now().isoformat(timespec="seconds"),
             }
+    return _finish_ingest("pi", args, state_path, state, processed, turns, created, skipped)
 
-    # Only touch the state file when something actually changed: rewriting a
-    # timestamp on a no-op run dirtying the archive repo is exactly the kind of
-    # false signal that makes "git status is clean" useless as a check.
-    if not args.dry_run and processed:
-        state["updated"] = dt.datetime.now().isoformat(timespec="seconds")
-        write_atomic(state_path, json.dumps(state, indent=2, sort_keys=True) + "\n")
 
-    verb = "would ingest" if args.dry_run else "ingested"
-    print(f"mem: {verb} {processed} session(s): {turns} turn(s), {created} new message(s), "
-          f"{skipped} unchanged")
-    print(f"mem: archive at {RAW_DIR}")
-    return 0
+def _ingest_opencode(args) -> int:
+    if not OPENCODE_DB.exists():
+        die(f"no opencode database at {OPENCODE_DB}", 1)
+    state_path, state = _ingest_state("opencode")
+    processed = skipped = turns = created = 0
+    con = sqlite3.connect(f"file:{OPENCODE_DB}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            "select id, parent_id, directory, title, agent, model, cost,"
+            " tokens_input, tokens_output, tokens_reasoning,"
+            " tokens_cache_read, tokens_cache_write, time_created, time_updated"
+            " from session order by time_created"
+        ).fetchall()
+        for sess in rows:
+            result = ingest_opencode_session(con, sess, state, args.dry_run)
+            if result["skipped"]:
+                skipped += 1
+                continue
+            processed += 1
+            turns += result["turns"]
+            created += result["created"]
+            if not args.dry_run:
+                state["sessions"][sess["id"]] = {
+                    "count": result.get("count"),
+                    "seq": result.get("seq"),
+                    "updated": dt.datetime.now().isoformat(timespec="seconds"),
+                }
+    finally:
+        con.close()
+    return _finish_ingest("opencode", args, state_path, state, processed, turns, created, skipped)
+
+
+def cmd_ingest(args) -> int:
+    if args.harness == "pi":
+        return _ingest_pi(args)
+    if args.harness == "opencode":
+        return _ingest_opencode(args)
+    die(f"no importer for {args.harness} (available: pi, opencode)", 2)
 
 
 # --------------------------------------------------------------------- main --
@@ -783,7 +1007,7 @@ def main(argv: list[str]) -> int:
     recall.set_defaults(fn=cmd_recall)
 
     ing = sub.add_parser("ingest", help="copy a harness's sessions into the archive")
-    ing.add_argument("harness", nargs="?", default="pi", choices=["pi"])
+    ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode"])
     ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
     ing.set_defaults(fn=cmd_ingest)
 
