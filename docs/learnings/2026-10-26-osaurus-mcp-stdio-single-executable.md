@@ -41,3 +41,11 @@ and configure `Command: /Users/scott/bin/mem-mcp`. Verified 2026-10-26: status
 This shape is also what other MCP clients want — Claude Desktop and Cursor both
 take `command` + `args`, and a single executable works in either — so building the
 server behind a shim costs nothing and removes a per-client configuration quirk.
+
+## Evidence
+
+`session://opencode/ses_e8ca2e501ffeBxfIfKZ5hihPUf#turn-886`
+
+Found by searching the archive for a verbatim phrase from this entry (1 hit(s) for `Status: failed`), within 3 days of the entry date.
+
+> Status: failed

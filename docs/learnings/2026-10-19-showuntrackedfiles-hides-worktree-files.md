@@ -50,3 +50,11 @@ git merge-base --is-ancestor HEAD main # merged?
 **Lesson:** `showUntrackedFiles=no` is a repo-wide lie about worktree state.
 `-uall` is the only honest view, and it is mandatory before any destructive
 worktree operation.
+
+## Evidence
+
+`session://pi/01a1525b-e95e-71f0-9f75-d46b9e77428d#turn-380`
+
+Found by searching the archive for a verbatim phrase from this entry (33 hit(s) for `nix-config-review.md`), within 3 days of the entry date.
+
+> - Entry 2: 3 files, sizes 16KB/11KB/11KB — actual: nix-config-review.md 16520 (16KB), nix-fixes.patch 11319 (11KB), sophrosyne-dotfiles-path-assessment.md 11148 (11KB). ✓

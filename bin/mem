@@ -227,6 +227,12 @@ def cmd_learn(args) -> int:
 
 {args.fix}
 """
+    # Provenance on the write path: an entry that records the session it came
+    # from can be checked later, and one that does not has to be re-derived by
+    # search. `mem why <slug>` walks these anchors; backfill-evidence retrofits
+    # them for entries written before this existed.
+    if args.evidence:
+        body += "\n## Evidence\n\n" + "\n".join(f"- `{a}`" for a in args.evidence) + "\n"
     if args.see:
         body += "\n## See also\n\n" + "\n".join(f"- {s}" for s in args.see) + "\n"
     path.write_text(body, encoding="utf-8")
@@ -1664,8 +1670,13 @@ def message_text(digest: str) -> str:
         doc = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
         return ""
+    content = doc.get("content")
+    if isinstance(content, str):
+        # Older records and hand-written fixtures keep the text flat; treating it
+        # as one text part is the same answer as the list form.
+        return content
     chunks = []
-    for part in doc.get("content") or []:
+    for part in content or []:
         kind = part.get("type")
         if kind in ("text", "reasoning"):
             chunks.append(part.get("text") or "")
@@ -1819,8 +1830,13 @@ def anchor_text(anchor: str) -> str:
             raise ValueError(f"turn {turn_no} not in {harness}/{session} (has {len(turns)})")
         turns = picked
 
-    manifest = json.loads((found[0].parent / "session.json").read_text())
-    out = [f"{harness}/{session}  {manifest.get('started', '')[:19]}  "
+    # A session.json can be missing when an import stopped between writing the
+    # turns and its manifest; showing the turns is still useful, so degrade.
+    try:
+        manifest = json.loads((found[0].parent / "session.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        manifest = {}
+    out = [f"{harness}/{session}  {str(manifest.get('started', ''))[:19]}  "
            f"{manifest.get('models') or manifest.get('model') or ''}"]
     for turn in turns:
         out.append(f"\n[{turn.get('i')}] {turn.get('role')}  {str(turn.get('ts'))[:19]}")
@@ -2895,6 +2911,306 @@ def cmd_nightly(args) -> int:
     return 1 if failed else 0
 
 
+# ------------------------------------------------------------------- why --
+#
+# The traversal half of provenance. The data was always there — proposals carry
+# turn anchors, summaries carry a source digest, learnings carry symptom and
+# cause — but nothing walked between them, so "show me the evidence for this rule"
+# was a research project. Two directions here: a slug down to its sessions, and
+# an anchor up to whatever cites it.
+
+LEARNINGS = HOME / "docs" / "learnings"
+
+
+def learnings_root() -> pathlib.Path:
+    return pathlib.Path(_DOC_ENV) if _DOC_ENV else LEARNINGS
+
+
+def _anchor_preview(anchor: str, lines: int = 6) -> str:
+    try:
+        text = anchor_text(anchor)
+    except ValueError as exc:
+        return f"    (unresolvable: {exc})"
+    body = text.splitlines()
+    keep = [line for line in body[1:] if line.strip()][:lines]
+    return "\n".join("    " + line[:160] for line in keep)
+
+
+def _cited_by(needle: str) -> list:
+    """Files that mention a slug, an anchor, or a session id."""
+    # learnings_root() first: it is the tree actually in use, which is $HOME/docs
+    # in practice but a fixture elsewhere, and a citation search that ignores the
+    # caller's own docs directory answers "(nothing)" for every anchor.
+    roots = [learnings_root(), HOME / "AGENTS.md", HOME / "DECISIONS.md",
+             MEMORY_DIR / "principles", HOME / "docs",
+             HOME / ".config" / "nix" / "agent-skills"]
+    found = []
+    for root in roots:
+        if not root.exists():
+            continue
+        target = str(root)
+        proc = subprocess.run(["rg", "-l", "-F", "--no-messages", "--", needle, target],
+                              capture_output=True, text=True)
+        for line in proc.stdout.splitlines():
+            if line.strip():
+                path = pathlib.Path(line)
+                try:
+                    found.append(str(path.relative_to(HOME)))
+                except ValueError:
+                    found.append(str(path))  # outside $HOME, e.g. a fixture
+    return sorted(set(found))
+
+
+def cmd_why(args) -> int:
+    target = args.target.strip()
+
+    # An anchor, or anything containing a session id: resolve it, then show who
+    # cites it. That is the direction you want when checking a rule.
+    if target.startswith("session://") or "/" in target and "#" in target:
+        try:
+            print(anchor_text(target))
+        except ValueError as exc:
+            die(str(exc), 1)
+        cited = _cited_by(target.split("#")[0].replace("session://", ""))
+        print(f"\ncited by: {', '.join(cited) if cited else '(nothing)'}")
+        return 0
+
+    # Otherwise treat it as a slug into docs/learnings, then follow the anchors the
+    # entry records.
+    root = learnings_root()
+    matches = [f for f in sorted(root.glob("*.md"))
+               if f.name != "README.md" and target.lower() in f.stem.lower()]
+    if not matches:
+        die(f"no learning matching {target!r} under {str(root).replace(str(HOME), '~')}", 1)
+
+    for path in matches:
+        print(f"\n=== {str(path).replace(str(HOME), '~')}")
+        print(path.read_text().rstrip())
+        anchors = re.findall(r"session://[\w.-]+/[^\s,)]+#turn-\d+", path.read_text())
+        if anchors:
+            print("\n  evidence:")
+            for anchor in dict.fromkeys(anchors):
+                field = anchor.replace("session://", "")
+                print(f"\n  {anchor}")
+                print(_anchor_preview(anchor))
+    return 0
+
+
+# -------------------------------------------------------------- backfill --
+#
+# Existing learnings entries record symptom, cause and fix but not which session
+# taught them, so the chain broke at exactly the layer a reader starts from. This
+# finds an anchor for each entry and only writes it when the turn provably
+# contains the entry's own distinctive words — a wrong anchor is worse than none,
+# which is the lesson the summarizer's fabricated citations already taught.
+
+
+def _phrases(text: str) -> list:
+    """Verbatim strings an entry likely inherited from its session.
+
+    Token overlap finds words, not origins: it cited a compaction discussion for
+    a SQLite lesson because both contain "database". Error text, code spans and
+    the title are near-unique and were copied from the session, so searching for
+    them lands on the turn that actually discussed the thing.
+    """
+    # Only the symptom and the title are evidence of the session; the cause and
+    # fix are written afterwards, and quoting them cites your own later prose.
+    title = re.search(r"(?m)^# (.+)$", text)
+    symptom = re.search(r"(?ms)^## Symptom\s*(.*?)(?=^## |\Z)", text)
+    # The title often quotes the exact fragment even when the symptom paraphrases
+    # it, so both are fair game; everything after §Symptom is our own prose.
+    source = ((title.group(1) if title else "") + "\n" + (symptom.group(1) if symptom else text[:800]))
+
+    found = []  # (phrase, verbatim) — verbatim means copied from a code block
+    in_fence = False
+    for line in source.splitlines():
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            stripped = line.strip()
+            if 10 <= len(stripped) <= 90:
+                found.append((stripped, True))
+    # Inline spans are NOT verbatim: two spans on one line pair up by accident and
+    # capture the prose between them ("`$HOME` was empty, so `exec ...`"). They
+    # still count when they carry technical punctuation, which real code does.
+    for match in re.finditer(r"`([^`\n]{8,90})`", source):
+        found.append((match.group(1).strip(), False))
+    # A quoted span is a deliberate quotation, not a pairing accident.
+    for match in re.finditer(r'"([^"\n]{12,90})"', source):
+        found.append((match.group(1).strip(), True))
+    if title:
+        found.append((title.group(1).strip()[:90], False))
+
+    # Backtick spans on one line pair up by accident: "`$HOME` was empty, so
+    # `exec ...`" yields the prose between the two spans, which then matches
+    # hundreds of messages while proving nothing. Real quotes from a session
+    # carry technical punctuation — a path, an option, a call — so those are the
+    # only ones worth searching for.
+    technical = set("/._-=:()<>[]{}|'\"$@#!%&*+;?,\\`")
+    unique = []
+    for phrase, verbatim in found:
+        if phrase in unique or len(phrase) < 8:
+            continue
+        if phrase.startswith(("~", "/", "$ ", "#", "|")):
+            continue
+        # A line from a code block was pasted out of the tool output, so plain
+        # English error text ("database is locked") is still verbatim; only the
+        # title needs punctuation to prove it is not our own summary prose.
+        if not verbatim and sum(1 for ch in phrase if ch in technical) < 2:
+            continue
+        unique.append(phrase)
+    return unique[:20]
+
+
+def _epoch(ts: str):
+    """Seconds since the epoch, tolerating both `...Z` and bare timestamps."""
+    if not ts:
+        return None
+    try:
+        return dt.datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        pass
+    try:
+        return dt.datetime.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S").timestamp()
+    except ValueError:
+        return None
+
+
+def _is_doc_write(body: str) -> bool:
+    """True when a message *is* a learnings entry rather than evidence for one.
+
+    The turn that writes the entry quotes its own symptom, so it matches the
+    phrase search perfectly and cites itself: seven of the first run's anchors
+    pointed at the `write(...)` call that created the file. Every entry carries
+    both headings, and a session turn that legitimately contains both is rare
+    enough to be worth losing.
+    """
+    return "## Symptom" in body and "## Cause" in body
+
+
+def cmd_backfill_evidence(args) -> int:
+    root = learnings_root()
+    index = archive_index()
+    entries = [f for f in sorted(root.glob("*.md")) if f.name != "README.md"]
+    written = skipped = unproven = 0
+
+    for path in entries:
+        text = path.read_text()
+        if "## Evidence" in text:
+            skipped += 1
+            continue
+
+        # A learning is written in, or just after, the session that taught it.
+        stamped = re.match(r"(\d{4}-\d{2}-\d{2})", path.name)
+        entry_day = dt.date.fromisoformat(stamped.group(1)) if stamped else None
+
+        # First selective phrase wins, in document order: error text and commands
+        # come first because they were copied verbatim from the session.
+        # The turn that writes the entry is the best clock available: the session
+        # that taught the lesson precedes it, so the last occurrence just before
+        # that write is almost certainly the origin.
+        write_ts = None
+        best = None  # (delta, rank, ts, hit_count, phrase, harness, session, digest)
+        for phrase in _phrases(text):
+            if best is not None:
+                break
+            proc = subprocess.run(["rg", "-l", "-i", "-F", "--no-messages", "--",
+                                   phrase, str(RAW_DIR / "messages")],
+                                  capture_output=True, text=True)
+            digests = [pathlib.Path(line).stem for line in proc.stdout.splitlines() if line.strip()]
+            # Drop the write that created the entry, and any later echo of it: the
+            # learnings README lists every title, so a `cat` of the index matches
+            # two entries at once and cites the index instead of the session.
+            doc_turns = [d for d in digests if _is_doc_write(message_text(d))]
+            for digest in doc_turns:
+                for harness, session, ts, _role in index.get(digest, []):
+                    if ts and (write_ts is None or ts < write_ts):
+                        write_ts = ts
+            digests = [d for d in digests
+                       if not _is_doc_write(message_text(d))
+                       and path.name not in message_text(d)]
+            if not digests or len(digests) > 40:
+                continue  # nothing, or too common to be evidence
+            for digest in digests:
+                for harness, session, ts, role in index.get(digest, []):
+                    if entry_day and ts:
+                        try:
+                            if abs((dt.date.fromisoformat(ts[:10]) - entry_day).days) > args.window_days:
+                                continue
+                        except ValueError:
+                            pass
+                    # Prefer recorded input over assistant prose: the error text is
+                    # in tool output or a user paste, while the assistant is where
+                    # a model paraphrases an error into something unrecognisable.
+                    # Closest to the entry's own date first: a learning is written
+                    # in, or just after, the session that taught it, so a match
+                    # three days earlier is a different topic that shares a phrase.
+                    # Then recorded input over assistant prose, then the earliest
+                    # turn — a phrase reappears whenever the file is catted,
+                    # grepped or re-tested, and every echo is a worse origin.
+                    if write_ts and ts and _epoch(write_ts) and _epoch(ts):
+                        # Seconds from the write; the closest is usually the origin.
+                        delta = abs(_epoch(write_ts) - _epoch(ts))
+                    else:
+                        day = None
+                        if entry_day and ts:
+                            try:
+                                day = abs((dt.date.fromisoformat(ts[:10]) - entry_day).days)
+                            except ValueError:
+                                day = None
+                        delta = (day if day is not None else 99) * 86400
+                    rank = 0 if role in ("tool", "user") else 1
+                    cand = (delta, rank, ts or "",
+                            len(digests), phrase, harness, session, digest)
+                    if best is None or cand[:4] < best[:4]:
+                        best = cand
+        if not best:
+            unproven += 1
+            if args.verbose:
+                print(f"  unproven  {path.stem[:60]} (no verbatim phrase found in-window)")
+            continue
+
+        _day, _rank, _ts, hits, phrase, harness, session, digest = best
+        turn_no = None
+        quote = ""
+        for turns_file in RAW_DIR.glob(f"sessions/{harness}/*/*/{session}/turns.jsonl"):
+            for line in turns_file.read_text().splitlines():
+                if not line.strip():
+                    continue
+                turn = json.loads(line)
+                if turn["msg"] == digest:
+                    turn_no = turn["i"]
+                    break
+            break
+        if turn_no is None:
+            unproven += 1
+            continue
+
+        anchor = f"session://{harness}/{session}#turn-{turn_no}"
+        for line in message_text(digest).splitlines():
+            if phrase.lower() in line.lower():
+                quote = line.strip()[:200]
+                break
+
+        section = (f"\n## Evidence\n\n`{anchor}`\n\n"
+                   f"Found by searching the archive for a verbatim phrase from this entry "
+                   f"({hits} hit(s) for `{phrase[:60]}`), within {args.window_days} days of the "
+                   f"entry date.\n")
+        if quote:
+            section += f"\n> {quote}\n"
+        if args.dry_run:
+            print(f"  {path.stem[:52]:52} {anchor}  [{phrase[:40]!r}]")
+        else:
+            path.write_text(text.rstrip("\n") + "\n" + section)
+        written += 1
+
+    verb = "would write" if args.dry_run else "wrote"
+    print(f"mem: {verb} evidence for {written} entry(ies), {skipped} already had it, "
+          f"{unproven} left without (no verbatim phrase in-window)")
+    return 0
+
+
 # --------------------------------------------------------------------- main --
 
 
@@ -2910,6 +3226,8 @@ def main(argv: list[str]) -> int:
     learn.add_argument("--cause", required=True)
     learn.add_argument("--fix", required=True)
     learn.add_argument("--see", action="append", help="see-also reference (repeatable)")
+    learn.add_argument("--evidence", action="append", metavar="ANCHOR",
+                       help="session://<harness>/<id>#turn-N this entry came from (repeatable)")
     learn.add_argument("--force", action="store_true")
     learn.set_defaults(fn=cmd_learn)
 
@@ -2954,6 +3272,17 @@ def main(argv: list[str]) -> int:
     doc.add_argument("--budget", type=int, default=4000, help="always-loaded token target")
     doc.add_argument("--json", action="store_true")
     doc.set_defaults(fn=cmd_doctor)
+
+    why = sub.add_parser("why", help="trace a learning to its evidence, or an anchor to its users")
+    why.add_argument("target", help="a docs/learnings slug, or session://<harness>/<id>#turn-N")
+    why.set_defaults(fn=cmd_why)
+
+    back = sub.add_parser("backfill-evidence", help="add Evidence anchors to learnings entries")
+    back.add_argument("--dry-run", action="store_true")
+    back.add_argument("--verbose", action="store_true")
+    back.add_argument("--window-days", type=int, default=3,
+                      help="only cite sessions within this many days of the entry's date")
+    back.set_defaults(fn=cmd_backfill_evidence)
 
     mcp_p = sub.add_parser("mcp", help="serve memory over MCP on stdio (for Osaurus)")
     mcp_p.set_defaults(fn=cmd_mcp)

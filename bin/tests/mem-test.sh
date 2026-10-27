@@ -164,5 +164,70 @@ done
 [ "$(grep -c 'parallel line' "$T/mem/inbox.md")" -eq 12 ] && ok "each of the 12 texts appears exactly once" \
     || bad "duplicate or missing texts"
 
+printf '\n== learn --evidence, why, backfill-evidence: provenance ==\n'
+setup
+# A one-message archive: the digest is a filename stem, and the turns file is what
+# resolves an anchor back to a turn number. Built after every setup(), which wipes
+# the throwaway tree.
+digest="ab$(printf 'c%.0s' $(seq 1 62))"
+raw_fixture() {
+    mkdir -p "$T/raw/messages/${digest:0:2}" "$T/raw/sessions/opencode/2026/10/ses_test"
+    printf '{"content": [{"type": "text", "text": "flock: command not found"}], "role": "tool", "v": 1}\n' \
+        > "$T/raw/messages/${digest:0:2}/$digest.json"
+    printf '{"i": 4, "msg": "%s", "role": "tool", "ts": "%s", "hash": "h", "prev": "", "seq": 1}\n' \
+        "$digest" "$(date +%Y-%m-%dT%H:%M:%S)" \
+        > "$T/raw/sessions/opencode/2026/10/ses_test/turns.jsonl"
+    printf '{"id": "ses_test", "harness": "opencode", "started": "%s"}\n' \
+        "$(date +%Y-%m-%dT%H:%M:%S)" \
+        > "$T/raw/sessions/opencode/2026/10/ses_test/session.json"
+}
+raw_fixture
+runp() {
+    MEMORY_DIR="$T/mem" MEMORY_RAW="$T/raw" MEM_DOCS="$T/repo/docs/learnings" \
+        MEM_PI_SESSIONS="$T/pi" MEM_OPENCODE_DB="$T/absent.db" MEM_HERMES_DB="$T/absent.db" \
+        "$MEM" "$@"
+}
+runp learn flock-gap --repo "$T/repo" --title "flock is not on macOS" \
+    --symptom 'command -v flock exits 1' --cause "BSD has no flock(1)" \
+    --fix "use fcntl.flock" --evidence "session://opencode/ses_test#turn-4" > "$T/out" 2>&1
+check_rc 0 $? "learn accepts --evidence"
+f="$(ls "$T/repo"/docs/learnings/*-flock-gap.md 2> /dev/null)"
+grep -q '^## Evidence' "$f" 2> /dev/null && ok "writes an Evidence section" || bad "no Evidence section"
+grep -qF 'session://opencode/ses_test#turn-4' "$f" 2> /dev/null \
+    && ok "the anchor survives intact" || bad "anchor missing or mangled"
+
+runp why flock-gap > "$T/out" 2>&1
+check_rc 0 $? "why <slug> succeeds"
+grep -q 'flock is not on macOS' "$T/out" && ok "why prints the entry" || bad "entry not printed"
+grep -q '^  evidence:' "$T/out" && ok "why lists the anchors" || bad "no evidence list"
+grep -q 'command not found' "$T/out" && ok "why previews the cited turn" || bad "no preview"
+runp why session://opencode/ses_test#turn-4 > "$T/out" 2>&1
+check_rc 0 $? "why <anchor> succeeds"
+grep -q 'flock: command not found' "$T/out" && ok "resolves the anchor to its turn" || bad "turn not shown"
+grep -q 'cited by:' "$T/out" && ok "says who cites it" || bad "no citation line"
+grep -qF 'docs/learnings/' "$T/out" && ok "names the citing file" || bad "citing file not named"
+runp why no-such-entry > "$T/out" 2>&1
+check_rc 1 $? "why refuses an unknown slug"
+grep -q 'no learning matching' "$T/out" && ok "says what it looked for" || bad "unhelpful failure"
+
+# Backfill runs against an entry written without evidence, so the positive case
+# is the command's own path rather than the write-time one.
+setup
+raw_fixture
+runp learn flock-gap2 --repo "$T/repo" --title "flock is not on macOS" \
+    --symptom "$(printf 'Running a lock:\n\n```\nflock: command not found\n```')" \
+    --cause c --fix f > /dev/null 2>&1
+f="$(ls "$T/repo"/docs/learnings/*-flock-gap2.md 2> /dev/null)"
+runp backfill-evidence --dry-run > "$T/out" 2>&1
+check_rc 0 $? "backfill --dry-run succeeds"
+grep -q 'would write evidence for 1' "$T/out" && ok "counts the entry it would fix" || bad "wrong count: $(cat "$T/out")"
+grep -q '^## Evidence' "$f" && bad "dry run wrote to the file" || ok "dry run leaves the file alone"
+runp backfill-evidence > "$T/out" 2>&1
+grep -q '^## Evidence' "$f" && ok "backfill writes the section" || bad "no Evidence section"
+grep -qF 'session://opencode/ses_test#turn-4' "$f" && ok "cites the turn holding the phrase" || bad "wrong anchor"
+grep -q 'flock: command not found' "$f" && ok "quotes the matching line" || bad "no quote"
+runp backfill-evidence > "$T/out" 2>&1
+grep -q 'already had it' "$T/out" && ok "re-running does not duplicate the section" || bad "no skip count"
+
 printf '\n== summarized: %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

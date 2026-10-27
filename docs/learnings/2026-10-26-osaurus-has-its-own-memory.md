@@ -44,3 +44,11 @@ One store, reached from both sides:
 Their `episodes` table is 726 session summaries already written by Osaurus —
 a cheaper source for osaurus session summaries than re-summarising those sessions
 ourselves, though theirs carry salience and topics while ours carry turn anchors.
+
+## Evidence
+
+`session://opencode/ses_e8ca2e501ffeBxfIfKZ5hihPUf#turn-938`
+
+Found by searching the archive for a verbatim phrase from this entry (3 hit(s) for `POST /memory/ingest`), within 3 days of the entry date.
+
+> | Osaurus has its own memory system (726 episodes, 80 pinned facts, `POST /memory/ingest`) | the reason we did *not* push our summaries into it |

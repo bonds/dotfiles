@@ -47,3 +47,11 @@ pin until a real V2 desktop asset appears.
 ## See also
 
 - [OpenCode V2 commands silently spawn a background service](2026-10-22-opencode-v2-managed-service.md)
+
+## Evidence
+
+`session://pi/01a166e5-5509-71f0-9f75-d46f5ce3c1fd#turn-89`
+
+Found by searching the archive for a verbatim phrase from this entry (1 hit(s) for `https://github.com/anomalyco/opencode/releases/download/v2.1`), within 3 days of the entry date.
+
+> learning({"cause":"V2 is distributed as npm packages only: the `@opencode/cli` meta-package depends on a per-platform payload, `@opencode/cli-darwin-arm64`, whose tarball contains just `package/bin/op

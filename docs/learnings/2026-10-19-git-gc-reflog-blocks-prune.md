@@ -69,3 +69,11 @@ archiving was free.
 **Lesson:** when a repo is much bigger than its reachable content, the suspect is
 reflogs, not history. `count-objects -vH` plus `fsck --unreachable` sizes it in
 seconds; `--prune=now` on its own will look like it did nothing.
+
+## Evidence
+
+`session://pi/01a1525b-e95e-71f0-9f75-d46b9e77428d#turn-364`
+
+Found by searching the archive for a verbatim phrase from this entry (14 hit(s) for `git gc --prune=now`), within 3 days of the entry date.
+
+> Wait, I made a typo in the README: the first entry line says "2026-10-19 — `git gc --prune=now`..." — let me check: I wrote `- [2026-10-19 — \`git gc --prune=now\` does not reclaim garbage held by ref

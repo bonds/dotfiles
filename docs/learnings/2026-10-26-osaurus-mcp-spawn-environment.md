@@ -41,3 +41,11 @@ entries under a bare environment.
 An MCP server that fails to launch gives the agent **no error and no memory** — it
 simply knows less than it should, and nothing in the transcript says so. A crash
 would be kinder.
+
+## Evidence
+
+`session://opencode/ses_e8ca2e501ffeBxfIfKZ5hihPUf#turn-962`
+
+Found by searching the archive for a verbatim phrase from this entry (9 hit(s) for `$HOME/bin/mem`), within 3 days of the entry date.
+
+> write({"content":"#!/usr/bin/env bash\n# mem doctor tests — the checks that already found drift by hand.\n#\n# Everything runs against a fixture tree via MEM_DOCTOR_* overrides, so the test\n# exercis

@@ -55,3 +55,11 @@ answered, which is luck, not diagnosis.
 
 **Lesson:** a `Connection closed by … port 22` on a push to a Secretive-backed
 host is a TouchID timeout, not a network fault. Both signatures mean "hand off".
+
+## Evidence
+
+`session://pi/01a1525b-e95e-71f0-9f75-d46b9e77428d#turn-445`
+
+Found by searching the archive for a verbatim phrase from this entry (20 hit(s) for `git@github.com: Permission denied (publickey).`), within 3 days of the entry date.
+
+> - `git@github.com: Permission denied (publickey).` ✓ exact

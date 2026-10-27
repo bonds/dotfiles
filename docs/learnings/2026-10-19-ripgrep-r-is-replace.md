@@ -47,3 +47,11 @@ rg -rn 'pattern' file | head -3   # what you actually asked for
 
 **Lesson:** when a grep result looks like the file is corrupted, suspect the
 grep before the file. Any `-r` on ripgrep is `--replace`; recursive is implicit.
+
+## Evidence
+
+`session://pi/01a1525b-e95e-71f0-9f75-d46b9e77428d#turn-294`
+
+Found by searching the archive for a verbatim phrase from this entry (3 hit(s) for `cfg = config.programs.n;`), within 3 days of the entry date.
+
+> cfg = config.programs.n;

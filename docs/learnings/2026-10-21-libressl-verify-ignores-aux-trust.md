@@ -60,3 +60,11 @@ echo | $OSSL s_client -connect host:443 -servername host \
 
 Both `openssl verify` and `s_client` ignore revocation, so "OK" only means
 "this bundle trusts this chain *if* nothing checks CRLs".
+
+## Evidence
+
+`session://pi/01a15ca8-85da-71f0-9f75-d46c785b899e#turn-188`
+
+Found by searching the archive for a verbatim phrase from this entry (2 hit(s) for `error 28 at 2 depth lookup: certificate rejected`), within 3 days of the entry date.
+
+> learning({"cause":"`/usr/bin/openssl` on macOS is LibreSSL, and its `verify` ignores the aux trust data in `-----BEGIN TRUSTED CERTIFICATE-----` blocks. nixpkgs' `buildcatrust` emits exactly those blo

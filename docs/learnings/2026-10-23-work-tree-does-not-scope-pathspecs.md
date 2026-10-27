@@ -50,3 +50,11 @@ that matches no file.
 ## See also
 
 - `~/.config/nix/nr-pins` — `dot_git`, `overlay_changes`, `revert_overlay`
+
+## Evidence
+
+`session://pi/01a166e5-5509-71f0-9f75-d46f5ce3c1fd#turn-259`
+
+Found by searching the archive for a verbatim phrase from this entry (1 hit(s) for `git --work-tree=X`), within 3 days of the entry date.
+
+> bash({"command":"cd ~ && G=\"git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME\" && $G commit -F - <<'EOF'\nnr-pins: revert a bad prebuilt-overlay bump instead of leaving it to hand\n\n`nr -

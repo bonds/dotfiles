@@ -63,3 +63,11 @@ cannot find a bare repo that is only reachable via `--git-dir`. Write
 **Lesson:** in a nix-managed home, "the file is right there" says nothing about
 whether it is editable. `readlink -f` first; `EACCES` means you are editing the
 store, not a config.
+
+## Evidence
+
+`session://pi/01a1525b-e95e-71f0-9f75-d46b9e77428d#turn-380`
+
+Found by searching the archive for a verbatim phrase from this entry (2 hit(s) for `Could not edit file: /Users/scott/DECISIONS.md. Error code: `), within 3 days of the entry date.
+
+> - Entry 3: EACCES message exact? "Could not edit file: /Users/scott/DECISIONS.md. Error code: EACCES." ✓ from the tool output.

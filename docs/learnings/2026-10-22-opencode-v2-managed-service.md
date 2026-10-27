@@ -53,3 +53,11 @@ of `~/.config/opencode/opencode.jsonc` is a ~0.6 s config-compatibility probe.
 ## See also
 
 - [OpenCode V2 ships only through npm](2026-10-22-opencode-v2-is-npm-only.md)
+
+## Evidence
+
+`session://pi/01a166e5-5509-71f0-9f75-d46f5ce3c1fd#turn-89`
+
+Found by searching the archive for a verbatim phrase from this entry (2 hit(s) for `Managed service port 49374 on 127.0.0.1 is already in use by`), within 3 days of the entry date.
+
+> learning({"cause":"V2 replaced V1's in-process server with a *managed background service*: most subcommands (`debug config`, `models`, `debug agents`, the TUI) talk to a daemon on 127.0.0.1:49374, spa

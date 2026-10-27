@@ -69,3 +69,11 @@ archive, a build tree — eventually stops command execution for every agent
 sharing that sandbox, or at minimum silently disables undo. When an agent needs
 a host directory or an unbounded one, use **Working Folder** mode with the
 sandbox off: it writes through to real host files and snapshots nothing.
+
+## Evidence
+
+`session://opencode/ses_e8ca2e501ffeBxfIfKZ5hihPUf#turn-168`
+
+Found by searching the archive for a verbatim phrase from this entry (7 hit(s) for `can't snapshot /workspace/shared is too large to snapshot`), within 3 days of the entry date.
+
+> 2. **CRITICAL NEW INFO**: `shell_run` is **denied** with "**can't snapshot /workspace/shared is too large to snapshot**".

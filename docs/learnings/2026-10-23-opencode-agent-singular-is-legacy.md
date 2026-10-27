@@ -58,3 +58,11 @@ Probed on `deepseek-ai/DeepSeek-V4.1-Flash-1017`: `max` produced 1620 chars of
 reasoning vs 292 for `high` on the same prompt, so the tiers are real. To use
 one, define it as a model variant (`variants: [{ id, body: { reasoning_effort } }]`)
 and select it as `provider/model#id`.
+
+## Evidence
+
+`session://opencode/ses_e9684f4d1ffe6r00sz9Dhn0w3k#turn-85`
+
+Found by searching the archive for a verbatim phrase from this entry (6 hit(s) for `path=$.agent.plan.model kind=unsupported`), within 3 days of the entry date.
+
+> path=$.agent.plan.model kind=unsupported

@@ -107,3 +107,11 @@ Server side, a session created on the wrong variant is corrected immediately:
 opencode api post /api/session -d '{"agent":"plan","model":{"id":"deepseek-ai/DeepSeek-V4.1-Flash-1017","providerID":"deepinfra","variant":"low"}}'
 opencode api get /api/session/<id>   # model.variant is now "max"
 ```
+
+## Evidence
+
+`session://opencode/ses_e8f75676effeneCmNeBQjlU81B#turn-68`
+
+Found by searching the archive for a verbatim phrase from this entry (11 hit(s) for `deepinfra/deepseek-ai/DeepSeek-V4.1-Flash-1017#max`), within 3 days of the entry date.
+
+> shell({"command":"cd ~ && rm -f /private/var/folders/w5/ml0zj9652d99snr55t449gww0000gn/T/opencode/agent-model-probe.log; echo \"--- run: build agent, max session model ---\"; opencode run --agent buil

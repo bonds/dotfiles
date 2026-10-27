@@ -58,3 +58,11 @@ or pipe through `cut -c1-7`.)
 
 - `pi-harness` skill — the `learning` tool cannot write here (no `.git` in
   `$HOME`), so entries are written by hand and indexed manually.
+
+## Evidence
+
+`session://pi/01a15b11-5efd-756f-a1ab-2a8fc71059d5#turn-71`
+
+Found by searching the archive for a verbatim phrase from this entry (3 hit(s) for `58ec440 nr --update: bump nightly dependency versions`), within 3 days of the entry date.
+
+> learning({"cause":"`nr` wraps `nix run nix-darwin -- switch --flake … --update` and then commits the resulting `flake.lock` and any overlay version/hash edits itself, under a fixed message. It does no

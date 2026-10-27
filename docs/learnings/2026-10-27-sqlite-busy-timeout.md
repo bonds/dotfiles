@@ -44,3 +44,11 @@ compaction, and a long write legitimately blocks readers for its duration.
 Related: an importer that must read a live store should fail the run rather than
 skip the session, because a silently skipped session is invisible while a failed
 ingest is not.
+
+## Evidence
+
+`session://opencode/ses_e8ca2e501ffeBxfIfKZ5hihPUf#turn-442`
+
+Found by searching the archive for a verbatim phrase from this entry (10 hit(s) for `database is locked`), within 3 days of the entry date.
+
+> 1. First query hit "database is locked" — because hermes is running. Read-only should work but WAL locking can still block. I should retry or use a copy. Worth noting: reading a live SQLite needs retr

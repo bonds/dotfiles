@@ -71,3 +71,11 @@ Same trap applies to any component that concatenates a caller-supplied path
 onto a base URL — reverse proxies, webhook forwarders, fetchers in MCP servers.
 Prefer assigning `pathname`/`search`, or validate that the final
 `target.origin === expectedOrigin` before sending credentials.
+
+## Evidence
+
+`session://opencode/ses_e8ca2e501ffeBxfIfKZ5hihPUf#turn-114`
+
+Found by searching the archive for a verbatim phrase from this entry (3 hit(s) for `const target = new URL(url.pathname + url.search, upstream.o`), within 3 days of the entry date.
+
+> const target = new URL(url.pathname + url.search, upstream.origin);

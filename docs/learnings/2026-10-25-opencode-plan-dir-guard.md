@@ -51,3 +51,11 @@ EOF
 Use the workaround to keep working, but the durable fix is the directory
 existing — the guard should create its own root, or check for it before
 rejecting every write. This is a harness bug, not a misconfiguration.
+
+## Evidence
+
+`session://opencode/ses_e8ca2e501ffeBxfIfKZ5hihPUf#turn-315`
+
+Found by searching the archive for a verbatim phrase from this entry (2 hit(s) for `Cannot use write to modify files outside the Plan directory:`), within 3 days of the entry date.
+
+> 3. `[2026-10-25 11:40] write — Cannot use write to modify files outside the Plan directory: /Users/scott/.opencode/plan` — the guard bug.

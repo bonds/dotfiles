@@ -38,3 +38,11 @@ login keychain (mkcert, corporate MITM roots). `environment.variables` lands in
 and whatever they spawn — *not* to launchd daemons, which need their own
 `Environment` entry (as `modules/minecraft-bedrock.nix` and `modules/dst-server.nix`
 already do).
+
+## Evidence
+
+`session://pi/01a15ca8-85da-71f0-9f75-d46c785b899e#turn-188`
+
+Found by searching the archive for a verbatim phrase from this entry (20 hit(s) for `security.pki.caCertificateBlacklist`), within 3 days of the entry date.
+
+> learning({"cause":"`/usr/bin/openssl` on macOS is LibreSSL, and its `verify` ignores the aux trust data in `-----BEGIN TRUSTED CERTIFICATE-----` blocks. nixpkgs' `buildcatrust` emits exactly those blo
