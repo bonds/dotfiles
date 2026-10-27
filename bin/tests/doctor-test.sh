@@ -105,6 +105,18 @@ if [ "$rc" -eq 0 ]; then ok "the live repo passes doctor"; else bad "live repo f
 if printf '%s' "$out" | grep -q '^freshness'; then ok "live doctor reports freshness"; else bad "no freshness section"; fi
 if printf '%s' "$out" | grep -qE 'last ingest [0-9]{4}-'; then ok "reports a last-ingest timestamp per harness"; else bad "no ingest timestamps"; fi
 
+echo "== nightly =="
+rm -rf "$T/mem"
+MEMORY_DIR="$T/mem" "$MEM" nightly --no-ingest --no-summarize >/dev/null 2>&1; rc=$?
+report="$T/mem/reports/$(date +%F).md"
+if [ -f "$report" ]; then ok "nightly writes a dated report"; else bad "no report written"; fi
+if grep -q '## doctor' "$report" 2>/dev/null; then ok "the report carries the doctor stage"; else bad "report missing the doctor stage"; fi
+if [ "$rc" -eq 0 ]; then ok "nightly exits 0 when doctor passes"; else bad "nightly exited $rc"; fi
+
+rm -rf "$T/mem2"
+MEMORY_DIR="$T/mem2" "$MEM" nightly --no-ingest --no-summarize --dry-run >/dev/null 2>&1
+if [ -e "$T/mem2/reports" ]; then bad "dry run wrote a report"; else ok "dry run writes nothing"; fi
+
 echo
 printf 'summarized: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

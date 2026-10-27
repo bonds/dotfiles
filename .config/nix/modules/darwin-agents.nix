@@ -24,6 +24,27 @@ in {
     #     StandardErrorPath = "${userHome}/Library/Logs/llamacpp-vision.err.log";
     #   };
     # };
+    mem-nightly = {
+      # Ingest, summarize and report, so the archive cannot go stale just because
+      # nobody remembered. Writes only the archive and the curated store — never
+      # AGENTS.md, a skill or a hook.
+      #
+      # PATH is explicit because launchd gives a minimal environment: the same
+      # lesson that broke the MCP shim. `mem` resolves python3 through its shebang,
+      # which needs a PATH at all.
+      command = "${userHome}/bin/mem nightly --budget 0.25";
+      serviceConfig = {
+        StartCalendarInterval = [
+          {
+            Hour = 4;
+            Minute = 10;
+          }
+        ];
+        EnvironmentVariables.PATH = "/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+        StandardOutPath = "${userHome}/Library/Logs/mem-nightly.out.log";
+        StandardErrorPath = "${userHome}/Library/Logs/mem-nightly.err.log";
+      };
+    };
     prune-generations = {
       command = "${pruneGenerations}/bin/prune-generations";
       serviceConfig = {

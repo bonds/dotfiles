@@ -2252,7 +2252,14 @@ def cmd_summarize(args) -> int:
             skipped += 1
             continue
         folder = manifest_file.parent
-        digest = hashlib.sha256((folder / "turns.jsonl").read_bytes()).hexdigest()
+        turns_file = folder / "turns.jsonl"
+        # A session still being written changes again in minutes, so summarizing
+        # it now pays twice for the same content — and the nightly run makes that
+        # a daily tax on the session you are in.
+        if not args.force and (dt.datetime.now().timestamp() - turns_file.stat().st_mtime) < args.min_age_hours * 3600:
+            skipped += 1
+            continue
+        digest = hashlib.sha256(turns_file.read_bytes()).hexdigest()
         target = summary_path(harness, session)
         if not args.force and stored_digest(target) == digest:
             skipped += 1
@@ -2781,6 +2788,23 @@ def cmd_doctor(args) -> int:
             findings.append(("ok", "freshness",
                              f"docs/learnings: {len(files)} entries, index in step"))
 
+    # A scheduled job that died looks exactly like one with nothing to do, so the
+    # age of the newest report is the only evidence the loop is still running.
+    if REPORTS.is_dir():
+        reports = sorted(REPORTS.glob("*.md"))
+        if reports:
+            try:
+                age = (dt.date.today() - dt.date.fromisoformat(reports[-1].stem)).days
+            except ValueError:
+                age = None
+            if age is None:
+                findings.append(("warn", "freshness", f"unreadable report name {reports[-1].name}"))
+            else:
+                findings.append(("warn" if age > 2 else "ok", "freshness",
+                                 f"last nightly report {reports[-1].stem} ({age}d old)"))
+        else:
+            findings.append(("warn", "freshness", "nightly reports directory is empty"))
+
     # --- report ---------------------------------------------------------
     if args.json:
         print(json.dumps({
@@ -2802,6 +2826,73 @@ def cmd_doctor(args) -> int:
         print(f"\nmem: {fails} failing, {warns} warning(s)")
 
     return 1 if any(level == "fail" for level, _, _ in findings) else 0
+
+
+# ----------------------------------------------------------------- nightly --
+#
+# The maintenance loop, so staleness is self-correcting rather than remembered.
+# Every step is a subprocess of this same script: it isolates a failure to one
+# stage instead of aborting the run, and it keeps `die()`'s SystemExit out of a
+# pipeline that must always finish by writing a report.
+#
+# What it may write: the archive and the curated store. Never AGENTS.md, a skill
+# or a hook — that rule does not change because the caller is a scheduler.
+
+REPORTS = MEMORY_DIR / "reports"
+NIGHTLY_HARNESSES = ("pi", "opencode", "hermes", "osaurus")
+
+
+def _step(args: list) -> tuple:
+    """Run one stage of this script. Returns (rc, combined output)."""
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(pathlib.Path(__file__).resolve()), *args],
+            capture_output=True, text=True, timeout=1800)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return 1, f"could not run {' '.join(args)}: {exc}"
+    return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+
+
+def cmd_nightly(args) -> int:
+    stages = []
+    failed = False
+
+    if not args.no_ingest:
+        for harness in NIGHTLY_HARNESSES:
+            rc, out = _step(["ingest", harness])
+            failed = failed or rc != 0
+            stages.append((f"ingest {harness}", rc, out.strip()))
+
+    if not args.no_summarize:
+        rc, out = _step(["summarize", "--budget", str(args.budget), "--jobs", "8"])
+        failed = failed or rc != 0
+        stages.append((f"summarize (budget ${args.budget:.2f})", rc, out.strip()))
+
+    rc, out = _step(["doctor"])
+    # doctor exits 1 for a failing check, which is a finding, not a crash: the
+    # report carries it and the run still completes.
+    stages.append(("doctor", rc, out.strip()))
+
+    stamps = dt.datetime.now().isoformat(timespec="seconds")
+    header = f"# Nightly — {stamps[:10]}\n\nrun at {stamps}\n"
+    body = []
+    for name, rc, out in stages:
+        mark = "ok" if rc == 0 else f"exit {rc}"
+        body.append(f"## {name} — {mark}\n\n```\n{out or '(no output)'}\n```\n")
+
+    report = header + "\n" + "\n".join(body)
+    if args.dry_run:
+        print(report)
+        return 0
+
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    target = REPORTS / f"{stamps[:10]}.md"
+    write_atomic(target, report)
+    print(f"mem: nightly report {target}")
+    for name, rc, out in stages:
+        first = (out.splitlines() or [""])[0][:100]
+        print(f"  {name:28} {'ok' if rc == 0 else f'exit {rc}'}  {first}")
+    return 1 if failed else 0
 
 
 # --------------------------------------------------------------------- main --
@@ -2851,6 +2942,14 @@ def main(argv: list[str]) -> int:
     ing.add_argument("--dry-run", action="store_true", help="parse and report, write nothing")
     ing.set_defaults(fn=cmd_ingest)
 
+    night = sub.add_parser("nightly", help="ingest, summarize and report (for launchd)")
+    night.add_argument("--budget", type=float, default=0.25,
+                       help="spend cap for summarizing (USD, default 0.25)")
+    night.add_argument("--no-ingest", action="store_true")
+    night.add_argument("--no-summarize", action="store_true")
+    night.add_argument("--dry-run", action="store_true", help="print the report, write nothing")
+    night.set_defaults(fn=cmd_nightly)
+
     doc = sub.add_parser("doctor", help="audit the budget, skills and skill references")
     doc.add_argument("--budget", type=int, default=4000, help="always-loaded token target")
     doc.add_argument("--json", action="store_true")
@@ -2871,6 +2970,8 @@ def main(argv: list[str]) -> int:
     summ = sub.add_parser("summarize", help="summarize archived sessions (network)")
     summ.add_argument("--harness", choices=["pi", "opencode", "hermes", "osaurus"])
     summ.add_argument("--session", help="only this session id (for targeted re-runs)")
+    summ.add_argument("--min-age-hours", type=float, default=2.0,
+                      help="skip sessions modified more recently than this (default 2)")
     summ.add_argument("--limit", type=int, default=50)
     summ.add_argument("--budget", type=float, default=1.0)
     summ.add_argument("--force", action="store_true", help="redo existing summaries")
