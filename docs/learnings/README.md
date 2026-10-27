@@ -48,3 +48,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-10-26 — Osaurus launches a stdio MCP provider as one executable, with no arguments](2026-10-26-osaurus-mcp-stdio-single-executable.md)
 - [2026-10-26 — Osaurus spawns MCP servers with `cwd=/` and a minimal environment](2026-10-26-osaurus-mcp-spawn-environment.md)
 - [2026-10-26 — Osaurus keeps its own memory, and it is not where ours belongs](2026-10-26-osaurus-has-its-own-memory.md)
+- [2026-10-27 — A live SQLite database reports "database is locked" to readers](2026-10-27-sqlite-busy-timeout.md)
