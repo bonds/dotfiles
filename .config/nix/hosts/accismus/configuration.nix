@@ -226,6 +226,7 @@ in {
         ../../modules/home/halloy.nix
         ../../modules/home/hermes-desktop-app.nix
         ../../modules/home/ice.nix
+        ../../modules/home/launchd-bootout-fix.nix
         ../../modules/home/macos-apps.nix
         ../../modules/home/photo-export.nix
         ../../modules/home/pi.nix
