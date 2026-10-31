@@ -363,8 +363,15 @@ strip_ansi() {
 # Deliberately not registry entries: the registry renders flake.nix input
 # declarations, and these packages are not inputs. Reverting a file is also
 # inherently self-expiring — the next update.sh run bumps it again.
-DOT_GIT_DIR="${NR_PINS_GIT_DIR:-$HOME/.local/share/dotfiles}"
-DOT_WORK_TREE="${NR_PINS_WORK_TREE:-$HOME}"
+#
+# NOTE (2026-10-31): accismus moved the git dir to <root>/bare and the checkout
+# to <root>/worktree, while `nr` still builds $HOME/.config/nix. So FLAKE_DIR is
+# not inside DOT_WORK_TREE and `revert_overlay` refuses with "the flake dir is
+# not inside the git work tree" (rc 2, logged — never a silent revert). Set
+# NR_PINS_FLAKE_DIR at the checkout's .config/nix once `nr` builds from the
+# checkout, or set NR_PINS_GIT_DIR / NR_PINS_WORK_TREE back to the flat paths.
+DOT_GIT_DIR="${NR_PINS_GIT_DIR:-$HOME/.local/share/dotfiles/bare}"
+DOT_WORK_TREE="${NR_PINS_WORK_TREE:-$HOME/.local/share/dotfiles/worktree}"
 
 # A changed line that is only a pin. Loose on purpose in one direction only: a
 # line that does not match keeps the directory from being reverted.

@@ -13,12 +13,13 @@ Ship the current batch:
 
 Then push to **all** remotes:
 
-- This dotfiles repo (bare repo at `~/.local/share/dotfiles`). `config` is a
-  **fish-only** alias, so from the bash tool use the full form:
+- This dotfiles repo (git dir `~/.local/share/dotfiles/bare`, checkout `~/.local/share/dotfiles/worktree`). `config` is a
+  **fish-only** alias, so from the bash tool use the full form, run from the checkout:
 
   ```bash
-  cd ~ && git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME push origin main
-  cd ~ && git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME push sophrosyne main
+  cd $HOME/.local/share/dotfiles/worktree
+  git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree push origin main
+  git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree push sophrosyne main
   ```
 
 - Any other repo: `git push origin <branch>`

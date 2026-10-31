@@ -8,7 +8,14 @@
 # Bypass with: git push --no-verify
 set -euo pipefail
 
-cd "$HOME/.config/nix"
+# The dotfiles checkout moved on 2026-10-31: on accismus the git dir is
+# ~/.local/share/dotfiles/bare and the checkout is .../worktree, so
+# $HOME/.config/nix is no longer the copy under review (it is only refreshed if
+# something links it there). Validate the checkout when it exists; fall back to
+# the flat layout for sophrosyne and metanoia.
+flake_dir="$HOME/.local/share/dotfiles/worktree/.config/nix"
+[ -d "$flake_dir" ] || flake_dir="$HOME/.config/nix"
+cd "$flake_dir"
 remote="$1"
 url="$2"
 

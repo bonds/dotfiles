@@ -5,20 +5,26 @@
 > `~/DECISIONS.md` for the *why* behind choices that look odd — read it before
 > proposing to change one.
 
-Personal dotfiles tracked via a **bare git repo** at `~/.local/share/dotfiles` on
-accismus and sophrosyne, managed through a `config` alias
-(fish-only, see below).  This avoids a `.git/` directory cluttering `$HOME`, which
-was causing issues with various tools.  The approach is the one described in the
+Personal dotfiles tracked via a **bare git repo** on accismus and sophrosyne,
+managed through a `config` alias (fish-only, see below). Since **2026-10-31**
+accismus nests them: git dir `~/.local/share/dotfiles/bare`, checkout
+`~/.local/share/dotfiles/worktree`, and `$HOME` is **no longer** a work tree.
+sophrosyne still keeps a flat bare repo at `~/.local/share/dotfiles` with work
+tree `$HOME`.  Nesting keeps a `.git/` directory out of `$HOME` while giving the
+checkout a home of its own; the underlying approach is the one described in the
 [Atlassian dotfiles
 tutorial](https://www.atlassian.com/git/tutorials/dotfiles).
 
 ## Git tracking strategy
 
-Bare repo at `~/.local/share/dotfiles/` with `--work-tree=$HOME`; untracked
-files are hidden (`status.showUntrackedFiles = no`), so `git add` cannot stage
-all of `$HOME`. The `config` alias wraps git with the right `--git-dir` and
+Git dir `~/.local/share/dotfiles/bare` with
+`--work-tree=$HOME/.local/share/dotfiles/worktree` on accismus; untracked files
+are hidden (`status.showUntrackedFiles = no`), so `git add` cannot stage a whole
+tree by accident. The `config` alias wraps git with the right `--git-dir` and
 `--work-tree`, and **it is fish-only** — from bash or a script use the full
-`git --git-dir=... --work-tree=...` form, `cd ~` first.
+`git --git-dir=... --work-tree=...` form, or `cd` into the checkout first. It
+resolves the git dir by existence, so the same file is correct on every machine
+and mid-move.
 
 Alias mechanics, the non-fish invocation, and the add/untrack/sync recipes: the
 `dotfiles-layout` skill.
@@ -138,17 +144,34 @@ whole argument list, not a prefix. Agent forwarding is required for the TouchID
 path. Details, including the `/etc/ssh/authorized_keys.d/scott` key file: the
 `machines-and-services` skill.
 
-## The work tree is `$HOME`
+## Where tracked files are edited
 
-Tracked files live directly in `$HOME` via `--work-tree=$HOME`; edit them
-there. There is no second checkout. (A `live` worktree under
-`~/.local/share/dotfiles/live` existed until 2026-10-19 and was removed: it had
-drifted to 69 staged files behind `main`, so an agent editing it would have
-committed reverts. Do not recreate it.)
+Edit them in the checkout — `$HOME/.local/share/dotfiles/worktree/<path>` — not
+in `$HOME`. The sequence is: edit in the checkout → commit → push `origin` and
+`sophrosyne` → Scott runs `nr`.
 
-To sync `$HOME` to the tip of `main` (plain `git checkout main` only prints
-"Already on 'main'" and changes nothing):
+(History: a `live` worktree under `~/.local/share/dotfiles/live` existed until
+2026-10-19 and was removed because it had drifted to 69 staged files behind
+`main`, so an agent editing it would have committed reverts. That "do not
+recreate a second checkout" rule is **superseded 2026-10-31**: Scott
+restructured the repo so the checkout *is* the edit location, at
+`dotfiles/worktree`.)
+
+`$HOME` is no longer a work tree, so nothing refreshes `~/.config/fish`,
+`~/.config/nix`, … from the repo by itself. **`nr` still builds
+`$HOME/.config/nix`**, so `$HOME` has to be wired to the checkout (symlink, or
+its content kept identical) or a rebuild will silently use the frozen copy in
+`$HOME`. Check before trusting a rebuild:
+
+```fish
+# does the live flake match the checkout?
+diff -rq $HOME/.config/nix $HOME/.local/share/dotfiles/worktree/.config/nix
+test -L $HOME/.config/nix; and echo 'symlinked — fine'
+```
+
+When it does not, apply the tip of `main` where `$HOME` expects it:
 
 ```bash
-git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME checkout main -- .
+cd $HOME/.local/share/dotfiles/worktree && git --git-dir=$HOME/.local/share/dotfiles/bare \
+  --work-tree=$HOME/.local/share/dotfiles/worktree checkout main -- .
 ```

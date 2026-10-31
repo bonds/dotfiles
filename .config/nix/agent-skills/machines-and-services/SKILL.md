@@ -52,7 +52,7 @@ plaintext appears at `/run/agenix/<name>`; verify it with
 ### Machines
 Three machines managed from this repo:
 - **accismus** — macOS laptop (aarch64-darwin, nix-darwin)
-  - **Dotfiles** use the bare-repo approach described in ~/AGENTS.md (`~/.local/share/dotfiles`, moved from `~/.config/dotfiles` on 2026-10-11). The `config` fish alias is defined in `~/.config/fish/conf.d/10-aliases.fish`.
+  - **Dotfiles** use the bare-repo approach described in ~/AGENTS.md (`~/.local/share/dotfiles/bare` as the git dir, `~/.local/share/dotfiles/worktree` as the checkout since 2026-10-31; `$HOME` is no longer a work tree). The `config` fish alias is defined in `~/.config/fish/conf.d/10-aliases.fish`.
   - **Syncthing** managed via nix-darwin launchd agent (not standalone app). Declarative `config.xml` generated and deployed by activation script. Config dir at `~/Library/Application Support/Syncthing/`. Preserves `key.pem`, `cert.pem`, `index-v2/` across rebuilds.
   - **Photos backup** via `photos-backup` launchd agent (daily at 2am). Runs **`photo-export`** (PhotoKit-native Swift) which streams ALL assets (local + iCloud-only) over **SFTP** to `/dragon/media/photos` as `photo-backup` — no SMB mount, no local copies, basic XMP sidecars. No osxphotos, no Syncthing for photos.
     - **⚠️ Prerequisite:** Photos access grant — see `pkgs/photokit-export/FIRST-RUN.md`. One-time "Allow" click via `open`; re-grant after any binary change (new nix build / version bump).

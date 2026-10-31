@@ -28,7 +28,7 @@ commits as refs so the prune cannot lose them (fish, per this repo's
 convention):
 
 ```fish
-set -l G git --git-dir=$HOME/.local/share/dotfiles
+set -l G git --git-dir=$HOME/.local/share/dotfiles/bare
 
 # 1. Inspect before deleting: which dangling commits are real work?
 for c in ($G fsck --dangling | awk '/dangling commit/{print $3}')

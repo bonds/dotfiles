@@ -44,7 +44,7 @@ Treat both as the TouchID hand-off. Check the state with `rev-parse`, not with t
 exit code:
 
 ```fish
-set -l G git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME
+set -l G git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree
 $G push origin main
 echo "local: $($G rev-parse --short main)  origin: $($G rev-parse --short origin/main)"
 ```

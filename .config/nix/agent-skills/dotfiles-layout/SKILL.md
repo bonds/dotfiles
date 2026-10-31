@@ -15,11 +15,14 @@ place to work, and not to be deleted: it holds the only local copy of
 
 ### The bare repo and the `config` alias
 
-Tracked files live directly in `$HOME`; there is no `.git` directory there. The
-bare repo is `~/.local/share/dotfiles/` and it is driven with
-`--work-tree=$HOME`. Untracked files are hidden from `git status`
+Tracked files are edited in the checkout — `~/.local/share/dotfiles/worktree/`
+on accismus — and read back from `$HOME` only if something links them there.
+The git dir is `~/.local/share/dotfiles/bare`, and it is driven with
+`--work-tree=$HOME/.local/share/dotfiles/worktree`. Since 2026-10-31 `$HOME` is
+**not** a work tree, so nothing refreshes `~/.config/nix` or `~/.config/fish`
+from the repo by itself. Untracked files are hidden from `git status`
 (`status.showUntrackedFiles = no` in the bare repo's config), so `git add`
-cannot accidentally stage the whole home directory — and plain `git status`
+cannot accidentally stage a whole tree — and plain `git status`
 will not show you untracked files in *any* worktree; pass `-uall` when it
 matters.
 
@@ -28,7 +31,9 @@ command with the right `--git-dir` and `--work-tree`. It resolves the git dir
 by existence, so the same file is correct on every machine and during a move:
 
 ```fish
-if test -d $HOME/.local/share/dotfiles
+if test -d $HOME/.local/share/dotfiles/bare
+    alias config='git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree'
+else if test -d $HOME/.local/share/dotfiles
     alias config='git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME'
 else
     alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'
@@ -41,11 +46,12 @@ Everything works like normal git — `config status`, `config add`,
 **`config` is fish-only.** It does not exist in bash/zsh/sh or in Hermes'
 `terminal` tool; there it errors with `config: command not found`, and a script
 invoking it can silently no-op (as with `nr`). From any other shell use the full
-invocation, always `cd ~` first so relative paths resolve:
+invocation, always from (or with paths inside) the work tree so pathspecs
+resolve:
 
 ```bash
-GITDIR=$HOME/.local/share/dotfiles
-cd ~ && git --git-dir=$GITDIR --work-tree=$HOME status
+cd $HOME/.local/share/dotfiles/worktree
+git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree status
 ```
 
 | task | command |
@@ -53,8 +59,8 @@ cd ~ && git --git-dir=$GITDIR --work-tree=$HOME status
 | see tracked files | `config ls-files` |
 | start tracking a file | `config add <path>` (no `-f`: respect `.gitignore`) |
 | stop tracking, keep on disk | `config rm --cached <path>` |
-| verify a push landed on every remote | `for r in main origin/main sophrosyne/main; do git --git-dir=$HOME/.local/share/dotfiles rev-parse --short "$r"; done` — `rev-parse --short` takes exactly one revision, so passing all three exits 128 with `fatal: Needed a single revision` |
-| sync `$HOME` to the tip of `main` | `git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME checkout main -- .` |
+| verify a push landed on every remote | `for r in main origin/main sophrosyne/main; do git --git-dir=$HOME/.local/share/dotfiles/bare rev-parse --short "$r"; done` — `rev-parse --short` takes exactly one revision, so passing all three exits 128 with `fatal: Needed a single revision` |
+| sync the checkout to the tip of `main` | `git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree checkout main -- .` |
 
 That last one is needed because a plain `git checkout main` only prints
 "Already on 'main'" and changes nothing.

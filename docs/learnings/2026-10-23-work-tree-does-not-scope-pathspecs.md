@@ -9,7 +9,7 @@ even though the file was demonstrably edited:
 
 ```
 $ cd ~/.config/nix
-$ git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME diff -U0 -- \
+$ git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree diff -U0 -- \
     .config/nix/modules/overlays/opencode
 $ echo $?
 1
@@ -38,9 +38,16 @@ Always `cd` to the work tree (or pass absolute pathspecs) when driving the
 dotfiles repo from a script:
 
 ```bash
-( cd "$HOME" && git --git-dir="$HOME/.local/share/dotfiles" \
-      --work-tree="$HOME" diff --stat -- .config/nix/modules/overlays/opencode )
+( cd "$HOME/.local/share/dotfiles/worktree" && git --git-dir="$HOME/.local/share/dotfiles/bare" \
+      --work-tree="$HOME/.local/share/dotfiles/worktree" diff --stat -- .config/nix/modules/overlays/opencode )
 ```
+
+**Update 2026-10-31:** the repo's checkout moved to
+`~/.local/share/dotfiles/worktree` and `$HOME` stopped being a work tree, which
+adds a second, louder form of the same trap: an absolute path *outside* the work
+tree is not silently empty, it is a hard `fatal: … is outside repository at
+'…/worktree'` — and `--work-tree=$HOME` there points at a tree the repo no longer
+tracks. Either way the pathspec must name a path inside the checkout.
 
 Diagnostic habit: if `git diff -- <path>` is empty but the file looks changed,
 run the same command from `~` before concluding the change is gone — and check
@@ -57,4 +64,4 @@ that matches no file.
 
 Found by searching the archive for a verbatim phrase from this entry (1 hit(s) for `git --work-tree=X`), within 3 days of the entry date.
 
-> bash({"command":"cd ~ && G=\"git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME\" && $G commit -F - <<'EOF'\nnr-pins: revert a bad prebuilt-overlay bump instead of leaving it to hand\n\n`nr -
+> bash({"command":"cd ~ && G=\"git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree\" && $G commit -F - <<'EOF'\nnr-pins: revert a bad prebuilt-overlay bump instead of leaving it to hand\n\n`nr -

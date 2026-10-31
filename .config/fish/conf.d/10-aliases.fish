@@ -31,10 +31,16 @@ else
     alias mtr "doas mtr"
 end
 
-# Bare dotfiles repo. accismus and sophrosyne keep it at ~/.local/share/dotfiles
-# (moved from ~/.config/dotfiles on 2026-10-11); metanoia still uses ~/.config/dotfiles.
-# Resolve by existence so this single file is correct on every machine and mid-move.
-if test -d $HOME/.local/share/dotfiles
+# Bare dotfiles repo. accismus keeps the git dir at ~/.local/share/dotfiles/bare
+# with its checkout at ~/.local/share/dotfiles/worktree (restructured 2026-10-31:
+# the git dir and the checkout are nested under ~/.local/share/dotfiles, and
+# $HOME is no longer a work tree). sophrosyne still keeps a flat bare repo at
+# ~/.local/share/dotfiles with work tree $HOME; metanoia still uses
+# ~/.config/dotfiles. Resolve by existence so this single file is correct on
+# every machine and mid-move.
+if test -d $HOME/.local/share/dotfiles/bare
+    alias config='git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree'
+else if test -d $HOME/.local/share/dotfiles
     alias config='git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME'
 else
     alias config='git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME'

@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Post-receive hook for bare dotfiles repo at ~/.local/share/dotfiles.
+# Post-receive hook for sophrosyne's (flat) bare dotfiles repo at
+# ~/.local/share/dotfiles.
 #
 # When main is pushed to this bare repo, check out the working tree
-# so that $HOME reflects the latest tracked dotfiles.
+# so that $HOME reflects the latest tracked dotfiles. sophrosyne keeps the
+# pre-2026-10-31 layout this hook assumes; accismus, which nests the git dir at
+# ~/.local/share/dotfiles/bare and the checkout at .../worktree, never receives
+# a push, so it does not use this hook.
 #
 # Relative hooksPath is relative to the git dir, so core.hooksPath in
 # the bare repo's config is set to an absolute path (~/.config/git/hooks)

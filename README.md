@@ -33,12 +33,18 @@ appears in `$HOME` — `readlink -f` tells you which you are looking at.
 
 ## Managing the dotfiles
 
-A **bare repo** at `~/.local/share/dotfiles` with `--work-tree=$HOME`, so no
-`.git` directory clutters `$HOME` and tools that walk up looking for a
+A **bare repo** whose git dir is `~/.local/share/dotfiles/bare` and whose
+checkout is `~/.local/share/dotfiles/worktree` (restructured 2026-10-31; before
+that the git dir sat directly in `~/.local/share/dotfiles` and `$HOME` was the
+work tree). Nothing clutters `$HOME`, and tools that walk up looking for a
 repository do not trip over one. Untracked files are hidden
-(`status.showUntrackedFiles=no`), so `git add` can never stage the whole home
-directory — which also means plain `git status` will not show you untracked
-files in *any* worktree; use `-uall` when it matters.
+(`status.showUntrackedFiles=no`), so `git add` can never stage a whole tree —
+which also means plain `git status` will not show you untracked files in *any*
+worktree; use `-uall` when it matters.
+
+**Edit files in the checkout, not in `$HOME`** — `$HOME` is no longer a work
+tree, so a copy there only changes when you put it there. Commit and push, then
+Scott runs `nr`.
 
 In fish a `config` alias does the plumbing:
 
@@ -52,7 +58,8 @@ config push origin; and config push sophrosyne
 Outside fish there is no alias — spell it out:
 
 ```bash
-cd ~ && git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME status
+cd $HOME/.local/share/dotfiles/worktree
+git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree status
 ```
 
 Two remotes: `origin` (GitHub) and `sophrosyne` (a bare repo on the server whose

@@ -332,7 +332,8 @@ in {
 
       home.file.".stignore".text = ''
         # Specific excludes within included dirs
-        # accismus: the bare repo lives at ~/.local/share/dotfiles (moved from
+        # accismus: the dotfiles git dir lives at ~/.local/share/dotfiles/bare
+        # (nested under the repo root since 2026-10-31, moved from
         # ~/.config/dotfiles on 2026-10-11).
         /.local/share/dotfiles/**
         /.config/opencode/node_modules/**

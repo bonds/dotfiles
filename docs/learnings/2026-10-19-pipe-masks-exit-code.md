@@ -49,7 +49,7 @@ echo $pipestatus[1]
 Better, verify the outcome rather than the exit code:
 
 ```fish
-set -l G git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME
+set -l G git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree
 $G push origin main; and echo "origin: $($G rev-parse --short origin/main)"
 ```
 

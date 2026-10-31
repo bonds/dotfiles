@@ -44,8 +44,13 @@ in {
   '';
 
   system.activationScripts.bareRepoHooks.text = ''
-    if [ -d "${userHome}/.local/share/dotfiles" ]; then
-      ${pkgs.git}/bin/git --git-dir="${userHome}/.local/share/dotfiles" config core.hooksPath "${userHome}/.config/git/hooks" || true
+    # accismus nests the repo (git dir <root>/bare, checkout <root>/worktree,
+    # restructured 2026-10-31); sophrosyne still has the flat bare repo with
+    # work tree $HOME. Point hooksPath at whichever exists.
+    dotfilesGitDir="${userHome}/.local/share/dotfiles/bare"
+    [ -d "$dotfilesGitDir" ] || dotfilesGitDir="${userHome}/.local/share/dotfiles"
+    if [ -d "$dotfilesGitDir" ]; then
+      ${pkgs.git}/bin/git --git-dir="$dotfilesGitDir" config core.hooksPath "${userHome}/.config/git/hooks" || true
     fi
   '';
 

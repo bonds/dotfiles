@@ -149,8 +149,9 @@ anything.
 README scaffolded on first use.
 
 Trap: the tool decides "am I in a repo?" with `git rev-parse` against the cwd,
-and the dotfiles work tree has **no `.git` in `$HOME`** (the repo is bare at
-`~/.local/share/dotfiles`). So from `~` it refuses — "not inside a git
+and the dotfiles work tree has **no `.git` in `$HOME`** (the git dir is bare at
+`~/.local/share/dotfiles/bare`, and the checkout is
+`~/.local/share/dotfiles/worktree`). So from `~` it refuses — "not inside a git
 repository, so there is nowhere for this to live" — even though the lesson
 belongs in `~/docs/learnings/`. That is a false negative, not a signal to
 redirect the lesson: write the file and the index line by hand, in the same

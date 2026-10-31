@@ -11,14 +11,16 @@ Personal nix flake for:
 
 ## Git repo (accismus)
 
-Accismus dotfiles use a **bare repo at `~/.local/share/dotfiles/`** (moved from `~/.config/dotfiles/` on 2026-10-11) with **worktree `$HOME`** — the `.git` directory is not inside `.config/nix`.
+Accismus dotfiles use a **bare repo whose git dir is `~/.local/share/dotfiles/bare`** with the **checkout at `~/.local/share/dotfiles/worktree`** (restructured 2026-10-31; until then the git dir sat directly in `~/.local/share/dotfiles/` and `$HOME` was the work tree — it no longer is). Neither path is inside `.config/nix`.
 
-- **Alias:** `config` — resolves the git dir by existence: `git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME` on accismus, `git --git-dir=$HOME/.config/dotfiles/ --work-tree=$HOME` on metanoia
+- **Alias:** `config` — resolves the git dir by existence: `git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree` on accismus, `git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME` on sophrosyne (still flat), `git --git-dir=$HOME/.config/dotfiles --work-tree=$HOME` on metanoia
 - Defined in `~/.config/fish/conf.d/10-aliases.fish`
-- When using the bare repo directly in a script, `cd ~` first so relative paths resolve
-- **Remotes:** `origin` (GitHub, `git@github.com:bonds/dotfiles.git`), `sophrosyne` (scott@home.ggr.com:~/.local/share/dotfiles)
+- Edit tracked files in the checkout, not in `$HOME`; commit and push from there
+- When using the bare repo directly in a script, `cd` into the checkout (or pass paths inside it) so pathspecs resolve — git refuses a path outside the work tree as `outside repository`
+- **Remotes:** `origin` (GitHub, `git@github.com:bonds/dotfiles.git`), `sophrosyne` (scott@home.ggr.com:~/.local/share/dotfiles — the server's own flat repo path, unaffected by the accismus move)
 - Push both: `config push origin && config push sophrosyne`
 - For comparison: sophrosyne's repo is a **bare repo at `~/.local/share/dotfiles/`** with a `post-receive` hook that checks out `main` into its `$HOME` on each push
+- **`$HOME` on accismus is no longer a work tree.** Nothing refreshes `~/.config/nix` there; `nr` still builds `$HOME/.config/nix`, so that copy has to be symlinked to (or kept identical with) the checkout or a rebuild silently uses stale content. See `~/AGENTS.md` §Where tracked files are edited.
 
 ## Commands
 
@@ -207,8 +209,8 @@ modules/           # Shared modules
 - **Hooks are in `.config/git/hooks/` (tracked in git, `hooksPath = .config/git/hooks` in repo git config).** Currently: `pre-commit` (rejects `.pyc` files, checks fish formatting/syntax) and `pre-push` (runs `nix flake check --no-build` before push). Bypass the pre-push hook with `git push --no-verify`. The pre-push hook only checks the nix config subdirectory.
 - **Pushing to a checked-out branch on a remote** requires the remote repo to have `receive.denyCurrentBranch = updateInstead`. This does **not** apply to sophrosyne — its dotfiles repo is bare (see below), so pushes land on a branch that is not checked out and no `denyCurrentBranch` config is needed.
 - **Sophrosyne's dotfiles repo is a BARE repo at `~/.local/share/dotfiles/`**, not a normal clone. Verified 2026-10-11: `git --git-dir=$HOME/.local/share/dotfiles config --get core.bare` → `true`, `git --git-dir=$HOME/.local/share/dotfiles worktree list` → `/home/scott/.local/share/dotfiles (bare)`, and `~/.git` does not exist. A `post-receive` hook (via `core.hooksPath` → `~/.config/git/hooks`) checks out `main` into `$HOME` on each push to `main`. Do NOT set `core.bare = false`. `.ssh/authorized_keys` is not tracked in git; each machine's nix activation script creates the symlink to `~/.config/ssh/keys` with the correct OS-specific path.
-- **Accismus dotfiles: bare repo at `~/.local/share/dotfiles/` (moved from `~/.config/dotfiles/` on 2026-10-11), worktree `$HOME`.**  
-  The `config` alias (`alias config='git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME'` on accismus; `~/.config/dotfiles` on metanoia) wraps git for this repo — use it for all add/commit/push operations. Remotes: `origin` (GitHub, `git@github.com:bonds/dotfiles.git`) and `sophrosyne` (`scott@home.ggr.com:~/.local/share/dotfiles`). The `config` alias is defined in `~/.config/fish/conf.d/10-aliases.fish`. If you need to use the bare repo directly (e.g. in a script or from a subdirectory), `cd ~` first so relative paths resolve correctly.
+- **Accismus dotfiles: bare git dir `~/.local/share/dotfiles/bare`, checkout `~/.local/share/dotfiles/worktree` (restructured 2026-10-31; `$HOME` is no longer a work tree).**  
+  The `config` alias (`alias config='git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree'` on accismus; `~/.local/share/dotfiles` + work tree `$HOME` on sophrosyne; `~/.config/dotfiles` on metanoia) wraps git for this repo — use it for all add/commit/push operations. Remotes: `origin` (GitHub, `git@github.com:bonds/dotfiles.git`) and `sophrosyne` (`scott@home.ggr.com:~/.local/share/dotfiles`). The `config` alias is defined in `~/.config/fish/conf.d/10-aliases.fish`. If you need to use the bare repo directly (e.g. in a script or from a subdirectory), pass paths inside the checkout — a `$HOME` path is outside the work tree and git refuses it.
 - **When renaming a host**, keep old hostnames in SSH config during the transition. After the first rebuild with the new hostname, clean up old references in ssh config and known_hosts.
 - **The `dragon` pool on sophrosyne is intentionally degraded.** One drive (`nvme-JAJP600M4TB_C2525C6C11301647512`) is kept offline on purpose. Don't panic if `zpool status` shows DEGRADED — this is expected.
 - **Fish `$` escaping over `ssh 'bash -c \"…\"'` bites every time.** Machines default to fish. In an `ssh host 'bash -c "…$VAR…"'` the fish layer mangles `$`/`$?` before bash sees it; always use a temp script file (`ssh host 'bash -s' < script.sh`) for anything with shell variables or `$()`. Also `$?` doesn't work in fish (use `$status`) — an easy false-"auth failed" during doas/rebuild diagnostics.

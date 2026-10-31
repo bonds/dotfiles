@@ -101,6 +101,6 @@ must warn, not fail, or an offline `nr --update` reverts a good release.
   `bash .config/nix/nr-pins verify --all /run/current-system`.
 - Manual recovery, when nothing automatic applies: `git revert` the bump
   commit, or restore one file with
-  `git --git-dir=~/.local/share/dotfiles --work-tree=~ checkout HEAD -- <path>`
-  (from `~`, or with a path relative to it — `--work-tree` does not scope
-  pathspecs).
+  `git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree checkout HEAD -- <path>`
+  (from the work tree, or with a path relative to it — `--work-tree` does not
+  scope pathspecs, and a path outside it is refused as `outside repository`).

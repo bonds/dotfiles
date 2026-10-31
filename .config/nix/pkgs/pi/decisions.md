@@ -18,6 +18,19 @@ directory in `$HOME` confuses tools that walk up looking for a repository.
 Untracked files are hidden (`status.showUntrackedFiles=no`) so `git add` can
 never accidentally stage the whole home directory.
 
+**Nested: git dir `~/.local/share/dotfiles/bare`, checkout
+`~/.local/share/dotfiles/worktree`, `$HOME` no longer a work tree**
+(2026-10-31, supersedes the entry above for accismus). Rejected: leaving the
+git dir loose in `~/.local/share/dotfiles` and $HOME as the work tree — it made
+every tracked file a potential `$HOME` edit and left no place to check out the
+repo without disturbing `$HOME`. Cost, accepted deliberately: nothing refreshes
+`$HOME` from the checkout any more, and `nr` still builds `$HOME/.config/nix`,
+so that path has to be symlinked to (or kept identical with) the checkout or a
+rebuild silently uses a frozen copy. A second, subtler cost: the checkout now
+sits *inside* a git repo, so a path-flake built from it is a git flake — nix
+uses the committed tree and ignores uncommitted edits, where the old plain
+`$HOME/.config/nix` directory did not. Commit before rebuilding.
+
 **`config` is a fish-only alias.** It resolves the git dir by existence, so the
 same file is correct on every machine and during a move. Rejected: a `bin/`
 script on `PATH`, because it would shadow real `git` mistakes less visibly and
