@@ -73,6 +73,28 @@ function nr
         return 0
     end
     command mkdir -p $HOME/.cache/nr
+    # Dotfiles checkout prefix, for the pathspec block below. Pathspecs must name
+    # paths inside the git work tree — since 2026-10-31 that is
+    # ~/.local/share/dotfiles/worktree on accismus, and git refuses a $HOME path
+    # there as "outside repository". On a machine with the flat layout (the
+    # worktree dir does not exist) this stays $HOME and nothing changes.
+    set -l _nr_dot $HOME
+    if test -d $HOME/.local/share/dotfiles/worktree
+        set _nr_dot $HOME/.local/share/dotfiles/worktree
+    end
+    set -l _nr_nix $_nr_dot/.config/nix
+    # `nr` builds $HOME/.config/nix. If that is not the checkout, the build and
+    # the pathspec block below disagree — say so instead of silently building a
+    # stale copy. (readlink -f prints nothing for a missing path, hence `-n`.)
+    if test "$_nr_dot" != $HOME
+        set -l _nr_live (command readlink -f $HOME/.config/nix)
+        set -l _nr_want (command readlink -f $_nr_nix)
+        if test -n "$_nr_live"; and test "$_nr_live" != "$_nr_want"
+            echo "nr: WARNING $HOME/.config/nix is not the checkout ($_nr_nix)" >&2
+            echo "nr:           this build uses a stale copy — link it once:" >&2
+            echo "nr:           mv ~/.config/nix ~/.config/nix.old; and ln -s $_nr_nix ~/.config/nix" >&2
+        end
+    end
     # (A) tee log: build output truncates last.log, switch output appends.
     set -l _nr_log $HOME/.cache/nr/last.log
     set -l _nr_old_system
@@ -275,37 +297,40 @@ function nr
     end
     if test "$_nr_update" = yes; and test "$_nr_switch_ok" -eq 0
         # Commit the version bumps the update scripts + nh generated, then push.
-        # Use home-absolute pathspecs so this block is cwd-independent
-        # (running `nr --update` from ~/.config/nix would otherwise make
-        # git resolve `.config/nix/...` against the cwd and fail the add).
+        # Pathspecs must name paths INSIDE the git work tree. Since 2026-10-31
+        # that is ~/.local/share/dotfiles/worktree on accismus, so a $HOME path
+        # is refused as "outside repository" — even when $HOME/.config/nix is a
+        # symlink pointing into the checkout. Resolve the prefix once; on a
+        # machine with the flat layout (sophrosyne) it stays $HOME and nothing
+        # about this block changes.
         # The pin registry and the pin engine ride along, so a pin that nr-pins
         # added or dropped this run is committed and pushed with the bump.
         # Guarded: `config add` fails the whole pathspec list if one path is
         # missing (e.g. a machine whose work tree predates the file).
-        set -l _nr_files $HOME/.config/nix/flake.lock
-        for _nr_f in $HOME/.config/nix/flake-pins.json $HOME/.config/nix/nr-pins
+        set -l _nr_files $_nr_nix/flake.lock
+        for _nr_f in $_nr_nix/flake-pins.json $_nr_nix/nr-pins
             if test -e $_nr_f
                 set -a _nr_files $_nr_f
             end
         end
         # Include flake.nix when it changed — it carries the rendered pin block.
-        if not config diff --quiet -- $HOME/.config/nix/flake.nix
-            set -a _nr_files $HOME/.config/nix/flake.nix
+        if not config diff --quiet -- $_nr_nix/flake.nix
+            set -a _nr_files $_nr_nix/flake.nix
         end
         if test "$_os" = darwin
             set -a _nr_files \
-                $HOME/.config/nix/pkgs/oxillama/default.nix \
-                $HOME/.config/nix/modules/overlays/zen-browser/sources.json \
-                $HOME/.config/nix/modules/overlays/opencode/default.nix \
-                $HOME/.config/nix/modules/overlays/daisydisk-overlay/default.nix \
-                $HOME/.config/nix/modules/overlays/osaurus/default.nix \
-                $HOME/.config/nix/modules/overlays/openfang/default.nix \
-                $HOME/.config/nix/modules/overlays/ghostty/default.nix \
-                $HOME/.config/nix/modules/overlays/orca-ade/default.nix
+                $_nr_nix/pkgs/oxillama/default.nix \
+                $_nr_nix/modules/overlays/zen-browser/sources.json \
+                $_nr_nix/modules/overlays/opencode/default.nix \
+                $_nr_nix/modules/overlays/daisydisk-overlay/default.nix \
+                $_nr_nix/modules/overlays/osaurus/default.nix \
+                $_nr_nix/modules/overlays/openfang/default.nix \
+                $_nr_nix/modules/overlays/ghostty/default.nix \
+                $_nr_nix/modules/overlays/orca-ade/default.nix
         else
             set -a _nr_files \
-                $HOME/.config/nix/pkgs/bedrock-server/default.nix \
-                $HOME/.config/nix/pkgs/rsync-tmbackup/default.nix
+                $_nr_nix/pkgs/bedrock-server/default.nix \
+                $_nr_nix/pkgs/rsync-tmbackup/default.nix
         end
         config add $_nr_files
         if config diff --cached --quiet

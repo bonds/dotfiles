@@ -160,14 +160,27 @@ restructured the repo so the checkout *is* the edit location, at
 `$HOME` is no longer a work tree, so nothing refreshes `~/.config/fish`,
 `~/.config/nix`, … from the repo by itself. **`nr` still builds
 `$HOME/.config/nix`**, so `$HOME` has to be wired to the checkout (symlink, or
-its content kept identical) or a rebuild will silently use the frozen copy in
-`$HOME`. Check before trusting a rebuild:
+its content kept identical) or a rebuild uses the frozen copy in `$HOME`.
+`nr` now says so itself: it warns `$HOME/.config/nix is not the checkout` before
+building when the two differ — if you see that line, link it (below) before
+trusting the result.
 
 ```fish
 # does the live flake match the checkout?
 diff -rq $HOME/.config/nix $HOME/.local/share/dotfiles/worktree/.config/nix
 test -L $HOME/.config/nix; and echo 'symlinked — fine'
 ```
+
+The one-shot fix (do it after checking for untracked files that only exist in
+`$HOME/.config/nix` — see the `dotfiles-layout` skill):
+
+```fish
+mv $HOME/.config/nix $HOME/.config/nix.old
+ln -s $HOME/.local/share/dotfiles/worktree/.config/nix $HOME/.config/nix
+```
+
+After that the flake is reached through the checkout, so nix treats it as a
+**git flake** and builds the *committed* tree — commit before `nr`.
 
 When it does not, apply the tip of `main` where `$HOME` expects it:
 

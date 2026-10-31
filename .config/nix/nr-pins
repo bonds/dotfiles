@@ -56,7 +56,20 @@
 
 set -uo pipefail
 
-FLAKE_DIR="${NR_PINS_FLAKE_DIR:-$HOME/.config/nix}"
+# Real paths, so a symlinked flake dir still resolves as *inside* the work tree
+# below: since 2026-10-31 accismus keeps the git dir at ~/.local/share/dotfiles/bare
+# and the checkout at .../worktree, and $HOME/.config/nix is expected to be a
+# symlink into that checkout. `overlay_relpath` compares paths as strings, so the
+# symlink has to be resolved for the revert path to see it as inside the work
+# tree. Falls back to the raw value when realpath is unavailable.
+canon() {
+    if command -v realpath > /dev/null 2>&1; then
+        realpath "$1" 2> /dev/null || printf '%s' "$1"
+    else
+        printf '%s' "$1"
+    fi
+}
+FLAKE_DIR="$(canon "${NR_PINS_FLAKE_DIR:-$HOME/.config/nix}")"
 FLAKE_NIX="$FLAKE_DIR/flake.nix"
 LOCK="$FLAKE_DIR/flake.lock"
 REGISTRY="$FLAKE_DIR/flake-pins.json"
@@ -365,13 +378,13 @@ strip_ansi() {
 # inherently self-expiring — the next update.sh run bumps it again.
 #
 # NOTE (2026-10-31): accismus moved the git dir to <root>/bare and the checkout
-# to <root>/worktree, while `nr` still builds $HOME/.config/nix. So FLAKE_DIR is
-# not inside DOT_WORK_TREE and `revert_overlay` refuses with "the flake dir is
-# not inside the git work tree" (rc 2, logged — never a silent revert). Set
-# NR_PINS_FLAKE_DIR at the checkout's .config/nix once `nr` builds from the
-# checkout, or set NR_PINS_GIT_DIR / NR_PINS_WORK_TREE back to the flat paths.
+# to <root>/worktree. The revert below works when the flake dir resolves inside
+# DOT_WORK_TREE — i.e. with the expected `~/.config/nix -> <root>/worktree/.config/nix`
+# symlink (canon, above, resolves it), or with NR_PINS_FLAKE_DIR pointed straight
+# at the checkout. Without either, it refuses with "the flake dir is not inside
+# the git work tree" (rc 2, logged — never a silent revert).
 DOT_GIT_DIR="${NR_PINS_GIT_DIR:-$HOME/.local/share/dotfiles/bare}"
-DOT_WORK_TREE="${NR_PINS_WORK_TREE:-$HOME/.local/share/dotfiles/worktree}"
+DOT_WORK_TREE="$(canon "${NR_PINS_WORK_TREE:-$HOME/.local/share/dotfiles/worktree}")"
 
 # A changed line that is only a pin. Loose on purpose in one direction only: a
 # line that does not match keeps the directory from being reverted.
