@@ -97,6 +97,40 @@ export default {
           const data = event?.data;
           if (!data?.sessionID) continue;
 
+          if (event.type === "session.created") {
+            // A session that *starts* on an agent never emits a selection, so
+            // its model is whatever the client remembered — the TUI keeps one
+            // variant per model, globally — rather than the agent's. The
+            // request hook already forces the right effort, but the session
+            // record would keep claiming the old variant for its first turn.
+            if (data.parentID) continue;
+            if (event.location?.directory && here && event.location.directory !== here) continue;
+
+            try {
+              const session = payload(await ctx.session.get({ sessionID: data.sessionID }));
+              // A subagent session owns its model.
+              if (!session?.id || session.parentID || !owns(session)) continue;
+              if (!session.model) continue;
+
+              const want = agents.get(data.agent ?? session.agent);
+              if (!want?.id || !want.providerID || !want.variant) continue;
+              // Only correct the effort of the model the session already
+              // chose; a deliberately different model keeps its own variant.
+              if (session.model.providerID !== want.providerID || session.model.id !== want.id) continue;
+              if (sameRef(session.model, want)) continue;
+
+              pending.set(data.sessionID, {
+                want,
+                until: Date.now() + CORRECTION_WINDOW_MS,
+                corrections: 0,
+              });
+              await ctx.session.switchModel({ sessionID: data.sessionID, model: want });
+            } catch {
+              // A failed switch must not end the subscription.
+            }
+            continue;
+          }
+
           if (event.type === "session.agent.selected") {
             if (!data.agent) continue;
             // One event reaches every loaded location's instance; only the
