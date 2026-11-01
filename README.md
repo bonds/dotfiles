@@ -33,33 +33,38 @@ appears in `$HOME` — `readlink -f` tells you which you are looking at.
 
 ## Managing the dotfiles
 
-A **bare repo** whose git dir is `~/.local/share/dotfiles/bare` and whose
-checkout is `~/.local/share/dotfiles/worktree` (restructured 2026-10-31; before
-that the git dir sat directly in `~/.local/share/dotfiles` and `$HOME` was the
-work tree). Nothing clutters `$HOME`, and tools that walk up looking for a
+A **bare repo** at `~/.local/share/dotfiles/bare`, checked out twice
+(restructured 2026-10-31 — before that the git dir sat directly in
+`~/.local/share/dotfiles` and `$HOME` alone was the work tree):
+
+| checkout | role |
+|---|---|
+| `$HOME` | **apply target** — what `nr` builds; updated with `cd ~ && config checkout main -- .` |
+| `~/.local/share/dotfiles/worktree` | **edit target** — make every edit here |
+
+No `.git` directory clutters `$HOME` and tools that walk up looking for a
 repository do not trip over one. Untracked files are hidden
-(`status.showUntrackedFiles=no`), so `git add` can never stage a whole tree —
-which also means plain `git status` will not show you untracked files in *any*
-worktree; use `-uall` when it matters.
+(`status.showUntrackedFiles=no`), which keeps `git status` readable — it is
+**not** a guard against `git add -A`, which would stage the whole of `$HOME` (the
+nested `~/.local/share/dotfiles/` is excluded by `.gitignore`, everything else is
+not). Stage explicit paths. `-uall` shows untracked files when you need them.
 
-**Edit files in the checkout, not in `$HOME`** — `$HOME` is no longer a work
-tree, so a copy there only changes when you put it there. Commit and push, then
-Scott runs `nr`.
-
-In fish a `config` alias does the plumbing:
+Edit in the checkout with plain git — it is a worktree of the same repo, so git
+resolves everything itself. `config` is the alias for the **apply** side
+(`--work-tree=$HOME`) and for repo-level queries:
 
 ```fish
-config status
-config add .config/fish
-config commit -m "…"
-config push origin; and config push sophrosyne
+cd $HOME/.local/share/dotfiles/worktree
+git add .config/fish; git commit -m "…"
+git push origin main; and git push sophrosyne main
+
+cd ~; and config checkout main -- .        # apply where nr builds, then run nr
 ```
 
-Outside fish there is no alias — spell it out:
+Outside fish there is no alias — spell it out, from `$HOME` so pathspecs resolve:
 
 ```bash
-cd $HOME/.local/share/dotfiles/worktree
-git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree status
+cd ~ && git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME status
 ```
 
 Two remotes: `origin` (GitHub) and `sophrosyne` (a bare repo on the server whose

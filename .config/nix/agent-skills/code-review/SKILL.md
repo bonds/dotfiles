@@ -19,12 +19,13 @@ git show --stat HEAD       # last commit, if the tree is clean
 git diff main...HEAD       # a branch
 ```
 
-For this dotfiles repo there is no `.git` in `$HOME`; the git dir is
-`~/.local/share/dotfiles/bare` and the checkout it operates on is
-`~/.local/share/dotfiles/worktree` (restructured 2026-10-31):
+For this dotfiles repo there is no `.git` in `$HOME`, but the checkout used for
+editing is `~/.local/share/dotfiles/worktree` — a linked worktree of the bare
+repo at `~/.local/share/dotfiles/bare`, where plain git needs no
+`--git-dir`/`--work-tree` (restructured 2026-10-31):
 
 ```bash
-cd $HOME/.local/share/dotfiles/worktree && git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree diff --staged
+cd $HOME/.local/share/dotfiles/worktree && git diff --staged
 ```
 
 Note that the bare repo hides untracked files, so also check

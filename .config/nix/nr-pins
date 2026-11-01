@@ -56,20 +56,7 @@
 
 set -uo pipefail
 
-# Real paths, so a symlinked flake dir still resolves as *inside* the work tree
-# below: since 2026-10-31 accismus keeps the git dir at ~/.local/share/dotfiles/bare
-# and the checkout at .../worktree, and $HOME/.config/nix is expected to be a
-# symlink into that checkout. `overlay_relpath` compares paths as strings, so the
-# symlink has to be resolved for the revert path to see it as inside the work
-# tree. Falls back to the raw value when realpath is unavailable.
-canon() {
-    if command -v realpath > /dev/null 2>&1; then
-        realpath "$1" 2> /dev/null || printf '%s' "$1"
-    else
-        printf '%s' "$1"
-    fi
-}
-FLAKE_DIR="$(canon "${NR_PINS_FLAKE_DIR:-$HOME/.config/nix}")"
+FLAKE_DIR="${NR_PINS_FLAKE_DIR:-$HOME/.config/nix}"
 FLAKE_NIX="$FLAKE_DIR/flake.nix"
 LOCK="$FLAKE_DIR/flake.lock"
 REGISTRY="$FLAKE_DIR/flake-pins.json"
@@ -377,14 +364,16 @@ strip_ansi() {
 # declarations, and these packages are not inputs. Reverting a file is also
 # inherently self-expiring — the next update.sh run bumps it again.
 #
-# NOTE (2026-10-31): accismus moved the git dir to <root>/bare and the checkout
-# to <root>/worktree. The revert below works when the flake dir resolves inside
-# DOT_WORK_TREE — i.e. with the expected `~/.config/nix -> <root>/worktree/.config/nix`
-# symlink (canon, above, resolves it), or with NR_PINS_FLAKE_DIR pointed straight
-# at the checkout. Without either, it refuses with "the flake dir is not inside
-# the git work tree" (rc 2, logged — never a silent revert).
+# The git dir is `bare/` on accismus since 2026-10-31, and the work tree is
+# $HOME: $HOME is the APPLY target — a checkout of main that `nr` builds and that
+# `nr --update` stages and commits — while ~/.local/share/dotfiles/worktree is
+# only where edits are made. So both paths stay consistent with each other and
+# with the `config` alias, and `overlay_relpath` (a string compare of FLAKE_DIR
+# against DOT_WORK_TREE) keeps resolving $HOME/.config/nix as `.config/nix/…`.
+# Override with NR_PINS_GIT_DIR / NR_PINS_WORK_TREE / NR_PINS_FLAKE_DIR when a
+# machine does not follow that layout.
 DOT_GIT_DIR="${NR_PINS_GIT_DIR:-$HOME/.local/share/dotfiles/bare}"
-DOT_WORK_TREE="$(canon "${NR_PINS_WORK_TREE:-$HOME/.local/share/dotfiles/worktree}")"
+DOT_WORK_TREE="${NR_PINS_WORK_TREE:-$HOME}"
 
 # A changed line that is only a pin. Loose on purpose in one direction only: a
 # line that does not match keeps the directory from being reverted.

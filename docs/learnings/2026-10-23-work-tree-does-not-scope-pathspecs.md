@@ -9,7 +9,7 @@ even though the file was demonstrably edited:
 
 ```
 $ cd ~/.config/nix
-$ git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree diff -U0 -- \
+$ git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME diff -U0 -- \
     .config/nix/modules/overlays/opencode
 $ echo $?
 1
@@ -38,16 +38,19 @@ Always `cd` to the work tree (or pass absolute pathspecs) when driving the
 dotfiles repo from a script:
 
 ```bash
-( cd "$HOME/.local/share/dotfiles/worktree" && git --git-dir="$HOME/.local/share/dotfiles/bare" \
-      --work-tree="$HOME/.local/share/dotfiles/worktree" diff --stat -- .config/nix/modules/overlays/opencode )
+( cd "$HOME" && git --git-dir="$HOME/.local/share/dotfiles/bare" \
+      --work-tree="$HOME" diff --stat -- .config/nix/modules/overlays/opencode )
+# or, for the edit checkout — a linked worktree, so plain git needs no flags:
+( cd "$HOME/.local/share/dotfiles/worktree" && git diff --stat -- .config/nix/modules/overlays/opencode )
 ```
 
-**Update 2026-10-31:** the repo's checkout moved to
-`~/.local/share/dotfiles/worktree` and `$HOME` stopped being a work tree, which
-adds a second, louder form of the same trap: an absolute path *outside* the work
-tree is not silently empty, it is a hard `fatal: … is outside repository at
-'…/worktree'` — and `--work-tree=$HOME` there points at a tree the repo no longer
-tracks. Either way the pathspec must name a path inside the checkout.
+**Update 2026-10-31:** the dotfiles repo now has two checkouts of one bare repo —
+`$HOME` is the apply work tree (`--work-tree=$HOME`, what `nr` builds) and
+`~/.local/share/dotfiles/worktree` is a *linked* worktree used for editing, where
+plain `git -C` needs no `--git-dir`/`--work-tree` at all. The scoping trap above
+still applies to the `$HOME` side: from anywhere but `$HOME`, a `-- .` pathspec
+matches nothing useful, which is why the apply step is spelled
+`cd ~ && config checkout main -- .`.
 
 Diagnostic habit: if `git diff -- <path>` is empty but the file looks changed,
 run the same command from `~` before concluding the change is gone — and check

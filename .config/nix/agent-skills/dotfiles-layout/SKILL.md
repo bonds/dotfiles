@@ -15,16 +15,22 @@ place to work, and not to be deleted: it holds the only local copy of
 
 ### The bare repo and the `config` alias
 
-Tracked files are edited in the checkout — `~/.local/share/dotfiles/worktree/`
-on accismus — and read back from `$HOME` only if something links them there.
-The git dir is `~/.local/share/dotfiles/bare`, and it is driven with
-`--work-tree=$HOME/.local/share/dotfiles/worktree`. Since 2026-10-31 `$HOME` is
-**not** a work tree, so nothing refreshes `~/.config/nix` or `~/.config/fish`
-from the repo by itself. Untracked files are hidden from `git status`
-(`status.showUntrackedFiles = no` in the bare repo's config), so `git add`
-cannot accidentally stage a whole tree — and plain `git status`
-will not show you untracked files in *any* worktree; pass `-uall` when it
-matters.
+Tracked files are **edited in the checkout** —
+`~/.local/share/dotfiles/worktree/` on accismus — with plain git (it is a linked
+worktree of the same repo). That checkout and `$HOME` are two checkouts of one
+bare repo with different jobs:
+
+| checkout | role |
+|---|---|
+| `$HOME` | **apply target** — `cd ~ && config checkout main -- .` writes the committed tree here, and `nr` builds it |
+| `~/.local/share/dotfiles/worktree` | **edit target** — every edit is made here |
+
+The git dir is `~/.local/share/dotfiles/bare`. Untracked files are hidden from
+`git status` (`status.showUntrackedFiles = no` in the bare repo's config), so
+`git status` stays readable — but that does **not** make `git add -A` safe: from
+`$HOME` it would stage every untracked file there. The nested repo is excluded by
+`.gitignore` (`.local/share/dotfiles/`), everything else is not. Stage explicit
+paths, and pass `-uall` to `status` when you need to see untracked files.
 
 The `config` alias (`.config/fish/conf.d/10-aliases.fish`) wraps every git
 command with the right `--git-dir` and `--work-tree`. It resolves the git dir
@@ -32,7 +38,7 @@ by existence, so the same file is correct on every machine and during a move:
 
 ```fish
 if test -d $HOME/.local/share/dotfiles/bare
-    alias config='git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree'
+    alias config='git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME'
 else if test -d $HOME/.local/share/dotfiles
     alias config='git --git-dir=$HOME/.local/share/dotfiles/ --work-tree=$HOME'
 else
@@ -40,8 +46,13 @@ else
 end
 ```
 
-Everything works like normal git — `config status`, `config add`,
-`config commit`, `config push`, `config log`. Only the alias changes.
+Everything works like normal git — `config status`, `config log`, `config push`,
+`config checkout`. Only the alias changes. Note that `config add`/`config commit`
+stage against **`$HOME`**: for edits, use plain git in the checkout (`git -C
+$HOME/.local/share/dotfiles/worktree add …`). The two checkouts have separate
+indexes (`bare/index` for the `$HOME` side, `bare/worktrees/worktree/index` for the
+checkout), so spelling out `--git-dir=…/bare` for an edit stages the wrong side —
+observed as "no changes added to commit" right after a successful `git add`.
 
 **`config` is fish-only.** It does not exist in bash/zsh/sh or in Hermes'
 `terminal` tool; there it errors with `config: command not found`, and a script
@@ -50,8 +61,8 @@ invocation, always from (or with paths inside) the work tree so pathspecs
 resolve:
 
 ```bash
-cd $HOME/.local/share/dotfiles/worktree
-git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree status
+cd ~
+git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME status
 ```
 
 | task | command |
@@ -60,7 +71,7 @@ git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/do
 | start tracking a file | `config add <path>` (no `-f`: respect `.gitignore`) |
 | stop tracking, keep on disk | `config rm --cached <path>` |
 | verify a push landed on every remote | `for r in main origin/main sophrosyne/main; do git --git-dir=$HOME/.local/share/dotfiles/bare rev-parse --short "$r"; done` — `rev-parse --short` takes exactly one revision, so passing all three exits 128 with `fatal: Needed a single revision` |
-| sync the checkout to the tip of `main` | `git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree checkout main -- .` |
+| apply `main` where `nr` builds it | `cd ~ && git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME checkout main -- .` (the `cd ~` matters: `--work-tree` does not scope a `.` pathspec) |
 
 That last one is needed because a plain `git checkout main` only prints
 "Already on 'main'" and changes nothing.

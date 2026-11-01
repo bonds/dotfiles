@@ -1,6 +1,13 @@
 # Managed by nix activation scripts (symlink to ~/.config/ssh/keys)
 .ssh/authorized_keys
 
+# The dotfiles repo, nested inside its own work tree since 2026-10-31 (git dir
+# ~/.local/share/dotfiles/bare, edit checkout .../worktree). It used to BE the
+# git dir, which git skips automatically; as a sibling directory it is walkable,
+# so `config add -A` from $HOME would stage the whole repo (~474k files) into
+# itself. Ignore the nested tree.
+.local/share/dotfiles/
+
 # ─────────────────────────────────────────────────────────────────────────
 # This repo is PUBLIC and its work tree is $HOME, so anything staged here is
 # published. Untracked files are hidden from `git status` by default

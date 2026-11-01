@@ -37,7 +37,7 @@
 # revisions of this header claimed otherwise — the repo sets
 # status.showUntrackedFiles=no, which hides untracked files, but that does not
 # apply here. Verify with:
-#     git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree ls-files .config/nix/repair-pins-recovery.sh
+#     git -C $HOME/.local/share/dotfiles/worktree ls-files .config/nix/repair-pins-recovery.sh
 set -euo pipefail
 
 FLAKE_DIR="${HOME}/.config/nix"
@@ -64,7 +64,7 @@ reviewed in:
 Or, once the fix is committed to main, restore the files from git yourself and
 re-run this script (this also restores the pinned block):
 
-    git --git-dir=\$HOME/.local/share/dotfiles/bare --work-tree=\$HOME/.local/share/dotfiles/worktree checkout main -- \\
+    git -C \$HOME/.local/share/dotfiles/worktree checkout main -- \\
         .config/nix/nr-pins .config/nix/flake-pins.json
 EOF
     exit 1

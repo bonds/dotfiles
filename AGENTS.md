@@ -7,22 +7,23 @@
 
 Personal dotfiles tracked via a **bare git repo** on accismus and sophrosyne,
 managed through a `config` alias (fish-only, see below). Since **2026-10-31**
-accismus nests them: git dir `~/.local/share/dotfiles/bare`, checkout
-`~/.local/share/dotfiles/worktree`, and `$HOME` is **no longer** a work tree.
-sophrosyne still keeps a flat bare repo at `~/.local/share/dotfiles` with work
-tree `$HOME`.  Nesting keeps a `.git/` directory out of `$HOME` while giving the
-checkout a home of its own; the underlying approach is the one described in the
-[Atlassian dotfiles
+accismus nests the repo: git dir `~/.local/share/dotfiles/bare`, a **linked edit
+checkout** at `~/.local/share/dotfiles/worktree`, and `$HOME` as the **apply
+checkout** that `nr` builds. sophrosyne still keeps a flat bare repo at
+`~/.local/share/dotfiles` with work tree `$HOME`.  Nesting keeps a `.git`
+directory out of `$HOME` while giving edits a checkout of their own; the
+underlying approach is the one described in the [Atlassian dotfiles
 tutorial](https://www.atlassian.com/git/tutorials/dotfiles).
 
 ## Git tracking strategy
 
-Git dir `~/.local/share/dotfiles/bare` with
-`--work-tree=$HOME/.local/share/dotfiles/worktree` on accismus; untracked files
-are hidden (`status.showUntrackedFiles = no`), so `git add` cannot stage a whole
-tree by accident. The `config` alias wraps git with the right `--git-dir` and
-`--work-tree`, and **it is fish-only** — from bash or a script use the full
-`git --git-dir=... --work-tree=...` form, or `cd` into the checkout first. It
+Git dir `~/.local/share/dotfiles/bare`, checked out into `$HOME`
+(`git --git-dir=… --work-tree=$HOME`) — that is the **apply** side, the tree `nr`
+builds. Untracked files are hidden (`status.showUntrackedFiles = no`), which
+keeps `git status` readable but does **not** make `git add -A` safe: stage
+explicit paths, always. The `config` alias wraps git with the right `--git-dir`
+and `--work-tree`, and **it is fish-only** — from bash or a script use the full
+`git --git-dir=... --work-tree=...` form from `$HOME`, so pathspecs resolve. It
 resolves the git dir by existence, so the same file is correct on every machine
 and mid-move.
 
@@ -144,47 +145,48 @@ whole argument list, not a prefix. Agent forwarding is required for the TouchID
 path. Details, including the `/etc/ssh/authorized_keys.d/scott` key file: the
 `machines-and-services` skill.
 
-## Where tracked files are edited
+## Where tracked files are edited, and how they get applied
 
-Edit them in the checkout — `$HOME/.local/share/dotfiles/worktree/<path>` — not
-in `$HOME`. The sequence is: edit in the checkout → commit → push `origin` and
-`sophrosyne` → Scott runs `nr`.
+Two checkouts of the same bare repo, with different jobs:
 
-(History: a `live` worktree under `~/.local/share/dotfiles/live` existed until
-2026-10-19 and was removed because it had drifted to 69 staged files behind
-`main`, so an agent editing it would have committed reverts. That "do not
-recreate a second checkout" rule is **superseded 2026-10-31**: Scott
-restructured the repo so the checkout *is* the edit location, at
-`dotfiles/worktree`.)
+| path | role |
+|---|---|
+| `$HOME` | **apply target** — `config checkout main -- .` writes the committed tree here, and `nr` builds it |
+| `~/.local/share/dotfiles/worktree` | **edit target** — every edit is made here (a linked worktree of the bare repo) |
 
-`$HOME` is no longer a work tree, so nothing refreshes `~/.config/fish`,
-`~/.config/nix`, … from the repo by itself. **`nr` still builds
-`$HOME/.config/nix`**, so `$HOME` has to be wired to the checkout (symlink, or
-its content kept identical) or a rebuild uses the frozen copy in `$HOME`.
-`nr` now says so itself: it warns `$HOME/.config/nix is not the checkout` before
-building when the two differ — if you see that line, link it (below) before
-trusting the result.
+Sequence: **edit in `worktree/` → commit → push `origin` and `sophrosyne` →
+`cd ~ && config checkout main -- .` → Scott runs `nr`.**
 
 ```fish
-# does the live flake match the checkout?
-diff -rq $HOME/.config/nix $HOME/.local/share/dotfiles/worktree/.config/nix
-test -L $HOME/.config/nix; and echo 'symlinked — fine'
+# edit and commit in the checkout — plain git, it is a worktree of the same repo
+cd $HOME/.local/share/dotfiles/worktree
+git add .config/fish/conf.d/15-functions.fish
+git commit -m "…"
+git push origin main; and git push sophrosyne main
+
+cd ~; and config checkout main -- .   # apply, then `nr`
 ```
 
-The one-shot fix (do it after checking for untracked files that only exist in
-`$HOME/.config/nix` — see the `dotfiles-layout` skill):
+`config` is `git --git-dir=~/.local/share/dotfiles/bare --work-tree=$HOME`, so it
+is the alias for the **apply** side and for repo-level queries (`config log`,
+`config push`, `config status`). To stage or commit edits, use plain git in the
+checkout — `config add` there would be staging against `$HOME`, and passing
+`--git-dir=…/bare` is the same mistake: the two checkouts have separate indexes
+(`bare/index` vs `bare/worktrees/worktree/index`), so the explicit form stages
+and commits the *apply* side's view.
 
-```fish
-mv $HOME/.config/nix $HOME/.config/nix.old
-ln -s $HOME/.local/share/dotfiles/worktree/.config/nix $HOME/.config/nix
-```
+`nr` checks both trees on every run, in ~30 ms, and says so when either is off:
 
-After that the flake is reached through the checkout, so nix treats it as a
-**git flake** and builds the *committed* tree — commit before `nr`.
+- `WARNING $HOME does not match the committed tree` — the apply side is behind
+  `main` or edited in place: run the `config checkout main -- .` line above.
+- `WARNING worktree/ (edit tree) …` — commit the edits there, or, if that tree is
+  merely stale after a bump committed from `$HOME` (that is where `nr --update`
+  commits, deliberately: it commits what it built and verified), sync it with
+  `git -C ~/.local/share/dotfiles/worktree reset --hard main`.
 
-When it does not, apply the tip of `main` where `$HOME` expects it:
-
-```bash
-cd $HOME/.local/share/dotfiles/worktree && git --git-dir=$HOME/.local/share/dotfiles/bare \
-  --work-tree=$HOME/.local/share/dotfiles/worktree checkout main -- .
-```
+A `live` worktree under `~/.local/share/dotfiles/live` existed until 2026-10-19
+and was removed because it had drifted to 69 staged files behind `main`, so an
+agent editing it would have committed reverts. The 2026-10-31 layout recreates
+that position deliberately, which is why `worktree/` is the only place edits
+belong and why the two guards exist rather than a rule saying "no second
+checkout".

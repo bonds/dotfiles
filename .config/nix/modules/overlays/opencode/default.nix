@@ -16,7 +16,7 @@
 #
 # ROLLBACK: V1 and V2 both install the `opencode` binary and read the same
 # config locations, so they cannot coexist. To go back to V1 1.19.4:
-#   git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree revert <this-bump-sha>
+#   git -C $HOME/.local/share/dotfiles/worktree revert <this-bump-sha>
 #   nr
 # (The V1 pin — CLI sha256-xACi+MirfplHin9N0aRmtXvzOIjlINhcVXgKVGTEtok= — stays
 # in git history; do not delete it from history as the escape hatch.)

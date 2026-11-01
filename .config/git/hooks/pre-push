@@ -8,11 +8,11 @@
 # Bypass with: git push --no-verify
 set -euo pipefail
 
-# The dotfiles checkout moved on 2026-10-31: on accismus the git dir is
-# ~/.local/share/dotfiles/bare and the checkout is .../worktree, so
-# $HOME/.config/nix is no longer the copy under review (it is only refreshed if
-# something links it there). Validate the checkout when it exists; fall back to
-# the flat layout for sophrosyne and metanoia.
+# Since 2026-10-31 accismus keeps the git dir at ~/.local/share/dotfiles/bare, the
+# edit checkout at .../worktree, and the apply checkout at $HOME (what `nr`
+# builds). Validate the edit checkout when it exists — it is a checkout of main,
+# i.e. the committed tree that is being pushed; $HOME may legitimately be behind
+# it. The flat layout (sophrosyne, metanoia) falls back to $HOME/.config/nix.
 flake_dir="$HOME/.local/share/dotfiles/worktree/.config/nix"
 [ -d "$flake_dir" ] || flake_dir="$HOME/.config/nix"
 cd "$flake_dir"

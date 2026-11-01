@@ -34,7 +34,7 @@ sharp edge.
 Always pass `-uall` before trusting "clean" in this repo:
 
 ```bash
-git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree status --porcelain -uall
+git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME status --porcelain -uall
 ```
 
 Before removing a worktree:

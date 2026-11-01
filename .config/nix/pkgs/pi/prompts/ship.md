@@ -13,14 +13,19 @@ Ship the current batch:
 
 Then push to **all** remotes:
 
-- This dotfiles repo (git dir `~/.local/share/dotfiles/bare`, checkout `~/.local/share/dotfiles/worktree`). `config` is a
-  **fish-only** alias, so from the bash tool use the full form, run from the checkout:
+- This dotfiles repo. Edits live in the checkout at
+  `~/.local/share/dotfiles/worktree` (a linked worktree of the bare repo), where
+  plain git works; `config` is the **fish-only** alias for the `$HOME` apply side:
 
   ```bash
   cd $HOME/.local/share/dotfiles/worktree
-  git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree push origin main
-  git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree push sophrosyne main
+  git add <paths>; git commit -m "…"
+  git push origin main; git push sophrosyne main
+  cd ~ && git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME checkout main -- .
   ```
+
+  Apply the commit with that last line, where `nr` builds it, then tell Scott to
+  run `nr`.
 
 - Any other repo: `git push origin <branch>`
 

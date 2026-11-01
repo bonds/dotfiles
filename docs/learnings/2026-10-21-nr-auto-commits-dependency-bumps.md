@@ -8,7 +8,7 @@ The work tree showed two modified overlay files after I had committed only my
 own doc edit:
 
 ```
-$ git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree status --porcelain --untracked-files=no
+$ git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME status --porcelain --untracked-files=no
  M .config/nix/modules/overlays/orca-ade/default.nix
  M .config/nix/modules/overlays/osaurus/default.nix
 ```
@@ -47,7 +47,7 @@ the hash, and a wrong one only surfaces at build time.
 After any `nr`, check for a machine commit sitting ahead of both remotes:
 
 ```bash
-git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree rev-parse HEAD origin/main sophrosyne/main
+git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME rev-parse HEAD origin/main sophrosyne/main
 ```
 
 (`--short` cannot be combined with several revisions — `git rev-parse --short

@@ -31,6 +31,23 @@ sits *inside* a git repo, so a path-flake built from it is a git flake — nix
 uses the committed tree and ignores uncommitted edits, where the old plain
 `$HOME/.config/nix` directory did not. Commit before rebuilding.
 
+**Two checkouts: `$HOME` applies, `worktree/` edits** (2026-10-31, corrects the
+entry above). `$HOME` is a checkout of `main` that `nr` builds; every edit goes to
+a linked worktree at `~/.local/share/dotfiles/worktree`; the apply step is
+`cd ~ && config checkout main -- .`. Rejected: symlinking `~/.config/nix` into the
+checkout, or pointing `nr` at the checkout — both make the live config a git flake
+read from the committed tree, and both put the config that is *built* in the tree
+that is *edited*; the two jobs want different trees. Consequences, accepted and
+guarded: the trees can drift, so every `nr` run warns when the apply side is
+behind `main` or edited in place, and when the edit side is behind `main` or
+dirty; and `nr --update` stages and commits in **`$HOME`** — the tree the update
+scripts wrote and `nh` just verified, so a commit can only ever contain what was
+built — which leaves the edit checkout behind `main` until it is synced
+(`git -C …/worktree reset --hard main`, printed by the guard). Found while
+verifying: the nested repo is no longer the git dir, so `git add -A` from `$HOME`
+would stage the whole repo into itself (~474k files); `.gitignore` now excludes
+`.local/share/dotfiles/`.
+
 **`config` is a fish-only alias.** It resolves the git dir by existence, so the
 same file is correct on every machine and during a move. Rejected: a `bin/`
 script on `PATH`, because it would shadow real `git` mistakes less visibly and

@@ -100,7 +100,8 @@ must warn, not fail, or an offline `nr --update` reverts a good release.
 - **Verify a hook by hand** without switching:
   `bash .config/nix/nr-pins verify --all /run/current-system`.
 - Manual recovery, when nothing automatic applies: `git revert` the bump
-  commit, or restore one file with
-  `git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME/.local/share/dotfiles/worktree checkout HEAD -- <path>`
-  (from the work tree, or with a path relative to it — `--work-tree` does not
-  scope pathspecs, and a path outside it is refused as `outside repository`).
+  commit, or restore one file from the checkout with
+  `git -C $HOME/.local/share/dotfiles/worktree checkout HEAD -- <path>`
+  (a linked worktree, so plain git needs no `--git-dir`/`--work-tree`; `--work-tree`
+  does not scope pathspecs, and from the `$HOME` side a path outside that work tree
+  is refused as `outside repository`).
