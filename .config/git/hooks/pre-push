@@ -1,29 +1,68 @@
 #!/usr/bin/env bash
 # Pre-push hook — tracked at .config/git/hooks/pre-push (not .git/hooks/).
-# Activated by core.hooksPath = ~/.config/git/hooks in the bare repo's config.
-# Runs nix flake check --no-build --all-systems (evaluates checks for every declared
-# system: format, deadnix, gitleaks, machine evals — not just the host's) plus explicit
-# direct evals of each machine config, before pushing. --all-systems avoids the
-# "omitted these incompatible systems" warning and covers both darwin and linux.
+# Activated by core.hooksPath = ~/.config/git/hooks in the dotfiles repo's config.
+# Validates the COMMITTED tree being pushed — not a working copy — by archiving the
+# pushed commit into a temp dir and running there:
+#   nix flake check --no-build --all-systems   (format, deadnix, gitleaks, machine evals)
+#   nix eval --raw .#<machine>.config.system.build.toplevel.drvPath   (per machine)
+# --all-systems avoids the "omitted these incompatible systems" warning.
 # Bypass with: git push --no-verify
+#
+# WHY THE TEMP TREE (2026-10-31): the previous version cd'd into the checkout
+# (~/.local/share/dotfiles/worktree/.config/nix) and let nix derive the flake ref
+# from the cwd. For a *linked* worktree whose `.git` is a file and which lives
+# inside another work tree of the same repo, that derivation goes through nix's git
+# fetcher with a `dir=` attribute, and the push of 217aaeb died with:
+#   error: source tree referenced by 'git+file:///…/worktree?dir=.config/nix&ref=
+#   refs/heads/main&rev=217aaeb…' does not contain a '.config/nix/flake.nix' file
+# although `git ls-tree 217aaeb -- .config/nix/flake.nix` lists that file, and the
+# same command run by hand minutes later passed. Archiving the commit removes the
+# whole class of failure: no git fetcher, no `dir=`, no cwd, no dirty/stale worktree,
+# no fetcher cache. It is also stricter — it checks exactly what is being pushed.
 set -euo pipefail
 
-# Since 2026-10-31 accismus keeps the git dir at ~/.local/share/dotfiles/bare, the
-# edit checkout at .../worktree, and the apply checkout at $HOME (what `nr`
-# builds). Validate the edit checkout when it exists — it is a checkout of main,
-# i.e. the committed tree that is being pushed; $HOME may legitimately be behind
-# it. The flat layout (sophrosyne, metanoia) falls back to $HOME/.config/nix.
-flake_dir="$HOME/.local/share/dotfiles/worktree/.config/nix"
-[ -d "$flake_dir" ] || flake_dir="$HOME/.config/nix"
-cd "$flake_dir"
-remote="$1"
-url="$2"
+# Git dir: accismus nests it (…/dotfiles/bare); sophrosyne keeps the flat repo.
+dotfiles="$HOME/.local/share/dotfiles"
+git_dir="$dotfiles"
+[ -d "$git_dir/bare" ] && git_dir="$git_dir/bare"
 
-echo "pre-push: nix flake check --no-build --all-systems (evaluates format/deadnix/gitleaks/machine evals)..."
-if ! nix flake check --no-build --all-systems 2>&1; then
-  echo "pre-push: nix flake check FAILED — push aborted." >&2
-  echo "  Fix errors above or bypass with 'git push --no-verify'." >&2
-  exit 1
+# The commit being pushed arrives on stdin as:
+#   <local-ref> <local-sha> <remote-ref> <remote-sha>
+sha=""
+while read -r _lref lsha _rref _rsha; do
+	case "$lsha" in
+	0000000000000000000000000000000000000000 | "") continue ;; # deletion
+	esac
+	sha="$lsha"
+	break
+done
+[ -n "$sha" ] || sha="$(git --git-dir="$git_dir" rev-parse refs/heads/main 2> /dev/null || true)"
+if [ -z "$sha" ] || ! git --git-dir="$git_dir" cat-file -e "${sha}^{commit}" 2> /dev/null; then
+	echo "pre-push: cannot resolve the commit being pushed (${sha:-none}) in $git_dir — push aborted." >&2
+	echo "  This hook only runs for the dotfiles repo; investigate before bypassing." >&2
+	exit 1
+fi
+
+tree="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-precheck.XXXXXX")"
+trap 'rm -rf "$tree"' EXIT
+git --git-dir="$git_dir" archive "$sha" | tar -x -C "$tree"
+
+flake_dir="$tree/.config/nix"
+if [ ! -f "$flake_dir/flake.nix" ]; then
+	echo "pre-push: ${sha:0:7} has no .config/nix/flake.nix — refusing to push." >&2
+	exit 1
+fi
+
+cd "$flake_dir"
+# git hands a hook GIT_DIR/GIT_WORK_TREE of the *pushing* repo; keep them out of
+# nix's own git calls (belt and braces — the temp tree needs no git at all).
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY
+
+echo "pre-push: nix flake check --no-build --all-systems on the tree of ${sha:0:7} (format/deadnix/gitleaks/machine evals)..."
+if ! nix flake check --no-build --all-systems --no-write-lock-file 2>&1; then
+	echo "pre-push: nix flake check FAILED — push aborted." >&2
+	echo "  Fix errors above or bypass with 'git push --no-verify'." >&2
+	exit 1
 fi
 
 # Direct evals catch real config regressions (e.g. path typos like zen-icon) that
@@ -31,14 +70,14 @@ fi
 # nix can't reach the daemon store as nixbld). Runs as the pushing user.
 echo "pre-push: directly evaluating machine configs..."
 for target in \
-  nixosConfigurations.sophrosyne \
-  nixosConfigurations.metanoia \
-  darwinConfigurations.accismus; do
-  echo "  evaluating .#$target..."
-  if ! nix eval --raw ".#$target.config.system.build.toplevel.drvPath" >/dev/null 2>&1; then
-    echo "pre-push: direct eval of .#$target FAILED — push aborted." >&2
-    nix eval --raw ".#$target.config.system.build.toplevel.drvPath" >&2 2>&1 || true
-    exit 1
-  fi
+	nixosConfigurations.sophrosyne \
+	nixosConfigurations.metanoia \
+	darwinConfigurations.accismus; do
+	echo "  evaluating .#$target..."
+	if ! nix eval --raw ".#$target.config.system.build.toplevel.drvPath" > /dev/null 2>&1; then
+		echo "pre-push: direct eval of .#$target FAILED — push aborted." >&2
+		nix eval --raw ".#$target.config.system.build.toplevel.drvPath" >&2 2>&1 || true
+		exit 1
+	fi
 done
 echo "pre-push: all checks + direct evals passed."
