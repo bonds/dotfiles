@@ -159,8 +159,29 @@ function nr
         set -l _nr_wt_head (git -C $_nr_wt rev-parse HEAD 2>/dev/null)
         set -l _nr_main (git --git-dir=$_nr_git rev-parse main 2>/dev/null)
         if test -n "$(git -C $_nr_wt status --porcelain --untracked-files=no 2>/dev/null)"
-            echo "nr: WARNING worktree/ (edit tree) has changes — commit them, or if it is only stale" >&2
-            echo "nr:           (after a bump committed from $HOME), sync it: git -C $_nr_wt reset --hard main" >&2
+            # Real edits, or just an older state of main? If the checkout's FILES
+            # match some earlier position of main, nothing here is new work — the
+            # tree is only stale, which is what `nr --update` leaves behind when it
+            # commits in $HOME. Committing in that state reverts that commit
+            # (4d4fb86 did exactly that, silently).
+            set -l _nr_wt_stale no
+            set -l _nr_cands (git --git-dir=$_nr_git reflog show --format=%H main 2>/dev/null)
+            for _nr_n in 1 2 3 4 5 6 7 8
+                set -a _nr_cands (git --git-dir=$_nr_git rev-parse --verify --quiet "main~$_nr_n" 2>/dev/null)
+            end
+            for _nr_c in $_nr_cands
+                if test -n "$_nr_c"; and test "$_nr_c" != "$_nr_main"; and git -C $_nr_wt diff --quiet $_nr_c 2>/dev/null
+                    set _nr_wt_stale yes
+                    break
+                end
+            end
+            if test "$_nr_wt_stale" = yes
+                echo "nr: WARNING worktree/ (edit tree) is only STALE — its files match an earlier main." >&2
+                echo "nr:           Do not commit here (that reverts the $HOME-side commit). Sync: git -C $_nr_wt reset --hard main" >&2
+            else
+                echo "nr: WARNING worktree/ (edit tree) has uncommitted changes — commit or stash them" >&2
+                echo "nr:           (a plain 'reset --hard main' would discard them)" >&2
+            end
         else if test -n "$_nr_wt_head"; and test "$_nr_wt_head" != "$_nr_main"
             echo "nr: WARNING worktree/ (edit tree) is behind main — sync it: git -C $_nr_wt pull --ff-only" >&2
         end
