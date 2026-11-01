@@ -22,7 +22,7 @@ bare repo with different jobs:
 
 | checkout | role |
 |---|---|
-| `$HOME` | **apply target** — `cd ~ && config checkout main -- .` writes the committed tree here, and `nr` builds it |
+| `$HOME` | **apply target** — `nr` brings it to `main` before every build; by hand `config checkout main -- :/` |
 | `~/.local/share/dotfiles/worktree` | **edit target** — every edit is made here |
 
 The git dir is `~/.local/share/dotfiles/bare`. Untracked files are hidden from
@@ -71,7 +71,7 @@ git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME status
 | start tracking a file | `config add <path>` (no `-f`: respect `.gitignore`) |
 | stop tracking, keep on disk | `config rm --cached <path>` |
 | verify a push landed on every remote | `for r in main origin/main sophrosyne/main; do git --git-dir=$HOME/.local/share/dotfiles/bare rev-parse --short "$r"; done` — `rev-parse --short` takes exactly one revision, so passing all three exits 128 with `fatal: Needed a single revision` |
-| apply `main` where `nr` builds it | `cd ~ && git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME checkout main -- .` (the `cd ~` matters: `--work-tree` does not scope a `.` pathspec) |
+| apply `main` where `nr` builds it | `nr` does this itself before every build; by hand: `config checkout main -- :/` — no `cd`, since `:/` is anchored at the top of the work tree and a bare `.` is resolved against the cwd |
 
 That last one is needed because a plain `git checkout main` only prints
 "Already on 'main'" and changes nothing.

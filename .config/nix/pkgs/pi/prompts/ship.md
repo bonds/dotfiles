@@ -21,11 +21,11 @@ Then push to **all** remotes:
   cd $HOME/.local/share/dotfiles/worktree
   git add <paths>; git commit -m "…"
   git push origin main; git push sophrosyne main
-  cd ~ && git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME checkout main -- .
+  nr     # applies main to $HOME, then builds
   ```
 
-  Apply the commit with that last line, where `nr` builds it, then tell Scott to
-  run `nr`.
+  `nr` applies `main` to `$HOME` itself, so after pushing just tell Scott to run
+  it — the checkout step is no longer typed by hand.
 
 - Any other repo: `git push origin <branch>`
 

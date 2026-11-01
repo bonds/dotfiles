@@ -45,12 +45,13 @@ dotfiles repo from a script:
 ```
 
 **Update 2026-10-31:** the dotfiles repo now has two checkouts of one bare repo —
-`$HOME` is the apply work tree (`--work-tree=$HOME`, what `nr` builds) and
-`~/.local/share/dotfiles/worktree` is a *linked* worktree used for editing, where
-plain `git -C` needs no `--git-dir`/`--work-tree` at all. The scoping trap above
-still applies to the `$HOME` side: from anywhere but `$HOME`, a `-- .` pathspec
-matches nothing useful, which is why the apply step is spelled
-`cd ~ && config checkout main -- .`.
+`$HOME` is the apply work tree (`--work-tree=$HOME`, what `nr` builds and brings
+to `main` itself before building) and `~/.local/share/dotfiles/worktree` is a
+*linked* worktree used for editing, where plain `git -C` needs no
+`--git-dir`/`--work-tree` at all. The scoping trap above is why the hand-typed
+apply is `config checkout main -- :/`: `:/` is anchored at the top of the work
+tree, so it means the same thing from any cwd, where a bare `.` is resolved
+against the cwd.
 
 Diagnostic habit: if `git diff -- <path>` is empty but the file looks changed,
 run the same command from `~` before concluding the change is gone — and check

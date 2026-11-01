@@ -73,18 +73,81 @@ function nr
         return 0
     end
     command mkdir -p $HOME/.cache/nr
-    # ---- drift guards (two git status runs; no new dependencies) -------------
-    # Apply target: $HOME is a checkout of main, and `nr` builds it. Warn when it
-    # no longer matches the committed tree — behind main, or edited in place.
-    # The failure that matters is building something other than what was pushed.
+    # ---- keep the apply checkout current, then guard the edit tree ----------
+    # $HOME is where `nr` builds, so bring it up to `main` first — the apply step
+    # (`config checkout main -- :/`), done for you. Silent when in sync. Refuses
+    # to touch a $HOME with local edits (that would clobber them).
     set -l _nr_git $HOME/.local/share/dotfiles
     if test -d $_nr_git/bare
         set _nr_git $_nr_git/bare
     end
     if test -d $_nr_git
-        if test -n "$(git --git-dir=$_nr_git --work-tree=$HOME status --porcelain --untracked-files=no 2>/dev/null)"
-            echo "nr: WARNING $HOME does not match the committed tree — apply it first:" >&2
-            echo "nr:           cd ~; and git --git-dir=$_nr_git --work-tree=$HOME checkout main -- ." >&2
+        set -l _nr_state (git --git-dir=$_nr_git --work-tree=$HOME status --porcelain --untracked-files=no 2>/dev/null)
+        if test -n "$_nr_state"
+            # Paths an apply would change: compare the work tree with main,
+            # ignoring the index (the two checkouts share history, not an index).
+            # A path that is missing from $HOME has no local content to lose.
+            set -l _nr_paths
+            set -l _nr_present
+            for _nr_p in (git --git-dir=$_nr_git --work-tree=$HOME diff --name-only main 2>/dev/null)
+                set -a _nr_paths $_nr_p
+                if test -e $HOME/$_nr_p
+                    set -a _nr_present $_nr_p
+                end
+            end
+            # Applying is safe only while every one of those present paths still
+            # holds an OLDER committed state: its content matches a position main
+            # held before. Anything else is local work that `nr` must not throw
+            # away — an `nr --update` retry leaves precisely that, and a leftover
+            # hand-edit should be looked at, not replaced.
+            # `-C $HOME` matters: a relative pathspec is resolved against the cwd,
+            # so from anywhere else these comparisons would match nothing and look
+            # "stale" (docs/learnings/2026-10-23-work-tree-does-not-scope-pathspecs.md).
+            set -l _nr_stale no
+            if test -z "$_nr_present"
+                set _nr_stale yes
+            else
+                for _nr_c in (git --git-dir=$_nr_git reflog show --format=%H main 2>/dev/null | head -25)
+                    if git -C $HOME --git-dir=$_nr_git --work-tree=$HOME diff --quiet $_nr_c -- $_nr_present 2>/dev/null
+                        set _nr_stale yes
+                        break
+                    end
+                end
+            end
+            if test "$_nr_stale" = yes
+                # `:/` is anchored at the top of the work tree, so this works from
+                # any cwd — a bare `.` is resolved against the cwd, which is why
+                # the hand-typed form used to want `cd ~`.
+                echo "nr: applying "(git --git-dir=$_nr_git rev-parse --short main)" to $HOME"
+                if not git --git-dir=$_nr_git --work-tree=$HOME checkout main -- ':/' >$HOME/.cache/nr/apply.log 2>&1
+                    echo "nr: ERROR could not apply main to $HOME — refusing to build:" >&2
+                    cat $HOME/.cache/nr/apply.log >&2
+                    return 1
+                end
+            else
+                # Never clobber. Name the paths whose content exists nowhere in
+                # history — those are the local edits — and build what is there:
+                # an `nr --update` retry has to rebuild the uncommitted bumps it
+                # just left in $HOME, so stopping here would deadlock that path.
+                echo "nr: WARNING $HOME has local edits to tracked files — not applying main:" >&2
+                set -l _nr_cands (git --git-dir=$_nr_git reflog show --format=%H main 2>/dev/null | head -25)
+                set -l _nr_shown 0
+                for _nr_p in $_nr_present
+                    set -l _nr_hit no
+                    for _nr_c in $_nr_cands
+                        if git -C $HOME --git-dir=$_nr_git --work-tree=$HOME diff --quiet $_nr_c -- $_nr_p 2>/dev/null
+                            set _nr_hit yes
+                            break
+                        end
+                    end
+                    if test $_nr_hit = no
+                        echo "nr:           $_nr_p" >&2
+                        set _nr_shown (math $_nr_shown + 1)
+                        test $_nr_shown -ge 8; and break
+                    end
+                end
+                echo "nr:           building what is there; to discard them: cd ~; and config checkout main -- :/" >&2
+            end
         end
     end
     # Edit target: ~/.local/share/dotfiles/worktree is where edits are made. It

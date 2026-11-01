@@ -39,7 +39,7 @@ A **bare repo** at `~/.local/share/dotfiles/bare`, checked out twice
 
 | checkout | role |
 |---|---|
-| `$HOME` | **apply target** — what `nr` builds; updated with `cd ~ && config checkout main -- .` |
+| `$HOME` | **apply target** — what `nr` builds; `nr` brings it to `main` itself before building |
 | `~/.local/share/dotfiles/worktree` | **edit target** — make every edit here |
 
 No `.git` directory clutters `$HOME` and tools that walk up looking for a
@@ -54,12 +54,18 @@ resolves everything itself. `config` is the alias for the **apply** side
 (`--work-tree=$HOME`) and for repo-level queries:
 
 ```fish
+# edit in the checkout, then just run nr — it applies main to $HOME for you
 cd $HOME/.local/share/dotfiles/worktree
 git add .config/fish; git commit -m "…"
 git push origin main; and git push sophrosyne main
 
-cd ~; and config checkout main -- .        # apply where nr builds, then run nr
+nr
 ```
+
+(`nr` applies the committed tree into `$HOME` before building. The manual form,
+if ever needed, is `config checkout main -- :/` — no `cd`, because `:/` is
+anchored at the top of the work tree while a bare `.` is resolved against the
+cwd.)
 
 Outside fish there is no alias — spell it out, from `$HOME` so pathspecs resolve:
 

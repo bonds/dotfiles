@@ -36,7 +36,8 @@ end
 # builds (restructured 2026-10-31; before that the git dir sat directly in
 # ~/.local/share/dotfiles). Edits are made in the second checkout at
 # ~/.local/share/dotfiles/worktree (a linked worktree of the same repo):
-# edit there, commit, push, then `cd ~ && config checkout main -- .`.
+# edit there, commit, push, then run `nr` (it applies main to $HOME itself;
+# by hand: `config checkout main -- :/`).
 # sophrosyne keeps a flat bare repo at ~/.local/share/dotfiles with work tree
 # $HOME; metanoia still uses ~/.config/dotfiles.
 # Resolve by existence so this single file is correct on every machine and

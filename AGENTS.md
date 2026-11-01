@@ -151,11 +151,12 @@ Two checkouts of the same bare repo, with different jobs:
 
 | path | role |
 |---|---|
-| `$HOME` | **apply target** — `config checkout main -- .` writes the committed tree here, and `nr` builds it |
+| `$HOME` | **apply target** — where the committed tree is written and `nr` builds; `nr` brings it to `main` itself before building (by hand: `config checkout main -- :/`) |
 | `~/.local/share/dotfiles/worktree` | **edit target** — every edit is made here (a linked worktree of the bare repo) |
 
-Sequence: **edit in `worktree/` → commit → push `origin` and `sophrosyne` →
-`cd ~ && config checkout main -- .` → Scott runs `nr`.**
+Sequence: **edit in `worktree/` → commit → push `origin` and `sophrosyne` → run `nr`.**
+`nr` applies the committed tree into `$HOME` itself before building, so the
+checkout command is rarely typed by hand.
 
 ```fish
 # edit and commit in the checkout — plain git, it is a worktree of the same repo
@@ -164,7 +165,7 @@ git add .config/fish/conf.d/15-functions.fish
 git commit -m "…"
 git push origin main; and git push sophrosyne main
 
-cd ~; and config checkout main -- .   # apply, then `nr`
+nr                                   # applies main to $HOME, then builds
 ```
 
 `config` is `git --git-dir=~/.local/share/dotfiles/bare --work-tree=$HOME`, so it
@@ -175,13 +176,24 @@ checkout — `config add` there would be staging against `$HOME`, and passing
 (`bare/index` vs `bare/worktrees/worktree/index`), so the explicit form stages
 and commits the *apply* side's view.
 
-`nr` checks both trees on every run, in ~30 ms, and says so when either is off:
+The manual apply, if you ever want it (no `cd` needed — `:/` is anchored at the
+top of the work tree, where a plain `.` would be resolved against the cwd):
 
-- `WARNING $HOME does not match the committed tree` — the apply side is behind
-  `main` or edited in place: run the `config checkout main -- .` line above.
-- `WARNING worktree/ (edit tree) …` — commit the edits there, or, if that tree is
-  merely stale after a bump committed from `$HOME` (that is where `nr --update`
-  commits, deliberately: it commits what it built and verified), sync it with
+```fish
+config checkout main -- :/
+```
+
+`nr` also guards the two trees, in ~30 ms:
+
+- **`$HOME` is behind `main`** → `nr` applies it and says
+  `nr: applying <rev> to $HOME`. Nothing to do.
+- **`$HOME` holds local edits** (tracked-file content that appears nowhere in
+  `main`'s history) → `nr` refuses to apply, prints the paths, and builds what is
+  there. That state is either a leftover hand-edit to look at or an `nr --update`
+  retry's uncommitted bumps, which must survive; clearing it is
+  `config checkout main -- :/`.
+- **`worktree/` (edit tree) is dirty or behind** → commit the edits, or sync the
+  tree after a bump was committed from `$HOME`:
   `git -C ~/.local/share/dotfiles/worktree reset --hard main`.
 
 A `live` worktree under `~/.local/share/dotfiles/live` existed until 2026-10-19

@@ -33,8 +33,14 @@ uses the committed tree and ignores uncommitted edits, where the old plain
 
 **Two checkouts: `$HOME` applies, `worktree/` edits** (2026-10-31, corrects the
 entry above). `$HOME` is a checkout of `main` that `nr` builds; every edit goes to
-a linked worktree at `~/.local/share/dotfiles/worktree`; the apply step is
-`cd ~ && config checkout main -- .`. Rejected: symlinking `~/.config/nix` into the
+a linked worktree at `~/.local/share/dotfiles/worktree`. `nr` applies the
+committed tree into `$HOME` itself before building — Scott asked for `nr` alone to
+be the workflow — and refuses to apply while `$HOME` holds tracked-file content
+that appears nowhere in `main`'s history (an `nr --update` retry's uncommitted
+bumps, or a leftover hand-edit); it names those paths and builds what is there
+instead of clobbering them. The hand-typed apply is `config checkout main -- :/`
+(`:/` is anchored at the top of the work tree, so it does not depend on the
+caller's cwd, unlike a bare `.`). Rejected: symlinking `~/.config/nix` into the
 checkout, or pointing `nr` at the checkout — both make the live config a git flake
 read from the committed tree, and both put the config that is *built* in the tree
 that is *edited*; the two jobs want different trees. Consequences, accepted and
