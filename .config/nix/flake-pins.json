@@ -11,14 +11,25 @@
     },
     {
       "input": "pi",
-      "url": "git+https://github.com/earendil-works/pi?rev=4a080252f06caf63a525d7873c5d94d3c23887e0",
+      "url": "git+https://github.com/earendil-works/pi?rev=f9a26365568127461c47a07a37dcb42c140a3ac5",
       "pnames": [
         "pi"
       ],
       "note": "Rev-pinned to a GitHub release: a from-source npm build with no binary cache, so chasing main would build a random commit on every `nr --update`. pkgs/pi/update.sh moves this to the latest release; if that release fails to build, `nr-pins diagnose` reverts it to the last-good rev and `check` keeps it there until a newer release appears. FOLLOWS nixpkgs-unstable on purpose (upstream targets nixos-unstable); unstable->unstable is safe and dedupes flake.lock."
     }
   ],
-  "pins": [],
+  "pins": [
+    {
+      "input": "pi",
+      "branch": "git+https://github.com/earendil-works/pi?rev=f9a26365568127461c47a07a37dcb42c140a3ac5",
+      "url": "git+https://github.com/earendil-works/pi?rev=4a080252f06caf63a525d7873c5d94d3c23887e0",
+      "pnames": [
+        "pi"
+      ],
+      "since": "2026-11-03",
+      "reason": "pi 1.5.0 does not EVALUATE here: its packages/coding-agent/install-lock/package-lock.json lists every @earendil-works package with no integrity field, and nix/package.nix overrides all of them but the new pi-schema, so importNpmLock hits 'attribute integrity missing' before a single derivation exists. That is also why diagnose could not revert it: an eval error has no failing derivation to attribute. Upstream fixed it on main after the v1.5.0 tag ('fix(nix): pack pi-schema for the install lock'); drop this pin when the next release carries it."
+    }
+  ],
   "$retired": [
     {
       "input": "nixpkgs-unstable",
