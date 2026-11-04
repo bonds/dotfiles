@@ -77,9 +77,16 @@ function nr
     # $HOME is where `nr` builds, so bring it up to `main` first — the apply step
     # (`config checkout main -- :/`), done for you. Silent when in sync. Refuses
     # to touch a $HOME with local edits (that would clobber them).
+    # Resolve the dotfiles git dir by existence, the same way the `config` alias
+    # in 10-aliases.fish does. `nr` must NOT go through that alias: an alias is
+    # fixed when the shell starts, so a session older than a layout change keeps
+    # pointing at the old path — and `nr --update`'s commit/push step would then
+    # die with "fatal: not a git repository: ~/.local/share/dotfiles/".
     set -l _nr_git $HOME/.local/share/dotfiles
     if test -d $_nr_git/bare
         set _nr_git $_nr_git/bare
+    else if not test -d $_nr_git
+        set _nr_git $HOME/.config/dotfiles
     end
     if test -d $_nr_git
         set -l _nr_state (git --git-dir=$_nr_git --work-tree=$HOME status --porcelain --untracked-files=no 2>/dev/null)
@@ -388,15 +395,19 @@ function nr
     end
     if test "$_nr_update" = yes; and test "$_nr_switch_ok" -eq 0
         # Commit the version bumps the update scripts + nh generated, then push.
-        # Deliberately staged in the APPLY tree: $HOME is both the `config`
-        # alias's work tree and the tree the update scripts wrote and `nh` just
+        # Deliberately staged in the APPLY tree: $HOME is both $_nr_git's work
+        # tree and the tree the update scripts wrote and `nh` just
         # verified, so this commits what was built and verified — never whatever
         # happens to be checked out for editing in ~/.local/share/dotfiles/worktree.
+        # Every call below spells out --git-dir/--work-tree from $_nr_git rather
+        # than using the `config` alias: the alias is frozen when the shell
+        # starts, so a session older than a git-dir move would aim these at the
+        # old path ("fatal: not a git repository").
         # Paths stay $HOME-absolute so the block is cwd-independent (--work-tree
         # does not scope pathspecs, and a path outside the work tree is refused).
         # The pin registry and the pin engine ride along, so a pin that nr-pins
         # added or dropped this run is committed and pushed with the bump.
-        # Guarded: `config add` fails the whole pathspec list if one path is
+        # Guarded: `git add` fails the whole pathspec list if one path is
         # missing (e.g. a machine whose work tree predates the file).
         set -l _nr_files $HOME/.config/nix/flake.lock
         for _nr_f in $HOME/.config/nix/flake-pins.json $HOME/.config/nix/nr-pins
@@ -405,7 +416,7 @@ function nr
             end
         end
         # Include flake.nix when it changed — it carries the rendered pin block.
-        if not config diff --quiet -- $HOME/.config/nix/flake.nix
+        if not git --git-dir=$_nr_git --work-tree=$HOME diff --quiet -- $HOME/.config/nix/flake.nix
             set -a _nr_files $HOME/.config/nix/flake.nix
         end
         if test "$_os" = darwin
@@ -423,8 +434,8 @@ function nr
                 $HOME/.config/nix/pkgs/bedrock-server/default.nix \
                 $HOME/.config/nix/pkgs/rsync-tmbackup/default.nix
         end
-        config add $_nr_files
-        if config diff --cached --quiet
+        git --git-dir=$_nr_git --work-tree=$HOME add $_nr_files
+        if git --git-dir=$_nr_git --work-tree=$HOME diff --cached --quiet
             echo "nr: no dependency bumps to commit"
         else
             set -l _nr_msg "nr --update: bump nightly dependency versions"
@@ -435,12 +446,12 @@ function nr
             else if test "$_nr_reverted" = yes
                 set _nr_msg "nr --update: keep the last-good pin for a bad dependency bump + bump nightly dependency versions"
             end
-            config commit -m "$_nr_msg"
+            git --git-dir=$_nr_git --work-tree=$HOME commit -m "$_nr_msg"
             if test "$_os" = darwin
-                config push origin
-                config push sophrosyne
+                git --git-dir=$_nr_git --work-tree=$HOME push origin
+                git --git-dir=$_nr_git --work-tree=$HOME push sophrosyne
             else
-                config push origin
+                git --git-dir=$_nr_git --work-tree=$HOME push origin
             end
         end
     else if test "$_nr_update" = yes
