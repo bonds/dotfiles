@@ -49,3 +49,6 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-10-26 — Osaurus spawns MCP servers with `cwd=/` and a minimal environment](2026-10-26-osaurus-mcp-spawn-environment.md)
 - [2026-10-26 — Osaurus keeps its own memory, and it is not where ours belongs](2026-10-26-osaurus-has-its-own-memory.md)
 - [2026-10-27 — A live SQLite database reports "database is locked" to readers](2026-10-27-sqlite-busy-timeout.md)
+- [2026-11-04 — OpenCode V2 started shipping a desktop zip at v2.2.5, so the frozen V1 pin had to move](2026-11-04-opencode-v2-desktop-assets-exist.md)
+- [2026-11-04 — Piping a large listing into `grep -q` fails under `pipefail`](2026-11-04-pipefail-grep-q-sigpipe.md)
+- [2026-11-04 — `nh darwin build ~/.config/nix` verifies the apply checkout, not your edits](2026-11-04-nh-builds-the-apply-checkout.md)

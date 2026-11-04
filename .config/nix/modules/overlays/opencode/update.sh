@@ -3,12 +3,14 @@
 # OpenCode **V2** line.
 #
 # Why the V2 line is special (see default.nix for the full story):
-#   - upstream publishes V2 as npm packages, not GitHub release assets;
 #   - the GitHub "latest release" is ambiguous — the newest V1 and the newest
 #     V2 are both live — so `releases/latest` must never pick a V2 version;
-#   - the CLI binary comes from the per-platform payload package
-#     @opencode/cli-darwin-arm64, and its `bin/opencode --version` must agree
-#     with the tag we pin.
+#   - the CLI is published on npm (payload @opencode/cli-darwin-arm64), so it
+#     comes from the npm tarball, and its `bin/opencode --version` must agree
+#     with the tag we pin;
+#   - the desktop app has no npm package — it comes from the release zip, which
+#     V2 only started publishing at v2.2.5. Both pins move together, but a tag
+#     without a desktop asset leaves that pin alone instead of faking it.
 #
 # Run by `nr --update` on accismus.
 set -euo pipefail
@@ -22,6 +24,14 @@ PLATFORM_SLUG=cli-darwin-arm64
 die() {
   echo "ERROR: $*" >&2
   exit 1
+}
+
+# Rewrite `  <name> = "…";` in the overlay. Used for both halves (CLI + desktop).
+set_var() { # name value
+  awk -v n="$1" -v v="$2" '
+    $0 ~ "^  " n " = \"" { sub(/= ".*";$/, "= \"" v "\";") }
+    { print }
+  ' "$OVERLAY" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
 }
 
 # Does the payload's --version banner name the tag we pinned?
@@ -98,7 +108,12 @@ actual="sha512-$(openssl dgst -sha512 -binary "$tgz" | openssl base64 -A)"
 echo "OK: tarball matches npm integrity ($integrity)"
 
 # --- 3. Payload sanity checks ----------------------------------------------
-tar -tzf "$tgz" | grep -qx 'package/bin/opencode' \
+# List to a file rather than piping into `grep -q`: under `set -o pipefail` grep
+# exits at the first match, the producer dies of SIGPIPE, and the pipeline
+# reports failure — so the check below would fire on a perfectly good tarball
+# (it did, on the 300 MB desktop zip, whose listing never fits in a pipe buffer).
+tar -tzf "$tgz" > "$tmpdir/cli-files.txt"
+grep -qx 'package/bin/opencode' "$tmpdir/cli-files.txt" \
   || die "$PLATFORM_SLUG-$version.tgz has no package/bin/opencode"
 
 mkdir -p "$tmpdir/x"
@@ -117,28 +132,73 @@ payload_version_matches "$reported" "$version" \
 echo "OK: payload reports $reported"
 
 # --- 4. Desktop -------------------------------------------------------------
-# No V2 desktop artifact exists today (no npm package, no GitHub release
-# assets for v2 tags). Leave the V1 pin untouched and say so; a stale V1
-# desktop still works alongside the V2 CLI.
-desktop_asset=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/tags/v$version" 2>/dev/null \
-  | jq -r '[.assets[]?.name] | map(select(. == "opencode-desktop-mac-arm64.zip")) | length' 2>/dev/null || true)
+# The desktop app has no npm package, so it can only come from the release zip —
+# which the V2 line only started shipping at v2.2.5. Bump it from the same tag,
+# but only when the asset is actually there: a tag without a desktop build must
+# leave the previous pin intact (an older desktop still runs next to a newer
+# CLI) instead of writing a URL that 404s. Cross-check the download against the
+# release's own SHA256SUMS, and confirm the bundle layout the install phase
+# depends on (OpenCode.app + the app-update.yml it strips) before pinning.
+desktop_asset=opencode-desktop-mac-arm64.zip
+desktop_url="https://github.com/$REPO/releases/download/v$version/$desktop_asset"
+assets=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/tags/v$version" 2>/dev/null \
+  | jq -r '.assets[]?.name' 2>/dev/null || true)
 
-if [ "${desktop_asset:-0}" != "0" ]; then
-  die "a V2 desktop asset now exists (opencode-desktop-mac-arm64.zip at v$version).
-Update the opencode-desktop block by hand: this script only auto-bumps the CLI."
+if printf '%s\n' "$assets" | grep -qx "$desktop_asset"; then
+  dzip="$tmpdir/$desktop_asset"
+  echo "Downloading $desktop_url ..."
+  curl -fsSL -o "$dzip" "$desktop_url"
+
+  # GitHub release assets carry no integrity metadata of their own, but upstream
+  # publishes a SHA256SUMS file next to them — same idea as the npm dist.integrity
+  # check above, so a truncated CDN response cannot stamp a wrong hash.
+  sums=$(curl -fsSL "https://github.com/$REPO/releases/download/v$version/SHA256SUMS" 2>/dev/null || true)
+  want_sha=$(printf '%s\n' "$sums" | awk -v f="$desktop_asset" '$2 == f { print $1 }')
+  got_sha=$(shasum -a 256 "$dzip" | awk '{ print $1 }')
+  if [ -z "$want_sha" ]; then
+    echo "WARN: no SHA256SUMS entry for $desktop_asset at v$version — relying on the SRI pin and the build-time verify"
+  elif [ "$want_sha" != "$got_sha" ]; then
+    die "downloaded desktop zip does not match the release's SHA256SUMS
+  got:  $got_sha
+  want: $want_sha"
+  fi
+  [ -z "$want_sha" ] || echo "OK: desktop zip matches the release SHA256SUMS ($got_sha)"
+
+  unzip -Z1 "$dzip" > "$tmpdir/desktop-files.txt"
+  grep -qx 'OpenCode.app/Contents/Resources/app-update.yml' "$tmpdir/desktop-files.txt" \
+    || die "$desktop_asset has no OpenCode.app/Contents/Resources/app-update.yml — the install phase's strip/re-sign recipe no longer matches upstream's layout"
+
+  # The bundle must be the version the tag names: a stale CDN copy or the wrong
+  # platform builds fine and only fails much later, in verify-darwin.sh.
+  mkdir -p "$tmpdir/d"
+  unzip -qo "$dzip" -d "$tmpdir/d" 'OpenCode.app/Contents/Info.plist'
+  bundle_ver=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+    "$tmpdir/d/OpenCode.app/Contents/Info.plist" 2>/dev/null || true)
+  [ "$bundle_ver" = "$version" ] \
+    || die "$desktop_asset reports CFBundleShortVersionString '$bundle_ver', expected '$version'"
+
+  desktop_hash=$(nix hash file --type sha256 "$dzip")
+  echo "Desktop SRI hash: $desktop_hash"
+
+  set_var desktopVersion "$version"
+  set_var desktopHash "$desktop_hash"
+
+  grep -q "^  desktopVersion = \"$version\";" "$OVERLAY" \
+    || die "failed to rewrite desktopVersion in $OVERLAY"
+  grep -qF "desktopHash = \"$desktop_hash\";" "$OVERLAY" \
+    || die "failed to rewrite desktopHash in $OVERLAY"
+  echo "Updated opencode-desktop pin to V2 $version"
+else
+  # Not a failure: a packaging-only tag can ship the CLI without a desktop build.
+  # Say so loudly — a desktop that silently stops tracking the CLI is the exact
+  # drift this overlay was written to end.
+  pinned=$(awk -F'"' '/^  desktopVersion = /{ print $2 }' "$OVERLAY")
+  echo "WARN: no $desktop_asset at v$version — leaving opencode-desktop pinned at $pinned."
 fi
-echo "No V2 desktop asset at v$version — leaving opencode-desktop pinned at V1."
 
-# --- 5. Rewrite the pin -----------------------------------------------------
+# --- 5. Rewrite the CLI pin -------------------------------------------------
 cli_hash=$(nix hash file --type sha256 "$tgz")
 echo "CLI SRI hash: $cli_hash"
-
-set_var() { # name value
-  awk -v n="$1" -v v="$2" '
-    $0 ~ "^  " n " = \"" { sub(/= ".*";$/, "= \"" v "\";") }
-    { print }
-  ' "$OVERLAY" > "$OVERLAY.tmp" && mv "$OVERLAY.tmp" "$OVERLAY"
-}
 
 set_var cliVersion "$version"
 set_var cliHash "$cli_hash"

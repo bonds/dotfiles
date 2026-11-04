@@ -44,6 +44,11 @@ The overlay extracts only `package/bin/opencode` from the `.tgz`
 (`dontUnpack = true`), and `update.sh` refuses to touch the `opencode-desktop` V1
 pin until a real V2 desktop asset appears.
 
+**Update 2026-11-04:** it appeared at v2.2.5, the guard fired as designed, and
+`update.sh` now bumps both pins from the same tag — see
+[OpenCode V2 started shipping a desktop zip at v2.2.5](2026-11-04-opencode-v2-desktop-assets-exist.md).
+The npm-only *CLI* half of this entry still holds.
+
 ## See also
 
 - [OpenCode V2 commands silently spawn a background service](2026-10-22-opencode-v2-managed-service.md)

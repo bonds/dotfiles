@@ -37,7 +37,7 @@
     nh # nix helper for rebuilds and garbage collection (darwin, no programs.nh module)
     nodejs # needed for hihello development
     opencode # AI coding agent (V2 CLI, npm-tarball overlay, nr --update)
-    opencode-desktop # OpenCode desktop app (V1 pin: no V2 desktop artifact exists)
+    opencode-desktop # OpenCode desktop app (V2 line since 2.2.5; overlay strips its auto-updater)
     # GUI .app bundles (daisydisk, ghosttile, osaurus, openfang-desktop,
     # zen-browser, orca-ade) are NOT here — they are home.packages entries so
     # nix-darwin's stager does not copy them to /Applications/Nix Apps and

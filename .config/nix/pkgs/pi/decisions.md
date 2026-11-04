@@ -140,6 +140,10 @@ running both lines (same binary name and config dirs, so they cannot coexist).
 Cost: the pin is ours to maintain, and `opencode-desktop` is frozen at 1.19.4
 until upstream ships a V2 desktop artifact.
 
+**Update (2026-11-04):** upstream shipped V2 desktop assets at v2.2.5, so
+`opencode-desktop` moved onto the V2 line and `update.sh` now bumps both halves
+from the same tag. The npm-only CLI decision above stands.
+
 **A bad prebuilt-overlay bump is reverted from git, not pinned in the registry.**
 (2026-10-23) `nr --update` bumps a version + SRI hash in `modules/overlays/*`
 (and the prebuilt `pkgs/*`); those are files, not flake inputs, so the pin
