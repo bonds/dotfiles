@@ -16,6 +16,23 @@ out="$3"
 # The version is the last component of the store path's name: <hash>-<pname>-<version>.
 want="${out##*-}"
 
+# Does the binary's --version banner name the version the derivation claims?
+# Identical to update.sh's; the banner is coloured (and can carry CR), so the
+# raw line cannot be compared byte-for-byte — that reported a mismatch on text
+# that prints the same. Normalise, require the banner to name opencode, then
+# compare the version number.
+payload_version_matches() { # <raw banner> <expected version> → 0/1
+    local raw=$1 want=$2 banner esc ver
+    esc=$(printf '\033')
+    banner=$(printf '%s' "$raw" | sed -e "s/${esc}\[[0-9;]*[A-Za-z]//g" -e 's/\r//g')
+    case "$banner" in
+        *opencode*) ;;
+        *) return 1 ;;
+    esac
+    ver=$(printf '%s' "$banner" | grep -Eo '[0-9]+[.][0-9]+[.][0-9]+' | head -1 || true)
+    [ "$ver" = "$want" ]
+}
+
 case "$pname" in
     opencode)
         bin="$out/bin/opencode"
@@ -27,8 +44,8 @@ case "$pname" in
         # both from the same tarball, so a mismatch means the wrong payload was
         # hashed. Needs no background service.
         got="$("$bin" --version 2> /dev/null | tail -1 || true)"
-        [ "$got" = "opencode v$want" ] || {
-            echo "verify: $bin reports '$got', the derivation says 'opencode v$want'" >&2
+        payload_version_matches "$got" "$want" || {
+            echo "verify: $bin does not report opencode v$want — its banner is $(printf '%q' "$got")" >&2
             exit 1
         }
         # Config compatibility, isolated from live state: a throwaway HOME with a

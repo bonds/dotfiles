@@ -24,6 +24,34 @@ die() {
   exit 1
 }
 
+# Does the payload's --version banner name the tag we pinned?
+#
+# The banner is not plain text: V2.2 colourises it, and can pad it or end it with
+# CR, so comparing the raw line byte-for-byte fails on output that looks
+# identical — the check used to die with "payload reports 'opencode v2.2.5',
+# expected 'opencode v2.2.5'", the difference being an escape sequence nobody
+# can see. Normalise first (drop ANSI + CR), insist the banner names opencode,
+# then compare the version NUMBER. A wrong payload — a different version, a
+# different tool, no version at all — still fails; callers print the raw bytes
+# with %q so the next failure is visible.
+#
+# Same function in verify-darwin.sh (the `. "$(dirname "$0")"` helper there is
+# for the smoke tests, not this); keep the two in step.
+payload_version_matches() { # <raw banner> <expected version> → 0/1
+  local raw=$1 want=$2 banner esc ver
+  # ESC goes through a variable, not $'…': double backslash handling in $'…' is
+  # easy to get wrong and silently matches nothing.
+  esc=$(printf '\033')
+  banner=$(printf '%s' "$raw" | sed -e "s/${esc}\[[0-9;]*[A-Za-z]//g" -e 's/\r//g')
+  case "$banner" in
+    *opencode*) ;;
+    *) return 1 ;;
+  esac
+  # `[.]` rather than `\.`: same meaning in ERE, and no backslash to mis-escape.
+  ver=$(printf '%s' "$banner" | grep -Eo '[0-9]+[.][0-9]+[.][0-9]+' | head -1 || true)
+  [ "$ver" = "$want" ]
+}
+
 # --- 1. Newest V2 tag -------------------------------------------------------
 # Walk the v2.* git tags (not /releases/latest, which can and does still point
 # at the V1 line). Sort -V handles 2.0.9 < 2.0.10. The `v2` prefix means a future
@@ -84,8 +112,8 @@ file "$bin" | grep -q 'Mach-O 64-bit executable arm64' \
 # Run it with a throwaway HOME: the binary opens $HOME/.local/share/opencode/log
 # at startup, and we must not touch Scott's live state from an update script.
 reported=$(HOME="$tmpdir/home" "$bin" --version 2>/dev/null | tail -1 || true)
-[ "$reported" = "opencode v$version" ] \
-  || die "payload reports '$reported', expected 'opencode v$version'"
+payload_version_matches "$reported" "$version" \
+  || die "payload does not report opencode v$version — its banner is $(printf '%q' "$reported")"
 echo "OK: payload reports $reported"
 
 # --- 4. Desktop -------------------------------------------------------------
