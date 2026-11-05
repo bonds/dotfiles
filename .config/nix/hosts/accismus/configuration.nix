@@ -222,6 +222,7 @@ in {
 
       imports = [
         ../../modules/home/base.nix
+        ../../modules/home/crush.nix
         ../../modules/home/direnv.nix
         ../../modules/home/halloy.nix
         ../../modules/home/hermes-desktop-app.nix

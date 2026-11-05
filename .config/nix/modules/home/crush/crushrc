@@ -1,0 +1,21 @@
+# Crush 0.99 config — global crushrc (Bash), loaded from ~/.config/crush/crushrc
+# Verified against the installed build: crush 0.99.0 (/run/current-system/sw/bin/crush)
+#
+# The Deep Infra key is agenix-decrypted to /run/agenix/hermes-deepinfra, which is
+# a KEY=VALUE file ("DEEPINFRA_API_KEY=...") — NOT a bare key. Extract it the same
+# way pi does (modules/home/pi.nix), with sed rather than `cat`.
+#
+# Managed by home-manager (modules/home/crush.nix) — edit here, then run nr.
+
+# Deep Infra — OpenAI-compatible endpoint
+provider add deepinfra \
+  --type completions \
+  --base-url "https://api.deepinfra.com/v1/openai" \
+  --api-key "$(/usr/bin/sed -n 's/^DEEPINFRA_API_KEY=//p' /run/agenix/hermes-deepinfra)" \
+  --discover-models true
+
+# Main coding model
+model large deepinfra/deepseek-ai/DeepSeek-V4.1-Flash-1017 --think
+
+# Cheap slot for titles/summaries
+model small deepinfra/deepseek-ai/DeepSeek-V4.1-Flash-1017
