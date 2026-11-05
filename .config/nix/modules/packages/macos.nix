@@ -15,6 +15,7 @@
     colima # docker for mac
     coreutils # for timeout for athome script
     cowsay # cli to print stuff with a pic of a cow saying it
+    pkgs-unstable.crush # Charm's terminal coding agent (unstable: nixos-26.05 carries 0.70.0, upstream is 0.99.0)
     delta # git delta syntax highlighter
     docker # docker
     duti # set default file handlers for macOS
