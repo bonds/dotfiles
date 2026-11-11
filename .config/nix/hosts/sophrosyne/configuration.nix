@@ -50,7 +50,9 @@ in {
   # imperatively for the samba 'photos' share; uid 973 must stay stable).
   # The photo-rsync key (~/.ssh/id_photo_rsync.pub on accismus) is deployed to
   # ~/.ssh/authorized_keys via activationScript (security.nix), restricted with
-  # command=sftp-server -d /dragon/media/photos so it can only write photos.
+  # command=<photo-backup-sftp stamp wrapper> (it stamps the login time for
+  # photo-backup-login-monitor, then exec's sftp-server -d /dragon/media/photos)
+  # so it can only write photos.
   # Kept nologin: SSH key auth still works (forced command overrides shell);
   # samba photos share uses 'valid users = photo-backup'.
   users.users.photo-backup = {

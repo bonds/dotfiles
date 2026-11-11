@@ -4,6 +4,19 @@
   ...
 }: let
   userHome = config.users.users.scott.home;
+
+  # Forced command for the photo-rsync key: stamp the login time, then hand the
+  # session to sftp-server exactly as before. The stamp is the only evidence that
+  # the nightly backup still reaches sophrosyne — the photo tree alone cannot
+  # distinguish "nothing new to upload" from "the backup died" (see
+  # systemd.services.photo-backup-login-monitor in ./services.nix).
+  # NOTHING may be written to stdout: it is the SFTP protocol channel, and any
+  # banner corrupts the handshake (same reason photo-backup's shell is /bin/sh,
+  # not nologin — see ./configuration.nix).
+  sftpForcedCommand = pkgs.writeShellScript "photo-backup-sftp" ''
+    ${pkgs.coreutils}/bin/date '+%s %Y-%m-%dT%H:%M:%S%z' > /var/lib/photo-backup/last-login 2>/dev/null || true
+    exec ${pkgs.openssh}/libexec/sftp-server -d /dragon/media/photos
+  '';
 in {
   # NOTE: no `users = ["scott"]; persist = true` rule here — scott ∈ wheel and
   # modules/nixos-common.nix already grants the wheel group a persisted
@@ -58,9 +71,10 @@ in {
     # Deploy the photo-rsync SFTP-restricted key to the photo-backup service
     # account so SFTP (photo-export) authenticates as photo-backup, who OWNS
     # /dragon/media/photos. sshd's AuthorizedKeysFile includes ~/.ssh/authorized_keys.
-    # restrict + command=sftp-server -d confines the key to SFTP photo writes.
+    # restrict + command=<stamp wrapper> confines the key to SFTP photo writes
+    # (the wrapper stamps the login then exec's sftp-server -d).
     PHOTO_KEY="${userHome}/Documents/.config/photo-rsync-key.pub"
-    SFTP_CMD='${pkgs.openssh}/libexec/sftp-server -d /dragon/media/photos'
+    SFTP_CMD='${sftpForcedCommand}'
     PB_KEYS="/home/photo-backup/.ssh/authorized_keys"
     # NOTE: every step is guarded with || true so this snippet NEVER aborts
     # activation on a re-run (NixOS's `trap ERR` turns any non-zero step into a

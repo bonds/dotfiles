@@ -270,6 +270,20 @@ do {
 // stream originals in-memory to the remote over SFTP (no local temp copy / SSD
 // wear) using the restricted id_photo_rsync key, which sophrosyne's sftp-server
 // -d confines to /dragon/media/photos/.
+//
+// Ordered SFTP host candidates tried in order until one opens a session: the
+// configured remoteHost first (config.toml / --remote-host), then the LAN mDNS
+// name, then the Tailscale MagicDNS name — the same robustness model as the SMB
+// path's smbHostCandidates. The Mac moves between the home LAN
+// (sophrosyne.local) and the tailnet (sophrosyne.taileafac.ts.net), so a single
+// host is fragile. Empty values are dropped.
+let sftpHostCandidates: [String] = {
+    var hosts = [remoteHost]
+    let local = "sophrosyne.local"
+    let magicDNS = "sophrosyne.taileafac.ts.net"
+    for h in [local, magicDNS] where !hosts.contains(h) { hosts.append(h) }
+    return hosts.filter { !$0.isEmpty }
+}()
 
 // Box to stream a Data buffer in-memory through the C reader callback.
 final class SFTPStream {
@@ -280,11 +294,23 @@ final class SFTPStream {
 
 var sftpSession: OpaquePointer? = nil
 if useSFTP {
-    log("SFTP: opening session to \(remoteHost) as \(remoteUser)")
-    if photo_sftp_open(&sftpSession, remoteHost, 22, remoteUser, remoteKey) != 0 {
-        log("FATAL: cannot open SFTP session to \(remoteHost) — aborting")
+    // Try each host candidate in order (configured remoteHost, then .local,
+    // then MagicDNS) until one opens a session. photo_sftp_open leaves the
+    // out-pointer NULL on failure, so no reset is needed between attempts.
+    var openedHost: String? = nil
+    for host in sftpHostCandidates {
+        log("SFTP: opening session to \(host) as \(remoteUser)")
+        if photo_sftp_open(&sftpSession, host, 22, remoteUser, remoteKey) == 0 {
+            openedHost = host
+            break
+        }
+        log("SFTP: host \(host) failed — trying next candidate")
+    }
+    guard let host = openedHost else {
+        log("FATAL: cannot open SFTP session to any candidate \(sftpHostCandidates) — aborting")
         exit(1)
     }
+    log("SFTP: session ready (host \(host))")
     // sftp-server -d chroots to /dragon/media/photos/, so '' is photos root.
     if photo_sftp_mkdir(sftpSession, "") != 0 {
         log("WARN: sftp mkdir base failed (continuing)")

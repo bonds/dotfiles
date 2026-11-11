@@ -116,6 +116,100 @@ in {
     wantedBy = ["timers.target"];
   };
 
+  # Login-side staleness alarm. photo-backup-monitor above measures photo
+  # freshness (14 days) and so cannot see a backup that silently stopped while
+  # there was nothing new to upload. This one measures the backup's own SFTP
+  # login: the forced command in ./security.nix stamps
+  # /var/lib/photo-backup/last-login on every session, and photo-export opens a
+  # session at the start of every nightly run (it aborts if it cannot), so a
+  # missing or stale stamp means the accismus job never reached sophrosyne.
+  systemd.tmpfiles.rules = [
+    # Owned by photo-backup: the SFTP forced-command wrapper (security.nix)
+    # stamps last-login in here on each login.
+    "d /var/lib/photo-backup 0755 photo-backup users - -"
+  ];
+  systemd.services.photo-backup-login-monitor = let
+    # Single source of truth for the staleness threshold: interpolated into the
+    # script AND used to derive the unit description, so the two cannot drift
+    # apart (nix-config-review.md F7).
+    thresholdHours = 30;
+    monitorScript = pkgs.writeShellScript "photo-backup-login-monitor" ''
+      STAMP_FILE="/var/lib/photo-backup/last-login"
+      THRESHOLD_HOURS=${toString thresholdHours}
+      LOG_FILE="/var/log/photo-backup-login-monitor.log"
+
+      log() {
+        echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') $*"
+      }
+
+      if [ ! -f "$STAMP_FILE" ]; then
+        log "ALERT: no photo-backup login recorded — $STAMP_FILE missing"
+        ${pkgs.msmtp}/bin/msmtp -t <<EOM
+      To: root
+      Subject: [ALERT] Photo backup — no login recorded
+
+      No login stamp at $STAMP_FILE: photo-backup has never logged in since the
+      stamp wrapper was deployed (or the wrapper cannot write the stamp).
+
+      Check: systemctl status sshd
+      Check: journalctl -u sshd | grep photo-backup
+      Logs on accismus: tail -20 ~/Library/Logs/photos-backup.out.log
+      EOM
+        exit 1
+      fi
+
+      LAST=$(cut -d' ' -f1 < "$STAMP_FILE")
+      NOW=$(date +%s)
+      AGE_HOURS=$(( (NOW - LAST) / 3600 ))
+
+      if [ "$AGE_HOURS" -gt "$THRESHOLD_HOURS" ]; then
+        log "ALERT: no photo-backup login for ''${AGE_HOURS}h (threshold ''${THRESHOLD_HOURS}h)"
+        ${pkgs.msmtp}/bin/msmtp -t <<EOM
+      To: root
+      Subject: [ALERT] Photo backup stopped — no login for ''${AGE_HOURS}h
+
+      The photo-backup account has not logged in for ''${AGE_HOURS}h.
+      Stamp: $STAMP_FILE (last login: $(cat "$STAMP_FILE"))
+      Threshold: ''${THRESHOLD_HOURS}h
+
+      The nightly job on accismus is not reaching sophrosyne. On accismus:
+        launchctl list | grep photos-backup
+        tail -20 ~/Library/Logs/photos-backup.out.log
+        grep 'backup FAILED' ~/Library/Logs/photos-backup.out.log
+      EOM
+        exit 1
+      fi
+
+      log "OK: last photo-backup login ''${AGE_HOURS}h ago"
+      exit 0
+    '';
+  in {
+    description = "Check photo-backup logged in recently — alert if no login >${toString thresholdHours}h";
+    after = ["network.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = monitorScript;
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      PrivateTmp = true;
+      ProtectHome = true;
+      ReadWritePaths = ["/var/log"];
+      RestrictNamespaces = true;
+    };
+  };
+  systemd.timers.photo-backup-login-monitor = {
+    # Hourly rather than daily: the threshold (30h) sits close to the nightly
+    # interval (24h), so a daily check could miss the boundary and delay the
+    # alert by up to a day. Hourly reports it within the hour.
+    description = "Hourly photo-backup login staleness check";
+    timerConfig = {
+      OnCalendar = "hourly";
+      Persistent = true;
+    };
+    wantedBy = ["timers.target"];
+  };
+
   systemd.services.log-temps = let
     logScript = pkgs.writeShellScript "log-temps" ''
       log=/dragon/logs/temps.log
