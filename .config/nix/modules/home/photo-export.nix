@@ -71,6 +71,19 @@ in {
   in {
     home.packages = [pkg];
 
+    # The nightly SFTP backup wrapper. `modules/darwin-agents.nix`'s
+    # `photos-backup` launchd agent runs ${userHome}/bin/photos-backup, so the
+    # script is declared here to land at ~/bin/photos-backup on EVERY
+    # activation instead of being a hand-installed file (or a copy in the
+    # dotfiles checkout, where `nr` applies the committed tree over it).
+    # force = true so HM adopts/replaces an existing ~/bin/photos-backup
+    # (e.g. the historical tracked dotfile `bin/photos-backup`).
+    home.file."bin/photos-backup" = {
+      source = ../../pkgs/photokit-export/photos-backup.sh;
+      executable = true;
+      force = true;
+    };
+
     # NOTE: no manual symlink/lsregister — Home Manager's built-in app
     # installer copies the bundled .app to "Applications/Home Manager Apps"
     # automatically, and that's the copy LaunchServices/`open` resolve to.
