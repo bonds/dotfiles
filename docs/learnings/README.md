@@ -52,3 +52,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-04 — OpenCode V2 started shipping a desktop zip at v2.2.5, so the frozen V1 pin had to move](2026-11-04-opencode-v2-desktop-assets-exist.md)
 - [2026-11-04 — Piping a large listing into `grep -q` fails under `pipefail`](2026-11-04-pipefail-grep-q-sigpipe.md)
 - [2026-11-04 — `nh darwin build ~/.config/nix` verifies the apply checkout, not your edits](2026-11-04-nh-builds-the-apply-checkout.md)
+- [2026-11-11 — A nightly photo backup that logs "backup complete" may never have connected](2026-11-11-photo-backup-silent-no-op.md)

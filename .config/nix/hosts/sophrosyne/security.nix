@@ -100,6 +100,28 @@ in {
     :
   '';
 
+  # Seed the login stamp when the wrapper has never stamped. Without this the
+  # hourly monitor alarms the moment the wrapper is first deployed: no nightly
+  # run can have happened yet, so "stamp missing" is guaranteed for up to 24h
+  # (false alarm 2026-11-11, 21 min after the switch). Seeding makes the monitor
+  # measure from the deploy instead. Only when missing, so a rebuild during a
+  # real outage does not reset the clock. Ownership must stay photo-backup: the
+  # forced command above overwrites the file as that user.
+  system.activationScripts.photoBackupLoginStamp.text = ''
+    stamp=/var/lib/photo-backup/last-login
+    if [ ! -e "$stamp" ]; then
+      install -d -o photo-backup -g users -m 0755 /var/lib/photo-backup || true
+      if ${pkgs.coreutils}/bin/date '+%s %Y-%m-%dT%H:%M:%S%z' > "$stamp" 2>/dev/null; then
+        chown photo-backup:users "$stamp" || true
+        chmod 0644 "$stamp" || true
+        echo "photo-backup-login: seeded $stamp (no login recorded yet)" >&2
+      else
+        echo "photo-backup-login: could not seed $stamp" >&2
+      fi
+    fi
+    :
+  '';
+
   system.activationScripts.checkMissingPhotoKey.text = ''
     if [ ! -f ${userHome}/Documents/.config/photo-rsync-key.pub ]; then
       echo "WARNING: photo-rsync-key.pub missing — run nr on accismus first" >&2
