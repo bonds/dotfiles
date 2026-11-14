@@ -18,18 +18,7 @@
       "note": "Rev-pinned to a GitHub release: a from-source npm build with no binary cache, so chasing main would build a random commit on every `nr --update`. pkgs/pi/update.sh moves this to the latest release; if that release fails to build, `nr-pins diagnose` reverts it to the last-good rev and `check` keeps it there until a newer release appears. FOLLOWS nixpkgs-unstable on purpose (upstream targets nixos-unstable); unstable->unstable is safe and dedupes flake.lock."
     }
   ],
-  "pins": [
-    {
-      "input": "nixpkgs-unstable",
-      "branch": "github:NixOS/nixpkgs/nixpkgs-unstable",
-      "url": "github:NixOS/nixpkgs/4fe25e12eb9f4c744966dd3de5a05246cf098601",
-      "pnames": [
-        "dunamai"
-      ],
-      "since": "2026-11-13",
-      "reason": "must be built from source at github:NixOS/nixpkgs/nixpkgs-unstable and the build fails here (via dunamai)"
-    }
-  ],
+  "pins": [],
   "$retired": [
     {
       "input": "nixpkgs-unstable",
