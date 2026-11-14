@@ -8,6 +8,7 @@
       alejandra # nix code formatter
       ast-grep # AST-aware code search and rewrite (for oh-my-openagent)
       (pkgs.writeShellScriptBin "ast" "exec ${pkgs.ast-grep}/bin/ast-grep \"$@\"") # ast alias for oh-my-openagent
+      (pkgs.callPackage ../../pkgs/swival {}) # coding agent for local/small models (swival.dev)
       atuin # synced shell history database
       deadnix # find dead Nix code (unused lets, args, etc.)
       gh # GitHub CLI
