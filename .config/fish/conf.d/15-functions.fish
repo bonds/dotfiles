@@ -100,6 +100,7 @@ function nr
             return 1
         end
     end
+
     # (A) tee log: build output truncates last.log, switch output appends.
     set -l _nr_log $HOME/.cache/nr/last.log
     set -l _nr_old_system
