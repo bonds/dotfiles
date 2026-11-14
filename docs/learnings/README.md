@@ -56,3 +56,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-13 — Zoom's "sign in again to renew your session" is an account policy, not a broken install](2026-11-13-zoom-session-expired-is-an-account-policy.md)
 - [2026-11-13 — Lix wraps the dry-run build list in ANSI escapes even when stdout is a pipe](2026-11-13-lix-dry-run-list-is-ansi-wrapped.md)
 - [2026-11-14 — macOS `strip` inflates non-Mach-O files in a nix build](2026-11-14-macos-strip-inflates-non-macho-files.md)
+- [2026-11-14 — `nr --update` commits the apply tree's index, so it can revert an unapplied commit](2026-11-14-nr-update-commits-the-apply-index.md)

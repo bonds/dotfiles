@@ -412,6 +412,18 @@ function nr
         # added or dropped this run is committed and pushed with the bump.
         # Guarded: `git add` fails the whole pathspec list if one path is
         # missing (e.g. a machine whose work tree predates the file).
+        #
+        # Reset the index FIRST: `bare/index` is $HOME's index, and it goes
+        # stale the moment a commit lands in the EDIT worktree — it keeps
+        # describing the tree $HOME last received, not HEAD. Committing it then
+        # records every file that commit added as a DELETION, which is how
+        # a0a80e4 silently reverted a whole commit (docs/learnings/
+        # 2026-11-14-nr-update-commits-the-apply-index.md). --mixed (the
+        # default) touches no files, only the index, so the tree `nh` just
+        # built and verified is untouched — and the `diff --quiet` probe below
+        # then asks the right question ("did this run change flake.nix?")
+        # instead of comparing against a stale index.
+        git --git-dir=$_nr_git --work-tree=$HOME reset -q
         set -l _nr_files $HOME/.config/nix/flake.lock
         for _nr_f in $HOME/.config/nix/flake-pins.json $HOME/.config/nix/nr-pins
             if test -e $_nr_f
