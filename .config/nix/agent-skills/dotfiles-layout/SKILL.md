@@ -130,6 +130,10 @@ That last one is needed because a plain `git checkout main` only prints
   - Supports ollama + OpenAI-compatible backends. Caches results in `~/.cache/what-changed/`.
   - NixOS/darwin module: `programs.what-changed.enable`.
   - `nix flake check` runs the alejandra (format), deadnix, statix, and gitleaks (secrets) checks plus the `what-changed-test` pytest suite (166 tests), which mirrors the standalone sub-flake's own `pytest` check.
+- `.config/nix/pkgs/swival/` — **`swival` coding agent** (v1.9.4) — CLI agent for local/small models (`swival.dev`), installed system-wide via `modules/packages/dev.nix`.
+  - Vendored wheels, not nixpkgs python deps: `sources.nix` (generated) pins 132 wheels across `aarch64-darwin` + `x86_64-linux`, resolved from upstream's `uv.lock`; `default.nix` unzips them with pip into `$out/lib/swival` and wraps `python313`.
+  - `update.sh` bumps it (from `nr --update`, next to `pkgs/pi`), regenerating **both** platforms from one host; `generate.py` does the pip resolution with constraints pinned to the lock. `dontStrip = true` is load-bearing — see `docs/learnings/2026-11-14-macos-strip-inflates-non-macho-files.md`.
+  - A bad bump is **not** auto-reverted by `nr-pins` (the diff changes wheel URLs, not just version/hash); `git checkout HEAD -- .config/nix/pkgs/swival` and bump by hand.
 - `.config/nix/pkgs/reel-summarize/` — **`reel-summarize` tool** (v0.2.0) — Local Instagram Reel summarizer (shared pipeline/CLI).
   - Pipeline: yt-dlp download → ffmpeg frames+audio → transcribe-cpp (whisper `whisper-small-Q5_K_M.gguf`) → per-frame vision OCR → LLM final summary.
   - Runtime deps: `yt-dlp`+`ffmpeg` via nix, llama.cpp OpenAI-compatible API (text `qwen2.5-7b` @ `:8080`, vision @ `:8081`), whisper via `transcribe-cpp` (`TRANSCRIBE_LIBRARY`).
