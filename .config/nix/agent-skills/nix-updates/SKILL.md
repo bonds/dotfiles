@@ -53,6 +53,13 @@ a flake input. `nr-pins` (`.config/nix/nr-pins`) gives all three a way back.
 - **Skips are not failures, but they are not silent either:** a package missing
   from the closure, or matching two store paths, is reported and skipped;
   a hook that exists but cannot run is a **failure**.
+- **A probe's verdict is read out of nix's own text, so strip ANSI before
+  parsing.** Lix wraps the `--dry-run` "these N derivations will be built" list
+  in CSI/CR sequences *even on a pipe*, so each drv line ends in `\e[0m`, not
+  `.drv`; an anchored `sed` then matches nothing and every input is exonerated
+  (`check` drops a live pin, `diagnose` refuses to pin). Capture the probe's exit
+  status first, then `strip_ansi` — a pipeline would report the last command's
+  status. Background: `docs/learnings/2026-11-13-lix-dry-run-list-is-ansi-wrapped.md`.
 - **The system path for `verify` comes from nh's `>>> /nix/store/…` line** in
   the log `nr` tees. A no-change build prints none, and then there is nothing
   new to verify.

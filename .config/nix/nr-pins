@@ -490,6 +490,15 @@ needs_build() { # needs_build <input> <ref> <attr> <pname> → 0 built · 1 not 
     # is how a transient failure would silently unpin the very input the pin
     # exists to hold back — the failure mode this whole tool is meant to avoid.
     [ "$st" -ne 0 ] && return 2
+    # Strip ANSI AFTER the status is captured — a pipe would report strip_ansi's
+    # exit code, not the probe's. Lix (2.95.2) colours the dry-run list and wraps
+    # every line in the progress-bar CSI/CR sequence EVEN when stdout is a pipe,
+    # so each drv line ends in `\e[0m` instead of `.drv`: the sed below then
+    # matches nothing, every input is exonerated, `check` drops pins whose
+    # blocker has NOT cleared and `diagnose` refuses to pin (observed
+    # 2026-11-13 as "nixpkgs-unstable: its branch head does not need dunamai
+    # built — not the culprit" for a head that does build it).
+    out="$(printf '%s\n' "$out" | strip_ansi)"
     p="$(rescape "$4")"
     # Each built line looks like "  /nix/store/<hash>-<name>.drv". Match the
     # package name as a whole dash-delimited component, so `anyio` matches

@@ -124,7 +124,14 @@ case " ${FAKE_NEEDS:-} " in *" $input "*) want=1 ;; *) want=0 ;; esac
 [ "$refresh" -eq 1 ] || [ -z "${FAKE_STALE:-}" ] || want=0
 [ "$want" -eq 0 ] && exit 0
 hex="$(printf 'a%.0s' $(seq 1 32))"
-printf 'these 1 derivations will be built:\n  /nix/store/%s-%s-1.0.drv\n' "$hex" "$FAKE_PNAME"
+if [ -n "${FAKE_ANSI:-}" ]; then
+    # Real Lix 2.95 shape: the list arrives wrapped in progress-bar CSI
+    # sequences (and CRs) even on a pipe — see the ANSI test below.
+    printf '\033[?2026h\033[Kthese \033[35;1m1\033[0m derivations will be built:\033[0m\n'
+    printf '\033[K  /nix/store/%s-%s-1.0.drv\033[0m\n' "$hex" "$FAKE_PNAME"
+else
+    printf 'these 1 derivations will be built:\n  /nix/store/%s-%s-1.0.drv\n' "$hex" "$FAKE_PNAME"
+fi
 FAKE
     chmod +x "$T/fakebin/nix"
 }
@@ -135,6 +142,7 @@ fake_run() { # fake_run <needs-inputs> <pname> <stale|head> <subcommand...>
     [ "$mode" = "stale" ] && stale=1
     env PATH="$T/fakebin:$PATH" FAKE_LOG="$T/fakebin/argv.log" \
         FAKE_NEEDS="$needs" FAKE_PNAME="$pname" FAKE_STALE="$stale" \
+        FAKE_ANSI="${FAKE_ANSI:-}" \
         NR_PINS_FLAKE_DIR="$T" NR_PINS_SNAPSHOT="$T/pins-snapshot.json" \
         NR_PINS_ATTR="darwinConfigurations.test.system" \
         NR_PINS_PROBE_STUB= bash "$S" "$@"
@@ -211,6 +219,22 @@ n=$(grep -c -- '--refresh' "$T/fakebin/argv.log" || true)
 [ "$n" -eq 2 ] && ok "the refreshed probes still resolved the branch" \
     || bad "$n/2 probe(s) ran without --refresh"
 u="$(follows_unresolved)"; [ -z "$u" ] && ok "every follows target still resolves" || bad "dangling follows: $u"
+
+printf '\n== check: ANSI-wrapped probe output must still be parsed ==\n'
+# 2026-11-13. Lix 2.95 emits the dry-run list with CSI sequences and CRs even
+# when stdout is a pipe, so each drv line ends in `\e[0m` rather than `.drv`.
+# needs_build()'s sed anchors on `\.drv$`, so it matched nothing and every input
+# was exonerated: `check` dropped nixpkgs pins whose blocker had NOT cleared,
+# and `diagnose` reported "its branch head does not need <pkg> built — not the
+# culprit" for a head that really does build it (observed with
+# python3.12-dunamai). The anyio pin's blocker is present here, so it must stay.
+setup
+fake_nix
+FAKE_ANSI=1 fake_run "nixpkgs-unstable" anyio head check > "$T/ansi.out" 2>&1
+check_rc 2 $? "check drops only the genuinely-cleared pin"
+[ "$(jq -r '.pins | map(.input) | join(",")' "$T/flake-pins.json")" = "nixpkgs-unstable" ] \
+    && ok "ANSI escapes did not hide the drv list" \
+    || bad "escapes hid the list: $(jq -c '.pins|map(.input)' "$T/flake-pins.json")"
 
 printf '\n== check: only one blocker cleared ==\n'
 setup
