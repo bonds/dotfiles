@@ -18,8 +18,11 @@
     # nixpkgs — not pinned, normally nixos-26.05
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     #
-    # nixpkgs-unstable — not pinned, normally nixpkgs-unstable
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    # nixpkgs-unstable — pinned 2026-11-13, normally nixpkgs-unstable
+    #   (dunamai)
+    #   must be built from source at github:NixOS/nixpkgs/nixpkgs-unstable
+    #   and the build fails here (via dunamai)
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/4fe25e12eb9f4c744966dd3de5a05246cf098601";
     #
     # pi — not pinned, normally git+https://github.com/earendil-works/pi?rev=b4afdddf44e059c67ccf5097e5317d913521b470
     #   Rev-pinned to a GitHub release: a from-source npm build with no

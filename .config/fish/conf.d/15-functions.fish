@@ -233,9 +233,6 @@ function nr
         set -l _pwd $PWD
         cd $HOME/.config/nix
         bash pkgs/pi/update.sh
-        # swival vendors its own wheel set (both platforms) from upstream's
-        # uv.lock, so its bump is platform-independent — same place as pi.
-        bash pkgs/swival/update.sh
         cd $_pwd
         if test "$_os" = darwin
             set -l _pwd $PWD
