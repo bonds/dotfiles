@@ -73,10 +73,6 @@ function nr
         return 0
     end
     command mkdir -p $HOME/.cache/nr
-    # ---- keep the apply checkout current, then guard the edit tree ----------
-    # $HOME is where `nr` builds, so bring it up to `main` first — the apply step
-    # (`config checkout main -- :/`), done for you. Silent when in sync. Refuses
-    # to touch a $HOME with local edits (that would clobber them).
     # Resolve the dotfiles git dir by existence, the same way the `config` alias
     # in 10-aliases.fish does. `nr` must NOT go through that alias: an alias is
     # fixed when the shell starts, so a session older than a layout change keeps
@@ -88,111 +84,23 @@ function nr
     else if not test -d $_nr_git
         set _nr_git $HOME/.config/dotfiles
     end
-    if test -d $_nr_git
-        set -l _nr_state (git --git-dir=$_nr_git --work-tree=$HOME status --porcelain --untracked-files=no 2>/dev/null)
-        if test -n "$_nr_state"
-            # Paths an apply would change: compare the work tree with main,
-            # ignoring the index (the two checkouts share history, not an index).
-            # A path that is missing from $HOME has no local content to lose.
-            set -l _nr_paths
-            set -l _nr_present
-            for _nr_p in (git --git-dir=$_nr_git --work-tree=$HOME diff --name-only main 2>/dev/null)
-                set -a _nr_paths $_nr_p
-                if test -e $HOME/$_nr_p
-                    set -a _nr_present $_nr_p
-                end
-            end
-            # Applying is safe only while every one of those present paths still
-            # holds an OLDER committed state: its content matches a position main
-            # held before. Anything else is local work that `nr` must not throw
-            # away — an `nr --update` retry leaves precisely that, and a leftover
-            # hand-edit should be looked at, not replaced.
-            # `-C $HOME` matters: a relative pathspec is resolved against the cwd,
-            # so from anywhere else these comparisons would match nothing and look
-            # "stale" (docs/learnings/2026-10-23-work-tree-does-not-scope-pathspecs.md).
-            set -l _nr_stale no
-            if test -z "$_nr_present"
-                set _nr_stale yes
-            else
-                for _nr_c in (git --git-dir=$_nr_git reflog show --format=%H main 2>/dev/null | head -25)
-                    if git -C $HOME --git-dir=$_nr_git --work-tree=$HOME diff --quiet $_nr_c -- $_nr_present 2>/dev/null
-                        set _nr_stale yes
-                        break
-                    end
-                end
-            end
-            if test "$_nr_stale" = yes
-                # `:/` is anchored at the top of the work tree, so this works from
-                # any cwd — a bare `.` is resolved against the cwd, which is why
-                # the hand-typed form used to want `cd ~`.
-                echo "nr: applying "(git --git-dir=$_nr_git rev-parse --short main)" to $HOME"
-                if not git --git-dir=$_nr_git --work-tree=$HOME checkout main -- ':/' >$HOME/.cache/nr/apply.log 2>&1
-                    echo "nr: ERROR could not apply main to $HOME — refusing to build:" >&2
-                    cat $HOME/.cache/nr/apply.log >&2
-                    return 1
-                end
-            else
-                # Never clobber. Name the paths whose content exists nowhere in
-                # history — those are the local edits — and build what is there:
-                # an `nr --update` retry has to rebuild the uncommitted bumps it
-                # just left in $HOME, so stopping here would deadlock that path.
-                echo "nr: WARNING $HOME has local edits to tracked files — not applying main:" >&2
-                set -l _nr_cands (git --git-dir=$_nr_git reflog show --format=%H main 2>/dev/null | head -25)
-                set -l _nr_shown 0
-                for _nr_p in $_nr_present
-                    set -l _nr_hit no
-                    for _nr_c in $_nr_cands
-                        if git -C $HOME --git-dir=$_nr_git --work-tree=$HOME diff --quiet $_nr_c -- $_nr_p 2>/dev/null
-                            set _nr_hit yes
-                            break
-                        end
-                    end
-                    if test $_nr_hit = no
-                        echo "nr:           $_nr_p" >&2
-                        set _nr_shown (math $_nr_shown + 1)
-                        test $_nr_shown -ge 8; and break
-                    end
-                end
-                echo "nr:           building what is there; to discard them: cd ~; and config checkout main -- :/" >&2
-            end
+    # ---- guard both checkouts before building -------------------------------
+    # Bring $HOME up to `main` (the apply step, done for you) unless it holds
+    # local edits, and say when worktree/ (the edit tree) must not be committed
+    # from. That logic is git plumbing with enough edge cases to deserve tests,
+    # so it lives in bin/nr-guard; see bin/tests/nr-guard-test.sh.
+    if test -x $HOME/bin/nr-guard
+        if not $HOME/bin/nr-guard
+            return 1
+        end
+    else if test -d $_nr_git
+        # A $HOME that predates the script: run the committed copy from main.
+        git --git-dir=$_nr_git --work-tree=$HOME show main:bin/nr-guard | bash
+        if test $pipestatus[1] -ne 0
+            return 1
         end
     end
-    # Edit target: ~/.local/share/dotfiles/worktree is where edits are made. It
-    # rots silently (the old live/ worktree reached 69 staged files behind main),
-    # so say so when it differs from main — either real edits, or a stale tree
-    # left over from a commit made in $HOME (e.g. by `nr --update`).
-    set -l _nr_wt $HOME/.local/share/dotfiles/worktree
-    if test -d $_nr_wt; and test -d $_nr_git
-        set -l _nr_wt_head (git -C $_nr_wt rev-parse HEAD 2>/dev/null)
-        set -l _nr_main (git --git-dir=$_nr_git rev-parse main 2>/dev/null)
-        if test -n "$(git -C $_nr_wt status --porcelain --untracked-files=no 2>/dev/null)"
-            # Real edits, or just an older state of main? If the checkout's FILES
-            # match some earlier position of main, nothing here is new work — the
-            # tree is only stale, which is what `nr --update` leaves behind when it
-            # commits in $HOME. Committing in that state reverts that commit
-            # (4d4fb86 did exactly that, silently).
-            set -l _nr_wt_stale no
-            set -l _nr_cands (git --git-dir=$_nr_git reflog show --format=%H main 2>/dev/null)
-            for _nr_n in 1 2 3 4 5 6 7 8
-                set -a _nr_cands (git --git-dir=$_nr_git rev-parse --verify --quiet "main~$_nr_n" 2>/dev/null)
-            end
-            for _nr_c in $_nr_cands
-                if test -n "$_nr_c"; and test "$_nr_c" != "$_nr_main"; and git -C $_nr_wt diff --quiet $_nr_c 2>/dev/null
-                    set _nr_wt_stale yes
-                    break
-                end
-            end
-            if test "$_nr_wt_stale" = yes
-                echo "nr: WARNING worktree/ (edit tree) is only STALE — its files match an earlier main." >&2
-                echo "nr:           Do not commit here (that reverts the $HOME-side commit). Sync: git -C $_nr_wt reset --hard main" >&2
-            else
-                echo "nr: WARNING worktree/ (edit tree) has uncommitted changes — commit or stash them" >&2
-                echo "nr:           (a plain 'reset --hard main' would discard them)" >&2
-            end
-        else if test -n "$_nr_wt_head"; and test "$_nr_wt_head" != "$_nr_main"
-            echo "nr: WARNING worktree/ (edit tree) is behind main — sync it: git -C $_nr_wt pull --ff-only" >&2
-        end
-    end
+
     # (A) tee log: build output truncates last.log, switch output appends.
     set -l _nr_log $HOME/.cache/nr/last.log
     set -l _nr_old_system

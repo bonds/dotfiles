@@ -43,7 +43,9 @@ function movie
     sleep 1.5
 
     for s in /tmp/mpv-left /tmp/mpv-mid /tmp/mpv-right
-        test -S "$s" && echo '{ "command": ["set_property", "pause", false] }' | nc -U "$s" 2>/dev/null
+        if test -S "$s"
+            echo '{ "command": ["set_property", "pause", false] }' | nc -U "$s" 2>/dev/null
+        end
     end
 
     echo "Use killmovie to close all 3." >&2

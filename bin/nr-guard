@@ -1,0 +1,191 @@
+#!/usr/bin/env bash
+# nr-guard -- keep `nr`'s two dotfiles checkouts in a state it can safely build.
+#
+# `nr` builds $HOME, which is also the apply checkout of the bare dotfiles repo.
+# Two things have to be true before it builds:
+#
+#   $HOME        up to date with main. If it is merely BEHIND, apply main to it.
+#                If it holds content that appears nowhere in main's history,
+#                refuse to touch it -- that is local work (a hand-edit to look
+#                at, or an `nr --update` retry's uncommitted bumps, which must
+#                survive) -- and build what is there.
+#   worktree/    the edit checkout. It rots silently: the pre-2026-10-19 `live/`
+#                worktree reached 69 staged files behind main. Say so when it
+#                differs from main, and distinguish real edits from a tree that
+#                is only STALE -- what `nr --update` leaves behind when it
+#                commits in $HOME, where committing would revert that commit.
+#
+# Split out of the `nr` fish function so this git logic can be tested against
+# throwaway repos: see bin/tests/nr-guard-test.sh.
+#
+# Exit status: 0 = the caller may build; 1 = main could not be applied to $HOME
+# and the caller must stop.
+#
+# NR_GUARD_ROOT (default $HOME) is the apply work tree, and the only thing the
+# test suite overrides.
+set -u
+
+root=${NR_GUARD_ROOT:-$HOME}
+root=${root%/}
+# git refuses a relative work tree, and an unset HOME would make every call
+# below resolve paths against the cwd.
+case $root in
+/*) ;;
+*) root=$PWD/$root ;;
+esac
+
+# ---- git dir ------------------------------------------------------------
+# Resolved by existence rather than hardcoded, so the same file is correct on
+# every machine and mid-move: accismus nests the git dir at .../dotfiles/bare
+# (since 2026-10-31), sophrosyne and older layouts keep the flat repo.
+git_dir=$root/.local/share/dotfiles
+if [ -d "$git_dir/bare" ]; then
+	git_dir=$git_dir/bare
+elif [ ! -d "$git_dir" ]; then
+	git_dir=$root/.config/dotfiles
+fi
+[ -d "$git_dir" ] || {
+	printf 'nr: WARNING no dotfiles repo at %s -- skipping the checkout guards\n' "$git_dir" >&2
+	exit 0
+}
+
+edit_tree=$root/.local/share/dotfiles/worktree
+
+g() { git -C "$root" --git-dir="$git_dir" --work-tree="$root" "$@"; }
+cm() { g cat-file -t "$1" >/dev/null 2>&1; }
+e() { git -C "$edit_tree" "$@"; }
+
+# Positions of main whose content can explain what the work trees hold: the
+# reflog, plus -- when the edit checkout has a branch of its own -- that branch.
+# The branch matters because it does not move when main does: it is the ref an
+# edit checkout's HEAD still stands at after a $HOME-side commit, long after the
+# reflog entry for that commit has been pushed out.
+positions() {
+	g reflog show --format=%H main 2>/dev/null | head -25
+	if [ -d "$edit_tree" ]; then
+		b=$(e symbolic-ref --short HEAD 2>/dev/null) || b=
+		case $b in
+		'' | main | master) ;;
+		*) g for-each-ref --format='%(objectname)' "refs/heads/$b" 2>/dev/null ;;
+		esac
+	fi
+}
+
+# Does <rev> track <path>? A path missing from history was simply not tracked
+# then, so a position older than the file's introduction must not count as a
+# match -- otherwise adding a tracked file would make every earlier position look
+# like it explains whatever the working tree holds.
+tracks() { g cat-file -e "$1:$2" 2>/dev/null; }
+
+# Echo a position whose version of every given path matches the apply tree.
+# No paths: the first position matches trivially, which is what "there is
+# nothing of yours to lose" means.
+# Fails when no position exists -- the work tree holds content of its own.
+find_position() {
+	for c in $(positions); do
+		matched=yes
+		for p in "$@"; do
+			if ! tracks "$c" "$p" || ! g diff --quiet "$c" -- "$p" 2>/dev/null; then
+				matched=no
+				break
+			fi
+		done
+		if [ "$matched" = yes ]; then
+			echo "$c"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# ---- apply tree: bring $HOME up to main ---------------------------------
+if [ -n "$(g status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+	# Paths an apply would change: compare the work tree with main, ignoring the
+	# index (the two checkouts share history, not one). A path missing from $HOME
+	# has no local content to lose.
+	present=()
+	for p in $(g diff --name-only main 2>/dev/null); do
+		if [ -e "$root/$p" ]; then
+			present[${#present[@]}]=$p
+		fi
+	done
+
+	# Applying is safe only while EVERY present path holds an OLDER committed
+	# state. Per path, not as a group: a checkout several commits behind may match
+	# no single position, and testing the set would call that local work.
+	# Anything a path cannot explain is local work.
+	stale=yes
+	for p in ${present[@]+"${present[@]}"}; do
+		if ! find_position "$p" >/dev/null; then
+			stale=no
+			break
+		fi
+	done
+
+	if [ "$stale" = yes ]; then
+		# `:/` is anchored at the top of the work tree, so this works from any
+		# cwd; a bare `.` would resolve against the caller's.
+		printf 'nr: applying %s to %s\n' "$(g rev-parse --short main)" "$root"
+		log=${TMPDIR:-/tmp}/nr-guard-apply.$$
+		trap "rm -f '$log'" EXIT
+		if ! g checkout main -- ':/' >"$log" 2>&1; then
+			printf 'nr: ERROR could not apply main to %s -- refusing to build:\n' "$root" >&2
+			cat "$log" >&2
+			exit 1
+		fi
+	else
+		# Never clobber. Name the paths whose content appears nowhere in history
+		# -- those are the local edits -- and build what is there: an
+		# `nr --update` retry has to rebuild the uncommitted bumps it just left in
+		# $HOME, so stopping here would deadlock that path.
+		printf 'nr: WARNING %s has local edits to tracked files -- not applying main:\n' "$root" >&2
+		shown=0
+		for p in ${present[@]+"${present[@]}"}; do
+			if ! find_position "$p" >/dev/null; then
+				printf 'nr:           %s\n' "$p" >&2
+				shown=$((shown + 1))
+				[ "$shown" -lt 8 ] || break
+			fi
+		done
+		printf '%s\n' 'nr:           building what is there; to discard them: config checkout main -- :/' >&2
+	fi
+fi
+
+# ---- edit tree: may a commit be made from worktree/? ---------------------
+if [ -d "$edit_tree" ]; then
+	main=$(g rev-parse main 2>/dev/null)
+	if [ -n "$(e status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+		# Is the tree itself sitting on an older main, with local edits on top?
+		# The test is on the TREE, not the files: a file edited on top of an old
+		# state differs from every position, so asking per file cannot see it.
+		# HEAD's tree is what a commit would otherwise record -- if that tree is
+		# an earlier position of main, the commit reverts everything main changed
+		# since (4d4fb86).
+		wt_stale=no
+		head_tree=$(e rev-parse HEAD^{tree} 2>/dev/null)
+		if [ -n "$head_tree" ]; then
+			for c in $(positions); do
+				if [ "$c" != "$main" ] && [ "$(g rev-parse "$c^{tree}" 2>/dev/null)" = "$head_tree" ]; then
+					wt_stale=yes
+					break
+				fi
+			done
+		fi
+		if [ "$wt_stale" = yes ]; then
+			printf '%s\n' 'nr: WARNING worktree/ (edit tree) is only STALE -- its files match an earlier main.' >&2
+			printf '%s\n' 'nr:           Do not commit here (that reverts the $HOME-side commit). Sync:' >&2
+			printf 'nr:           git -C %s reset --hard main\n' "$edit_tree" >&2
+		else
+			printf '%s\n' 'nr: WARNING worktree/ (edit tree) has uncommitted changes -- commit or stash them' >&2
+			printf '%s\n' "nr:           (a plain 'reset --hard main' would discard them)" >&2
+		fi
+	else
+		wt_head=$(e rev-parse HEAD 2>/dev/null)
+		if [ -n "$wt_head" ] && [ -n "$main" ] && [ "$wt_head" != "$main" ]; then
+			printf '%s\n' 'nr: WARNING worktree/ (edit tree) is behind main -- sync it:' >&2
+			printf 'nr:           git -C %s pull --ff-only\n' "$edit_tree" >&2
+		fi
+	fi
+fi
+
+exit 0

@@ -11,7 +11,7 @@ if status is-interactive
     if command --query atuin
         atuin init fish | source
     end
-    if test -n "$SSH_CONNECTION" && not set --query TMUX && command --query tmux
+    if test -n "$SSH_CONNECTION"; and not set --query TMUX; and command --query tmux
         exec tmux new -A -s remote
     end
 
