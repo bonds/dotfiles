@@ -15,6 +15,9 @@
 # sophrosyne is configured the same way.
 set -uo pipefail
 
+# Fixture commits need an identity; set once, before any of them run.
+export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
+
 GUARD=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/nr-guard
 T=/tmp/nr-guard-tests
 pass=0
@@ -87,8 +90,6 @@ main_from() {
 	set +e
 }
 
-export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
-
 echo "nr-guard"
 
 # 1. Nothing to do: exit 0, silent.
@@ -149,6 +150,27 @@ expect_exit "stale edit tree" 0
 expect_out "stale edit tree is called stale" 'worktree/ \(edit tree\) is only STALE'
 expect_no_out "stale edit tree not called uncommitted" 'has uncommitted changes'
 
+# 5a. The same stale tree, reached by a real commit: an edit made in the edit
+#     tree and committed there leaves HEAD on main~1 with a clean work tree, so
+#     the guard must read the TREE, not the files. A per-file check cannot see
+#     this -- each file individually differs from every position of main -- and
+#     committing from that state reverts the $HOME-side commit, which is 4d4fb86.
+setup
+main_from a.conf 'a2
+' sub/b.conf 'b2
+'
+# Sit on main~1 and commit an edit there: HEAD^{tree} is now "older main + edit".
+wt reset -q --hard "$(git --git-dir="$T/.local/share/dotfiles/bare" rev-parse main~1)"
+printf 'c-next\n' >"$WTDIR/sub/c.conf"
+wt commit -qam "edit made before main moved"
+# One more uncommitted edit, so the tree is dirty and the stale branch is what
+# decides -- a clean tree on an old main is only "behind", which is its own case.
+printf 'd-next\n' >"$WTDIR/d.txt"
+guard
+expect_exit "committed-on-old-main edit tree" 0
+expect_out "committed-on-old-main is called stale" 'worktree/ \(edit tree\) is only STALE'
+expect_no_out "committed-on-old-main not called merely behind" 'behind main -- sync it'
+
 # 5b. Edit worktree left unchanged while main moved: nothing local, just behind —
 #     sync, not "commit or stash".
 setup
@@ -160,6 +182,22 @@ expect_exit "unchanged edit tree" 0
 expect_out "unchanged edit tree is called behind" 'worktree/ \(edit tree\) is behind main'
 expect_no_out "unchanged edit tree not called stale" 'only STALE'
 expect_no_out "unchanged edit tree not called uncommitted" 'has uncommitted changes'
+
+# 5c. A SIBLING commit (not an ancestor) sharing main's tree must not make a
+#     plain edit look stale. Two commits can carry identical trees -- a revert
+#     lands exactly there -- and the old check matched any position with that
+#     tree, main's own excluded, so an ordinary edit on current main got flagged.
+setup
+# main: a1 -> (revert) a1, with the reverted commit still a sibling on the reflog.
+printf 'a2\n' >"$T/a.conf"
+g commit -qam "change"
+g revert --no-edit HEAD >/dev/null
+git --git-dir="$T/.local/share/dotfiles/bare" --work-tree="$T/bump" checkout -q -f main
+wt reset -q --hard "$(git --git-dir="$T/.local/share/dotfiles/bare" rev-parse main)"
+printf 'c-next\n' >"$WTDIR/sub/c.conf"
+guard
+expect_out "edit on current main is uncommitted work" 'worktree/ \(edit tree\) has uncommitted changes'
+expect_no_out "edit on current main is not stale" 'only STALE'
 
 # 6. Edit worktree at main with a tracked file edited: real work of its own.
 setup

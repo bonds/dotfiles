@@ -52,7 +52,6 @@ fi
 edit_tree=$root/.local/share/dotfiles/worktree
 
 g() { git -C "$root" --git-dir="$git_dir" --work-tree="$root" "$@"; }
-cm() { g cat-file -t "$1" >/dev/null 2>&1; }
 e() { git -C "$edit_tree" "$@"; }
 
 # Positions of main whose content can explain what the work trees hold: the
@@ -127,10 +126,12 @@ if [ -n "$(g status --porcelain --untracked-files=no 2>/dev/null)" ]; then
 		# cwd; a bare `.` would resolve against the caller's.
 		printf 'nr: applying %s to %s\n' "$(g rev-parse --short main)" "$root"
 		log=${TMPDIR:-/tmp}/nr-guard-apply.$$
-		trap "rm -f '$log'" EXIT
-		if ! g checkout main -- ':/' >"$log" 2>&1; then
+		if g checkout main -- ':/' >"$log" 2>&1; then
+			rm -f "$log"
+		else
 			printf 'nr: ERROR could not apply main to %s -- refusing to build:\n' "$root" >&2
 			cat "$log" >&2
+			rm -f "$log"
 			exit 1
 		fi
 	else
@@ -161,11 +162,16 @@ if [ -d "$edit_tree" ]; then
 		# HEAD's tree is what a commit would otherwise record -- if that tree is
 		# an earlier position of main, the commit reverts everything main changed
 		# since (4d4fb86).
+		# Only a tree sitting BELOW main can revert anything. HEAD on main itself
+		# (a plain local edit on top of current main) is ordinary work, even
+		# though some sibling commit may share that tree -- two commits can.
 		wt_stale=no
-		head_tree=$(e rev-parse HEAD^{tree} 2>/dev/null)
-		if [ -n "$head_tree" ]; then
+		wt_head=$(e rev-parse HEAD 2>/dev/null)
+		if [ -n "$wt_head" ] && [ "$wt_head" != "$main" ]; then
+			head_tree=$(e rev-parse "$wt_head^{tree}" 2>/dev/null)
 			for c in $(positions); do
-				if [ "$c" != "$main" ] && [ "$(g rev-parse "$c^{tree}" 2>/dev/null)" = "$head_tree" ]; then
+				[ "$c" != "$main" ] || continue
+				if [ -n "$head_tree" ] && [ "$(g rev-parse "$c^{tree}" 2>/dev/null)" = "$head_tree" ]; then
 					wt_stale=yes
 					break
 				fi
