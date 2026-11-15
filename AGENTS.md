@@ -72,8 +72,9 @@ The extension inventory, prompt templates, the Deep Infra cost story,
 
 Two rules matter more than the inventory:
 
-- Agents may build-verify (`nh darwin build`) but **never run the activating
-  rebuild** — see Conventions.
+- Agents run `nr` themselves (including the activating switch); **Osaurus**
+  cannot — its sandbox blocks it, so it asks Scott. Pushes still need his
+  TouchID — see Conventions.
 - What you learn about the harness goes into the repo, not into the session
   that discovered it — see **Compounding** below.
 
@@ -127,7 +128,7 @@ skill in the same edit.** `mem doctor` reports the always-loaded budget.
 - **Log surprises next to the code** — see **Compounding**: domain knowledge to the repo's `docs/learnings/`, agent rules to the inbox. Worked example: `~/src/bonds/polyptych/docs/learnings/`.
 - Before committing any changes, run a code review using the current harness's available code-review skill or tool, and ask the user how to proceed
 - After each batch of changes, commit and push to all remotes (`config push origin && config push sophrosyne`). Never force-push (`--force` / `config push -f`) to any remote. If sophrosyne rejects the push because of divergent histories (e.g. a `git commit --amend` or rebase on either side), pull or merge first to reconcile. The sophrosyne bare repo has a `post-receive` hook that checks out the work tree on push — no special `receive.denyCurrentBranch` config needed.
-- **Rebuilds are Scott's; pushes need his TouchID.** `nr` / `darwin-rebuild` / `nixos-rebuild` are passwordless, but passwordless is not permission: agents verify with `nh darwin build` and hand over the switch. `git push` over SSH is the one step needing TouchID approval via Secretive, and the `gh` token is often read-only (403). A failed push is a hand-off, not a retry loop: `Permission denied (publickey)`, `Connection closed by … port 22`, or a 403 all mean the approval prompt went unanswered — ask Scott to push when he's back; once he is, `ssh-add -l` plus **one** retry separates an empty agent from an unanswered prompt. Never "resolve" it by running the rebuild yourself. Signatures and diagnosis: `docs/learnings/2026-10-19-secretive-touchid-closes-the-connection.md`.
+- **Rebuilds are agents'; pushes need Scott's TouchID.** Run `nr` yourself — including the activating switch — when a change needs to take effect; don't stop at `nh darwin build` or wait for Scott. **Exception: Osaurus** cannot (its sandbox blocks the switch), so it must ask Scott. `git push` over SSH is the one step needing TouchID approval via Secretive, and the `gh` token is often read-only (403). A failed push is a hand-off, not a retry loop: `Permission denied (publickey)`, `Connection closed by … port 22`, or a 403 all mean the approval prompt went unanswered — ask Scott to push when he's back; once he is, `ssh-add -l` plus **one** retry separates an empty agent from an unanswered prompt. Signatures and diagnosis: `docs/learnings/2026-10-19-secretive-touchid-closes-the-connection.md`.
 - **Never pipe a state-changing command to `tail`/`rg`/`sed`.** The pipeline reports the *last* command's status, so `git push … | tail` exits 0 even when the push failed — and `learnings-capture.ts` never sees the failure. Verify with `rev-parse origin/main` (one ref per call — `--short` rejects multiple), or use `pipefail` / `$pipestatus[1]`. See `docs/learnings/2026-10-19-pipe-masks-exit-code.md`.
 - **Write multi-line code to a file, not inline.** `python3 -c`, SQL built inside a shell string, and heredocs with nested quotes all fail on an empty or misquoted variable — `WHERE id = $x` silently becomes a syntax error. Assert a value is non-empty before it lands in generated code.
 - **A negative result is not proof.** Empty `rg`/`grep`/`sqlite3` output means the tool found nothing *it could see*: confirm it can read the file before concluding absence, and read a store's source before designing around its schema.

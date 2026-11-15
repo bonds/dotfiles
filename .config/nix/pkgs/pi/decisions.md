@@ -175,10 +175,11 @@ than a success it did not earn.
 
 ## Agents
 
-**Scott runs the activating rebuild; agents may only build.** `nr` needs no
-password, so the rule is about control, not credentials: an agent switching the
-system is an unattended change to the machine it is running on. Agents verify
-with `nh darwin build` (or `nixos-rebuild build`) and hand over.
+**Agents run the activating rebuild; Osaurus is the exception.** `nr` needs no
+password, so agents switch the system themselves when a change needs to take
+effect, instead of stopping at `nh darwin build` and waiting for Scott. This
+supersedes the earlier "control, not credentials" rule (2026-11-15). Osaurus
+cannot: its sandbox blocks the switch, so it asks Scott to run `nr`.
 
 **TouchID is interactive, so a failed push is a hand-off, not a retry loop.**
 Secretive signs only after approval and a fresh agent shell usually has no

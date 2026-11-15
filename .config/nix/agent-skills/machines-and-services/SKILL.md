@@ -25,8 +25,9 @@ accismus) — expect one TouchID prompt per operation.
 - The `pam_ssh_agent_auth` key file is `/etc/ssh/authorized_keys.d/scott`
   (root-owned, outside the nix store — activation copies it on each switch to
   avoid group-writable `/nix/store` directory rejections).
-- Passwordless does not mean agent-run: activating rebuilds are Scott's to run
-  (see `~/AGENTS.md` → Conventions).
+- Agents run activating rebuilds themselves (`nr` is passwordless on purpose);
+  Osaurus cannot — its sandbox blocks the switch — so it asks Scott (see
+  `~/AGENTS.md` → Conventions).
 
 ### Secrets (agenix)
 

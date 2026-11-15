@@ -26,7 +26,7 @@ Accismus dotfiles: **git dir `~/.local/share/dotfiles/bare`**, the **apply check
 
 **Always use `nr` for rebuilds.** The `nr` fish function (in `~/.config/fish/conf.d/15-functions.fish`) wraps `nh`, auto-detects the host to pick the right flake target, and handles the split build/activation (nh as user, then exact-path sudo/doas switch). Do not recommend raw `nixos-rebuild` or `darwin-rebuild` commands unless `nr` is broken.
 
-**Scott runs the rebuild himself with `nr` (his alias).** Do not run `nh darwin build`/`switch` or `darwin-rebuild` on his behalf — **build-only verification is fine**, he activates with `nr`.
+**Agents run `nr` themselves (including the switch); Osaurus asks Scott.** `nr` is passwordless so an agent can activate a change; build-verify with `nh darwin build` first when iterating. The exception is Osaurus, whose sandbox blocks the switch, so it must ask Scott.
 
 `nr` is fish-only — from bash it fails with `command not found` but can still exit 0 with empty output and creates **no** new generation (silent no-op — easy to mistake for success). From any non-fish shell (agents, scripts, CI) run it through fish:
 
