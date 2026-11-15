@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
-# SleepWatcher wake hook (`sleepwatcher -w`): bring 'Extra Space' back if the
-# drive is still attached. If it was unplugged while the Mac slept - the normal
-# case - no device shows up and this exits 0 quietly.
+# SleepWatcher display-wake hook (`sleepwatcher -W`): bring 'Extra Space' back
+# if the drive is still attached. If it was unplugged while the Mac slept - the
+# normal case - no device shows up and this exits 0 quietly.
+#
+# `-W` rather than `-w` on purpose: it fires only when the display wakes, i.e.
+# on a wake the user initiated by opening the lid or pressing a key - not on a
+# maintenance/dark wake. Remounting on a dark wake is what left the volume
+# mounted across a sleep that sleepwatcher never reported (2026-11-15), so the
+# wake event without a matching sleep event is exactly what must be avoided.
+# See display-sleep.sh.
 #
 # The volume is looked up by name on every attempt rather than remembered by
 # diskN: after the sleep hook's eject the drive is re-enumerated with a fresh

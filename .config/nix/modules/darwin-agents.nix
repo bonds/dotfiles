@@ -72,17 +72,22 @@ in {
         StandardErrorPath = "${userHome}/Library/Logs/photos-backup.err.log";
       };
     };
-    # SleepWatcher — eject the 'Extra Space' volume before sleep, remount on
-    # wake (see ~/.config/sleepwatcher/{sleep,wake}.sh). Uses RunAtLoad +
-    # KeepAlive so the agent persists as a login user agent.
+    # SleepWatcher — eject the 'Extra Space' volume when the display sleeps
+    # (lid close / idle display sleep), force-eject on system sleep as a
+    # backstop, and remount only when the *display* wakes (never on a
+    # maintenance/dark wake). See ~/.config/sleepwatcher/{display-sleep,sleep,wake}.sh
+    # and docs/learnings/2026-11-15-sleepwatcher-display-sleep-hooks.md. Uses
+    # RunAtLoad + KeepAlive so the agent persists as a login user agent.
     sleepwatcher = {
       serviceConfig = {
         ProgramArguments = [
           "${pkgs.sleepwatcher}/bin/sleepwatcher"
           "-V"
+          "-S"
+          "${userHome}/.config/sleepwatcher/display-sleep.sh"
           "-s"
           "${userHome}/.config/sleepwatcher/sleep.sh"
-          "-w"
+          "-W"
           "${userHome}/.config/sleepwatcher/wake.sh"
         ];
         RunAtLoad = true;

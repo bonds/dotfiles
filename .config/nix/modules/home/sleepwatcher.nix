@@ -4,6 +4,11 @@ _: {
       source = ./sleepwatcher/common.sh;
       force = true;
     };
+    ".config/sleepwatcher/display-sleep.sh" = {
+      source = ./sleepwatcher/display-sleep.sh;
+      executable = true;
+      force = true;
+    };
     ".config/sleepwatcher/sleep.sh" = {
       source = ./sleepwatcher/sleep.sh;
       executable = true;

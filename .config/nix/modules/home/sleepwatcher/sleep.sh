@@ -3,6 +3,11 @@
 # cleanly off the bus before the Mac suspends, so unplugging the drive while
 # the machine is asleep cannot produce "Disk Not Ejected Properly".
 #
+# Backstop, not the primary trigger: the display-sleep hook (`-S`) normally
+# ejects first, but sleepwatcher is not reliably told about maintenance/dark
+# sleeps, so this hook also runs (and may force-unmount) on the system-sleep
+# event it does get. See display-sleep.sh for the full reasoning.
+#
 # Budget: man sleepwatcher gives the sleep script 15 s before the system forces
 # sleep, so this hook is capped at ~12 s of unmounting before it ejects.
 #
@@ -63,6 +68,29 @@ if [ "$rc" -eq 0 ]; then
   log "sleep: ejected ${whole}"
 else
   log "sleep: eject ${whole} failed exit ${rc}"
+fi
+
+# 4. Some USB enclosures re-enumerate immediately after an eject, and macOS
+#    auto-mounts the APFS volume again - which is exactly the mounted state that
+#    warns when the bus later drops. Re-check once and eject a second time if it
+#    came back. Bounded to ~2 s so the 15 s sleep budget stays safe.
+if [ "$rc" -eq 0 ]; then
+  /bin/sleep 1
+  if volume_mounted; then
+    dev=$(volume_device)
+    whole=$(whole_disk "$dev")
+    log "sleep: ${VOL_NAME} remounted after eject (${dev:-unknown device}), ejecting again"
+    /usr/sbin/diskutil unmount force "$VOL_PATH" >/dev/null 2>&1 || true
+    if [ -n "$whole" ] && /usr/sbin/diskutil list "$whole" >/dev/null 2>&1; then
+      /usr/sbin/diskutil eject "$whole" >/dev/null 2>&1
+      rc=$?
+      if [ "$rc" -eq 0 ]; then
+        log "sleep: re-ejected ${whole}"
+      else
+        log "sleep: re-eject ${whole} failed exit ${rc}"
+      fi
+    fi
+  fi
 fi
 
 exit 0
