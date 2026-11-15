@@ -97,6 +97,31 @@ find_position() {
 	return 1
 }
 
+# The edit worktree can share main's ref instead of having a branch of its own
+# (the layout since the edit checkout was added). A $HOME-side commit then moves
+# HEAD without touching the worktree, so its INDEX still describes the earlier
+# main and git reports the bump as staged reverts. Match every staged blob
+# against an older position: if they all match, the index is that older tree and
+# there is nothing of the user's to lose.
+index_at() { e rev-parse --verify --quiet ":$1" 2>/dev/null; }
+
+index_matches_position() {
+	for c in $(positions); do
+		[ "$c" != "${main:-}" ] || continue
+		matched=yes
+		for p in "$@"; do
+			if ! tracks "$c" "$p" || [ "$(index_at "$p")" != "$(g rev-parse "$c:$p" 2>/dev/null)" ]; then
+				matched=no
+				break
+			fi
+		done
+		if [ "$matched" = yes ]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
 # ---- apply tree: bring $HOME up to main ---------------------------------
 if [ -n "$(g status --porcelain --untracked-files=no 2>/dev/null)" ]; then
 	# Paths an apply would change: compare the work tree with main, ignoring the
@@ -165,6 +190,8 @@ if [ -d "$edit_tree" ]; then
 		# Only a tree sitting BELOW main can revert anything. HEAD on main itself
 		# (a plain local edit on top of current main) is ordinary work, even
 		# though some sibling commit may share that tree -- two commits can.
+		# This branch covers an edit checkout that has a branch of its own: its
+		# HEAD stays below main when $HOME-side commits move main.
 		wt_stale=no
 		wt_head=$(e rev-parse HEAD 2>/dev/null)
 		if [ -n "$wt_head" ] && [ "$wt_head" != "$main" ]; then
@@ -177,8 +204,20 @@ if [ -d "$edit_tree" ]; then
 				fi
 			done
 		fi
+		# The real accismus layout has no branch of its own: the edit checkout
+		# shares main's ref, so a $HOME-side commit moved HEAD too and the check
+		# above cannot see anything. What did stay put is the INDEX, still
+		# describing the previous main; git shows that as staged reverts. With no
+		# unstaged edits, ask whether every staged blob is an older main.
+		if [ "$wt_stale" = no ] && [ -n "$wt_head" ] && [ "$wt_head" = "$main" ] &&
+			e diff --quiet 2>/dev/null; then
+			staged=$(e diff --cached --name-only 2>/dev/null)
+			if [ -n "$staged" ] && index_matches_position $staged; then
+				wt_stale=yes
+			fi
+		fi
 		if [ "$wt_stale" = yes ]; then
-			printf '%s\n' 'nr: WARNING worktree/ (edit tree) is only STALE -- its files match an earlier main.' >&2
+			printf '%s\n' 'nr: WARNING worktree/ (edit tree) is only STALE -- its files/index match an earlier main.' >&2
 			printf '%s\n' 'nr:           Do not commit here (that reverts the $HOME-side commit). Sync:' >&2
 			printf 'nr:           git -C %s reset --hard main\n' "$edit_tree" >&2
 		else

@@ -58,3 +58,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-14 — macOS `strip` inflates non-Mach-O files in a nix build](2026-11-14-macos-strip-inflates-non-macho-files.md)
 - [2026-11-14 — `nr --update` commits the apply tree's index, so it can revert an unapplied commit](2026-11-14-nr-update-commits-the-apply-index.md)
 - [2026-11-15 — sleepwatcher's wake hook can remount a drive across a sleep it never hears about](2026-11-15-sleepwatcher-display-sleep-hooks.md)
+- [2026-11-15 — A `$HOME`-side commit leaves the edit worktree's index looking like a staged revert](2026-11-15-worktree-index-stale-after-home-commit.md)

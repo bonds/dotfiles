@@ -199,6 +199,30 @@ guard
 expect_out "edit on current main is uncommitted work" 'worktree/ \(edit tree\) has uncommitted changes'
 expect_no_out "edit on current main is not stale" 'only STALE'
 
+# 5d. The real accismus layout: the edit worktree shares main's ref (it has no
+#     `edit` branch), so a $HOME-side commit moves HEAD without touching the
+#     worktree. Its index still describes the earlier main, so git shows the
+#     bump as staged reverts. That is staleness, not a change -- sync, don't
+#     commit.
+setup
+main_from a.conf 'a2
+' sub/b.conf 'b2
+'
+wt checkout -q --detach "$(git --git-dir="$T/.local/share/dotfiles/bare" rev-parse main)"
+wt checkout -q "$(git --git-dir="$T/.local/share/dotfiles/bare" rev-parse main~1)" -- .
+guard
+expect_exit "stale index" 0
+expect_out "stale index is called stale" 'worktree/ \(edit tree\) is only STALE'
+expect_no_out "stale index not called uncommitted" 'has uncommitted changes'
+
+# 5e. Detached at main with a real edit is ordinary work, not staleness.
+setup
+wt checkout -q --detach "$(git --git-dir="$T/.local/share/dotfiles/bare" rev-parse main)"
+printf 'c-next\n' >"$WTDIR/sub/c.conf"
+guard
+expect_out "detached real edit is uncommitted work" 'worktree/ \(edit tree\) has uncommitted changes'
+expect_no_out "detached real edit is not stale" 'only STALE'
+
 # 6. Edit worktree at main with a tracked file edited: real work of its own.
 setup
 printf 'c-next\n' >"$WTDIR/sub/c.conf"
