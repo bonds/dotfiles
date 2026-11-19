@@ -97,11 +97,30 @@ in
       </plist>
       PLIST
 
-      # Ad-hoc sign the app bundle with a STABLE identifier so the PhotoKit
-      # TCC grant survives nix store-path changes (keys to the identifier,
-      # not the path). codesign isn't in the nix PATH; use the system path.
+      # Ad-hoc sign the app bundle AND pin an explicit designated requirement
+      # to the bundle identifier. The grant macOS records for Photos access is
+      # the app's designated requirement; ad-hoc signing has no certificate to
+      # anchor one to, so codesign's default is `cdhash H"…"` — a hash of these
+      # exact bytes. That made every rebuild invalidate the grant (a version
+      # bump, a Swift edit, even a store-path move), so the nightly backup died
+      # with `not authorized (status=0)` until someone clicked Allow again.
+      # Identifier-only makes the requirement build-independent. Background:
+      # docs/learnings/2026-11-18-adhoc-signature-keys-tcc-grant-to-cdhash.md
+      # codesign/csreq aren't in the nix PATH; use the system paths.
       /usr/bin/codesign -s - -f --identifier "${bundleId}" \
+        -r '=designated => identifier "${bundleId}"' \
         "$out/libexec/app"
+
+      # Fail the build if that requirement silently regressed to cdhash-based,
+      # because the symptom (backup dies overnight) is invisible from here.
+      REQ="$(/usr/bin/codesign -d -r- "$out/libexec/app" 2>&1 || true)"
+      case "$REQ" in
+        *'identifier "${bundleId}"'*) ;;
+        *)
+          echo "photo-export: designated requirement is not identifier-based: $REQ" >&2
+          exit 1
+          ;;
+      esac
 
       # Also expose the app at a stable-ish path for LaunchServices/open
       mkdir -p "$out/Applications"

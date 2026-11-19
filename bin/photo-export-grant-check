@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# photo-export-grant-check — is the installed photo-export.app still covered by
+# the Photos (TCC) grant macOS recorded for it?
+#
+# Why this exists: the nightly `photos-backup` agent launches photo-export via
+# `open`, and a lost Photos grant kills the run at 02:00 with
+#     photo-export: FATAL: not authorized (status=0)
+# *before* any SFTP connection — so the backup stops reaching sophrosyne and
+# nothing notices until the 30h login monitor fires (2026-11-18: 35h of silence
+# from one missed night). `nr` runs this after a successful switch so the
+# problem surfaces while the machine is still attended.
+#
+# A grant is recorded as the app's *designated requirement*. The package signs
+# with an explicit `-r 'designated => identifier "com.ggr.photo-export"'`, so
+# that requirement is build-independent; if it ever regresses to codesign's
+# default (`cdhash H"…"`, which changes with every rebuild) or the bundle id
+# changes, the recorded grant stops matching the new build.
+#
+# Exit 0 = grant intact, or not checkable here (never blocks a build).
+# Exit 1 = grant missing/stale; one Allow click fixes it:
+#            open ~/Applications/"Home Manager Apps"/photo-export.app
+set -uo pipefail
+
+BUNDLE_ID="com.ggr.photo-export"
+TCC_DB="$HOME/Library/Application Support/com.apple.TCC/TCC.db"
+
+app=""
+for candidate in "$HOME/Applications/Home Manager Apps/photo-export.app" \
+                 "$HOME/Applications/photo-export.app"; do
+  if [ -d "$candidate" ]; then
+    app="$candidate"
+    break
+  fi
+done
+[ -n "$app" ] || exit 0                       # not installed on this machine
+[ -r "$TCC_DB" ] || exit 0                    # no TCC db we can read
+command -v sqlite3 >/dev/null 2>&1 || exit 0
+[ -x /usr/bin/csreq ] || exit 0
+
+tmp="$(mktemp -d)" || exit 0
+trap 'rm -rf "$tmp"' EXIT
+
+# The app's designated requirement, as text, then compiled to the same blob TCC
+# keeps in access.csreq. `codesign -r-` prefixes a *derived* requirement with
+# "# " and prints an explicitly embedded one (our `-r 'designated => …'`) bare,
+# so strip the prefix if present and keep whichever line says `designated`.
+codesign -d -r- "$app" 2>&1 | sed -n 's/^# //; /^designated/p' > "$tmp/req.txt"
+[ -s "$tmp/req.txt" ] || exit 0
+/usr/bin/csreq -r "$tmp/req.txt" -b "$tmp/req.bin" 2>/dev/null || exit 0
+want="$(xxd -p "$tmp/req.bin" 2>/dev/null | tr -d '\n' | tr 'A-Z' 'a-z')"
+[ -n "$want" ] || exit 0
+
+row="$(sqlite3 "$TCC_DB" \
+  "select auth_value||' '||hex(csreq) from access
+     where service='kTCCServicePhotos' and client='$BUNDLE_ID';" 2>/dev/null)"
+auth="${row%% *}"
+have="$(printf '%s' "${row#* }" | tr -d '\n' | tr 'A-Z' 'a-z')"
+# An empty csreq means we cannot judge this row; stay quiet rather than warn on
+# a grant that is probably fine.
+[ -n "$have" ] || exit 0
+
+regrant() {
+  echo "nr: photo-export has lost Photos access — the nightly photo backup will" >&2
+  echo "nr: fail at 02:00 before it connects. Fix (one click):" >&2
+  echo "nr:   open \"$app\"   # click Allow" >&2
+  echo "nr: then verify: $0" >&2
+}
+
+if [ -z "${row:-}" ]; then
+  echo "nr: no Photos grant recorded for $BUNDLE_ID" >&2
+  regrant
+  exit 1
+fi
+if [ "$auth" != "2" ]; then
+  # TCC auth_value: 0 = denied, 1 = unknown, 2 = allowed, 3 = limited.
+  echo "nr: Photos grant for $BUNDLE_ID is not allowed (auth_value=$auth)" >&2
+  regrant
+  exit 1
+fi
+# The recorded requirement must appear in the requirement this build would
+# present. Containment rather than equality: csreq wraps the inner requirement
+# set that TCC stores, and the wrapper differs between requirement kinds.
+case "$want" in
+  *"$have"*) ;;
+  *)
+    echo "nr: Photos grant for $BUNDLE_ID is pinned to a different build" >&2
+    regrant
+    exit 1
+    ;;
+esac
+
+exit 0

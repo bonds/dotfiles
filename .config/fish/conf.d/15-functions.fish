@@ -386,6 +386,16 @@ function nr
             echo "nr: working tree has uncommitted bumps — fix the build, then re-run nr"
         end
     end
+    # A photo-export rebuild changes the app's code signature, and macOS keys
+    # the Photos (TCC) grant to the app's designated requirement — so a rebuild
+    # can silently cost the nightly photo backup its access, discovered only
+    # when the 30h login monitor fires (2026-11-18). Check now, while the
+    # machine is attended. Never fatal: the check only reports.
+    if test "$_os" = darwin; and test "$_nr_switch_ok" -eq 0
+        if test -x $HOME/bin/photo-export-grant-check
+            $HOME/bin/photo-export-grant-check
+        end
+    end
     if test "$_os" = darwin
         set _nr_new_system (command readlink -f /nix/var/nix/profiles/system 2>/dev/null)
     else

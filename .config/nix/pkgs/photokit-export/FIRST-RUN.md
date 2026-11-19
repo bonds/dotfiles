@@ -37,11 +37,31 @@ so doing this once should cover every future build that keeps that identity
 
 ## When you need to re-grant
 
-- **Any binary byte change** — Swift source edit, version bump, or nix rebuild
-  that produces a new binary → CDHash changes → macOS treats it as a new app.
-  Expect a fresh Allow prompt. That's expected and safe; just click Allow.
-- **Developer ID signing would fix this permanently** (Team ID-anchored), but
-  the decision is ad-hoc for now.
+The bundle is still ad-hoc signed, but the package pins an **explicit
+designated requirement** (`-r '=designated => identifier "com.ggr.photo-export"'`;
+note the leading `=` — without it codesign reads the value as a path to a file
+containing the requirement), so the grant macOS records is keyed to the bundle
+identifier rather than to the code bytes. Rebuilds no longer invalidate it.
+Confirm what is installed:
+
+```sh
+codesign -d -r- ~/Applications/"Home Manager Apps"/photo-export.app
+# want: designated => identifier "com.ggr.photo-export"
+# if it says: designated => cdhash H"…"  — the -r flag was lost, every
+# rebuild will cost a re-grant again
+```
+
+- **A re-grant is needed only when the requirement itself changes** — a new
+  bundle id, or a signature that drops the `-r` requirement. codesign's default
+  is `cdhash H"…"`, which changes on every build; that was the 2026-11-18
+  outage (one missed night, discovered 35h later by the login monitor). See
+  `docs/learnings/2026-11-18-adhoc-signature-keys-tcc-grant-to-cdhash.md`.
+- `~/bin/photo-export-grant-check` compares the recorded grant against the
+  installed bundle, and `nr` runs it after a successful switch, so a lost grant
+  is reported at rebuild time instead of by the 30h monitor.
+- Developer ID signing would also anchor it to a Team ID, but the
+  identifier-only requirement removes the per-build churn with no Keychain
+  certificate to provision.
 
 ## Debugging
 
