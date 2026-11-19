@@ -110,6 +110,14 @@ Three machines managed from this repo:
 Moved out of `~/AGENTS.md`: this only matters when you are touching another
 machine, and it is long enough that carrying it in every request is waste.
 
+- **A push is the sync for sophrosyne's checkout.** Its bare repo has a
+  `post-receive` hook that checks out `main` into `$HOME`, so `git push
+  sophrosyne main` updates the work tree as a side effect. A `pull` does not fire
+  that hook (it only runs on push), so `ssh sophrosyne "config pull origin main"`
+  leaves the checkout as the thing that updates the tree; if it is somehow still
+  stale: `ssh sophrosyne "cd ~ && git --git-dir=$HOME/.local/share/dotfiles
+  --work-tree=$HOME checkout -f main"`.
+
 - **Nix deployments to remote machines:** Never attempt a cross-build from the local machine (aarch64-darwin cannot build x86_64-linux derivations that have `allowSubstitutes = false`, such as `arion-compose`). Instead, push the commit and then SSH directly to the target machine and a rebuild via **`fish -c 'nr'`** (runs detached in tmux session `nr-build`, mirroring local agent use) — or `fish -i -c 'nr'` to wait for the result: `ssh sophrosyne "fish -c 'nr'"`. `nr` handles the split build + exact-path `doas` switch, matching the noPass rules. Only fall back to `/run/current-system/sw/bin/nixos-rebuild` directly if `nr` itself is broken. Use the full `/run/current-system/sw/bin/nixos-rebuild` path if you do call it directly, so the `noPass` doas rule matches.
 - **Remote rebuilds must run to completion — a background/no-TTY SSH job silently no-ops.** Any remote deploy that can't get a TTY or forward the agent (e.g. Hermes running it in `terminal(background=true)`, or a bare `nixos-rebuild` with `doas` when the agent isn't forwarded) fails to authenticate with doas, prints **nothing, and exits 0 while creating NO new generation** — it looks like success but changes nothing. Run the deploy in the foreground and verify a new generation actually landed: `readlink -f /nix/var/nix/profiles/system` (must differ from before) and look for the `Done. The new configuration is ...` line. Don't trust the exit code alone.
 - **sophrosyne's shell is fish.** Inline one-liners passed to `ssh sophrosyne '...'` must be fish-compatible: bash-isms abort the whole line before anything runs — e.g. appending `echo "RC=$?"` makes fish error on `$?` (treated as a command), killing the entire remote command. Use `$status` for exit codes on the remote side.

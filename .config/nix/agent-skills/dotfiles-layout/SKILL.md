@@ -1,6 +1,6 @@
 ---
 name: dotfiles-layout
-description: "Inventory of the tracked dotfiles: which file under $HOME holds shell (fish, the `config` alias), terminal (alacritty, ghostty, tmux), editor (helix), git, ssh, nix, haskell, password-store, DECISIONS.md and script config. Use when locating an existing config, answering where is X configured or what is in ~/.config, deciding where a new tracked file belongs, or untracking a file."
+description: "Inventory of the tracked dotfiles: which file under $HOME holds shell (fish, the `config` alias), terminal (alacritty, ghostty, tmux), editor (helix), git, ssh, nix, haskell, password-store, DECISIONS.md and script config. Use when locating an existing config, answering where is X configured or what is in ~/.config, deciding where a new tracked file belongs, editing or applying a tracked file, or untracking a file."
 ---
 
 Paths are relative to `$HOME` unless absolute. Machine and service details
@@ -75,6 +75,27 @@ git --git-dir=$HOME/.local/share/dotfiles/bare --work-tree=$HOME status
 
 That last one is needed because a plain `git checkout main` only prints
 "Already on 'main'" and changes nothing.
+
+`nr` guards both trees before it builds (in ~30 ms), so most of the above is
+automatic:
+
+- **`$HOME` is behind `main`** → `nr` applies it and says
+  `nr: applying <rev> to $HOME`. Nothing to do.
+- **`$HOME` holds local edits** (tracked-file content that appears nowhere in
+  `main`'s history) → `nr` refuses to apply, prints the paths, and builds what is
+  there. That state is either a leftover hand-edit to look at or an `nr --update`
+  retry's uncommitted bumps, which must survive; clearing it is
+  `config checkout main -- :/`.
+- **the worktree is dirty or behind** → commit the edits, or sync the tree after a
+  bump was committed from `$HOME`: `git -C ~/.local/share/dotfiles/worktree
+  reset --hard main`.
+
+A `live` worktree under `~/.local/share/dotfiles/live` existed until 2026-10-19
+and was removed because it had drifted to 69 staged files behind `main`, so an
+agent editing it would have committed reverts. The 2026-10-31 layout recreates
+that position deliberately, which is why `worktree/` is the only place edits
+belong and why the two guards exist rather than a rule saying "no second
+checkout".
 
 ### Shell
 - `.zshrc` — minimal zsh entry point (sources nix, execs fish)

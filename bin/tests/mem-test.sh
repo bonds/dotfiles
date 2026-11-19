@@ -60,6 +60,30 @@ grep -q "not inside a git repository" "$T/out" && ok "says why, and what to do i
     || bad "no guidance: $(cat "$T/out")"
 grep -q "mem inbox add" "$T/out" && ok "points agent-behaviour lessons at the inbox" || bad "no inbox pointer"
 
+printf '\n== learn: from $HOME falls back to the dotfiles edit checkout ==\n'
+# The dotfiles repo has no .git in $HOME, so `rev-parse --show-toplevel` fails
+# there; without a fallback this died even though the lesson had an obvious
+# home. MEM_DOTFILES_WORKTREE keeps the write inside the fixture.
+mkdir -p "$T/wt/docs/learnings"
+printf '# Learnings\n\nDomain lessons.\n\n## Entries\n\n' > "$T/wt/docs/learnings/README.md"
+(
+    cd "$HOME" || exit 1
+    MEMORY_DIR="$T/mem" MEM_DOTFILES_WORKTREE="$T/wt" \
+        "$MEM" learn home-fallback --title "from home" --symptom s --cause c --fix f
+) > "$T/out" 2>&1
+check_rc 0 $? "learn from \$HOME succeeds"
+f="$(ls "$T/wt"/docs/learnings/*-home-fallback.md 2> /dev/null)"
+[ -n "$f" ] && ok "wrote into the edit checkout" || bad "no entry in the worktree: $(cat "$T/out")"
+grep -qF 'home-fallback' "$T/wt/docs/learnings/README.md" && ok "indexed there" || bad "not indexed"
+# The fallback must stay narrow: outside $HOME there is no reason to assume the
+# caller means the dotfiles repo, so this has to keep failing.
+(
+    cd /tmp || exit 1
+    MEMORY_DIR="$T/mem" MEM_DOTFILES_WORKTREE="$T/wt" \
+        "$MEM" learn outside-home --title t --symptom s --cause c --fix f
+) > /dev/null 2>&1
+check_rc 1 $? "still refuses from outside \$HOME"
+
 printf '\n== inbox: append, dedupe, header ==\n'
 setup
 run inbox add bash "rg -r is --replace" > /dev/null

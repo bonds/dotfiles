@@ -133,73 +133,18 @@ skill in the same edit.** `mem doctor` reports the always-loaded budget.
 - **Write multi-line code to a file, not inline.** `python3 -c`, SQL built inside a shell string, and heredocs with nested quotes all fail on an empty or misquoted variable — `WHERE id = $x` silently becomes a syntax error. Assert a value is non-empty before it lands in generated code.
 - **A negative result is not proof.** Empty `rg`/`grep`/`sqlite3` output means the tool found nothing *it could see*: confirm it can read the file before concluding absence, and read a store's source before designing around its schema.
 - Active code repos live in `~/src/` (`~/src/bonds/<name>/`, `~/src/hihello`). `~/Documents/undated/repos/` is an **archive** — read-only reference, never work in it, never delete it; see the `dotfiles-layout` skill.
-  1. `ssh sophrosyne "config pull origin main"`
-  2. The post-receive hook won't fire (it only runs on push), so the work tree will be updated by the checkout. If for some reason the work tree is stale: `ssh sophrosyne "cd ~ && git --git-dir=$HOME/.local/share/dotfiles --work-tree=$HOME checkout -f main"`
-
-### doas privilege escalation
-
-doas is layered: `noPass` rules for `systemctl`, `journalctl`, `nixos-rebuild`
-and `nh` (no TouchID), `pam_ssh_agent_auth` for everything else. Two traps: rule
-matching needs the **full path** (`doas /run/current-system/sw/bin/systemctl
-restart syncthing`, never the bare name), and `args` is an exact match on the
-whole argument list, not a prefix. Agent forwarding is required for the TouchID
-path. Details, including the `/etc/ssh/authorized_keys.d/scott` key file: the
-`machines-and-services` skill.
 
 ## Where tracked files are edited, and how they get applied
 
-Two checkouts of the same bare repo, with different jobs:
+**Tracked-file edits go in `~/.local/share/dotfiles/worktree/` with plain git,
+never in `$HOME`** — `$HOME` is the apply checkout that `nr` builds, and a local
+edit there makes `nr` refuse to apply. Sequence: edit in the worktree → commit →
+push `origin` and `sophrosyne` → `nr`, which applies `main` into `$HOME` itself
+before building.
 
-| path | role |
-|---|---|
-| `$HOME` | **apply target** — where the committed tree is written and `nr` builds; `nr` brings it to `main` itself before building (by hand: `config checkout main -- :/`) |
-| `~/.local/share/dotfiles/worktree` | **edit target** — every edit is made here (a linked worktree of the bare repo) |
-
-Sequence: **edit in `worktree/` → commit → push `origin` and `sophrosyne` → run `nr`.**
-`nr` applies the committed tree into `$HOME` itself before building, so the
-checkout command is rarely typed by hand.
-
-```fish
-# edit and commit in the checkout — plain git, it is a worktree of the same repo
-cd $HOME/.local/share/dotfiles/worktree
-git add .config/fish/conf.d/15-functions.fish
-git commit -m "…"
-git push origin main; and git push sophrosyne main
-
-nr                                   # applies main to $HOME, then builds
-```
-
-`config` is `git --git-dir=~/.local/share/dotfiles/bare --work-tree=$HOME`, so it
-is the alias for the **apply** side and for repo-level queries (`config log`,
-`config push`, `config status`). To stage or commit edits, use plain git in the
-checkout — `config add` there would be staging against `$HOME`, and passing
-`--git-dir=…/bare` is the same mistake: the two checkouts have separate indexes
-(`bare/index` vs `bare/worktrees/worktree/index`), so the explicit form stages
-and commits the *apply* side's view.
-
-The manual apply, if you ever want it (no `cd` needed — `:/` is anchored at the
-top of the work tree, where a plain `.` would be resolved against the cwd):
-
-```fish
-config checkout main -- :/
-```
-
-`nr` also guards the two trees, in ~30 ms:
-
-- **`$HOME` is behind `main`** → `nr` applies it and says
-  `nr: applying <rev> to $HOME`. Nothing to do.
-- **`$HOME` holds local edits** (tracked-file content that appears nowhere in
-  `main`'s history) → `nr` refuses to apply, prints the paths, and builds what is
-  there. That state is either a leftover hand-edit to look at or an `nr --update`
-  retry's uncommitted bumps, which must survive; clearing it is
-  `config checkout main -- :/`.
-- **`worktree/` (edit tree) is dirty or behind** → commit the edits, or sync the
-  tree after a bump was committed from `$HOME`:
-  `git -C ~/.local/share/dotfiles/worktree reset --hard main`.
-
-A `live` worktree under `~/.local/share/dotfiles/live` existed until 2026-10-19
-and was removed because it had drifted to 69 staged files behind `main`, so an
-agent editing it would have committed reverts. The 2026-10-31 layout recreates
-that position deliberately, which is why `worktree/` is the only place edits
-belong and why the two guards exist rather than a rule saying "no second
-checkout".
+`config` is the alias for the **apply** side and for repo-level queries; staging
+or committing through it (or through an explicit `--git-dir=…/bare`) hits
+`$HOME`'s index, not the worktree's. `nr` guards both trees: it applies `$HOME`
+when it is behind `main`, refuses to apply over local edits there, and warns when
+the worktree is dirty or behind. Alias mechanics, the apply recipes, and the
+history behind that layout: the `dotfiles-layout` skill.

@@ -196,8 +196,30 @@ def git_toplevel(start: pathlib.Path | None = None) -> pathlib.Path | None:
     return pathlib.Path(out) if out else None
 
 
+# The dotfiles repo has no .git in $HOME: it is a bare repo with two checkouts
+# ($HOME applies and builds, ~/.local/share/dotfiles/worktree is where edits
+# belong). `git rev-parse --show-toplevel` therefore fails from anywhere under
+# $HOME that is not its own repo, which used to make `mem learn` from `~` die
+# with "not inside a git repository". Fall back to the EDIT checkout — never
+# $HOME, which is the apply tree: writing a learning there makes `nr` refuse to
+# apply over the local edit. Restricted to a cwd under $HOME so that running
+# `mem learn` from /tmp or an unrelated tree still fails loudly instead of
+# silently filing the lesson in the dotfiles repo.
+def dotfiles_edit_checkout() -> pathlib.Path | None:
+    cwd = pathlib.Path.cwd()
+    if cwd != HOME and HOME not in cwd.parents:
+        return None
+    worktree = pathlib.Path(
+        os.environ.get("MEM_DOTFILES_WORKTREE")
+        or HOME / ".local" / "share" / "dotfiles" / "worktree"
+    ).expanduser()
+    return worktree if (worktree / "docs" / "learnings").is_dir() else None
+
+
 def cmd_learn(args) -> int:
     repo = pathlib.Path(args.repo).expanduser() if args.repo else git_toplevel()
+    if repo is None:
+        repo = dotfiles_edit_checkout()
     if repo is None:
         die(
             "not inside a git repository, so there is nowhere for this to live — "
