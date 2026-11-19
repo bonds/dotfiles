@@ -14,7 +14,8 @@
  * that `/distill` drains, not here.
  *
  * No model calls. Refuses outside a git repository, because a learning with no
- * repo to travel with is not worth writing.
+ * repo to travel with is not worth writing — except from `$HOME`, where the
+ * dotfiles edit checkout is the obvious home (see `dotfilesEditCheckout`).
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -54,6 +55,23 @@ function repoRoot(from: string): string | undefined {
 		if (parent === dir) return undefined;
 		dir = parent;
 	}
+}
+
+/**
+ * The dotfiles repo has no `.git` in `$HOME` (bare repo, two checkouts), so the
+ * walk above finds nothing there and a lesson with an obvious home was refused.
+ * Fall back to the EDIT checkout — never `$HOME`, which is the apply tree `nr`
+ * builds: writing there makes `nr` refuse to apply over the local edit. Kept to
+ * a cwd under `$HOME`, so an unrelated directory still fails loudly instead of
+ * filing the note in the dotfiles repo. Mirrors `dotfiles_edit_checkout()` in
+ * `bin/mem`; `MEM_DOTFILES_WORKTREE` overrides it for tests.
+ */
+function dotfilesEditCheckout(from: string): string | undefined {
+	const home = process.env.HOME;
+	if (!home) return undefined;
+	if (from !== home && !from.startsWith(`${home}/`)) return undefined;
+	const worktree = process.env.MEM_DOTFILES_WORKTREE || join(home, ".local/share/dotfiles/worktree");
+	return existsSync(join(worktree, "docs/learnings")) ? worktree : undefined;
 }
 
 function today(): string {
@@ -117,10 +135,10 @@ export default function (pi: ExtensionAPI) {
 				throw new Error("learning: title, symptom, cause and fix are all required");
 			}
 
-			const root = repoRoot(ctx.cwd);
+			const root = repoRoot(ctx.cwd) ?? dotfilesEditCheckout(ctx.cwd);
 			if (!root) {
 				throw new Error(
-					`learning: ${ctx.cwd} is not inside a git repository, so there is nowhere for this to live. Agent-behaviour lessons go to the shared inbox (~/.local/share/agents/memory/inbox.md) via 'mem inbox add <kind> "…"'; /learn is for a note without an index.`,
+					`learning: ${ctx.cwd} is not inside a git repository, so there is nowhere for this to live. From $HOME the dotfiles edit checkout (~/.local/share/dotfiles/worktree) is used; elsewhere, run it from the repo. Agent-behaviour lessons go to the shared inbox (~/.local/share/agents/memory/inbox.md) via 'mem inbox add <kind> "…"'; /learn is for a note without an index.`,
 				);
 			}
 
