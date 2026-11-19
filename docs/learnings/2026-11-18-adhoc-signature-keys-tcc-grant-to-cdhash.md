@@ -97,6 +97,16 @@ touched: the build now fails if the requirement regresses to cdhash-based, and
 embedded one bare — the check in `bin/photo-export-grant-check` strips the
 prefix rather than assuming it.
 
+**The recorded grant can go stale without the app being blocked.** TCC keeps an
+`AdhocSignatureCache` next to `TCC.db`, and on 2026-11-19 02:00 the nightly run
+was authorized against a *cdhash-based* stored `csreq` after the binary had been
+rebuilt with the new identifier requirement — the row only caught up at 05:11,
+when the next launch rewrote it (`auth initial=0`, `attempt1=3`). So
+`photo-export-grant-check` is deliberately conservative: a warning means "the
+recorded requirement no longer matches this build", which TCC *may* still
+tolerate, not "the backup is definitely broken". Treat it as a prompt to click
+Allow while you are at the machine, not as a proven outage.
+
 Third gotcha, which cost a build: **`codesign -r` needs a leading `=` for an
 inline requirement.** Without it the value is read as a *path to a file*
 containing the requirement, so the build fails with

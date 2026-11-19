@@ -58,7 +58,9 @@ codesign -d -r- ~/Applications/"Home Manager Apps"/photo-export.app
   `docs/learnings/2026-11-18-adhoc-signature-keys-tcc-grant-to-cdhash.md`.
 - `~/bin/photo-export-grant-check` compares the recorded grant against the
   installed bundle, and `nr` runs it after a successful switch, so a lost grant
-  is reported at rebuild time instead of by the 30h monitor.
+  is reported at rebuild time instead of by the 30h monitor. It is
+  conservative: TCC may still allow a rebuild whose recorded requirement is
+  stale, so a warning means "click Allow now", not "the backup is broken".
 - Developer ID signing would also anchor it to a Team ID, but the
   identifier-only requirement removes the per-build churn with no Keychain
   certificate to provision.
