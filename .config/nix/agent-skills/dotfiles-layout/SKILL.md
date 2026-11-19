@@ -90,12 +90,11 @@ automatic:
   bump was committed from `$HOME`: `git -C ~/.local/share/dotfiles/worktree
   reset --hard main`.
 
-A `live` worktree under `~/.local/share/dotfiles/live` existed until 2026-10-19
-and was removed because it had drifted to 69 staged files behind `main`, so an
-agent editing it would have committed reverts. The 2026-10-31 layout recreates
-that position deliberately, which is why `worktree/` is the only place edits
-belong and why the two guards exist rather than a rule saying "no second
-checkout".
+A third checkout, `live`, at `~/.local/share/dotfiles/live` was removed on
+2026-10-19 because it had drifted to 69 staged files behind `main`, so an agent
+editing it would have committed reverts. The 2026-10-31 layout recreates that
+position deliberately, which is why `worktree/` is the only place edits belong
+and why the two guards exist rather than a rule saying "no second checkout".
 
 ### Shell
 - `.zshrc` — minimal zsh entry point (sources nix, execs fish)
