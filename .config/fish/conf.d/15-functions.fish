@@ -96,21 +96,13 @@ function nr
     else if not test -d $_nr_git
         set _nr_git $HOME/.config/dotfiles
     end
-    # ---- undo an interrupted --update, then guard both checkouts ------------
-    # An interrupted --update leaves the files IT wrote modified in $HOME: the
-    # update scripts rewrite flake-pins.json, `nix flake update` rewrites
-    # flake.lock, nr-pins renders flake.nix. The guard cannot tell that from hand
-    # work, so it refused to apply main and the re-run quietly built the stale
-    # tree. Put those files back to main first, so a re-run starts where a clean
-    # run would; a real edit is still left for the guard to judge.
-    if contains -- --update $argv; and test -x $HOME/bin/nr-update-recover
-        $HOME/bin/nr-update-recover
-    end
     # ---- guard both checkouts before building -------------------------------
     # Bring $HOME up to `main` (the apply step, done for you) unless it holds
     # local edits, and say when worktree/ (the edit tree) must not be committed
     # from. That logic is git plumbing with enough edge cases to deserve tests,
-    # so it lives in bin/nr-guard; see bin/tests/nr-guard-test.sh.
+    # so it lives in bin/nr-guard; see bin/tests/nr-guard-test.sh. It also undoes
+    # an interrupted --update's own half-written files before judging $HOME —
+    # there rather than here, so it never depends on how old this function is.
     if test -x $HOME/bin/nr-guard
         if not $HOME/bin/nr-guard
             return 1
