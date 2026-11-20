@@ -198,6 +198,12 @@ printf 'c-next\n' >"$WTDIR/sub/c.conf"
 guard
 expect_out "edit on current main is uncommitted work" 'worktree/ \(edit tree\) has uncommitted changes'
 expect_no_out "edit on current main is not stale" 'only STALE'
+# A dirty edit tree does not block a build, and must not read as though it does:
+# `nr` was cancelled at this line once, on a run that would have worked.
+expect_out "a dirty edit tree is a note, not a warning" '^nr: note: worktree/'
+expect_no_out "a dirty edit tree does not say WARNING" 'nr: WARNING worktree/'
+expect_out "a dirty edit tree says the run is unaffected" 'this run does not use it'
+expect_out "the run ends with a verdict" 'nr: continuing -- nothing above blocks this build'
 
 # 5d. The real accismus layout: the edit worktree shares main's ref (it has no
 #     `edit` branch), so a $HOME-side commit moves HEAD without touching the
@@ -227,7 +233,7 @@ expect_no_out "detached real edit is not stale" 'only STALE'
 setup
 printf 'c-next\n' >"$WTDIR/sub/c.conf"
 guard
-expect_out "tracked edit in the edit tree warns" 'worktree/ \(edit tree\) has uncommitted changes'
+expect_out "tracked edit in the edit tree is noted" 'worktree/ \(edit tree\) has uncommitted changes'
 expect_no_out "tracked edit not called stale" 'only STALE'
 
 # 7. Edit worktree behind main.
@@ -235,7 +241,7 @@ setup
 main_from a.conf 'a2
 '
 guard
-expect_out "behind edit tree warns" 'worktree/ \(edit tree\) is behind main'
+expect_out "behind edit tree is noted" 'worktree/ \(edit tree\) is behind main'
 
 # 8. No dotfiles repo at all: nothing to guard, and it says so rather than
 #    letting a path-resolution failure disable the guards silently.

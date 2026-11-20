@@ -54,6 +54,17 @@ edit_tree=$root/.local/share/dotfiles/worktree
 g() { git -C "$root" --git-dir="$git_dir" --work-tree="$root" "$@"; }
 e() { git -C "$edit_tree" "$@"; }
 
+# Everything below is advice: this script exits 0 unless git itself failed, so a
+# message must not read like a stop sign. `note:` marks the things nr does not
+# act on — the edit tree is never built from — and `say` remembers that anything
+# was said at all, so the run ends with a verdict. On 2026-11-20 a `nr --update`
+# was cancelled at the first warning line, on a run that would have worked.
+announced=no
+say() {
+	printf "$@" >&2
+	announced=yes
+}
+
 # Positions of main whose content can explain what the work trees hold: the
 # reflog, plus -- when the edit checkout has a branch of its own -- that branch.
 # The branch matters because it does not move when main does: it is the ref an
@@ -164,16 +175,16 @@ if [ -n "$(g status --porcelain --untracked-files=no 2>/dev/null)" ]; then
 		# -- those are the local edits -- and build what is there: an
 		# `nr --update` retry has to rebuild the uncommitted bumps it just left in
 		# $HOME, so stopping here would deadlock that path.
-		printf 'nr: WARNING %s has local edits to tracked files -- not applying main:\n' "$root" >&2
+		say 'nr: WARNING %s has local edits to tracked files -- not applying main:\n' "$root"
 		shown=0
 		for p in ${present[@]+"${present[@]}"}; do
 			if ! find_position "$p" >/dev/null; then
-				printf 'nr:           %s\n' "$p" >&2
+				say 'nr:           %s\n' "$p"
 				shown=$((shown + 1))
 				[ "$shown" -lt 8 ] || break
 			fi
 		done
-		printf '%s\n' 'nr:           building what is there; to discard them: config checkout main -- :/' >&2
+		say '%s\n' 'nr:           building what is there; to discard them: config checkout main -- :/'
 	fi
 fi
 
@@ -217,20 +228,24 @@ if [ -d "$edit_tree" ]; then
 			fi
 		fi
 		if [ "$wt_stale" = yes ]; then
-			printf '%s\n' 'nr: WARNING worktree/ (edit tree) is only STALE -- its files/index match an earlier main.' >&2
-			printf '%s\n' 'nr:           Do not commit here (that reverts the $HOME-side commit). Sync:' >&2
-			printf 'nr:           git -C %s reset --hard main\n' "$edit_tree" >&2
+			say '%s\n' 'nr: note: worktree/ (edit tree) is only STALE -- its files/index match an earlier main.'
+			say '%s\n' 'nr:       do not commit there (that reverts the $HOME-side commit); sync:'
+			say 'nr:       git -C %s reset --hard main\n' "$edit_tree"
 		else
-			printf '%s\n' 'nr: WARNING worktree/ (edit tree) has uncommitted changes -- commit or stash them' >&2
-			printf '%s\n' "nr:           (a plain 'reset --hard main' would discard them)" >&2
+			say '%s\n' 'nr: note: worktree/ (edit tree) has uncommitted changes -- this run does not use it'
+			say '%s\n' "nr:       commit or stash them before you next edit there (a plain 'reset --hard main' would discard them)"
 		fi
 	else
 		wt_head=$(e rev-parse HEAD 2>/dev/null)
 		if [ -n "$wt_head" ] && [ -n "$main" ] && [ "$wt_head" != "$main" ]; then
-			printf '%s\n' 'nr: WARNING worktree/ (edit tree) is behind main -- sync it:' >&2
-			printf 'nr:           git -C %s pull --ff-only\n' "$edit_tree" >&2
+			say '%s\n' 'nr: note: worktree/ (edit tree) is behind main -- sync it:'
+			say 'nr:       git -C %s pull --ff-only\n' "$edit_tree"
 		fi
 	fi
 fi
+
+# The verdict. Without it the last line of a warning block reads as a stop sign,
+# which is how a run gets cancelled for no reason.
+[ "$announced" = yes ] && printf '%s\n' 'nr: continuing -- nothing above blocks this build' >&2
 
 exit 0
