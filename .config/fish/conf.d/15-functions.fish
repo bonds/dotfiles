@@ -65,8 +65,20 @@ function nr
     # survives and can be inspected afterwards.
     if not status is-interactive; and not set -q TMUX; and not set -q NR_TMUX_GUARD
         set -x NR_TMUX_GUARD 1
+        # An existing session means a run that has not finished. Reporting it as
+        # "started" made a retried run look like it had done the work when it had
+        # done nothing at all — the worst possible answer after an interruption.
+        if tmux has-session -t nr-build 2>/dev/null
+            echo "nr: a run is already in the 'nr-build' session — not starting another" >&2
+            echo "nr: peek with:    tmux capture-pane -e -t nr-build -p | tail -30" >&2
+            echo "nr: if that session is a leftover: tmux kill-session -t nr-build" >&2
+            return 1
+        end
         set -l _nr_cmd "nr $argv"
-        tmux new-session -d -s nr-build "fish -c '$_nr_cmd'"
+        if not tmux new-session -d -s nr-build "fish -c '$_nr_cmd'"
+            echo "nr: could not start the tmux session 'nr-build'" >&2
+            return 1
+        end
         echo "nr: started in tmux session 'nr-build'"
         echo "nr: attach with:  tmux attach -t nr-build"
         echo "nr: peek with:    tmux capture-pane -e -t nr-build -p | tail -30"
@@ -83,6 +95,16 @@ function nr
         set _nr_git $_nr_git/bare
     else if not test -d $_nr_git
         set _nr_git $HOME/.config/dotfiles
+    end
+    # ---- undo an interrupted --update, then guard both checkouts ------------
+    # An interrupted --update leaves the files IT wrote modified in $HOME: the
+    # update scripts rewrite flake-pins.json, `nix flake update` rewrites
+    # flake.lock, nr-pins renders flake.nix. The guard cannot tell that from hand
+    # work, so it refused to apply main and the re-run quietly built the stale
+    # tree. Put those files back to main first, so a re-run starts where a clean
+    # run would; a real edit is still left for the guard to judge.
+    if contains -- --update $argv; and test -x $HOME/bin/nr-update-recover
+        $HOME/bin/nr-update-recover
     end
     # ---- guard both checkouts before building -------------------------------
     # Bring $HOME up to `main` (the apply step, done for you) unless it holds
@@ -370,11 +392,23 @@ function nr
                 set _nr_msg "nr --update: keep the last-good pin for a bad dependency bump + bump nightly dependency versions"
             end
             git --git-dir=$_nr_git --work-tree=$HOME commit -m "$_nr_msg"
+        end
+        # Push whatever the branch holds, not just what this run committed. An
+        # interrupted run — or a push whose TouchID prompt went unanswered —
+        # leaves the bump committed and unpushed, and the old shape skipped the
+        # push whenever there was nothing NEW to commit, so that commit stayed
+        # unpushed forever. Keyed on being ahead, so a re-run finishes the job.
+        set -l _nr_ahead 1
+        if git --git-dir=$_nr_git --work-tree=$HOME rev-parse --verify -q origin/main >/dev/null 2>&1
+            set _nr_ahead (git --git-dir=$_nr_git --work-tree=$HOME rev-list --count origin/main..HEAD 2>/dev/null)
+            test -n "$_nr_ahead"; or set _nr_ahead 1
+        end
+        if test "$_nr_ahead" != 0
+            git --git-dir=$_nr_git --work-tree=$HOME push origin
+            or echo "nr: push to origin FAILED — the bump is committed but not pushed; re-run nr" >&2
             if test "$_os" = darwin
-                git --git-dir=$_nr_git --work-tree=$HOME push origin
                 git --git-dir=$_nr_git --work-tree=$HOME push sophrosyne
-            else
-                git --git-dir=$_nr_git --work-tree=$HOME push origin
+                or echo "nr: push to sophrosyne FAILED — the bump is committed but not pushed; re-run nr" >&2
             end
         end
     else if test "$_nr_update" = yes

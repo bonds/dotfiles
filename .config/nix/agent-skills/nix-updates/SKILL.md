@@ -39,6 +39,35 @@ a flake input. `nr-pins` (`.config/nix/nr-pins`) gives all three a way back.
   run each overlay's hook against the freshly built store path, revert on
   failure. `--all` audits every overlay instead of only the bumped ones.
 
+## Recovering from an interrupted run
+
+`nr --update` writes into `$HOME`, so an interruption leaves half-written update
+output there: `flake-pins.json` from the update scripts, `flake.lock` from
+`nix flake update`, `flake.nix` from `nr-pins`. Without a recovery step the guard
+cannot tell that from hand work, refuses to apply `main`, and the re-run quietly
+builds the stale tree.
+
+`bin/nr-update-recover` runs first, and only when `--update` is given. It
+restores those three files from `main` — the update re-derives them a moment
+later — and touches nothing else: an overlay pin or a mid-edit `nr-pins` is work,
+so the guard judges it exactly as before. Tests:
+`bin/tests/nr-update-recover-test.sh`.
+
+Two other shapes of "it was interrupted, run it again":
+
+- **Committed but not pushed** — killed between commit and push, or a TouchID
+  prompt that went unanswered. The push is keyed on the branch being *ahead* of
+  `origin/main`, not on this run having committed, so a re-run finishes it. The
+  corollary: `nr --update` will also push unrelated commits that are sitting
+  unpushed on `main`.
+- **A live `nr-build` tmux session** — `nr` now reports that a run is already in
+  it, instead of printing "started" for a session it did not create. That false
+  success made a retry look like it had done the work when it had done nothing.
+
+What still needs a human: a build failure the pipeline cannot explain (our own
+modules, a stale FOD hash, an eval error) is left alone on purpose, so re-running
+fails the same way.
+
 ## Invariants that keep this safe
 
 - **The registry is the source of truth for `flake.nix`.** The block between
@@ -100,10 +129,11 @@ must warn, not fail, or an offline `nr --update` reverts a good release.
   in ~1 min, never touches the real flake. Run it after *any* edit to `nr-pins`,
   its tests, or a hook: a collapsed line once merged `revert_overlay`'s
   `local dir=…` into a comment, and only the suite caught it.
-- **Commit or stash work in progress before `nr --update`.** It commits
+- **Commit or stash real work in progress before `nr --update`.** It commits
   `flake.lock`, `flake-pins.json`, `nr-pins`, `nr-pins-tests.sh` and every
   overlay it bumped, under one fixed message. `5824dcd` is the scar: it captured
-  a mid-edit `nr-pins` whose revert path was broken.
+  a mid-edit `nr-pins` whose revert path was broken. The update's *own* files are
+  recovered automatically (see above); a hand edit is not.
 - **Verify a hook by hand** without switching:
   `bash .config/nix/nr-pins verify --all /run/current-system`.
 - Manual recovery, when nothing automatic applies: `git revert` the bump
