@@ -253,5 +253,32 @@ grep -q 'flock: command not found' "$f" && ok "quotes the matching line" || bad 
 runp backfill-evidence > "$T/out" 2>&1
 grep -q 'already had it' "$T/out" && ok "re-running does not duplicate the section" || bad "no skip count"
 
+printf '\n== doctor freshness: a no-op ingest is not a stale archive ==\n'
+# The archive's own `updated` stamp only moves when a session CHANGES, so a
+# harness nobody used for a few days looked stale while the nightly job was
+# healthy (2026-11-20: opencode "4d" against "522 unchanged" every night).
+# Freshness must follow the run stamp, which lives outside the archive repo.
+mkdir -p "$T/raw/state" "$T/state" "$T/wired"
+printf '{"v":1,"updated":"2020-01-01T00:00:00","sessions":{}}\n' > "$T/raw/state/opencode.json"
+printf '{"opencode":{"ran":"%s","processed":0,"skipped":522}}\n' \
+    "$(date +%Y-%m-%dT%H:%M:%S)" > "$T/state/ingest-runs.json"
+MEMORY_RAW="$T/raw" MEM_DOCTOR_AGENTS="$T/absent.md" MEM_DOCTOR_SKILLS="$T/skills" \
+    MEM_DOCTOR_WIRED="$T/wired" "$MEM" doctor > "$T/out" 2>&1
+check_rc 0 $? "clean fixture passes (a fresh run is not a failure)"
+grep -qE '^  ok +opencode: last run' "$T/out" \
+    && ok "a recent run is fresh even with an old archive stamp" \
+    || bad "run stamp ignored: $(grep opencode "$T/out")"
+grep -q 'last change 2020-01-01' "$T/out" \
+    && ok "still reports when the archive last changed" \
+    || bad "change stamp lost: $(grep opencode "$T/out")"
+# And the reverse: a stale run must still warn, so a broken importer is visible.
+printf '{"opencode":{"ran":"2020-01-01T00:00:00","processed":0,"skipped":0}}\n' \
+    > "$T/state/ingest-runs.json"
+MEMORY_RAW="$T/raw" MEM_DOCTOR_AGENTS="$T/absent.md" MEM_DOCTOR_SKILLS="$T/skills" \
+    MEM_DOCTOR_WIRED="$T/wired" "$MEM" doctor > "$T/out" 2>&1
+grep -qE '^  warn +opencode: last run' "$T/out" \
+    && ok "a stale run still warns" \
+    || bad "stale run not flagged: $(grep opencode "$T/out")"
+
 printf '\n== summarized: %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

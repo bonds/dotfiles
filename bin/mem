@@ -526,6 +526,16 @@ def cmd_recall(args) -> int:
 RAW_DIR = pathlib.Path(os.environ.get("MEMORY_RAW") or MEMORY_DIR.parent / "raw")
 GENESIS = "mem-archive-v1"
 
+# Where the importer records that it RAN, as opposed to what it changed. The
+# archive is a git repo whose clean `git status` doubles as an idempotence check,
+# so a no-op ingest deliberately leaves its state files untouched (see
+# _finish_ingest) — which means a harness state's `updated` stamp only says when
+# the archive last *changed*. A harness nobody has used for a few days therefore
+# looks stale to `mem doctor` even though the nightly run succeeds (2026-11-20:
+# opencode reported 3d old while every nightly reported "522 unchanged"). This
+# file lives outside the archive, so writing it on every run is free.
+RUN_STATE = RAW_DIR.parent / "state" / "ingest-runs.json"
+
 # Longest and most specific first, so the generic assignment pattern cannot
 # swallow a variable name that a narrower pattern already claimed.
 _SECRETS = [
@@ -1508,12 +1518,33 @@ def _ingest_state(harness: str) -> tuple[pathlib.Path, dict]:
     return path, state
 
 
+def _record_ingest_run(harness: str, processed: int, skipped: int) -> None:
+    runs = {}
+    if RUN_STATE.exists():
+        try:
+            runs = json.loads(RUN_STATE.read_text())
+        except json.JSONDecodeError:
+            runs = {}
+    runs[harness] = {
+        "ran": dt.datetime.now().isoformat(timespec="seconds"),
+        "processed": processed,
+        "skipped": skipped,
+    }
+    RUN_STATE.parent.mkdir(parents=True, exist_ok=True)
+    write_atomic(RUN_STATE, json.dumps(runs, indent=2, sort_keys=True) + "\n")
+
+
 def _finish_ingest(harness, args, state_path, state, processed, turns, created, skipped) -> int:
-    # Only touch state when something changed, so a no-op run leaves the archive
-    # repo clean — that is what makes `git status` usable as an idempotence check.
-    if not args.dry_run and processed:
-        state["updated"] = dt.datetime.now().isoformat(timespec="seconds")
-        write_atomic(state_path, json.dumps(state, indent=2, sort_keys=True) + "\n")
+    # Only touch the archive's state when something changed, so a no-op run leaves
+    # the archive repo clean — that is what makes `git status` usable as an
+    # idempotence check. The run stamp lives outside the archive and is written
+    # every time, so "ran and found nothing" stays distinguishable from "did not
+    # run" (which is what `mem doctor` needs to know).
+    if not args.dry_run:
+        if processed:
+            state["updated"] = dt.datetime.now().isoformat(timespec="seconds")
+            write_atomic(state_path, json.dumps(state, indent=2, sort_keys=True) + "\n")
+        _record_ingest_run(harness, processed, skipped)
     verb = "would ingest" if args.dry_run else "ingested"
     print(f"mem: {verb} {processed} {harness} session(s): {turns} turn(s), "
           f"{created} new message(s), {skipped} unchanged")
@@ -2766,13 +2797,32 @@ def cmd_doctor(args) -> int:
     # time, so this is the check that would have caught yesterday's data being
     # served today.
     now = dt.datetime.now()
+    runs = {}
+    if RUN_STATE.exists():
+        try:
+            runs = json.loads(RUN_STATE.read_text())
+        except json.JSONDecodeError:
+            runs = {}
     for harness in ("pi", "opencode", "hermes", "osaurus"):
         state_file = RAW_DIR / "state" / f"{harness}.json"
-        if not state_file.exists():
+        changed = ""
+        if state_file.exists():
+            try:
+                changed = str(json.loads(state_file.read_text()).get("updated") or "")
+            except (ValueError, json.JSONDecodeError):
+                findings.append(("warn", "freshness", f"{harness}: unreadable ingest state"))
+                continue
+        # Judge freshness by when the importer last RAN, not when the archive last
+        # changed: a harness you have not used for a few days ingests 0 sessions
+        # and, by design, touches nothing, so its state stamp goes stale while the
+        # nightly job is perfectly healthy. Fall back to the archive stamp for a
+        # harness that has no run record yet.
+        ran = str((runs.get(harness) or {}).get("ran") or "")
+        stamped = ran or changed
+        if not stamped:
             findings.append(("warn", "freshness", f"{harness}: never ingested"))
             continue
         try:
-            stamped = str(json.loads(state_file.read_text()).get("updated") or "")
             when = dt.datetime.fromisoformat(stamped)
         except ValueError:
             findings.append(("warn", "freshness", f"{harness}: unreadable ingest state"))
@@ -2780,9 +2830,10 @@ def cmd_doctor(args) -> int:
         sessions = list((RAW_DIR / "sessions" / harness).glob("*/*/*/session.json"))
         age = now - when
         level = "warn" if age > dt.timedelta(days=3) else "ok"
-        findings.append((level, "freshness",
-                         f"{harness}: last ingest {stamped[:16]} ({age.days}d), "
-                         f"{len(sessions)} sessions"))
+        detail = f"last run {stamped[:16]} ({age.days}d)"
+        if changed and changed != stamped:
+            detail += f", last change {changed[:10]}"
+        findings.append((level, "freshness", f"{harness}: {detail}, {len(sessions)} sessions"))
 
     missing = drifted = 0
     for manifest_file in RAW_DIR.glob("sessions/*/*/*/*/session.json"):
