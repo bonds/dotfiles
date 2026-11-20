@@ -60,4 +60,5 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-14 — `nr`'s checkout guards now live in `bin/nr-guard`](2026-11-14-nr-guard-extraction.md)
 - [2026-11-15 — sleepwatcher's wake hook can remount a drive across a sleep it never hears about](2026-11-15-sleepwatcher-display-sleep-hooks.md)
 - [2026-11-15 — A `$HOME`-side commit leaves the edit worktree's index looking like a staged revert](2026-11-15-worktree-index-stale-after-home-commit.md)
+- [2026-11-17 — Hermes prices Deep Infra at list, and a `$HERMES_HOME` provider plugin is where you fix it](2026-11-17-hermes-cost-is-list-price.md)
 - [2026-11-18 — An ad-hoc signature keys the Photos TCC grant to the cdhash, so every rebuild needs a re-grant](2026-11-18-adhoc-signature-keys-tcc-grant-to-cdhash.md)
