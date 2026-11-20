@@ -133,6 +133,22 @@ index_matches_position() {
 	return 1
 }
 
+# ---- undo an interrupted update's own files -----------------------------
+# `nr --update` writes into $HOME: the update scripts rewrite flake-pins.json and
+# the overlay pins, `nix flake update` rewrites flake.lock, nr-pins renders
+# flake.nix. Interrupt it and those half-written files are still there, and the
+# checks below cannot tell them from hand work — so they refuse to apply main and
+# the re-run quietly builds a stale tree. Put them back to main first (the
+# pipeline is their only writer), then judge what is left.
+#
+# This lives here, not in the `nr` function, because nr executes this script by
+# path on every run: it is always the applied copy, whatever age the calling
+# shell's function definitions are. On 2026-11-20 a re-run skipped it because the
+# shell held an older `nr`.
+if [ -x "$root/bin/nr-update-recover" ]; then
+	"$root/bin/nr-update-recover"
+fi
+
 # ---- apply tree: bring $HOME up to main ---------------------------------
 if [ -n "$(g status --porcelain --untracked-files=no 2>/dev/null)" ]; then
 	# Paths an apply would change: compare the work tree with main, ignoring the

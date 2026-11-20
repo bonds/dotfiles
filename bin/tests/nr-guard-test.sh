@@ -251,5 +251,21 @@ guard
 expect_exit "no repo" 0
 expect_out "no repo is announced" 'no dotfiles repo at .* -- skipping the checkout guards'
 
+# 8. An interrupted --update's own files are undone before $HOME is judged, and
+#    the guard does it rather than the `nr` function: the guard is executed by
+#    path on every run, so it is always the applied copy. On 2026-11-20 a re-run
+#    skipped the recovery because the shell held an older `nr` definition.
+setup
+mkdir -p "$T/bin"
+printf '#!/bin/sh\ntouch %s\n' "$T/recovered" >"$T/bin/nr-update-recover"
+chmod +x "$T/bin/nr-update-recover"
+guard
+expect_exit "recovery does not disturb the verdict" 0
+[ -f "$T/recovered" ] && ok "the guard runs nr-update-recover" || bad "recovery was not run"
+# And its absence is not an error: a $HOME predating the script still guards.
+setup
+guard
+expect_exit "no recovery script is not an error" 0
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
