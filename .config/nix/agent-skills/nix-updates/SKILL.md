@@ -48,10 +48,24 @@ cannot tell that from hand work, refuses to apply `main`, and the re-run quietly
 builds the stale tree.
 
 `bin/nr-update-recover` runs first, and only when `--update` is given. It
-restores those three files from `main` — the update re-derives them a moment
-later — and touches nothing else: an overlay pin or a mid-edit `nr-pins` is work,
-so the guard judges it exactly as before. Tests:
-`bin/tests/nr-update-recover-test.sh`.
+restores every update-managed file that differs from `main` — the update
+re-derives them a moment later — and `nr` takes its `git add` list from the same
+place (`--paths`), so what gets reset and what gets committed cannot drift apart.
+Tests: `bin/tests/nr-update-recover-test.sh`.
+
+Versions of update-managed packages are **never hand-edited** here, so the list is
+**derived, not written out**: every directory holding an `update.sh` contributes
+the pin file that script names, and the rest is `flake.lock`, `flake-pins.json`
+and the rendered `flake.nix`. That is not tidiness — a hardcoded list is what left
+`pkgs/swival/sources.nix` uncommitted on every swival bump, so each bump dirtied
+`$HOME` and the next plain `nr` refused to apply `main`. A new overlay or package
+is now covered the day it lands.
+
+Deliberately excluded, because restoring them could throw away real work:
+`nr-pins` / `nr-pins-tests.sh` (scripts, hand-edited — `nr` commits them but never
+restores them, `5824dcd`), `pkgs/pi` (its updater moves a registry rev; the package
+definition is hand-written), and anything outside `.config/nix` (an update never
+writes it, so the guard judges it as before).
 
 Two other shapes of "it was interrupted, run it again":
 
