@@ -1,6 +1,6 @@
 ---
 name: pi-harness
-description: "How this machine's pi coding agent is configured: the extensions (safety guards, cost reporting, learnings capture, session recall), the prompt templates (/review /ship /nr /learn /distill), models.json and Deep Infra pricing, mcp.json, settings.json merging, and the skills wiring for every harness. Use when editing pi config, adding an extension, skill or prompt, debugging a missing tool or wrong cost, or asking how pi learns from past sessions."
+description: "How this machine's pi coding agent is configured: the extensions (safety guards, cost reporting, learnings capture, session recall), the prompt templates (/review /ship /nr /learn /distill), models.json and Deep Infra pricing, mcp.json, settings.json merging, the skills wiring for every harness, and the OMP (oh-my-pi) fork installed alongside pi. Use when editing pi config, adding an extension, skill or prompt, debugging a missing tool or wrong cost, or asking how pi learns from past sessions."
 ---
 
 Everything is declared in `.config/nix/pkgs/pi/` and symlinked read-only into
@@ -99,6 +99,51 @@ runs download → transcribe → vision → summary in the background, which tak
 wait (a long `sleep` in bash — codemode has no timers) before polling
 `get_reel_summary`; tight polling only burns tokens on `running` statuses.
 
+## OMP (`oh-my-pi`)
+
+`omp` is can1357's fork of pi (Stencil Labs, omp.sh), installed **alongside** pi
+on accismus by `modules/home/omp.nix`. Same provider, same default model, own
+config tree — it does not read or write `~/.pi`.
+
+| Path | What |
+|---|---|
+| `pkgs/omp/` | the PREBUILT release binary, bumped by `nr --update` via its `update.sh` (version + SRI from the release's `SHA256SUMS.txt`) |
+| `~/.omp/agent/models.yml` | read-only symlink, generated from `lib/deepinfra-models.nix` |
+| `~/.omp/agent/config.yml` | copied at activation (`install`), never symlinked |
+
+Not upstream's `packages.omp`: that builds bun + ~80k lines of Rust through
+crane with no substituter, i.e. a long local build on every bump. The prebuilt
+asset is a single self-contained bun executable, and `dontStrip`/`dontFixup` in
+`pkgs/omp/default.nix` are load-bearing — stripping a signed Mach-O invalidates
+its signature and the kernel kills it on exec.
+
+`lib/deepinfra-models.nix` is the single source of truth for the Deep Infra
+block; `pi.nix` and `omp.nix` both consume it, so models, list prices and the
+`!command` API-key reference cannot drift. OMP ships its own `deepinfra`
+catalog slice — our five ids override it (verified: the 1017 keeps our 1M
+`maxTokens` and list prices).
+
+Model choice is `modelRoles` (`default`/`smol`/`slow`/`plan`), **not** a
+defaultModel key. Set `smol`/`slow`/`plan` explicitly: an unset role resolves
+against OMP's built-in provider priorities (anthropic/openai/…), which have no
+credentials here. `config.yml` must stay a writable regular file — OMP takes an
+advisory lock on it and rewrites it at runtime (`/settings`, the `/models`
+roles view, onboarding), and a `/nix/store` symlink breaks every launch with
+EACCES. `startup.checkUpdate` is off (nix pins the binary); `autolearn` is off
+by default, so OMP never writes skills of its own.
+
+Skills need no setting: OMP's default `agents` provider reads
+`~/.agents/skills`. Its `~/.omp/agent/skill-descriptions.db` cache fills one
+batch per session, so a skill missing from that table after the first run is
+not a discovery bug — run once more before debugging.
+
+Test without touching `~/.omp` by pointing it at a scratch agent dir:
+
+```bash
+PI_CODING_AGENT_DIR=/tmp/omptest/agent omp models find MiMo
+PI_CODING_AGENT_DIR=/tmp/omptest/agent omp -p "reply with exactly: ok"
+```
+
 ## Skills wiring
 
 Canonical skills: `.config/nix/agent-skills/<name>/SKILL.md`. One symlink per
@@ -107,6 +152,7 @@ skill, per harness, so each harness keeps its own directory real:
 | Harness | Directory |
 |---|---|
 | pi / Agent Skills standard | `~/.agents/skills/` (pi reads it natively — do **not** also link `~/.pi/agent/skills`, the duplicate makes every skill collide) |
+| OMP | `~/.agents/skills/` too — its default `agents` provider, no config needed |
 | Claude Code | `~/.claude/skills/` |
 | opencode | `~/.config/opencode/skills/` |
 | Hermes | `~/.hermes/skills/dotfiles/` (category dir + `DESCRIPTION.md`) |

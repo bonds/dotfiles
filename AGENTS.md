@@ -68,7 +68,8 @@ Declared in `.config/nix/pkgs/pi/` (extensions, prompts, keybindings,
 `modules/home/pi.nix`; only `settings.json` is merged, with `jq`, at activation.
 So **edit the repo, then `nr`** — `pi install` and `pi mcp add` cannot persist.
 The extension inventory, prompt templates, the Deep Infra cost story,
-`mcp.json`, and the skills wiring are in the `pi-harness` skill.
+`mcp.json`, the skills wiring and the OMP fork (`omp`, same provider) are in
+the `pi-harness` skill.
 
 Two rules matter more than the inventory:
 

@@ -64,3 +64,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-18 — An ad-hoc signature keys the Photos TCC grant to the cdhash, so every rebuild needs a re-grant](2026-11-18-adhoc-signature-keys-tcc-grant-to-cdhash.md)
 - [2026-11-21 — `config checkout main -- :/` never deletes, so a dropped package stays built](2026-11-21-apply-checkout-never-deletes.md)
 - [2026-11-21 — `nix flake check --no-build` evaluates the checks and runs none of them](2026-11-21-no-build-never-runs-the-checks.md)
+- [2026-11-21 — A git-backed flake ignores files git does not know about](2026-11-21-flakes-ignore-untracked-files.md)

@@ -229,6 +229,7 @@ in {
         ../../modules/home/ice.nix
         ../../modules/home/launchd-bootout-fix.nix
         ../../modules/home/macos-apps.nix
+        ../../modules/home/omp.nix
         ../../modules/home/photo-export.nix
         ../../modules/home/pi.nix
         ../../modules/home/orca.nix
