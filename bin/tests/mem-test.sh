@@ -112,6 +112,66 @@ run distill > "$T/out" 2>&1
 check_rc 0 $? "distill on empty"
 grep -q 'inbox is empty' "$T/out" && ok "says so" || bad "no message"
 
+printf '\n== capture: refuses credentials, allows patterns ==\n'
+setup
+run inbox add bash "the token was ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" > "$T/out" 2>&1
+check_rc 1 $? "refuses a github token"
+grep -q 'refused' "$T/out" && ok "says refused" || bad "no refusal: $(cat "$T/out")"
+grep -q 'ghp_aaaa' "$T/out" && bad "echoed the secret back" || ok "does not echo the secret"
+grep -q 'already in the inbox' "$T/out" && bad "wrote it anyway" || ok "wrote nothing"
+[ -f "$T/mem/inbox.md" ] && bad "created the inbox" || ok "inbox untouched"
+run inbox add bash "a ghp_ token is 36 characters" > /dev/null 2>&1
+check_rc 0 $? "accepts a description of the shape"
+run inbox add note "export GITHUB_TOKEN=abcdefghijklmnop1234 broke" > "$T/out" 2>&1
+check_rc 1 $? "refuses an env-style assignment"
+run inbox add note "export GITHUB_TOKEN=abcdefghijklmnop1234 broke" --allow-secret > /dev/null 2>&1
+check_rc 0 $? "--allow-secret overrides"
+run learn leaky --repo "$T/repo" --title t --symptom "curl -H 'Authorization: Bearer abcdefghijklmnop1234' 401" \
+    --cause c --fix f > "$T/out" 2>&1
+check_rc 1 $? "refuses a credential in --symptom"
+[ -n "$(ls "$T/repo"/docs/learnings/*-leaky.md 2> /dev/null)" ] && bad "wrote the entry" || ok "wrote no entry"
+run learn leaky --repo "$T/repo" --title t --symptom s --cause c --fix "the bearer header is 16+ chars" \
+    > /dev/null 2>&1
+check_rc 0 $? "a lesson about the header shape still lands"
+
+printf '\n== distill: flags stale candidates ==\n'
+setup
+OLD=$(python3 -c 'import datetime;print((datetime.date.today()-datetime.timedelta(days=40)).isoformat())')
+FRESH=$(python3 -c 'import datetime;print(datetime.date.today().isoformat())')
+printf '%s\n' "- [$OLD 10:00] bash — an old unresolved line" "- [$FRESH 09:00] bash — a fresh one" \
+    > "$T/mem/inbox.md"
+run distill --no-check --json > "$T/out" 2>&1
+check_rc 0 $? "distill --json runs"
+python3 -c "import json;d=json.load(open('$T/out'));assert d['candidates'][0]['stale'] is True" \
+    && ok "flags the 40d-old candidate" || bad "stale not flagged: $(cat "$T/out")"
+python3 -c "import json;d=json.load(open('$T/out'));assert d['candidates'][1]['stale'] is False" \
+    && ok "leaves the fresh one alone" || bad "fresh flagged stale"
+run distill --no-check > "$T/out" 2>&1
+grep -q 'STALE  40d' "$T/out" && ok "prints the age in text mode" || bad "no STALE line"
+run distill --no-check --stale-days 100 > "$T/out" 2>&1
+grep -q 'STALE' "$T/out" && bad "--stale-days ignored" || ok "--stale-days raises the bar"
+
+printf '\n== distill: finds the rule a candidate would contradict ==\n'
+setup
+cat > "$T/rules.md" <<'RULES'
+- Never force-push to a shared remote branch.
+- Prefer rg (ripgrep) and fd over grep and find.
+RULES
+printf '%s\n' "- [$FRESH 10:00] correction — force-push to a shared remote branch is fine for feature work" \
+    "- [$FRESH 10:01] bash — the oven timer beeps twice" > "$T/mem/inbox.md"
+MEM_RULES="$T/rules.md" run distill --json > "$T/out" 2>&1
+check_rc 0 $? "distill with a rules fixture runs"
+python3 -c "import json;d=json.load(open('$T/out'));r=d['candidates'][0]['related'];assert r and r[0]['contradicts'] is True, r" \
+    && ok "flags the polarity clash" || bad "clash missed: $(cat "$T/out")"
+python3 -c "import json;d=json.load(open('$T/out'));assert d['candidates'][1]['related']==[]" \
+    && ok "unrelated candidate stays clean" || bad "false positive on an unrelated line"
+MEM_RULES="$T/rules.md" run distill > "$T/out" 2>&1
+grep -q 'CONTRADICTS?' "$T/out" && ok "labels it in text mode" || bad "no CONTRADICTS? label"
+grep -q 'may contradict a rule that already exists' "$T/out" && ok "summarises the clash count" \
+    || bad "no summary line"
+run distill --no-check > "$T/out" 2>&1
+grep -q 'CONTRADICTS?' "$T/out" && bad "--no-check still scanned" || ok "--no-check skips the scan"
+
 printf '\n== recall: pi sessions, filters, and misses ==\n'
 setup
 mkdir -p "$T/pi/proj"
@@ -126,6 +186,25 @@ run recall "flock nonsense-word" --days 30 > "$T/out" 2>&1
 grep -q 'nothing in the last' "$T/out" && ok "requires every word (no false hit)" || bad "matched a partial query"
 run recall flock --days 0 > "$T/out" 2>&1
 grep -q 'nothing in the last' "$T/out" && ok "respects --days" || bad "--days ignored"
+
+printf '\n== recall: the output budget is enforced ==\n'
+setup
+# One hit per session (a session may contribute at most two), so the budget is
+# what limits the output here, not the per-session cap.
+for n in 1 2 3 4; do
+    mkdir -p "$T/pi/p$n"
+    printf '{"type":"message","id":"b%d","timestamp":"2026-10-23T10:0%d:00.000Z","message":{"role":"assistant","content":[{"type":"text","text":"the budget lesson number %d with enough padding to cost a few tokens"}]}}\n' \
+        "$n" "$n" "$n" > "$T/pi/p$n/budget.jsonl"
+done
+run recall budget --days 30 --tokens 0 --source pi > "$T/out" 2>&1
+check_rc 0 $? "recall --tokens 0 runs"
+[ "$(grep -c 'budget lesson' "$T/out")" -eq 4 ] && ok "--tokens 0 shows every hit" \
+    || bad "expected 4 hits, got $(grep -c 'budget lesson' "$T/out")"
+run recall budget --days 30 --tokens 1 --source pi > "$T/out" 2>&1
+check_rc 0 $? "recall --tokens 1 runs"
+grep -q 'over the 1-token budget' "$T/out" && ok "says what the budget dropped" \
+    || bad "no truncation note: $(cat "$T/out")"
+[ "$(grep -c 'budget lesson' "$T/out")" -lt 4 ] && ok "drops hits over budget" || bad "budget ignored"
 
 printf '\n== recall: opencode and hermes SQLite fixtures ==\n'
 setup

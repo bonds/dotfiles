@@ -24,7 +24,23 @@ mem decisions                                           # ~/DECISIONS.md
 
 `mem recall` searches pi's JSONL sessions, opencode's SQLite and hermes' SQLite
 in one query — use it before re-deriving something you may have already worked
-out. `--source pi|opencode|hermes|all`, `--days`, `--limit`.
+out. `--source pi|opencode|hermes|all`, `--days`, `--limit`, `--tokens`.
+
+## Three guards on the write and read paths
+
+- **Capture refuses credentials.** `inbox add` and `learn` run the same patterns
+the archive redactor uses and exit 1 instead of storing a key. The store is plain
+markdown in a public repo, so a lesson about a token describes the shape ("a
+`ghp_` token"), not the token. `--allow-secret` is for patterns, never for keys.
+- **`distill` flags what has been sitting there.** A candidate older than
+`--stale-days` (default 30) prints `STALE`, and each one is scanned against
+`AGENTS.md`, `DECISIONS.md` and the skills: `CONTRADICTS?` when the pair's
+negation polarity differs, `COVERED?` when a rule already says it. Both are
+prompts for a human, never a decision; `--no-check` skips the scan and `--json`
+emits records.
+- **`recall` has an output budget** (2000 tokens, `--tokens 0` to disable): the
+answer lands in a model's context, so it reports how many hits it dropped rather
+than silently printing 30k tokens of transcript.
 
 ## Two kinds of lesson, two homes
 

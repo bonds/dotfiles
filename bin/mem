@@ -11,13 +11,16 @@ and recallable from any other:
   agent-skills/memory/SKILL.md  the policy: when to capture, how to distill
 
 Subcommands:
-  mem learn <slug> --title T --symptom S --cause C --fix F [--repo DIR]
-  mem inbox add <kind> <text> [--session S]
+  mem learn <slug> --title T --symptom S --cause C --fix F [--repo DIR] [--allow-secret]
+  mem inbox add <kind> <text> [--session S] [--allow-secret]
   mem inbox show
-  mem distill
-  mem recall <query> [--days N] [--limit N] [--source pi|opencode|hermes]
+  mem distill [--json] [--stale-days N] [--no-check]
+  mem recall <query> [--days N] [--limit N] [--tokens N] [--source pi|opencode|hermes]
   mem decisions
   mem help
+
+Capture refuses text that looks like a credential: the inbox is plain text in a
+public repo. Pass --allow-secret only when the value is a pattern, not a key.
 
 Exit codes: 0 ok · 1 nothing to do / refused · 2 usage error.
 """
@@ -137,6 +140,7 @@ def cmd_inbox_add(args) -> int:
     text = " ".join(args.text).strip()
     if not text:
         die("inbox add needs some text", 2)
+    refuse_secrets(text, getattr(args, "allow_secret", False), "this candidate")
     line = f"- [{now_stamp()}] {args.kind} — {text}"
     if args.session:
         line += f" — ~ — session {args.session}"
@@ -161,14 +165,211 @@ def cmd_inbox_show(_args) -> int:
     return 0
 
 
-def cmd_distill(_args) -> int:
+# ----------------------------------------------------------------- distill --
+#
+# Two checks borrowed from the memory platforms this store deliberately does
+# not use (agentmemory's decay and contradiction resolution, cognee's session
+# distillation): a candidate nobody promotes should not sit in the inbox
+# looking current forever, and a candidate the rules already answer — or
+# contradict — is cheaper to resolve now than after it becomes a second,
+# conflicting rule. Both are heuristics that PRINT for a human; neither edits,
+# blocks nor decides anything.
+
+DISTILL_STALE_DAYS = 30
+
+# Strong negations only. A polarity test that also looked for "always/must/use"
+# would fire on nearly every pair, because rules are mostly affirmative; the
+# useful signal is the case where exactly one side of a pair is negated.
+_NEGATION = re.compile(
+    r"\b(?:never|don't|dont|do not|must not|mustn't|should not|shouldn't|avoid|"
+    r"refuse|forbid|forbidden|disable|no longer|stop)\b",
+    re.IGNORECASE,
+)
+
+
+def inbox_date(line: str) -> dt.date | None:
+    """The `- [YYYY-MM-DD HH:MM]` stamp, if the line carries one."""
+    match = re.match(r"- \[(\d{4}-\d{2}-\d{2})", line)
+    if not match:
+        return None
+    try:
+        return dt.date.fromisoformat(match.group(1))
+    except ValueError:
+        return None
+
+
+def rule_paths() -> list[pathlib.Path]:
+    """The documents a candidate must not contradict.
+
+    MEM_RULES (colon-separated files or skill directories) exists so the test
+    suite can check the heuristic against fixtures instead of whatever the
+    machine's real rules happen to say this week.
+    """
+    override = os.environ.get("MEM_RULES")
+    if override:
+        paths: list[pathlib.Path] = []
+        for part in override.split(":"):
+            candidate = pathlib.Path(part).expanduser()
+            if candidate.is_dir():
+                paths.extend(sorted(candidate.glob("*/SKILL.md")))
+            elif candidate.exists():
+                paths.append(candidate)
+        return paths
+    paths = [HOME / "AGENTS.md", HOME / "DECISIONS.md"]
+    paths += sorted((HOME / ".config" / "nix" / "agent-skills").glob("*/SKILL.md"))
+    return [p for p in paths if p.exists()]
+
+
+# Two-letter words that are English glue, not vocabulary. Without this, `rg`,
+# `fd`, `pi` and `ls` — the actual subject of half the rules in AGENTS.md —
+# would be dropped along with `is` and `to`, and a candidate about `rg` would
+# match nothing at all.
+_NOISE = {
+    "is", "in", "it", "to", "of", "on", "or", "at", "as", "be", "by", "do",
+    "if", "no", "so", "up", "us", "we", "an", "my", "me", "am", "not", "now",
+}
+
+
+def content_words(text: str) -> set[str]:
+    """Words worth matching on: lower-case, long enough, not glue."""
+    return {
+        word
+        for word in re.findall(r"[a-z0-9][a-z0-9._/+-]*", text.lower())
+        if len(word) > 2 or (len(word) == 2 and word not in _NOISE)
+        if word not in _STOPWORDS
+    }
+
+
+def rule_lines() -> list[dict]:
+    """Every line of every rule document, once, with its content words."""
+    lines: list[dict] = []
+    for path in rule_paths():
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        label = str(path).replace(str(HOME), "~")
+        in_frontmatter = False
+        for number, raw in enumerate(text.splitlines(), 1):
+            line = raw.strip()
+            if line == "---":
+                # SKILL.md frontmatter is metadata, not a rule.
+                in_frontmatter = not in_frontmatter
+                continue
+            if in_frontmatter or not line:
+                continue
+            words = content_words(line)
+            if len(words) < 2:
+                continue
+            lines.append(
+                {
+                    "file": label,
+                    "line": number,
+                    "text": line if len(line) <= 140 else line[:139] + "…",
+                    "words": words,
+                    "negated": bool(_NEGATION.search(line)),
+                }
+            )
+    return lines
+
+
+# A word that appears in more rule lines than this is the corpus's vocabulary,
+# not its subject. Two shared words is a low bar only if they are distinctive:
+# without this, "connection", "response" and "session" made 23 of 28 real inbox
+# candidates look like contradictions, which is worse than no check at all.
+DISTINCT_DF = 3
+
+
+def rule_stats(corpus: list[dict]) -> dict[str, int]:
+    """How many rule lines each word appears in."""
+    df: dict[str, int] = {}
+    for rule in corpus:
+        for word in rule["words"]:
+            df[word] = df.get(word, 0) + 1
+    return df
+
+
+def related_rules(
+    words: set[str],
+    negated: bool,
+    corpus: list[dict],
+    df: dict[str, int],
+    limit: int = 2,
+) -> list[dict]:
+    """Existing rule lines that share DISTINCTIVE vocabulary with a candidate.
+
+    A pair whose negation polarity differs is labelled a possible contradiction
+    and sorted first, because that is the case where promoting the candidate
+    would leave two rules that disagree.
+    """
+    scored = []
+    for rule in corpus:
+        shared = words & rule["words"]
+        distinct = sorted(w for w in shared if df.get(w, 0) <= DISTINCT_DF)
+        if len(distinct) < 2:
+            continue
+        scored.append((len(distinct), rule["negated"] != negated, rule, distinct))
+    scored.sort(key=lambda item: (not item[1], -item[0]))
+    return [
+        {
+            "file": rule["file"],
+            "line": rule["line"],
+            "text": rule["text"],
+            "shared": distinct,
+            "contradicts": contradicts,
+        }
+        for _, contradicts, rule, distinct in scored[:limit]
+    ]
+
+
+def cmd_distill(args) -> int:
     cands = inbox_candidates()
     if not cands:
         print(f"mem: inbox is empty ({INBOX}) — nothing to distill")
         return 0
-    print(f"{len(cands)} candidate(s) in {INBOX}\n")
-    for c in cands:
-        print(c)
+    stale_days = getattr(args, "stale_days", DISTILL_STALE_DAYS)
+    corpus = [] if getattr(args, "no_check", False) else rule_lines()
+    df = rule_stats(corpus)
+    today_date = dt.date.today()
+    rows = []
+    for line in cands:
+        date = inbox_date(line)
+        age = (today_date - date).days if date else None
+        words = content_words(line)
+        rows.append(
+            {
+                "line": line,
+                "date": date.isoformat() if date else None,
+                "age_days": age,
+                "stale": age is not None and age > stale_days,
+                "related": related_rules(words, bool(_NEGATION.search(line)), corpus, df),
+            }
+        )
+    if getattr(args, "json", False):
+        print(json.dumps({"stale_days": stale_days, "candidates": rows}, indent=2))
+        return 0
+
+    stale = [r for r in rows if r["stale"]]
+    clashes = [r for r in rows if any(x["contradicts"] for x in r["related"])]
+    covered = [r for r in rows if r["related"] and r not in clashes]
+    print(f"{len(cands)} candidate(s) in {INBOX}")
+    if stale:
+        print(
+            f"{len(stale)} stale (older than {stale_days}d) — promote or drop, "
+            "an unresolved line should not look current forever"
+        )
+    if clashes:
+        print(f"{len(clashes)} may contradict a rule that already exists — read those first")
+    if covered:
+        print(f"{len(covered)} may already be covered by a rule — check before adding a second one")
+    print()
+    for row in rows:
+        print(row["line"])
+        if row["stale"]:
+            print(f"    STALE  {row['age_days']}d unresolved")
+        for rel in row["related"]:
+            label = "CONTRADICTS?" if rel["contradicts"] else "COVERED?"
+            print(f"    {label:12} {rel['file']}:{rel['line']}  {rel['text']}")
     print("\n" + LADDER)
     print("\nWhen done: delete the lines you promoted (do not edit them).")
     return 0
@@ -226,6 +427,14 @@ def cmd_learn(args) -> int:
             "pass --repo DIR for a repo elsewhere, or use `mem inbox add` for an "
             "agent-behaviour lesson"
         )
+    # Scan every field, not just --fix: a credential usually arrives in the
+    # symptom ("curl -H 'Authorization: Bearer …' failed"), and a learnings
+    # entry is a committed markdown file in a public repo.
+    refuse_secrets(
+        " ".join([args.title, args.symptom, args.cause, args.fix, " ".join(args.see or [])]),
+        getattr(args, "allow_secret", False),
+        "this entry",
+    )
     learnings = repo / "docs" / "learnings"
     if not learnings.is_dir():
         die(f"{learnings} does not exist — create it (with a README.md index) or pass --repo")
@@ -495,11 +704,27 @@ def cmd_recall(args) -> int:
         print(json.dumps(ordered, indent=2))
         return 0
 
+    # A recall answer is read by a model, so its size is a cost, not a taste:
+    # eight hits of a long session can be 30k tokens of transcript. Cap the
+    # output at a budget (agentmemory's default is 2000) and say what was
+    # dropped rather than silently truncating the list.
+    budget = getattr(args, "tokens", 2000)
+    spent = 0
+    dropped = 0
+
     def show(group, cap):
+        nonlocal spent, dropped
         for h in group[:cap]:
             role = f" ({h['role']})" if h.get("role") else ""
-            print(f"{h['when'][:16]:16}  {h['source']:16}  {str(h['session'])[:38]:38}{role}")
-            print(f"    {h['text']}")
+            head = f"{h['when'][:16]:16}  {h['source']:16}  {str(h['session'])[:38]:38}{role}"
+            body = f"    {h['text']}"
+            cost = (len(head) + len(body)) // 4 + 1
+            if budget and spent + cost > budget and spent:
+                dropped += 1
+                continue
+            spent += cost
+            print(head)
+            print(body)
 
     if curated:
         print(f"mem: {len(curated)} curated, {len(evidence)} from transcripts")
@@ -507,6 +732,8 @@ def cmd_recall(args) -> int:
         if evidence:
             print("  -- transcripts --")
     show(evidence, args.limit * 2)
+    if dropped:
+        print(f"  … {dropped} hit(s) over the {budget}-token budget (raise with --tokens)")
     return 0
 
 
@@ -567,6 +794,46 @@ def looks_secret(value: str) -> bool:
         any(c.isdigit() for c in value)
         or any(not c.isalnum() for c in value)
         or len(value) >= 24  # a long all-alphabetic value is still suspicious
+    )
+
+
+def secret_kinds(text: str) -> list[str]:
+    """Kinds of credential-shaped value in `text`.
+
+    The archive redacts on ingest (a transcript is evidence and must be kept);
+    capture REFUSES instead, because the inbox and docs/learnings are plain
+    markdown in a public repo and a redacted lesson is a lesson nobody can
+    trust to be complete. Same patterns, opposite decision, one source of truth
+    for what counts as a credential.
+    """
+    kinds: list[str] = []
+    for pattern, kind in _SECRETS:
+        if pattern.search(text):
+            kinds.append(kind)
+
+    def flagged(match) -> bool:
+        name = match.group(1)
+        if "_" not in name and name not in ("KEY", "TOKEN", "SECRET", "PASSWORD"):
+            return False
+        return "REDACTED" not in match.group(3) and looks_secret(match.group(3))
+
+    if any(flagged(m) for m in _ASSIGNMENT.finditer(text)):
+        kinds.append("assignment")
+    return kinds
+
+
+def refuse_secrets(text: str, allow: bool, what: str) -> None:
+    """Refuse to store a credential. `--allow-secret` is for patterns, not keys."""
+    if allow:
+        return
+    kinds = secret_kinds(text)
+    if not kinds:
+        return
+    die(
+        f"refused: {what} looks like a credential ({', '.join(sorted(set(kinds)))}). "
+        "This repo is public and the store is plain text — describe the shape "
+        "(\"a ghp_ token\") instead, or pass --allow-secret when it really is a pattern.",
+        1,
     )
 
 
@@ -3302,6 +3569,8 @@ def main(argv: list[str]) -> int:
     learn.add_argument("--evidence", action="append", metavar="ANCHOR",
                        help="session://<harness>/<id>#turn-N this entry came from (repeatable)")
     learn.add_argument("--force", action="store_true")
+    learn.add_argument("--allow-secret", action="store_true",
+                       help="store text that looks like a credential (it is a pattern, not a key)")
     learn.set_defaults(fn=cmd_learn)
 
     inbox = sub.add_parser("inbox", help="the shared inbox")
@@ -3310,11 +3579,18 @@ def main(argv: list[str]) -> int:
     add.add_argument("kind", help="bash, correction, learning, note, …")
     add.add_argument("text", nargs="+")
     add.add_argument("--session")
+    add.add_argument("--allow-secret", action="store_true",
+                     help="store text that looks like a credential (it is a pattern, not a key)")
     add.set_defaults(fn=cmd_inbox_add)
     show = inbox_sub.add_parser("show", help="print the inbox")
     show.set_defaults(fn=cmd_inbox_show)
 
     distill = sub.add_parser("distill", help="print the inbox and the promotion ladder")
+    distill.add_argument("--stale-days", type=int, default=DISTILL_STALE_DAYS,
+                         help=f"flag candidates unresolved longer than this (default {DISTILL_STALE_DAYS})")
+    distill.add_argument("--no-check", action="store_true",
+                         help="skip the scan against AGENTS.md, DECISIONS.md and the skills")
+    distill.add_argument("--json", action="store_true", help="emit records instead of text")
     distill.set_defaults(fn=cmd_distill)
 
     recall = sub.add_parser("recall", help="search past sessions of every harness")
@@ -3324,6 +3600,8 @@ def main(argv: list[str]) -> int:
     recall.add_argument("--source", default="all",
                         choices=["all", "archive", "docs", "pi", "opencode", "hermes"])
     recall.add_argument("--json", action="store_true", help="emit records instead of text")
+    recall.add_argument("--tokens", type=int, default=2000,
+                        help="output budget in tokens, 0 for no cap (default 2000)")
     recall.add_argument("--include-archive", action="store_true",
                         help="also search docs/archive (abandoned approaches)")
     recall.set_defaults(fn=cmd_recall)
