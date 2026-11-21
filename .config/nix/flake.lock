@@ -263,7 +263,6 @@
       "locked": {
         "lastModified": 1795171460,
         "narHash": "sha256-UVQnOMYikjxi7JREcxPZh/Uamy0l4rBvhawHR/MZZgo=",
-        "ref": "refs/heads/main",
         "rev": "faac585884ae2c013a6b1400f3e9e77f10b34bac",
         "revCount": 8113,
         "type": "git",
