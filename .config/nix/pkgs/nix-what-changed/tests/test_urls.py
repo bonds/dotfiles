@@ -47,7 +47,6 @@ def test_known_urls_present():
     assert "discord" in urls.KNOWN_URLS
     assert "dwarf-fortress" in urls.KNOWN_URLS
     assert "osaurus" in urls.KNOWN_URLS
-    assert "oxillama" in urls.KNOWN_URLS
     assert "zen-browser" in urls.KNOWN_URLS
     assert "clamav" in urls.KNOWN_URLS
     assert "gdk-pixbuf" in urls.KNOWN_URLS
@@ -62,7 +61,6 @@ def test_known_urls_present():
 
 def test_known_url_tag_formats():
     assert urls.KNOWN_URLS["osaurus"]("0.22.22") == "https://github.com/osaurus-ai/osaurus/releases/tag/0.22.22"
-    assert urls.KNOWN_URLS["oxillama"]("0.1.4") == "https://github.com/cool-japan/oxillama/releases/tag/v0.1.4"
     assert urls.KNOWN_URLS["zen-browser"]("1.21.14b") == "https://github.com/zen-browser/desktop/releases/tag/1.21.14b"
     assert urls.KNOWN_URLS["clamav"]("1.4.6") == "https://github.com/Cisco-Talos/clamav/releases/tag/clamav-1.4.6"
     assert urls.KNOWN_URLS["gdk-pixbuf"]("2.44.7") == "https://gitlab.gnome.org/GNOME/gdk-pixbuf/-/raw/master/NEWS"

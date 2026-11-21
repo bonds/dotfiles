@@ -162,7 +162,6 @@ function nr
         if test "$_os" = darwin
             set -l _pwd $PWD
             cd $HOME/.config/nix
-            bash pkgs/oxillama/update.sh
             bash modules/overlays/zen-browser/update.sh
             bash modules/overlays/opencode/update.sh
             bash modules/overlays/daisydisk-overlay/update.sh
@@ -170,7 +169,7 @@ function nr
             bash modules/overlays/openfang/update.sh
             bash modules/overlays/ghostty/update.sh
             bash modules/overlays/orca-ade/update.sh
-            alejandra pkgs/oxillama/default.nix modules/overlays/opencode/default.nix modules/overlays/daisydisk-overlay/default.nix modules/overlays/osaurus/default.nix modules/overlays/openfang/default.nix modules/overlays/ghostty/default.nix modules/overlays/orca-ade/default.nix
+            alejandra modules/overlays/opencode/default.nix modules/overlays/daisydisk-overlay/default.nix modules/overlays/osaurus/default.nix modules/overlays/openfang/default.nix modules/overlays/ghostty/default.nix modules/overlays/orca-ade/default.nix
             cd $_pwd
         else
             set -l _pwd $PWD

@@ -131,7 +131,7 @@ them:
 | `reel-summarize` | transcribe + summarize Reels and YouTube with local models |
 | `photokit-export` | Swift PhotoKit exporter feeding the photos pipeline |
 | `ghosttile`, `raven`, `raven-desktop` | macOS window manager and desktop apps |
-| `oxillama`, `laya`, `transcribe-cpp` | local inference helpers |
+| `laya`, `transcribe-cpp` | local inference helpers |
 | `bedrock-server`, `dst-server` | game servers for sophrosyne |
 | `rsync-tmbackup` | rsync-based Time Machine style snapshots |
 | `mcp-fetch`, `mcp-searxng-search`, `reel-summarize-mcp` | MCP servers |

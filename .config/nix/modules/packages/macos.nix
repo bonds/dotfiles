@@ -46,7 +46,6 @@
     # modules/home/macos-apps.nix (and modules/home/orca.nix). Hermes Desktop
     # is likewise a home.packages entry in modules/home/hermes-desktop-app.nix.
     pkgs-unstable.openspec # Fission-AI spec-driven development CLI (unstable tracks @latest that the Hermes openspec skills expect)
-    oxillama # pure Rust LLM inference engine (experimental, pkgs/oxillama/update.sh, nr --update)
     openssh # macos ssh doesn't come with resident ssh support
     passage # age-based password manager
     (pkgs.callPackage ../../pkgs/raven {}) # AI-native CLI agent (EverMind-AI Raven)

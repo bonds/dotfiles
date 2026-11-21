@@ -200,7 +200,6 @@ KNOWN_URLS["docker"] = _make_moby_docker_url
 
 
 KNOWN_URLS["osaurus"] = _make_github_release_url_nov("osaurus-ai", "osaurus")
-KNOWN_URLS["oxillama"] = _make_github_release_url("cool-japan", "oxillama")
 KNOWN_URLS["zen-browser"] = _make_github_release_url_nov("zen-browser", "desktop")
 
 

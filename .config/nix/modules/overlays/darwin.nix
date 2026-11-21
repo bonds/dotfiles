@@ -30,8 +30,5 @@ in [
   (import ./openfang/default.nix inputs.nixpkgs)
   (import ./lix/default.nix)
   (import ./osaurus/default.nix)
-  (final: _prev: {
-    oxillama = final.callPackage ../../pkgs/oxillama {};
-  })
   inputs.vudials.overlays.default
 ]
