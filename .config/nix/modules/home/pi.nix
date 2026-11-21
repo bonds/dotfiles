@@ -23,9 +23,12 @@
 #   pkgs/pi/keybindings.json
 #   (mcp.json is generated below)
 #
-# Only settings.json is merged instead of symlinked, because pi writes it at
-# runtime. Consequence of the symlinks: `pi install` / `pi mcp add` cannot
-# persist into these paths — edit the repo and re-run `nr` instead.
+# settings.json and fast-tui.json are MERGED rather than symlinked, because both
+# are written at runtime. Consequence of the symlinks: `pi mcp add` cannot
+# persist (mcp.json is regenerated on every activation), and `pi install` writes
+# into settings.json — which does survive `nr`, but only on this machine. That is
+# why packages are declared in the merge below: a fresh checkout would otherwise
+# get none of them.
 {
   config,
   lib,
@@ -135,6 +138,14 @@ in {
   #   defaultTools    `+codemode` adds the codemode tool next to the built-in
   #                   defaults: the model can call tools from a script instead
   #                   of one round-trip each.
+  #   packages        third-party UI, declared here so a fresh machine gets
+  #                   them: pi-fast-tui (header, footer, editor frame, turn
+  #                   telemetry) and pi-tidy-tools (two-line, reason-first tool
+  #                   rows). Both are cosmetic — nothing here depends on them.
+  #                   pi-tidy-tools defaults to ENABLED when
+  #                   ~/.pi/agent/pi-tidy-tools.json is absent, so it needs no
+  #                   seeded state; only fast-tui's toolView needs pinning (see
+  #                   piFastTuiSettings below).
   home.activation.piSettings = lib.hm.dag.entryAfter ["writeBoundary"] ''
     piSettings="${config.home.homeDirectory}/.pi/agent/settings.json"
     mkdir -p "$(dirname "$piSettings")"
@@ -151,11 +162,34 @@ in {
        | .defaultTools = ["+codemode"]
        | .theme = "system"
        | .quietStartup = "header"
-       | .enableInstallTelemetry = false' "$piSettings" > "$piTmp"; then
+       | .enableInstallTelemetry = false
+       | .packages = ["npm:pi-fast-tui", "npm:@mobrienv/pi-tidy-tools"]' "$piSettings" > "$piTmp"; then
       mv "$piTmp" "$piSettings"
     else
       rm -f "$piTmp"
       echo "warning: pi settings.json merge failed; left unchanged" >&2
+    fi
+  '';
+
+  # fast-tui defaults `toolView.mode` to "cards", and pi's
+  # `registerToolRenderer` resolvers run ABOVE a tool's own renderer — so its
+  # cards hide every pi-tidy row no matter which extension loads first. Pinning
+  # "native" makes fast-tui defer to the registered tool, which is pi-tidy's:
+  # fast-tui keeps the chrome (header, footer, editor frame, telemetry),
+  # pi-tidy owns the tool rows. fast-tui writes this file from its `/fast-tui`
+  # menu, so merge it the same way as settings.json rather than symlinking.
+  home.activation.piFastTuiSettings = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    fastTui="${config.home.homeDirectory}/.pi/agent/fast-tui.json"
+    mkdir -p "$(dirname "$fastTui")"
+    if [ ! -f "$fastTui" ]; then
+      echo '{}' > "$fastTui"
+    fi
+    fastTuiTmp="$(mktemp "$fastTui.XXXXXX")"
+    if ${pkgs.jq}/bin/jq '.toolView.mode = "native"' "$fastTui" > "$fastTuiTmp"; then
+      mv "$fastTuiTmp" "$fastTui"
+    else
+      rm -f "$fastTuiTmp"
+      echo "warning: fast-tui settings merge failed; left unchanged" >&2
     fi
   '';
 }
