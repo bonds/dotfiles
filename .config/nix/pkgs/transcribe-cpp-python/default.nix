@@ -2,7 +2,6 @@
   lib,
   python3,
   fetchFromGitHub,
-  transcribe-cpp,
 }:
 python3.pkgs.buildPythonPackage {
   pname = "transcribe-cpp-python";
@@ -25,7 +24,6 @@ python3.pkgs.buildPythonPackage {
   # The native library is loaded via TRANSCRIBE_LIBRARY env var at runtime.
   # We don't propagate it as a Python dep — instead, the consumer sets the
   # env var (e.g. via makeWrapperArgs in reel-summarize).
-  # propagatedBuildInputs = [ transcribe-cpp ];
 
   dontCheckRuntimeDeps = true;
 

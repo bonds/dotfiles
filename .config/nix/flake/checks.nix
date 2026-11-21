@@ -1,9 +1,5 @@
 {self, ...}: {
-  perSystem = {
-    pkgs,
-    lib,
-    ...
-  }: let
+  perSystem = {pkgs, ...}: let
     mkCheck = name: buildInputs: script:
       pkgs.runCommand name {
         inherit buildInputs;

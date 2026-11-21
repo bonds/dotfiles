@@ -10,7 +10,10 @@
   # darwin overlay. `callPackage` them locally so this derivation also builds on
   # NixOS (sophrosyne) without depending on that overlay.
   transcribeCpp = callPackage ../transcribe-cpp {};
-  transcribeCppPython = callPackage ../transcribe-cpp-python {transcribe-cpp = transcribeCpp;};
+  # No `transcribe-cpp` override: the python package does not take it — the
+  # native library is found at runtime through TRANSCRIBE_LIBRARY, and
+  # reel-summarize below is the one that wires the binary in.
+  transcribeCppPython = callPackage ../transcribe-cpp-python {};
   reelSummarize = callPackage ../reel-summarize {
     transcribe-cpp = transcribeCpp;
     transcribe-cpp-python = transcribeCppPython;
