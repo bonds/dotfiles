@@ -49,7 +49,14 @@ than silently printing 30k tokens of transcript.
 `--mode keyword|semantic|hybrid` (default keyword). `semantic` embeds the query
 and scans vectors; `hybrid` fuses both rankings (reciprocal rank fusion), which
 is what to use when you have the vocabulary wrong — "the thing that holds a file
-across processes" finds the `flock` session that never says "lock".
+across processes" finds the `flock` session that never says "lock". Keyword
+search requires **every** word, in the archive as well as the stores.
+
+`--min-score` (default 0.55) is the cosine floor, and nothing more than 0.06
+below the best hit survives it either, capped at 0.64 — bge-m3 compresses
+similarity into 0.5-0.7, so a good query tops out near 0.65 and its junk tail
+sits at 0.55-0.58, while a near-verbatim match can score 0.8 and must not drag
+the floor past the 0.65 band. `--min-score 0` keeps everything.
 
 `mem index` builds it: one row per archived turn plus one per curated doc, in
 `~/.local/share/agents/index/semantic.db` — outside the archive's git repo,

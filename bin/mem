@@ -682,7 +682,10 @@ def cmd_recall(args) -> int:
     # narrows it, so asking for pi sessions does not answer with a learnings
     # entry that happens to be nearest.
     if mode in ("semantic", "hybrid"):
-        semantic = semantic_hits(args.query, args.days, args.limit)
+        semantic = semantic_hits(
+            args.query, args.days, args.limit,
+            min_score=getattr(args, "min_score", SEMANTIC_MIN_SCORE),
+        )
         if semantic is None:
             print(
                 "mem: semantic search unavailable (no index, or no embedder) — "
@@ -2076,6 +2079,13 @@ def recall_archive(words, days, limit) -> list:
             text = message_text(digest)
             if not text:
                 continue
+            # rg is a prefilter, not the matcher: it finds files holding ANY of
+            # the words, and this path used to stop there, so a four-word query
+            # "matched" a thousand messages. The store paths require every word
+            # (`_matches`); the archive has to agree or hybrid search inherits
+            # the noise.
+            if not _matches(text, words):
+                continue
             lower = text.lower()
             by_session.setdefault((harness, session), []).append({
                 "when": ts or "",
@@ -2242,6 +2252,15 @@ VECTOR_CODEC = "i8"
 # Recall defaults to 30 days, so 90 is the smallest window that never answers
 # "the index does not go back that far" for a default query; --days widens it.
 INDEX_DAYS = 90
+# bge-m3 compresses similarity into ~0.5-0.7, so the floor is calibrated, not
+# guessed: known-good queries top out at 0.62-0.66 and their junk tail sits at
+# 0.55-0.58. Keep an absolute floor and nothing far behind the best hit, so a
+# weak query still answers with its own best passage instead of nothing.
+SEMANTIC_MIN_SCORE = 0.55
+SEMANTIC_MARGIN = 0.06
+# ...but never above this, or a near-verbatim top match (0.81) would pull the
+# relative floor past every other relevant passage (0.65).
+SEMANTIC_FLOOR_CAP = 0.64
 
 
 def embed_api_key() -> str | None:
@@ -2513,7 +2532,7 @@ def cmd_index(args) -> int:
     return 0
 
 
-def semantic_hits(query: str, days: int, limit: int) -> list[dict] | None:
+def semantic_hits(query: str, days: int, limit: int, min_score: float = SEMANTIC_MIN_SCORE) -> list[dict] | None:
     """Nearest archived turns and curated docs to `query`, or None if unavailable."""
     if not INDEX_DB.exists():
         return None
@@ -2547,6 +2566,12 @@ def semantic_hits(query: str, days: int, limit: int) -> list[dict] | None:
         score = dot(query_vec, vec)
         scored.append((score, kind, ref, harness, when, role, text))
     scored.sort(reverse=True)
+    if scored and min_score > 0:
+        # Absolute floor, plus nothing far behind the best hit. `--min-score 0`
+        # means "keep everything", which is what to reach for when a near-exact
+        # top match pulls the relative floor up past the other relevant rows.
+        floor = max(min_score, min(scored[0][0] - SEMANTIC_MARGIN, SEMANTIC_FLOOR_CAP))
+        scored = [row for row in scored if row[0] >= floor]
     hits = []
     for score, kind, ref, harness, when, role, text in scored[: max(limit * 4, 12)]:
         if not text:
@@ -4026,6 +4051,8 @@ def main(argv: list[str]) -> int:
     recall.add_argument("--json", action="store_true", help="emit records instead of text")
     recall.add_argument("--mode", default="keyword", choices=["keyword", "semantic", "hybrid"],
                         help="keyword (default), semantic (vectors), or hybrid (fusion)")
+    recall.add_argument("--min-score", type=float, default=SEMANTIC_MIN_SCORE,
+                        help=f"cosine floor for semantic hits (default {SEMANTIC_MIN_SCORE}, 0 keeps all)")
     recall.add_argument("--tokens", type=int, default=2000,
                         help="output budget in tokens, 0 for no cap (default 2000)")
     recall.add_argument("--include-archive", action="store_true",

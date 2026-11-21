@@ -23,6 +23,21 @@ setup() {
     rm -rf "$T"
     mkdir -p "$T/mem" "$T/repo/docs/learnings" "$T/pi"
     printf '# Learnings\n\nDomain lessons.\n\n## Entries\n\n' > "$T/repo/docs/learnings/README.md"
+    # A two-dimensional semantic space where "mutex" and "flock" share an axis,
+    # so a query can match a passage containing none of its words. Written by
+    # setup() because each section wipes $T.
+    cat > "$T/embed.py" <<'EMBED'
+import json, re, sys
+SYN = {"mutex": 0, "flock": 0, "fcntl": 0, "push": 1, "remote": 1}
+out = []
+for text in json.load(sys.stdin):
+    v = [0.0, 0.0]
+    for word in re.findall(r"[a-z]+", text.lower()):
+        if word in SYN:
+            v[SYN[word]] += 1.0
+    out.append(v)
+print(json.dumps(out))
+EMBED
     (
         cd "$T/repo" || exit 1
         git init -q .
@@ -184,21 +199,6 @@ grep -q 'CONTRADICTS?' "$T/out" && bad "--no-check still scanned" || ok "--no-ch
 printf '\n== semantic: index, then query a vector space ==\n'
 setup
 mkdir -p "$T/raw/sessions/pi/2026/11/sess-a" "$T/raw/messages/d1"
-# A two-dimensional semantic space where "mutex" and "flock" share an axis, so
-# a query can match a turn that contains none of its words — the whole point of
-# the semantic path, and something a hash-based stub could not demonstrate.
-cat > "$T/embed.py" <<'PY'
-import json, re, sys
-SYN = {"mutex": 0, "flock": 0, "fcntl": 0, "push": 1, "remote": 1}
-out = []
-for text in json.load(sys.stdin):
-    v = [0.0, 0.0]
-    for word in re.findall(r"[a-z]+", text.lower()):
-        if word in SYN:
-            v[SYN[word]] += 1.0
-    out.append(v)
-print(json.dumps(out))
-PY
 printf '{"i":0,"msg":"d1","role":"user","ts":"%s"}\n' \
     "$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" > "$T/raw/sessions/pi/2026/11/sess-a/turns.jsonl"
 printf '{"role":"user","content":[{"type":"text","text":"the flock syscall lives in fcntl, and the append lock needs it to serialise writers"}]}' \
@@ -233,6 +233,61 @@ check_rc 1 $? "index refuses to mix models"
 MEM_EMBED_CMD=false run index --rebuild > "$T/out" 2>&1
 check_rc 1 $? "a failing embedder is an error"
 grep -q 'no embedder' "$T/out" && ok "names the way out" || bad "no guidance: $(cat "$T/out")"
+
+printf '\n== semantic: the similarity floor ==\n'
+setup
+mkdir -p "$T/raw/messages"
+# Cosine against the query axis is dialled by how many words sit on each axis:
+# 3 flock / 4 push -> 0.60, 2/3 -> 0.555, 1/2 -> 0.447, 0 -> 0. The trailing
+# words are unmapped padding that clears the 60-character index floor. One
+# session per passage: recall caps a session at two hits, so four passages in
+# one session would test the cap instead of the floor.
+PAD="and this sentence is only padding, written to clear the index floor"
+i=0
+for text in "flock flock flock push push push push" \
+    "flock flock push push push" "flock push push" "push remote"; do
+    mkdir -p "$T/raw/messages/m$i" "$T/raw/sessions/pi/2026/11/sess-b$i"
+    printf '{"role":"user","content":[{"type":"text","text":"%s %s"}]}' "$text" "$PAD" \
+        > "$T/raw/messages/m$i/m$i.json"
+    printf '{"i":0,"msg":"m%d","role":"user","ts":"%s"}\n' "$i" \
+        "$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" > "$T/raw/sessions/pi/2026/11/sess-b$i/turns.jsonl"
+    i=$((i + 1))
+done
+json_len() { python3 -c "import json;print(len(json.load(open('$T/out'))))" 2> /dev/null || echo ERR; }
+run_sem index > "$T/out" 2>&1
+check_rc 0 $? "index builds the fixture"
+grep -q '4 to embed' "$T/out" && ok "four passages indexed" || bad "wrong count: $(cat "$T/out")"
+run_sem recall mutex --days 365 --mode semantic --source pi --json > "$T/out" 2>&1
+[ "$(json_len)" = 2 ] && ok "the floor keeps the two close passages" || bad "expected 2: $(cat "$T/out")"
+run_sem recall mutex --days 365 --mode semantic --source pi --min-score 0.58 --json > "$T/out" 2>&1
+[ "$(json_len)" = 1 ] && ok "--min-score raises the floor" || bad "expected 1: $(cat "$T/out")"
+run_sem recall mutex --days 365 --mode semantic --source pi --min-score 0 --json > "$T/out" 2>&1
+[ "$(json_len)" = 4 ] && ok "--min-score 0 keeps everything" || bad "expected 4: $(cat "$T/out")"
+
+printf '\n== recall: the archive requires every word, like the stores ==\n'
+setup
+mkdir -p "$T/raw/sessions/pi/2026/11/sess-c" "$T/raw/messages/aa" \
+    "$T/raw/messages/bb" "$T/raw/messages/cc"
+# message_path() shards on the first two characters of the digest, so the files
+# have to live at messages/<aa>/<aa>.json — a flat messages/a.json is invisible.
+printf '{"role":"user","content":[{"type":"text","text":"the flock syscall lives in fcntl"}]}' \
+    > "$T/raw/messages/aa/aa.json"
+printf '{"role":"user","content":[{"type":"text","text":"flock is missing on darwin"}]}' \
+    > "$T/raw/messages/bb/bb.json"
+printf '{"role":"user","content":[{"type":"text","text":"fcntl has a lockf equivalent"}]}' \
+    > "$T/raw/messages/cc/cc.json"
+NOW="$(date -u +%Y-%m-%dT%H:%M:%S+00:00)"
+printf '{"i":0,"msg":"aa","role":"user","ts":"%s"}\n' "$NOW" \
+    >> "$T/raw/sessions/pi/2026/11/sess-c/turns.jsonl"
+printf '{"i":1,"msg":"bb","role":"user","ts":"%s"}\n' "$NOW" \
+    >> "$T/raw/sessions/pi/2026/11/sess-c/turns.jsonl"
+printf '{"i":2,"msg":"cc","role":"user","ts":"%s"}\n' "$NOW" \
+    >> "$T/raw/sessions/pi/2026/11/sess-c/turns.jsonl"
+run recall "flock fcntl" --days 365 --source archive --json > "$T/out" 2>&1
+check_rc 0 $? "archive recall runs"
+[ "$(json_len)" = 1 ] && ok "only the message with both words matches" \
+    || bad "OR-matching came back: $(cat "$T/out")"
+grep -q 'lives in fcntl' "$T/out" && ok "and it is the right message" || bad "wrong hit"
 
 printf '\n== recall: pi sessions, filters, and misses ==\n'
 setup
