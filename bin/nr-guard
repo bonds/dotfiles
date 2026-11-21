@@ -244,9 +244,22 @@ if [ -d "$edit_tree" ]; then
 			fi
 		fi
 		if [ "$wt_stale" = yes ]; then
-			say '%s\n' 'nr: note: worktree/ (edit tree) is only STALE -- its files/index match an earlier main.'
-			say '%s\n' 'nr:       do not commit there (that reverts the $HOME-side commit); sync:'
-			say 'nr:       git -C %s reset --hard main\n' "$edit_tree"
+			# Sync it rather than printing a task to remember, but only in the one
+			# shape nr itself creates: HEAD already at main (the edit tree shares
+			# main's ref) while its files and index still describe an earlier one.
+			# That holds no work — every entry matches an earlier main — so nothing
+			# is lost, and `nr --update`'s commit step moves main on every successful
+			# run, which is why this note was chronic. A tree on an older HEAD, or
+			# one with an unstaged edit, keeps the advice: those can hold content
+			# that matches no main (see case 5a in the tests).
+			if [ "$wt_head" = "$main" ] && e diff --quiet 2>/dev/null &&
+				e reset -q --hard main >/dev/null 2>&1; then
+				say 'nr: note: worktree/ (edit tree) is only STALE -- its files/index match an earlier main; synced to %s\n' "$(e rev-parse --short main)"
+			else
+				say '%s\n' 'nr: note: worktree/ (edit tree) is only STALE -- its files/index match an earlier main.'
+				say '%s\n' 'nr:       do not commit there (that reverts the $HOME-side commit); sync:'
+				say 'nr:       git -C %s reset --hard main\n' "$edit_tree"
+			fi
 		else
 			say '%s\n' 'nr: note: worktree/ (edit tree) has uncommitted changes -- this run does not use it'
 			say '%s\n' "nr:       commit or stash them before you next edit there (a plain 'reset --hard main' would discard them)"

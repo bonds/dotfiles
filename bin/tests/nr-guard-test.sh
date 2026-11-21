@@ -149,6 +149,10 @@ guard
 expect_exit "stale edit tree" 0
 expect_out "stale edit tree is called stale" 'worktree/ \(edit tree\) is only STALE'
 expect_no_out "stale edit tree not called uncommitted" 'has uncommitted changes'
+# ...but it holds an unstaged edit, which matches no main, so it must NOT be
+# reset: the advice stays and the edit survives.
+[ "$(cat "$WTDIR/sub/c.conf")" = c-next ] && ok "an unstaged edit is never reset away" \
+	|| bad "reset a tree that held an unstaged edit"
 
 # 5a. The same stale tree, reached by a real commit: an edit made in the edit
 #     tree and committed there leaves HEAD on main~1 with a clean work tree, so
@@ -220,6 +224,11 @@ guard
 expect_exit "stale index" 0
 expect_out "stale index is called stale" 'worktree/ \(edit tree\) is only STALE'
 expect_no_out "stale index not called uncommitted" 'has uncommitted changes'
+# This is the shape every `nr --update` leaves behind (its commit moves main from
+# $HOME), so the guard syncs it instead of printing a task to remember.
+expect_out "stale index is synced" 'synced to'
+[ "$(cat "$WTDIR/a.conf")" = a2 ] && ok "the edit tree now holds main's content" \
+	|| bad "edit tree still holds an earlier main: $(cat "$WTDIR/a.conf")"
 
 # 5e. Detached at main with a real edit is ordinary work, not staleness.
 setup
