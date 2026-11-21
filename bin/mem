@@ -28,16 +28,22 @@ Exit codes: 0 ok · 1 nothing to do / refused · 2 usage error.
 from __future__ import annotations
 
 import argparse
+import array
+from concurrent.futures import ThreadPoolExecutor
 import datetime as dt
 import fcntl
 import hashlib
 import json
+import math
 import os
 import pathlib
 import re
 import sqlite3
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 
 HOME = pathlib.Path.home()
 
@@ -654,6 +660,7 @@ def cmd_recall(args) -> int:
 
     hits: list[dict] = []
     stores = {"pi": recall_pi, "opencode": recall_opencode, "hermes": recall_hermes}
+    mode = getattr(args, "mode", "keyword")
 
     if args.source in stores:
         since = (dt.datetime.now() - dt.timedelta(days=args.days)).timestamp()
@@ -671,10 +678,29 @@ def cmd_recall(args) -> int:
             for fn in stores.values():
                 hits.extend(fn(words, since, args.limit))
 
+    # The vector index covers the archive and the curated docs; `--source` still
+    # narrows it, so asking for pi sessions does not answer with a learnings
+    # entry that happens to be nearest.
+    if mode in ("semantic", "hybrid"):
+        semantic = semantic_hits(args.query, args.days, args.limit)
+        if semantic is None:
+            print(
+                "mem: semantic search unavailable (no index, or no embedder) — "
+                "using keyword only; build one with `mem index`",
+                file=sys.stderr,
+            )
+        else:
+            if args.source in stores:
+                semantic = [h for h in semantic if h["source"] == f"archive/{args.source}"]
+            elif args.source == "docs":
+                semantic = [h for h in semantic if h["source"].startswith("docs/")]
+            elif args.source == "archive":
+                semantic = [h for h in semantic if h["source"].startswith("archive/")]
+            hits = semantic if mode == "semantic" else merge_ranked(hits, semantic)
+
     if not hits:
         print(f"mem: nothing in the last {args.days}d matching {' '.join(words)}")
-        return 0
-    # One long session can otherwise answer every question with itself: the
+        return 0    # One long session can otherwise answer every question with itself: the
     # conversation you are in mentions everything you are asking about, and 556
     # turns of it will fill any result limit. Cap how much one session may
     # contribute, and rank by how many query words a hit actually contains
@@ -2176,6 +2202,397 @@ def show_anchor(anchor: str) -> int:
     return 0
 
 
+# ---------------------------------------------------------------- semantic --
+#
+# Keyword recall cannot answer "where did we work out the thing that holds a
+# file across processes" when the session said "flock". Vectors can — and the
+# corpus is small enough that a flat scan IS the index: ~1200 turns at 1024
+# dims is 2.4 MB of float16, read in milliseconds. So no vector database, no
+# daemon, no second store: one SQLite table beside the archive (outside its git
+# repo) keyed by the same digests everything else already uses.
+#
+# Embeddings come from an OpenAI-compatible endpoint — Deep Infra's bge-m3 at
+# $0.01/M tokens, using the key pi already has. Two escape hatches keep it
+# honest: MEM_EMBED_CMD runs a local model (or the test stub) with the texts as
+# a JSON array on stdin, and NO key at all degrades to keyword search with a
+# message instead of an error. The index is derived data: it can always be
+# rebuilt from the archive, which is the system of record.
+
+INDEX_DIR = pathlib.Path(os.environ.get("MEM_INDEX_DIR") or RAW_DIR.parent / "index")
+INDEX_DB = INDEX_DIR / "semantic.db"
+EMBED_MODEL = os.environ.get("MEM_EMBED_MODEL", "BAAI/bge-m3")
+EMBED_URL = os.environ.get("MEM_EMBED_URL", "https://api.deepinfra.com/v1/openai/embeddings")
+EMBED_BATCH = 64
+# A cold build is one request per batch and the endpoint's latency dominates:
+# four at a time turns an hour into minutes. Insertion still happens in order.
+EMBED_JOBS = 4
+# ~300 tokens. A long turn is mostly tool output, and its tail dilutes the
+# vector rather than describing the turn.
+EMBED_CHARS = 1200
+# What the index stores per hit: enough for a snippet, not the whole turn.
+SNIPPET_CHARS = 240
+# Short messages ("let me check", "done") embed to a vector that is close to
+# every query, and they crowded the top of every ranking in testing. Recall
+# wants passages, so the index keeps only passages.
+MIN_UNIT_CHARS = 60
+# Vectors are quantised to int8. At 53k turns that is 54 MB instead of 216 MB,
+# and a cosine over normalised int8 loses ~1% — invisible at the top of a
+# ranking, which is all recall reads.
+VECTOR_CODEC = "i8"
+# Recall defaults to 30 days, so 90 is the smallest window that never answers
+# "the index does not go back that far" for a default query; --days widens it.
+INDEX_DAYS = 90
+
+
+def embed_api_key() -> str | None:
+    explicit = os.environ.get("MEM_EMBED_KEY")
+    if explicit:
+        return explicit
+    path = pathlib.Path(os.environ.get("MEM_EMBED_KEY_FILE", "/run/agenix/hermes-deepinfra"))
+    try:
+        text = path.read_text()
+    except OSError:
+        return None
+    for line in text.splitlines():
+        if line.startswith("DEEPINFRA_API_KEY="):
+            return line.split("=", 1)[1].strip() or None
+    return None
+
+
+def embed_texts(texts: list[str]) -> list[list[float]] | None:
+    """Vectors for `texts`, or None when no embedder is configured or it failed.
+
+    None is a signal, not an error: every caller falls back to keyword search.
+    """
+    if not texts:
+        return []
+    command = os.environ.get("MEM_EMBED_CMD")
+    if command:
+        try:
+            proc = subprocess.run(
+                command, shell=True, input=json.dumps(texts),
+                capture_output=True, text=True, timeout=600,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            print(f"mem: embedder failed ({exc})", file=sys.stderr)
+            return None
+        if proc.returncode != 0:
+            print(f"mem: embedder failed: {proc.stderr.strip()[:200]}", file=sys.stderr)
+            return None
+        try:
+            vectors = json.loads(proc.stdout)
+        except ValueError:
+            print("mem: embedder did not return JSON", file=sys.stderr)
+            return None
+        if not isinstance(vectors, list) or len(vectors) != len(texts):
+            print("mem: embedder returned the wrong number of vectors", file=sys.stderr)
+            return None
+        return vectors
+
+    key = embed_api_key()
+    if not key:
+        return None
+    vectors = []
+    for start in range(0, len(texts), EMBED_BATCH):
+        batch = texts[start : start + EMBED_BATCH]
+        payload = json.dumps({"model": EMBED_MODEL, "input": batch}).encode()
+        request = urllib.request.Request(
+            EMBED_URL,
+            data=payload,
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                body = json.loads(response.read())
+        except (urllib.error.URLError, OSError, ValueError) as exc:
+            # A cold build is ~1600 requests; one transient timeout must not
+            # throw away the batches already committed.
+            last = exc
+            for attempt, delay in enumerate((2, 4, 8), start=1):
+                time.sleep(delay)
+                try:
+                    with urllib.request.urlopen(request, timeout=120) as response:
+                        body = json.loads(response.read())
+                    last = None
+                    break
+                except (urllib.error.URLError, OSError, ValueError) as retry_exc:
+                    last = retry_exc
+            if last is not None:
+                print(f"mem: embeddings unavailable ({last})", file=sys.stderr)
+                return None
+        data = sorted(body.get("data") or [], key=lambda item: item.get("index", 0))
+        if len(data) != len(batch):
+            print("mem: embeddings returned the wrong number of vectors", file=sys.stderr)
+            return None
+        vectors.extend(item["embedding"] for item in data)
+    return vectors
+
+
+def pack_vector(vec) -> bytes:
+    """Normalised int8, so a dot product is the cosine and the table stays small."""
+    norm = math.sqrt(sum(float(v) * float(v) for v in vec)) or 1.0
+    return bytes(max(-127, min(127, round(float(v) / norm * 127))) & 0xFF for v in vec)
+
+
+def unpack_vector(blob: bytes):
+    return array.array("b", blob)
+
+
+def dot(query_vec, vec) -> float:
+    """Cosine of two int8 vectors (both were normalised to +-127 before packing)."""
+    return sum(a * b for a, b in zip(query_vec, vec)) / (127.0 * 127.0)
+
+
+def open_index(create: bool = True) -> sqlite3.Connection | None:
+    """The index connection, or None when it does not exist and `create` is False.
+
+    A dry run must not create the database: "nothing written" is the only thing
+    that makes `--dry-run` trustworthy.
+    """
+    if not INDEX_DB.exists() and not create:
+        return None
+    INDEX_DIR.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(INDEX_DB)
+    columns = {row[1] for row in con.execute("pragma table_info(vec)")}
+    meta = {}
+    if columns:
+        try:
+            meta = dict(con.execute("select k, v from meta"))
+        except sqlite3.OperationalError:
+            meta = {}
+    if columns and ("text" not in columns or meta.get("codec") != VECTOR_CODEC):
+        # The index is derived data, so an older schema or codec is rebuilt
+        # rather than migrated: the archive it comes from is the record.
+        print("mem: rebuilding the index (schema or codec changed)", file=sys.stderr)
+        con.execute("drop table if exists vec")
+        con.execute("drop table if exists meta")
+        columns = set()
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS vec (key TEXT PRIMARY KEY, kind TEXT, ref TEXT, "
+        "harness TEXT, when_ TEXT, role TEXT, text_hash TEXT, dim INTEGER, "
+        "text TEXT, vec BLOB)"
+    )
+    con.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)")
+    con.execute("CREATE INDEX IF NOT EXISTS vec_when ON vec(when_)")
+    return con
+
+
+def index_units(days: int = INDEX_DAYS):
+    """The units worth embedding: one per archived turn, one per curated doc."""
+    cutoff = (dt.datetime.now() - dt.timedelta(days=days)).isoformat()[:19]
+    for path in sorted(RAW_DIR.glob("sessions/*/*/*/*/turns.jsonl")):
+        harness = path.parts[-5]
+        session = path.parent.name
+        try:
+            lines = path.read_text().splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                turn = json.loads(line)
+            except ValueError:
+                continue
+            when = str(turn.get("ts") or "")
+            if when and when[:19] < cutoff:
+                continue
+            text = message_text(turn.get("msg") or "")[:EMBED_CHARS]
+            if len(text.strip()) < MIN_UNIT_CHARS:
+                continue
+            yield {
+                "key": f"turn:{harness}/{session}/{turn.get('i')}",
+                "kind": "turn",
+                "ref": session,
+                "harness": harness,
+                "when": when,
+                "role": turn.get("role") or "",
+                "text": text,
+            }
+    for label, root in DOC_ROOTS:
+        # rglob, not glob: MEM_DOCS points at a whole tree in the test fixtures,
+        # and recall_docs recurses through the same roots with rg.
+        paths = [root] if root.is_file() else sorted(root.rglob("*.md"))
+        for path in paths:
+            if path.name == "README.md" or not path.exists():
+                continue
+            try:
+                text = path.read_text()
+            except OSError:
+                continue
+            if len(text.strip()) < MIN_UNIT_CHARS:
+                continue
+            when = dt.datetime.fromtimestamp(path.stat().st_mtime).isoformat()[:19]
+            yield {
+                "key": f"doc:{label}/{path.name}",
+                "kind": "doc",
+                "ref": path.stem,
+                "harness": label,
+                "when": when,
+                "role": "",
+                "text": text[:EMBED_CHARS],
+            }
+
+
+def cmd_index(args) -> int:
+    units = list(index_units(getattr(args, "days", INDEX_DAYS)))
+    if getattr(args, "docs_only", False):
+        units = [u for u in units if u["kind"] == "doc"]
+    con = open_index(create=not args.dry_run)
+    stored_model = dict(con.execute("select k, v from meta")).get("model") if con else None
+    if stored_model and stored_model != EMBED_MODEL and not args.rebuild:
+        die(
+            f"the index was built with {stored_model}, not {EMBED_MODEL} — vectors from "
+            "two models cannot be compared; pass --rebuild to throw the old one away"
+        )
+    if args.rebuild:
+        con.execute("delete from vec")
+        con.execute("delete from meta")
+        con.commit()
+    if con:
+        con.execute("insert or replace into meta (k, v) values ('codec', ?)", (VECTOR_CODEC,))
+        con.execute("insert or replace into meta (k, v) values ('model', ?)", (EMBED_MODEL,))
+        con.commit()
+    todo = []
+    for unit in units:
+        digest = hashlib.sha256(unit["text"].encode()).hexdigest()[:16]
+        row = (
+            con.execute("select text_hash from vec where key = ?", (unit["key"],)).fetchone()
+            if con
+            else None
+        )
+        if row and row[0] == digest:
+            continue
+        todo.append((unit, digest))
+    if args.limit:
+        todo = todo[: args.limit]
+    print(f"mem: {len(units)} unit(s) in range, {len(todo)} to embed")
+    if args.dry_run:
+        for unit, _ in todo[:10]:
+            print(f"  {unit['key']}")
+        return 0
+    if not todo:
+        return 0
+    embedded = 0
+    batches = [todo[i : i + EMBED_BATCH] for i in range(0, len(todo), EMBED_BATCH)]
+    jobs = max(1, getattr(args, "jobs", EMBED_JOBS))
+
+    def fetch(batch):
+        return batch, embed_texts([unit["text"] for unit, _ in batch])
+
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        for batch, vectors in pool.map(fetch, batches):
+            if vectors is None:
+                con.commit()
+                die(
+                    f"no embedder: set MEM_EMBED_CMD, or MEM_EMBED_KEY (or make "
+                    f"{EMBED_MODEL} reachable at {EMBED_URL}) — {embedded} unit(s) indexed so far"
+                )
+            for (unit, digest), vector in zip(batch, vectors):
+                con.execute(
+                    "insert or replace into vec (key, kind, ref, harness, when_, role, "
+                    "text_hash, dim, text, vec) values (?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        unit["key"], unit["kind"], unit["ref"], unit["harness"],
+                        unit["when"], unit["role"], digest, len(vector),
+                        unit["text"][:SNIPPET_CHARS],
+                        pack_vector(vector),
+                    ),
+                )
+            embedded += len(batch)
+            con.commit()
+            print(f"  {embedded}/{len(todo)} embedded", flush=True)
+    con.execute("insert or replace into meta (k, v) values ('model', ?)", (EMBED_MODEL,))
+    con.execute("insert or replace into meta (k, v) values ('codec', ?)", (VECTOR_CODEC,))
+    con.execute(
+        "insert or replace into meta (k, v) values ('built', ?)",
+        (dt.datetime.now().isoformat(timespec="seconds"),),
+    )
+    con.commit()
+    print(f"mem: index at {INDEX_DB} — {con.execute('select count(*) from vec').fetchone()[0]} unit(s)")
+    return 0
+
+
+def semantic_hits(query: str, days: int, limit: int) -> list[dict] | None:
+    """Nearest archived turns and curated docs to `query`, or None if unavailable."""
+    if not INDEX_DB.exists():
+        return None
+    con = open_index()
+    if not con.execute("select 1 from vec limit 1").fetchone():
+        return None
+    # Vectors from two models are not comparable, and a silent empty answer is
+    # the worst way to find that out.
+    stored_model = dict(con.execute("select k, v from meta")).get("model")
+    if stored_model and stored_model != EMBED_MODEL:
+        print(
+            f"mem: the index was built with {stored_model}, not {EMBED_MODEL} — "
+            "rebuild it with `mem index --rebuild`",
+            file=sys.stderr,
+        )
+        return None
+    vectors = embed_texts([query])
+    if not vectors:
+        return None
+    query_vec = unpack_vector(pack_vector(vectors[0]))
+    cutoff = (dt.datetime.now() - dt.timedelta(days=days)).isoformat()[:19]
+    scored = []
+    for kind, ref, harness, when, role, text, blob in con.execute(
+        "select kind, ref, harness, when_, role, text, vec from vec"
+    ):
+        if when and when[:19] < cutoff:
+            continue
+        vec = unpack_vector(blob)
+        if len(vec) != len(query_vec):
+            continue
+        score = dot(query_vec, vec)
+        scored.append((score, kind, ref, harness, when, role, text))
+    scored.sort(reverse=True)
+    hits = []
+    for score, kind, ref, harness, when, role, text in scored[: max(limit * 4, 12)]:
+        if not text:
+            continue
+        if kind == "doc":
+            source = f"docs/{harness}"
+            session = ref
+        else:
+            source = f"archive/{harness}"
+            session = ref
+        hits.append(
+            {
+                "when": when or "",
+                "source": source,
+                "session": session,
+                "role": role or "",
+                "text": " ".join(text.split())[:200],
+                "score": round(score, 4),
+            }
+        )
+    return hits
+
+
+def merge_ranked(keyword_hits: list[dict], semantic: list[dict]) -> list[dict]:
+    """Reciprocal rank fusion: a hit both searches like outranks either alone."""
+    fused: dict[tuple, dict] = {}
+    for rank, hit in enumerate(keyword_hits):
+        entry = fused.setdefault(_hit_identity(hit), {**hit, "score": 0.0})
+        entry["score"] += 1.0 / (60 + rank)
+    for rank, hit in enumerate(semantic):
+        entry = fused.setdefault(_hit_identity(hit), {**hit, "score": 0.0})
+        entry["score"] += 1.0 / (60 + rank)
+    return sorted(fused.values(), key=lambda hit: hit["score"], reverse=True)
+
+
+def _hit_identity(hit: dict) -> tuple:
+    """What makes two hits "the same" across the two searches.
+
+    Not the text: the keyword path renders a snippet centred on the query and
+    the semantic path renders the head of the passage, so comparing text would
+    list one message twice. Session + minute + role is as fine-grained as the
+    per-session cap (two hits) allows.
+    """
+    return (hit["source"], str(hit["session"]), hit.get("when", "")[:16], hit.get("role", ""))
+
+
 # -------------------------------------------------------------------- mcp --
 #
 # Osaurus can spawn a stdio MCP command on the host; verified 2026-10-26 with a
@@ -3219,6 +3636,13 @@ def cmd_nightly(args) -> int:
             failed = failed or rc != 0
             stages.append((f"ingest {harness}", rc, out.strip()))
 
+    if not getattr(args, "no_index", False):
+        # Incremental and derived: a failure here must not fail the night, since
+        # the archive it indexes is still intact and the next run retries.
+        rc, out = _step(["index"])
+        tail = "\n".join(out.strip().splitlines()[-3:])
+        stages.append(("index (semantic)", rc, tail))
+
     if not args.no_summarize:
         rc, out = _step(["summarize", "--budget", str(args.budget), "--jobs", "8"])
         failed = failed or rc != 0
@@ -3600,11 +4024,23 @@ def main(argv: list[str]) -> int:
     recall.add_argument("--source", default="all",
                         choices=["all", "archive", "docs", "pi", "opencode", "hermes"])
     recall.add_argument("--json", action="store_true", help="emit records instead of text")
+    recall.add_argument("--mode", default="keyword", choices=["keyword", "semantic", "hybrid"],
+                        help="keyword (default), semantic (vectors), or hybrid (fusion)")
     recall.add_argument("--tokens", type=int, default=2000,
                         help="output budget in tokens, 0 for no cap (default 2000)")
     recall.add_argument("--include-archive", action="store_true",
                         help="also search docs/archive (abandoned approaches)")
     recall.set_defaults(fn=cmd_recall)
+
+    idx = sub.add_parser("index", help="embed the archive and curated docs for semantic recall")
+    idx.add_argument("--days", type=int, default=INDEX_DAYS, help=f"only index turns newer than this (default {INDEX_DAYS})")
+    idx.add_argument("--limit", type=int, default=0, help="embed at most this many units (0 = all)")
+    idx.add_argument("--docs-only", action="store_true", help="skip the archive turns")
+    idx.add_argument("--rebuild", action="store_true", help="discard the index first (required to change models)")
+    idx.add_argument("--jobs", type=int, default=EMBED_JOBS,
+                     help=f"concurrent embed requests (default {EMBED_JOBS})")
+    idx.add_argument("--dry-run", action="store_true", help="report what would be embedded")
+    idx.set_defaults(fn=cmd_index)
 
     ing = sub.add_parser("ingest", help="copy a harness's sessions into the archive")
     ing.add_argument("harness", nargs="?", default="pi", choices=["pi", "opencode", "hermes", "osaurus"])
@@ -3616,6 +4052,7 @@ def main(argv: list[str]) -> int:
                        help="spend cap for summarizing (USD, default 0.25)")
     night.add_argument("--no-ingest", action="store_true")
     night.add_argument("--no-summarize", action="store_true")
+    night.add_argument("--no-index", action="store_true", help="skip the semantic index update")
     night.add_argument("--dry-run", action="store_true", help="print the report, write nothing")
     night.set_defaults(fn=cmd_nightly)
 

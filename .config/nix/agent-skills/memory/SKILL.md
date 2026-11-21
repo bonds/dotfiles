@@ -19,6 +19,8 @@ mem inbox add bash "rg -r is --replace, not recursive"   # a candidate
 mem inbox show · mem distill                            # read / promote
 mem learn nix-flock --title … --symptom … --cause … --fix …
 mem recall "flock" --days 30 --source pi                # past sessions, all harnesses
+mem recall "holds a file across processes" --mode hybrid  # vectors + keywords
+mem index                                               # embed the archive (nightly too)
 mem decisions                                           # ~/DECISIONS.md
 ```
 
@@ -41,6 +43,28 @@ emits records.
 - **`recall` has an output budget** (2000 tokens, `--tokens 0` to disable): the
 answer lands in a model's context, so it reports how many hits it dropped rather
 than silently printing 30k tokens of transcript.
+
+## Semantic recall
+
+`--mode keyword|semantic|hybrid` (default keyword). `semantic` embeds the query
+and scans vectors; `hybrid` fuses both rankings (reciprocal rank fusion), which
+is what to use when you have the vocabulary wrong — "the thing that holds a file
+across processes" finds the `flock` session that never says "lock".
+
+`mem index` builds it: one row per archived turn plus one per curated doc, in
+`~/.local/share/agents/index/semantic.db` — outside the archive's git repo,
+because it is derived data and can always be rebuilt. Incremental (unchanged
+text is skipped) and run by `mem nightly` after ingest (`--no-index` opts out).
+It covers `--days` 90 by default (recall's own default is 30), skips messages
+shorter than 60 characters because they embed close to every query, and keeps
+vectors as int8: 22k units is 44 MB, a cold build is ~3 minutes at 4 jobs.
+
+Embeddings: Deep Infra `BAAI/bge-m3` at $0.01/M tokens with the key pi already
+uses, ~$0.07 for a cold build. Overrides —
+`MEM_EMBED_CMD` (a command taking a JSON array of texts on stdin, for a local
+model or the tests), `MEM_EMBED_MODEL`, `MEM_EMBED_URL`, `MEM_EMBED_KEY`,
+`MEM_EMBED_KEY_FILE`, `MEM_INDEX_DIR`. With no embedder at all, `recall` falls
+back to keyword and says so; the index is never required.
 
 ## Two kinds of lesson, two homes
 

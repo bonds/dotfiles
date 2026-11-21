@@ -32,9 +32,18 @@ setup() {
 }
 
 run() { # run <args...> — with the fixture store
+    # MEM_EMBED_KEY_FILE points at nothing so a test can never reach the real
+    # embeddings endpoint: an accidental network call in a test suite is a
+    # flaky test that also costs money.
     MEMORY_DIR="$T/mem" MEM_PI_SESSIONS="$T/pi" \
         MEM_OPENCODE_DB="$T/absent.db" MEM_HERMES_DB="$T/absent.db" \
+        MEMORY_RAW="$T/raw" MEM_INDEX_DIR="$T/index" MEM_DOCS="$T/repo/docs/learnings" \
+        MEM_EMBED_KEY_FILE="$T/absent-secret" \
         "$MEM" "$@"
+}
+
+run_sem() { # run_sem <args...> — same, with the fixture embedder
+    MEM_EMBED_CMD="python3 $T/embed.py" run "$@"
 }
 
 printf '\n== learn: writes the entry and indexes it ==\n'
@@ -171,6 +180,59 @@ grep -q 'may contradict a rule that already exists' "$T/out" && ok "summarises t
     || bad "no summary line"
 run distill --no-check > "$T/out" 2>&1
 grep -q 'CONTRADICTS?' "$T/out" && bad "--no-check still scanned" || ok "--no-check skips the scan"
+
+printf '\n== semantic: index, then query a vector space ==\n'
+setup
+mkdir -p "$T/raw/sessions/pi/2026/11/sess-a" "$T/raw/messages/d1"
+# A two-dimensional semantic space where "mutex" and "flock" share an axis, so
+# a query can match a turn that contains none of its words — the whole point of
+# the semantic path, and something a hash-based stub could not demonstrate.
+cat > "$T/embed.py" <<'PY'
+import json, re, sys
+SYN = {"mutex": 0, "flock": 0, "fcntl": 0, "push": 1, "remote": 1}
+out = []
+for text in json.load(sys.stdin):
+    v = [0.0, 0.0]
+    for word in re.findall(r"[a-z]+", text.lower()):
+        if word in SYN:
+            v[SYN[word]] += 1.0
+    out.append(v)
+print(json.dumps(out))
+PY
+printf '{"i":0,"msg":"d1","role":"user","ts":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" > "$T/raw/sessions/pi/2026/11/sess-a/turns.jsonl"
+printf '{"role":"user","content":[{"type":"text","text":"the flock syscall lives in fcntl, and the append lock needs it to serialise writers"}]}' \
+    > "$T/raw/messages/d1/d1.json"
+run index --dry-run > "$T/out" 2>&1
+check_rc 0 $? "index --dry-run needs no embedder"
+grep -q '1 unit(s) in range, 1 to embed' "$T/out" && ok "counts the units" || bad "wrong count: $(cat "$T/out")"
+[ -f "$T/index/semantic.db" ] && bad "dry run created a database" || ok "dry run writes nothing"
+run_sem index > "$T/out" 2>&1
+check_rc 0 $? "index builds"
+grep -q '1/1 embedded' "$T/out" && ok "embedded the turn" || bad "no progress: $(cat "$T/out")"
+run_sem index > "$T/out" 2>&1
+grep -q '0 to embed' "$T/out" && ok "re-indexing is incremental" || bad "re-embedded everything: $(cat "$T/out")"
+run recall mutex --days 365 --source pi > "$T/out" 2>&1
+grep -q 'nothing in the last' "$T/out" && ok "keyword search cannot find it" \
+    || bad "keyword found it, so the fixture proves nothing"
+run_sem recall mutex --days 365 --mode semantic --source pi > "$T/out" 2>&1
+check_rc 0 $? "semantic recall runs"
+grep -q 'fcntl' "$T/out" && ok "semantic recall finds the turn" || bad "semantic miss: $(cat "$T/out")"
+run_sem recall mutex --days 365 --mode hybrid --source pi > "$T/out" 2>&1
+check_rc 0 $? "hybrid recall runs"
+grep -q 'fcntl' "$T/out" && ok "hybrid keeps the semantic hit" || bad "hybrid lost it: $(cat "$T/out")"
+run recall mutex --days 365 --mode semantic --source pi > "$T/out" 2>&1
+check_rc 0 $? "no embedder is not an error"
+grep -q 'semantic search unavailable' "$T/out" && ok "says why, and falls back" || bad "no fallback message"
+MEM_EMBED_MODEL=other/model run_sem recall mutex --mode semantic > "$T/out" 2>&1
+check_rc 0 $? "a model mismatch is not fatal"
+grep -q 'built with BAAI/bge-m3, not other/model' "$T/out" && ok "refuses to compare two models" \
+    || bad "no model-mismatch message: $(cat "$T/out")"
+MEM_EMBED_MODEL=other/model run_sem index > "$T/out" 2>&1
+check_rc 1 $? "index refuses to mix models"
+MEM_EMBED_CMD=false run index --rebuild > "$T/out" 2>&1
+check_rc 1 $? "a failing embedder is an error"
+grep -q 'no embedder' "$T/out" && ok "names the way out" || bad "no guidance: $(cat "$T/out")"
 
 printf '\n== recall: pi sessions, filters, and misses ==\n'
 setup
