@@ -145,6 +145,16 @@ outside the repo. Revisit when a long session's compression visibly pays for
 that prefix **and** the proxy can report its own spend into pi's usage stream;
 the measurement recipe is in `docs/learnings/2026-11-21-verifying-billed-cost-through-a-proxy.md`.
 
+**Context is compacted at a stopping point, not at a threshold.** (2026-11-21)
+`auto-compact.ts` compacts from `agent_settled` — fires only when a run is
+fully settled, no retry or queued continuation pending — once the context
+passes `max(250k, 25% of window)` (262k on the 1M models). Rejected: setting
+`compaction.modelOverrides[…].reserveTokens` to reach 250k, because pi's
+threshold check runs *mid-task*, after a tool batch and before the next
+assistant response, so a long agentic run would get summarised underneath
+itself. The built-in threshold stays at its default (~1.03M here) as a
+last-resort net, and `/compact` is unchanged.
+
 ## Nix
 
 **opencode tracks the V2 CLI from npm; the desktop app stays on V1.**

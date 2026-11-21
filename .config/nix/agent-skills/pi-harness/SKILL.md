@@ -37,6 +37,7 @@ nix-store symlinks.
 | `learnings-capture.ts` | appends tool failures to the shared inbox at `~/.local/share/agents/memory/inbox.md` |
 | `corrections-capture.ts` | appends user corrections and stated rules to the same inbox, with the action being corrected |
 | `record-learning.ts` | `learning` tool: writes + indexes `<repo>/docs/learnings/` |
+| `auto-compact.ts` | compacts at `agent_settled` once context passes max(250k, 25% of window) — silent, and never mid-task |
 | `session-recall.ts` | `recall` tool: search past session JSONL |
 
 Rules that keep these safe: no model calls, never throw into the run (wrap
