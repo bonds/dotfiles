@@ -128,6 +128,23 @@ becomes a no-op.
 round-trip per tool call; the alternative (default tools only) costs latency
 and tokens on every multi-step task.
 
+**`billion-context` (bili) is not installed — measured, then declined.**
+(2026-11-21) It is the most-downloaded pi package, and the part I doubted does
+work: it hooks `before_provider_request`/`after_provider_response` and spawns a
+local proxy on :8787, yet Deep Infra's `usage.estimated_cost` still reaches
+`reported-cost.ts` unchanged (billed rate 0.098/M, i.e. 0.49 × list, identical
+with and without it) and the prefix stays cacheable. Rejected because the
+accounting gap runs the wrong way: its compression calls happen **inside the
+proxy**, so pi never sees their usage — the footer would undercount real spend
+while `/acp` held the true number, the opposite of what `reported-cost.ts`
+exists to guarantee. Also: ~7.4k tokens of fixed prefix per request (its three
+`acp_delegate` tools plus an ACP system section), `autoUpdate: true` by
+default so it rewrites its own files at runtime, and it seeds
+`~/.config/billion-context/` and `~/.local/share/billion-context/sessions/`
+outside the repo. Revisit when a long session's compression visibly pays for
+that prefix **and** the proxy can report its own spend into pi's usage stream;
+the measurement recipe is in `docs/learnings/2026-11-21-verifying-billed-cost-through-a-proxy.md`.
+
 ## Nix
 
 **opencode tracks the V2 CLI from npm; the desktop app stays on V1.**
