@@ -32,6 +32,12 @@
  *     before session totals are computed, so rewriting `usage.cost` there is
  *     what `/session` and the footer see.
  *
+ * `cost.totalFromProvider` is set too: pi's own billed-cost path
+ * (`pi-ai/dist/utils/openrouter-cost.js::applyOpenRouterReportedCost`) flips it
+ * when it overwrites `total`, and `core/usage-totals.js::combineUsage` treats a
+ * sum as provider-reported only when every part is. Leaving it false would
+ * label a billed number as a catalog estimate.
+ *
  * A provider that reports no cost (or a different API shape) is untouched:
  * the token-count match fails and pi's own number stands.
  */
@@ -132,6 +138,9 @@ export default function (pi: ExtensionAPI) {
 			cost.cacheWrite = share(usage.cacheWrite);
 			cost.total = entry.total;
 		}
+		// Same flag pi's OpenRouter path sets: this total is the billed amount,
+		// not a catalog estimate.
+		cost.totalFromProvider = true;
 
 		return { message };
 	});

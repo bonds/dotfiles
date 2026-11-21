@@ -67,3 +67,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-21 — A git-backed flake ignores files git does not know about](2026-11-21-flakes-ignore-untracked-files.md)
 - [2026-11-21 — pi.dev/packages lists download counts only in the HTML, sorted by most downloads](2026-11-21-pi-package-gallery-download-counts.md)
 - [2026-11-21 — Verify billed cost survives a proxy by comparing effective rates per message](2026-11-21-verifying-billed-cost-through-a-proxy.md)
+- [2026-11-21 — pi's cost seam is `message_end`, and a third-party footer inherits the rewrite for free](2026-11-21-pi-cost-seam-is-message-end.md)
