@@ -62,3 +62,5 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-15 — A `$HOME`-side commit leaves the edit worktree's index looking like a staged revert](2026-11-15-worktree-index-stale-after-home-commit.md)
 - [2026-11-17 — Hermes prices Deep Infra at list, and a `$HERMES_HOME` provider plugin is where you fix it](2026-11-17-hermes-cost-is-list-price.md)
 - [2026-11-18 — An ad-hoc signature keys the Photos TCC grant to the cdhash, so every rebuild needs a re-grant](2026-11-18-adhoc-signature-keys-tcc-grant-to-cdhash.md)
+- [2026-11-21 — `config checkout main -- :/` never deletes, so a dropped package stays built](2026-11-21-apply-checkout-never-deletes.md)
+- [2026-11-21 — `nix flake check --no-build` evaluates the checks and runs none of them](2026-11-21-no-build-never-runs-the-checks.md)

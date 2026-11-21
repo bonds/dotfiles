@@ -65,6 +65,21 @@ if ! nix flake check --no-build --all-systems --no-write-lock-file 2>&1; then
 	exit 1
 fi
 
+# That pass only EVALUATES the check derivations -- it runs none of them. So
+# format, deadnix, statix and gitleaks were never gating a push, which is how six
+# deadnix findings sat in the tree unnoticed. Build the cheap local ones, for the
+# pushing system only: --all-systems would need linux builders for the others.
+system=$(nix eval --raw --impure --expr 'builtins.currentSystem')
+for check in format-check deadnix-check statix-check secrets-check; do
+	echo "pre-push: building checks.$system.$check..."
+	if ! out=$(nix build --no-link --no-write-lock-file ".#checks.$system.$check" 2>&1); then
+		printf '%s\n' "$out" >&2
+		echo "pre-push: checks.$system.$check FAILED — push aborted." >&2
+		echo "  Fix errors above or bypass with 'git push --no-verify'." >&2
+		exit 1
+	fi
+done
+
 # Direct evals catch real config regressions (e.g. path typos like zen-icon) that
 # the sandboxed `nix eval` inside the check derivations misses on macOS (the inner
 # nix can't reach the daemon store as nixbld). Runs as the pushing user.

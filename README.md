@@ -63,9 +63,11 @@ nr
 ```
 
 (`nr` applies the committed tree into `$HOME` before building. The manual form,
-if ever needed, is `config checkout main -- :/` — no `cd`, because `:/` is
-anchored at the top of the work tree while a bare `.` is resolved against the
-cwd.)
+if ever needed, is `config read-tree -u --reset main`: it makes the checkout
+*equal* main, whereas `checkout main -- :/` only writes the paths main still
+has — a path main deleted would stay on disk and in the index. Untracked files
+survive either way; `read-tree -u --reset` also discards local edits to tracked
+files, which is what the guard already proved it may do.)
 
 Outside fish there is no alias — spell it out, from `$HOME` so pathspecs resolve:
 

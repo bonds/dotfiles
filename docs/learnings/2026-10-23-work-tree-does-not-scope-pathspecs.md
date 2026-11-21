@@ -49,9 +49,12 @@ dotfiles repo from a script:
 to `main` itself before building) and `~/.local/share/dotfiles/worktree` is a
 *linked* worktree used for editing, where plain `git -C` needs no
 `--git-dir`/`--work-tree` at all. The scoping trap above is why the hand-typed
-apply is `config checkout main -- :/`: `:/` is anchored at the top of the work
-tree, so it means the same thing from any cwd, where a bare `.` is resolved
-against the cwd.
+apply is anchored at the top of the work tree (`:/`) rather than a bare `.`,
+which would resolve against the cwd. That recipe has since been replaced by
+`config read-tree -u --reset main` — `checkout main -- :/` propagates additions
+and modifications but never deletions, so a dropped path survives in `$HOME`
+and dirties it. See
+[2026-11-21](2026-11-21-apply-checkout-never-deletes.md).
 
 Diagnostic habit: if `git diff -- <path>` is empty but the file looks changed,
 run the same command from `~` before concluding the change is gone — and check

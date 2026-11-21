@@ -178,7 +178,14 @@ if [ -n "$(g status --porcelain --untracked-files=no 2>/dev/null)" ]; then
 		# cwd; a bare `.` would resolve against the caller's.
 		printf 'nr: applying %s to %s\n' "$(g rev-parse --short main)" "$root"
 		log=${TMPDIR:-/tmp}/nr-guard-apply.$$
-		if g checkout main -- ':/' >"$log" 2>&1; then
+		# Not `checkout main -- ':/'`: that writes only the paths main has, so a
+		# path main DELETED survives in the index and on disk. $HOME then looks
+		# locally edited to every later run, which refuses to apply -- and the
+		# dropped file stays built into the tree. `read-tree -u --reset` is the
+		# primitive that makes index+work tree EQUAL main: it removes what main
+		# no longer has and leaves untracked files alone. Safe here because the
+		# loop above proved every differing path holds an older committed state.
+		if g read-tree -u --reset main >"$log" 2>&1; then
 			rm -f "$log"
 		else
 			printf 'nr: ERROR could not apply main to %s -- refusing to build:\n' "$root" >&2
@@ -200,7 +207,7 @@ if [ -n "$(g status --porcelain --untracked-files=no 2>/dev/null)" ]; then
 				[ "$shown" -lt 8 ] || break
 			fi
 		done
-		say '%s\n' 'nr:           building what is there; to discard them: config checkout main -- :/'
+		say '%s\n' 'nr:           building what is there; to discard them: config read-tree -u --reset main'
 	fi
 fi
 

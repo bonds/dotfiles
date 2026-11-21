@@ -90,6 +90,21 @@ main_from() {
 	set +e
 }
 
+# main_delete <file> — commit the removal of <file> on top of main, leaving the
+# apply checkout still holding it: exactly what dropping a package looks like.
+main_delete() {
+	set -e
+	mkdir -p "$T/bump"
+	git --git-dir="$T/.local/share/dotfiles/bare" --work-tree="$T/bump" checkout -q -f main
+	git --git-dir="$T/.local/share/dotfiles/bare" --work-tree="$T/bump" rm -q -- "$1"
+	git --git-dir="$T/.local/share/dotfiles/bare" --work-tree="$T/bump" commit -q -m "drop $1"
+	# The scratch tree shares $HOME's index (same git dir), so the `rm` above
+	# cleared the entry. A real drop is committed from the edit checkout, which
+	# has an index of its own -- $HOME keeps the path, staged as an addition.
+	g add -- "$1"
+	set +e
+}
+
 echo "nr-guard"
 
 # 1. Nothing to do: exit 0, silent.
@@ -109,6 +124,19 @@ expect_out "behind main announces the apply" 'nr: applying [0-9a-f]+ to'
 [ "$(cat "$T/a.conf")" = a2 ] && ok "behind main updated a.conf" || bad "behind main left a.conf stale"
 [ "$(cat "$T/sub/b.conf")" = b2 ] && ok "behind main updated sub/b.conf" || bad "behind main left sub/b.conf stale"
 [ "$(cat "$T/d.txt")" = d1 ] && ok "behind main left untouched files alone" || bad "behind main lost d.txt"
+
+# 2b. A path main DELETED is removed from $HOME. `checkout main -- :/` writes
+# only what main has, so a dropped file used to survive on disk and in the index,
+# leaving $HOME looking locally edited (which blocks every later apply) and
+# keeping the dropped package in the built tree.
+setup
+main_delete sub/c.conf
+guard
+expect_exit "deletion applies" 0
+expect_out "deletion announces the apply" 'nr: applying'
+[ ! -e "$T/sub/c.conf" ] && ok "deletion removed sub/c.conf from disk" || bad "deletion left sub/c.conf on disk"
+[ -z "$(g status --porcelain --untracked-files=no)" ] && ok "deletion leaves the apply checkout clean" || bad "deletion left the apply checkout dirty: $(g status --porcelain --untracked-files=no | tr '\n' ' ')"
+[ "$(cat "$T/a.conf")" = a1 ] && ok "deletion left the other files alone" || bad "deletion disturbed a.conf"
 
 # 3. Local edits to tracked files: refuse to apply, name them, build anyway.
 setup
