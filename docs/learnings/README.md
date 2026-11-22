@@ -72,3 +72,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-21 — bge-m3 embeddings are not bitwise deterministic, so compare recall scores with a tolerance](2026-11-21-embedding-scores-jitter-between-calls.md)
 - [2026-11-22 — A `~/…` token in a skill is a claim that the path exists, and `mem doctor` checks it](2026-11-22-skill-path-tokens-are-claims.md)
 - [2026-11-22 — Cloning a macOS .app for a second Dock identity: re-sign the outer bundle only](2026-11-22-cloned-app-resign-outer-bundle-only.md)
+- [2026-11-22 — Pi-Harness is a well-built Electron workbench around the pi SDK, and it will fight a nix-managed `~/.pi/agent`](2026-11-22-pi-harness-desktop-superset.md)
