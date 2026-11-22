@@ -31,6 +31,11 @@ This is deliberately *not* the same as:
 
 ## Index
 
+- [2026-11-22 — A `Pi.app` with its own Dock icon](2026-11-22-pi-dock-app.md) —
+  clone Ghostty.app into `Pi.app`, give it its own config via
+  `LSEnvironment` + `XDG_CONFIG_HOME`, and sign the outer bundle only. The
+  recipe is verified and the "damaged" trap is diagnosed; nothing is built.
+  Proposed.
 - [2026-10-26 — Doctor and the context budget](2026-10-26-doctor-and-budget.md) —
   `mem doctor`: six checks over the always-loaded budget, the skills layer, the
   learnings index and the archive; plus the 4,000-token target and the no-net-growth
