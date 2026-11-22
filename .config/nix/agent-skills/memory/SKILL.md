@@ -174,6 +174,12 @@ It must be approved once (`~/.hermes/shell-hooks-allowlist.json`, or the TTY
 prompt, or `--accept-hooks`); `hermes hooks list` shows `✓ allowed`, and
 `hermes hooks test post_tool_call --payload-file <json>` fires it by hand.
 
+Skills are written in this repo, never through hermes' `skill_manage` tool: it
+refuses a description over **60 characters** (`SKILL_PROMPT_DESC_LIMIT`, in
+`agent/skill_utils.py`) and truncates longer ones in its index, which destroys
+the routing signal our descriptions exist for — and it only sees
+profile-scoped skills, so a shared one is "not found in active profile".
+
 Concurrency: the inbox is one file with several writers, so `mem` takes an
 exclusive `flock` around every append. Write it through `mem`, not with `>>`.
 Tests: `bash ~/bin/tests/mem-test.sh` (fixtures under /tmp; never touches the

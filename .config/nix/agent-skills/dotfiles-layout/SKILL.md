@@ -89,12 +89,48 @@ automatic:
 - **the worktree is dirty or behind** → commit the edits, or sync the tree after a
   bump was committed from `$HOME`: `git -C ~/.local/share/dotfiles/worktree
   reset --hard main`.
+- **`nr` from a non-interactive shell detaches** into tmux session `nr-build` and
+  returns immediately, so its exit code is the *launcher's*, not the build's:
+  `exit=0` proves nothing. Poll `tmux has-session -t nr-build` (gone = finished)
+  and read the result off the apply checkout (`git log -1 main`, the
+  `~/DECISIONS.md` symlink target), or use `fish -i -c nr` when you need to wait
+  for the status.
+- **a change to `nr` itself is applied by the run *after* it** — `fish` sources
+  `conf.d/` (where the `nr` function lives) before `nr` applies `main`, so the
+  code that runs is the old one. Re-run to exercise the edit.
 
 A third checkout, `live`, at `~/.local/share/dotfiles/live` was removed on
 2026-10-19 because it had drifted to 69 staged files behind `main`, so an agent
 editing it would have committed reverts. The 2026-10-31 layout recreates that
 position deliberately, which is why `worktree/` is the only place edits belong
 and why the two guards exist rather than a rule saying "no second checkout".
+
+### Committing and pushing
+
+The checkout is shared — another session may be working in the same worktree and
+index — so a bare `git commit` sweeps its staged files into your commit under
+your message. Observed 2026-11-19: a docs commit absorbed `flake.lock` and two
+overlay bumps. Always scope it:
+
+```bash
+git commit -F msg -- <paths>
+```
+
+If their changes are already staged, `git reset -- <their paths>` first (the
+working tree survives) and add them back afterwards. To stage part of a file —
+one line of a shared `README.md` index — `git hash-object -w` plus
+`git update-index --cacheinfo 100644,<blob>,<path>`.
+
+A push is slower than it looks: `.config/git/hooks/pre-push` archives the commit
+being pushed and runs `nix flake check --no-build --all-systems` on it — format,
+deadnix, gitleaks, the machine evals — plus a per-machine `drvPath` eval, so it
+takes **2–5 minutes**. A tool timeout kills the hook mid-flight and the push
+simply does not happen, with nothing in the output saying so: give the call a
+long timeout and confirm with `rev-parse` rather than an exit code. (The hook
+documents `git push --no-verify`; a timeout is the usual reason to reach for it,
+and the honest fix is a longer timeout.) The status variable differs by shell too
+(fish `$pipestatus`, bash `${PIPESTATUS[0]}`), which is why the recipe above
+reads the ref instead of trusting a pipeline.
 
 ### Shell
 - `.zshrc` — minimal zsh entry point (sources nix, execs fish)

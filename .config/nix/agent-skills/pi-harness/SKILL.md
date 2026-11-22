@@ -188,7 +188,11 @@ anything.
    `PI_EVAL_ARGS="--no-skills --skill $HOME/.config/nix/agent-skills"` tests the
    repo copies before a rebuild. Two traps already handled there: pi reads stdin
    in print mode (a case loop must redirect it from `/dev/null`), and macOS
-   bash 3.2 cannot expand an empty array under `set -u`.
+   bash 3.2 cannot expand an empty array under `set -u`. A single failure is not
+   a regression — the case is answered by a model, and the observed flake is an
+   answer truncated mid-sentence (the `domain-learnings` case stopped at "three
+   sections: 1. **", missing all three). Re-run that case before editing
+   anything; `run.sh cases.txt domain-learnings` takes seconds.
 4. **Recall** — the `recall` tool searches session JSONL for earlier work on
    the same problem. Codemode exposure, so it costs nothing per request.
 
