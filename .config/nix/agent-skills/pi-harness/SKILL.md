@@ -40,6 +40,8 @@ nix-store symlinks.
 | `auto-compact.ts` | compacts at `agent_settled` once context passes max(250k, 25% of window) — silent, and never mid-task |
 | `session-recall.ts` | `recall` tool: search past session JSONL |
 | `memory-brief.ts` | injects `mem brief` as a `<memory>` prompt section at session start; footer badge shows `inbox N · M clash` |
+| `memory-recall.ts` | gated per-prompt recall: past-tense questions get 2 archive hits as an invisible message, capped at 1.6 s |
+| `learning-nudge.ts` | one invisible line at `turn_end` when a failure was fixed by a retry with different arguments |
 
 Rules that keep these safe: no model calls, never throw into the run (wrap
 file I/O in `try`), guard terminal-only behavior with `ctx.hasUI` /
@@ -223,7 +225,10 @@ Or set `PI_CODING_AGENT_DIR` to a scratch directory. `nh darwin build .` from
 `.config/nix` shows the `hm_*` files that a rebuild would install.
 
 `nr` never typechecks an extension — a syntax or type error only surfaces when
-pi loads it. `tsc` can, if it is pointed at pi's own bundled types, which are
+pi loads it. Nor does anything test one: `bun pkgs/pi/extensions/tests/
+extensions-test.ts` drives the memory extensions through a fake `pi` (handlers
+in, results out) and covers the decisions that fail silently — a nudge for a
+retry that did not fix anything, a recall that fires on an ordinary prompt. `tsc` can, if it is pointed at pi's own bundled types, which are
 not on any default search path:
 
 ```fish

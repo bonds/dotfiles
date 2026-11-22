@@ -87,8 +87,9 @@ Four properties make it safe to inject unconditionally, and each is a
 constraint, not an accident:
 
 - **Local and deterministic** — it reads four files and the index's `meta`
-table. No network, no archive scan, no judgment. Measured at ~80 ms, which is
-why it can run on every session start while semantic recall (~1.4-4 s) cannot.
+table, plus the distill rule scan. No network, no archive scan, no judgment.
+Measured at ~120 ms, which is why it can run on every session start while a
+semantic recall (1.3 s, and a network round-trip) cannot.
 - **Budgeted** — capped at 1400 characters (254 tokens for this repo) and eight
 entries. `mem doctor` prints its size in the budget section, and it is *not*
 counted in the always-loaded total because it is repo-scoped.
@@ -98,6 +99,33 @@ capture during the session does not rewrite the system prompt.
 section, never a broken run. Outside a repo it says so instead of inventing
 learnings; from `$HOME` it describes the dotfiles edit checkout, because the
 bare repo has no `.git` there.
+
+## Recall on demand, and the nudge
+
+Two more `pi` extensions use `mem` at the moments a lesson is either useful or
+being made. Both are gated, because recall costs a network round-trip and a
+nudge costs attention:
+
+- **`memory-recall.ts`** fires only for prompts that ask about the past ("how
+  did we", "last time", "have we seen"). It starts `mem recall --mode semantic`
+  at `input` and waits at most 1.6 s at `before_agent_start`, so the work
+  overlaps prompt expansion; a miss injects nothing and the `recall` tool is
+  still there. Hits arrive as an invisible custom message with `display: false`,
+  the footer shows `recall N`, and the text says where each hit came from so it
+  can be checked. `--mode semantic` rather than `hybrid`: hybrid adds the
+  archive's keyword pass (2 s) for little gain when the phrasing is vague.
+- **`learning-nudge.ts`** watches for the shape of a domain lesson: a tool call
+  fails, then the *same tool* succeeds with *different* arguments within six
+  calls, inside a git repository, with no `learning` call yet this session. It
+  appends one invisible line at `turn_end` — never `continue: true`, so a nudge
+  cannot cost a request — and never fires twice. A failure that fails again is
+  not a pair: that false positive ("then succeeded" over a retry that also
+  failed) was caught by a model before any test did, which is why the logic now
+  has one.
+
+`bun ~/.config/nix/pkgs/pi/extensions/tests/extensions-test.ts` covers both
+against a fake `pi` (20 cases): the gating, the invisibility, the once-per-
+session rule, and the shapes that must stay silent.
 
 ## Two kinds of lesson, two homes
 

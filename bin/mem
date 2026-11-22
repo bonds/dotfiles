@@ -35,6 +35,7 @@ import fcntl
 import hashlib
 import json
 import math
+import operator
 import os
 import pathlib
 import re
@@ -708,25 +709,31 @@ def cmd_recall(args) -> int:
     if not words:
         die("recall needs a query", 2)
 
-    hits: list[dict] = []
     stores = {"pi": recall_pi, "opencode": recall_opencode, "hermes": recall_hermes}
     mode = getattr(args, "mode", "keyword")
 
-    if args.source in stores:
-        since = (dt.datetime.now() - dt.timedelta(days=args.days)).timestamp()
-        hits.extend(stores[args.source](words, since, args.limit))
-    else:
-        if args.source in ("archive", "all") and (RAW_DIR / "messages").is_dir():
-            hits.extend(recall_archive(words, args.days, args.limit))
-        if args.source in ("docs", "all"):
-            hits.extend(recall_docs(words, args.days, args.limit, args.include_archive))
-        # The stores stay the fallback, as the plan says: they are the only
-        # source for a session newer than the last ingest, and asking them when
-        # the archive already answered would return every hit twice.
-        if args.source == "all" and not hits:
+    def keyword_hits() -> list[dict]:
+        """The keyword paths. Semantic-only mode discards them, so it skips them:
+        they cost 2.2 s of a 4.8 s query."""
+        found: list[dict] = []
+        if args.source in stores:
             since = (dt.datetime.now() - dt.timedelta(days=args.days)).timestamp()
-            for fn in stores.values():
-                hits.extend(fn(words, since, args.limit))
+            found.extend(stores[args.source](words, since, args.limit))
+        else:
+            if args.source in ("archive", "all") and (RAW_DIR / "messages").is_dir():
+                found.extend(recall_archive(words, args.days, args.limit))
+            if args.source in ("docs", "all"):
+                found.extend(recall_docs(words, args.days, args.limit, args.include_archive))
+            # The stores stay the fallback, as the plan says: they are the only
+            # source for a session newer than the last ingest, and asking them
+            # when the archive already answered would return every hit twice.
+            if args.source == "all" and not found:
+                since = (dt.datetime.now() - dt.timedelta(days=args.days)).timestamp()
+                for fn in stores.values():
+                    found.extend(fn(words, since, args.limit))
+        return found
+
+    hits: list[dict] = [] if mode == "semantic" else keyword_hits()
 
     # The vector index covers the archive and the curated docs; `--source` still
     # narrows it, so asking for pi sessions does not answer with a learnings
@@ -735,6 +742,7 @@ def cmd_recall(args) -> int:
         semantic = semantic_hits(
             args.query, args.days, args.limit,
             min_score=getattr(args, "min_score", SEMANTIC_MIN_SCORE),
+            snippet=getattr(args, "snippet", SNIPPET_CHARS),
         )
         if semantic is None:
             print(
@@ -742,6 +750,10 @@ def cmd_recall(args) -> int:
                 "using keyword only; build one with `mem index`",
                 file=sys.stderr,
             )
+            # The message promises a fallback; semantic-only mode skipped the
+            # keyword paths, so run them now rather than returning nothing.
+            if mode == "semantic":
+                hits = keyword_hits()
         else:
             if args.source in stores:
                 semantic = [h for h in semantic if h["source"] == f"archive/{args.source}"]
@@ -2397,6 +2409,9 @@ def embed_texts(texts: list[str]) -> list[list[float]] | None:
     return vectors
 
 
+_mul = operator.mul
+
+
 def pack_vector(vec) -> bytes:
     """Normalised int8, so a dot product is the cosine and the table stays small."""
     norm = math.sqrt(sum(float(v) * float(v) for v in vec)) or 1.0
@@ -2408,8 +2423,13 @@ def unpack_vector(blob: bytes):
 
 
 def dot(query_vec, vec) -> float:
-    """Cosine of two int8 vectors (both were normalised to +-127 before packing)."""
-    return sum(a * b for a, b in zip(query_vec, vec)) / (127.0 * 127.0)
+    """Cosine of two int8 vectors (both were normalised to +-127 before packing).
+
+    `map(mul, …)` rather than a generator expression: this runs 22k times per
+    query over 1024 dimensions, and the generator frame costs as much as the
+    multiply — measured 0.24 s -> 0.14 s for 4000 rows.
+    """
+    return sum(map(_mul, query_vec, vec)) / (127.0 * 127.0)
 
 
 def open_index(create: bool = True) -> sqlite3.Connection | None:
@@ -2582,7 +2602,8 @@ def cmd_index(args) -> int:
     return 0
 
 
-def semantic_hits(query: str, days: int, limit: int, min_score: float = SEMANTIC_MIN_SCORE) -> list[dict] | None:
+def semantic_hits(query: str, days: int, limit: int, min_score: float = SEMANTIC_MIN_SCORE,
+                  snippet: int = SNIPPET_CHARS) -> list[dict] | None:
     """Nearest archived turns and curated docs to `query`, or None if unavailable."""
     if not INDEX_DB.exists():
         return None
@@ -2638,7 +2659,7 @@ def semantic_hits(query: str, days: int, limit: int, min_score: float = SEMANTIC
                 "source": source,
                 "session": session,
                 "role": role or "",
-                "text": " ".join(text.split())[:200],
+                "text": " ".join(text.split())[:snippet],
                 "score": round(score, 4),
             }
         )
@@ -4305,6 +4326,8 @@ def main(argv: list[str]) -> int:
     recall.add_argument("--json", action="store_true", help="emit records instead of text")
     recall.add_argument("--mode", default="keyword", choices=["keyword", "semantic", "hybrid"],
                         help="keyword (default), semantic (vectors), or hybrid (fusion)")
+    recall.add_argument("--snippet", type=int, default=SNIPPET_CHARS,
+                        help=f"characters of each hit's text to print (default {SNIPPET_CHARS})")
     recall.add_argument("--min-score", type=float, default=SEMANTIC_MIN_SCORE,
                         help=f"cosine floor for semantic hits (default {SEMANTIC_MIN_SCORE}, 0 keeps all)")
     recall.add_argument("--tokens", type=int, default=2000,
