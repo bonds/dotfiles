@@ -139,6 +139,14 @@ what was approved, then delete the processed lines (keep the header). Noise — 
 transient network error, a typo fixed on the next call — is deleted with a note;
 the inbox is a set of unresolved lessons, not a log.
 
+The audit runs on a cadence, and decides nothing: `mem nightly` adds a
+`distill --summary` stage (`--no-distill` opts out) so the report always says how
+many candidates are waiting, how many are stale, and how many look like they
+contradict an existing rule. The same counts ride in the session brief and in
+the pi footer badge (`inbox 28 · 5 clash`), so a growing backlog is visible
+without anyone remembering to ask. Promotion stays a human step — the night job
+reports, it never edits `AGENTS.md` or deletes a candidate.
+
 After changing `~/AGENTS.md`, a skill description or `~/DECISIONS.md`, run
 `~/.config/nix/pkgs/pi/evals/run.sh`: a failure means the wording got worse.
 

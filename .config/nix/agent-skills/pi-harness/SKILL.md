@@ -39,7 +39,7 @@ nix-store symlinks.
 | `record-learning.ts` | `learning` tool: writes + indexes `<repo>/docs/learnings/` |
 | `auto-compact.ts` | compacts at `agent_settled` once context passes max(250k, 25% of window) — silent, and never mid-task |
 | `session-recall.ts` | `recall` tool: search past session JSONL |
-| `memory-brief.ts` | injects `mem brief` as a `<memory>` prompt section at session start; footer shows the inbox backlog |
+| `memory-brief.ts` | injects `mem brief` as a `<memory>` prompt section at session start; footer badge shows `inbox N · M clash` |
 
 Rules that keep these safe: no model calls, never throw into the run (wrap
 file I/O in `try`), guard terminal-only behavior with `ctx.hasUI` /

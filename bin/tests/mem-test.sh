@@ -481,6 +481,51 @@ grep -qE '^  warn +opencode: last run' "$T/out" \
 grep -q 'session brief' "$T/out" && ok "doctor reports the brief size" \
     || bad "brief missing from the budget audit"
 
+printf '\n== distill: the nightly audit and the one-line summary ==\n'
+setup
+NOW_D="$(date +%Y-%m-%d)"
+OLD_D="$(python3 -c 'import datetime;print((datetime.date.today()-datetime.timedelta(days=45)).isoformat())')"
+printf -- '- [%s 10:00] bash — never run the rebuild yourself; it needs touchid — ~/x — s1\n' "$NOW_D" > "$T/mem/inbox.md"
+printf -- '- [%s 10:00] bash — always run the rebuild yourself, it is safe — ~/x — s2\n' "$OLD_D" >> "$T/mem/inbox.md"
+printf '# Rules\n\n- Never run the rebuild yourself; it needs touchid.\n' > "$T/rules.md"
+
+MEM_RULES="$T/rules.md" run distill --summary > "$T/out" 2>&1
+check_rc 0 $? "distill --summary runs"
+grep -q '2 candidate(s), oldest 45d' "$T/out" \
+    && ok "summary counts the candidates and their age" || bad "summary: $(cat "$T/out")"
+grep -q '1 stale' "$T/out" && ok "and flags the stale one" || bad "no stale count: $(cat "$T/out")"
+grep -q '1 contradicting' "$T/out" && ok "and the contradiction" || bad "no clash count: $(cat "$T/out")"
+[ "$(wc -l < "$T/out")" -eq 1 ] && ok "one line, not a report" || bad "summary is $(wc -l < "$T/out") lines"
+
+# The brief carries the same counts, so a session sees what to read first.
+MEM_RULES="$T/rules.md" run brief --cwd "$T/repo" > "$T/out" 2>&1
+grep -q '2 candidate(s), oldest 45d; 1 contradicting' "$T/out" \
+    && ok "the brief carries the audit" || bad "brief inbox line: $(grep inbox "$T/out")"
+MEM_RULES="$T/rules.md" run brief --cwd "$T/repo" --json > "$T/out" 2>&1
+python3 - "$T/out" <<'JSON'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["distill"]["count"] == 2, d["distill"]
+assert d["distill"]["contradicting"] == 1, d["distill"]
+assert d["distill"]["stale"] == 1, d["distill"]
+JSON
+[ $? -eq 0 ] && ok "--json exposes the counts for the badge" || bad "json distill: $(head -3 "$T/out")"
+
+# An empty inbox is a zero, not a crash: the nightly report always has a line.
+: > "$T/mem/inbox.md"
+run distill --summary > "$T/out" 2>&1
+grep -q '0 candidate(s)' "$T/out" && ok "an empty inbox summarises as zero" || bad "empty: $(cat "$T/out")"
+
+# The night job audits and reports; it never promotes anything itself.
+printf -- '- [%s 10:00] input — "no, use config push" — ~/x — s3\n' "$NOW_D" > "$T/mem/inbox.md"
+run nightly --dry-run --no-ingest --no-index --no-summarize > "$T/out" 2>&1
+grep -q '^## distill — ok' "$T/out" && ok "nightly runs the audit" || bad "no distill stage: $(head -20 "$T/out")"
+grep -q '1 candidate(s)' "$T/out" && ok "and reports its counts" || bad "counts missing from the report"
+[ "$(grep -c '^- \[' "$T/mem/inbox.md")" -eq 1 ] \
+    && ok "and leaves the inbox alone" || bad "nightly edited the inbox"
+run nightly --dry-run --no-ingest --no-index --no-summarize --no-distill > "$T/out" 2>&1
+grep -q '^## distill' "$T/out" && bad "--no-distill still ran it" || ok "--no-distill skips the audit"
+
 printf '\n== brief: the session-start block a harness injects ==\n'
 setup
 # Three entries, deliberately added out of order: the brief sorts newest first.

@@ -36,6 +36,8 @@ interface Brief {
 	/** The text injected into the prompt, already budgeted by `mem`. */
 	text: string;
 	inbox: number;
+	/** Candidates that look like they contradict a rule that already exists. */
+	contradicting: number;
 	repo: string | null;
 }
 
@@ -44,14 +46,28 @@ function parse(raw: string, cwd: string): Brief | undefined {
 		text?: unknown;
 		repo?: unknown;
 		inbox?: { count?: unknown };
+		distill?: { contradicting?: unknown };
 	};
 	if (typeof data.text !== "string" || data.text.trim() === "") return undefined;
 	return {
 		cwd,
 		text: data.text.trim(),
 		inbox: typeof data.inbox?.count === "number" ? data.inbox.count : 0,
+		contradicting:
+			typeof data.distill?.contradicting === "number" ? data.distill.contradicting : 0,
 		repo: typeof data.repo === "string" ? data.repo : null,
 	};
+}
+
+/**
+ * The footer badge. "28" alone reads as somebody else's problem; the count that
+ * makes a backlog actionable is the one the audit already computed, so show it
+ * when it is not zero.
+ */
+function statusOf(brief: Brief | undefined): string | undefined {
+	if (!brief || brief.inbox === 0) return undefined;
+	const clash = brief.contradicting > 0 ? ` · ${brief.contradicting} clash` : "";
+	return `inbox ${brief.inbox}${clash}`;
 }
 
 export default function (pi: ExtensionAPI) {
@@ -82,9 +98,7 @@ export default function (pi: ExtensionAPI) {
 				}
 			})().then((loaded) => {
 				if (loaded) brief = loaded;
-				if (ctx.hasUI) {
-					ctx.ui.setStatus(STATUS_KEY, loaded && loaded.inbox > 0 ? `inbox ${loaded.inbox}` : undefined);
-				}
+				if (ctx.hasUI) ctx.ui.setStatus(STATUS_KEY, statusOf(loaded));
 				return loaded;
 			});
 		}

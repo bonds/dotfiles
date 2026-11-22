@@ -328,14 +328,12 @@ def related_rules(
     ]
 
 
-def cmd_distill(args) -> int:
-    cands = inbox_candidates()
-    if not cands:
-        print(f"mem: inbox is empty ({INBOX}) — nothing to distill")
-        return 0
-    stale_days = getattr(args, "stale_days", DISTILL_STALE_DAYS)
-    corpus = [] if getattr(args, "no_check", False) else rule_lines()
-    df = rule_stats(corpus)
+def distill_rows(cands, stale_days: int, corpus: list, df: dict) -> list:
+    """Every candidate, aged, with the rules it may repeat or contradict.
+
+    Shared by the audit and the brief so "stale", "contradicting" and "covered"
+    mean the same thing in both — two definitions would drift.
+    """
     today_date = dt.date.today()
     rows = []
     for line in cands:
@@ -351,23 +349,75 @@ def cmd_distill(args) -> int:
                 "related": related_rules(words, bool(_NEGATION.search(line)), corpus, df),
             }
         )
+    return rows
+
+
+def distill_counts(rows: list) -> dict:
+    """The numbers a report or a badge can carry, from the same rows."""
+    clashes = [r for r in rows if any(x["contradicts"] for x in r["related"])]
+    covered = [r for r in rows if r["related"] and r not in clashes]
+    ages = [r["age_days"] for r in rows if r["age_days"] is not None]
+    return {
+        "count": len(rows),
+        "oldest_days": max(ages) if ages else None,
+        "stale": sum(1 for r in rows if r["stale"]),
+        "contradicting": len(clashes),
+        "covered": len(covered),
+    }
+
+
+def distill_summary(counts: dict, stale_days: int) -> str:
+    age = f", oldest {counts['oldest_days']}d" if counts["oldest_days"] is not None else ""
+    return (
+        f"{counts['count']} candidate(s){age}; {counts['stale']} stale (>{stale_days}d), "
+        f"{counts['contradicting']} contradicting, {counts['covered']} already covered"
+    )
+
+
+def distill_stats() -> dict:
+    """The audit's counts for the real inbox, without printing anything."""
+    cands = inbox_candidates()
+    if not cands:
+        return {"count": 0, "oldest_days": None, "stale": 0, "contradicting": 0, "covered": 0}
+    corpus = rule_lines()
+    return distill_counts(distill_rows(cands, DISTILL_STALE_DAYS, corpus, rule_stats(corpus)))
+
+
+def cmd_distill(args) -> int:
+    cands = inbox_candidates()
+    if not cands:
+        if getattr(args, "summary", False):
+            print("0 candidate(s) — the inbox is empty")
+        else:
+            print(f"mem: inbox is empty ({INBOX}) — nothing to distill")
+        return 0
+    stale_days = getattr(args, "stale_days", DISTILL_STALE_DAYS)
+    corpus = [] if getattr(args, "no_check", False) else rule_lines()
+    df = rule_stats(corpus)
+    rows = distill_rows(cands, stale_days, corpus, df)
     if getattr(args, "json", False):
         print(json.dumps({"stale_days": stale_days, "candidates": rows}, indent=2))
         return 0
 
-    stale = [r for r in rows if r["stale"]]
-    clashes = [r for r in rows if any(x["contradicts"] for x in r["related"])]
-    covered = [r for r in rows if r["related"] and r not in clashes]
-    print(f"{len(cands)} candidate(s) in {INBOX}")
-    if stale:
+    counts = distill_counts(rows)
+    if getattr(args, "summary", False):
+        # One line, for a report or a badge: the counts are the part that fits,
+        # and the per-candidate detail is one `mem distill` away.
+        print(distill_summary(counts, stale_days))
+        return 0
+
+    print(f"{counts['count']} candidate(s) in {INBOX}")
+    if counts["stale"]:
         print(
-            f"{len(stale)} stale (older than {stale_days}d) — promote or drop, "
+            f"{counts['stale']} stale (older than {stale_days}d) — promote or drop, "
             "an unresolved line should not look current forever"
         )
-    if clashes:
-        print(f"{len(clashes)} may contradict a rule that already exists — read those first")
-    if covered:
-        print(f"{len(covered)} may already be covered by a rule — check before adding a second one")
+    if counts["contradicting"]:
+        print(f"{counts['contradicting']} may contradict a rule that already exists — "
+              "read those first")
+    if counts["covered"]:
+        print(f"{counts['covered']} may already be covered by a rule — "
+              "check before adding a second one")
     print()
     for row in rows:
         print(row["line"])
@@ -3434,7 +3484,7 @@ def cmd_doctor(args) -> int:
     brief = brief_text(
         pathlib.Path.cwd(), brief_repo,
         brief_learnings(brief_repo) if brief_repo is not None else [],
-        brief_inbox(), brief_freshness(),
+        brief_inbox(), brief_freshness(), distill_stats(),
     )
     findings.append(("info", "budget",
                      f"session brief        {_tokens(brief):5} tokens (this repo, per session)"))
@@ -3677,6 +3727,12 @@ def cmd_nightly(args) -> int:
         rc, out = _step(["index"])
         tail = "\n".join(out.strip().splitlines()[-3:])
         stages.append(("index (semantic)", rc, tail))
+
+    if not getattr(args, "no_distill", False):
+        # Counts only: distillation itself is a human decision, so the night job
+        # reports what is waiting and leaves the promotion alone.
+        rc, out = _step(["distill", "--summary"])
+        stages.append(("distill", rc, out.strip()))
 
     if not args.no_summarize:
         rc, out = _step(["summarize", "--budget", str(args.budget), "--jobs", "8"])
@@ -4121,7 +4177,8 @@ def brief_repo_name(root: pathlib.Path) -> str:
     return root.name
 
 
-def brief_text(cwd: pathlib.Path, repo, learnings: list, inbox: dict, fresh: dict) -> str:
+def brief_text(cwd: pathlib.Path, repo, learnings: list, inbox: dict, fresh: dict,
+               distill: dict) -> str:
     lines = []
     if repo is not None:
         lines.append(f"repo: {brief_repo_name(repo)} ({repo})")
@@ -4139,7 +4196,20 @@ def brief_text(cwd: pathlib.Path, repo, learnings: list, inbox: dict, fresh: dic
 
     if inbox["count"]:
         age = f", oldest {inbox['oldest_days']}d" if inbox["oldest_days"] is not None else ""
-        lines.append(f"inbox: {inbox['count']} candidate(s){age} — `mem distill` promotes them")
+        # The audit's counts belong here, not behind a second command: "5
+        # contradicting" is what to read first, and a backlog with no numbers
+        # reads as somebody else's problem.
+        extra = []
+        if distill.get("contradicting"):
+            extra.append(f"{distill['contradicting']} contradicting")
+        if distill.get("covered"):
+            extra.append(f"{distill['covered']} already covered")
+        if distill.get("stale"):
+            extra.append(f"{distill['stale']} stale")
+        tail = f"; {', '.join(extra)}" if extra else ""
+        lines.append(
+            f"inbox: {inbox['count']} candidate(s){age}{tail} — `mem distill` promotes them"
+        )
     else:
         lines.append("inbox: empty")
 
@@ -4164,7 +4234,8 @@ def cmd_brief(args) -> int:
     learnings = brief_learnings(repo) if repo is not None else []
     inbox = brief_inbox()
     fresh = brief_freshness()
-    text = brief_text(cwd, repo, learnings, inbox, fresh)
+    distill = distill_stats()
+    text = brief_text(cwd, repo, learnings, inbox, fresh, distill)
     if args.json:
         print(json.dumps({
             "cwd": str(cwd),
@@ -4173,6 +4244,7 @@ def cmd_brief(args) -> int:
             "learnings": learnings[:BRIEF_MAX_LEARNINGS],
             "learning_count": len(learnings),
             "inbox": inbox,
+            "distill": distill,
             "nightly": fresh,
             "text": text,
         }, indent=2))
@@ -4221,6 +4293,7 @@ def main(argv: list[str]) -> int:
     distill.add_argument("--no-check", action="store_true",
                          help="skip the scan against AGENTS.md, DECISIONS.md and the skills")
     distill.add_argument("--json", action="store_true", help="emit records instead of text")
+    distill.add_argument("--summary", action="store_true", help="one line of counts, for a report")
     distill.set_defaults(fn=cmd_distill)
 
     recall = sub.add_parser("recall", help="search past sessions of every harness")
@@ -4261,6 +4334,7 @@ def main(argv: list[str]) -> int:
     night.add_argument("--no-ingest", action="store_true")
     night.add_argument("--no-summarize", action="store_true")
     night.add_argument("--no-index", action="store_true", help="skip the semantic index update")
+    night.add_argument("--no-distill", action="store_true", help="skip the inbox audit")
     night.add_argument("--dry-run", action="store_true", help="print the report, write nothing")
     night.set_defaults(fn=cmd_nightly)
 
