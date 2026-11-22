@@ -178,6 +178,35 @@ reports, it never edits `AGENTS.md` or deletes a candidate.
 After changing `~/AGENTS.md`, a skill description or `~/DECISIONS.md`, run
 `~/.config/nix/pkgs/pi/evals/run.sh`: a failure means the wording got worse.
 
+## Watching the loop itself
+
+`mem nightly` runs from launchd at 04:10 (`modules/darwin-agents.nix`) and writes
+`~/.local/share/agents/memory/reports/YYYY-MM-DD.md`. It exits 0 when only
+`doctor` fails, on purpose — so the report's stage headings, not the exit code,
+are the record. That is the failure mode this loop actually had: doctor failed
+**20 of 26 nights** (always-loaded over budget, a skill out of step, a learnings
+entry missing from the index) and nothing said so, because the report is a file
+nobody reads.
+
+Three readers now parse it:
+
+- **The session brief** names a broken night job and the command that fixes it:
+  `nightly: FAILED doctor (2026-11-21) — run `mem catchup``, or
+  `nightly: 5d stale (...)`. A healthy report keeps the old, quiet line.
+- **The footer badge** carries the short form from `mem brief --json`
+  (`nightly.alarm` = `fail` or `5d`), decided in `bin/mem` so the threshold and
+  its wording have one home. Healthy and empty inbox = no badge line at all.
+- **`mem doctor` fails** when the newest report is older than `NIGHTLY_STALE_DAYS`
+  (2), which turns a dead agent red in `nr` and the pre-push hook within three
+  days. A failing stage inside a fresh report only warns: today's run has not
+  happened yet, so failing on it would cascade one bad night into a red week.
+
+`mem catchup [--harness X] [--no-index]` is the repair a session may run:
+ingest + index + doctor, never `summarize` (money) and never `distill` (a human
+decision). It writes no report — a repair is not a record. Nothing runs it
+automatically: a session-start job would race the 04:10 launchd run, spend
+minutes, and make the brief, which must stay read-only at ~120 ms, a writer.
+
 ## Per-harness wiring
 
 | Harness | Reads | Captures |

@@ -39,7 +39,7 @@ nix-store symlinks.
 | `record-learning.ts` | `learning` tool: writes + indexes `<repo>/docs/learnings/` |
 | `auto-compact.ts` | compacts at `agent_settled` once context passes max(100k, 10% of window), capped at 80% of it — silent, and never mid-task |
 | `session-recall.ts` | `recall` tool: search past session JSONL |
-| `memory-brief.ts` | injects `mem brief` as a `<memory>` prompt section at session start; footer badge shows `inbox N · M clash` |
+| `memory-brief.ts` | injects `mem brief` as a `<memory>` prompt section at session start; footer badge shows `nightly 5d · inbox N · M clash` (absent when both are clear) |
 | `memory-recall.ts` | gated per-prompt recall: past-tense questions get 2 archive hits as an invisible message, capped at 1.6 s |
 | `learning-nudge.ts` | one invisible line at `turn_end` when a failure was fixed by a retry with different arguments |
 

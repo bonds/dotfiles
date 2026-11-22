@@ -3679,8 +3679,19 @@ def cmd_doctor(args) -> int:
             if age is None:
                 findings.append(("warn", "freshness", f"unreadable report name {reports[-1].name}"))
             else:
-                findings.append(("warn" if age > 2 else "ok", "freshness",
-                                 f"last nightly report {reports[-1].stem} ({age}d old)"))
+                # A job that stopped firing looks like one with nothing to do,
+                # so a report past the grace period is a failure rather than a
+                # note — that is what makes a dead agent go red in `nr` and the
+                # pre-push hook. A failing *stage* is a warning: the night job
+                # already reported it, and today's run has not happened yet.
+                findings.append(
+                    ("fail" if age > NIGHTLY_STALE_DAYS else "ok", "freshness",
+                     f"last nightly report {reports[-1].stem} ({age}d old)"))
+                status = report_status(reports[-1])
+                if status["failed"]:
+                    findings.append(("warn", "freshness",
+                                     "that report has failed stage(s): "
+                                     + ", ".join(status["failed"])))
         else:
             findings.append(("warn", "freshness", "nightly reports directory is empty"))
 
@@ -3719,6 +3730,36 @@ def cmd_doctor(args) -> int:
 
 REPORTS = MEMORY_DIR / "reports"
 NIGHTLY_HARNESSES = ("pi", "opencode", "hermes", "osaurus")
+
+# A night job that stopped firing looks exactly like one with nothing to do, so
+# the age of the newest report is the only evidence the loop still runs. One day
+# is normal: the report is written after the check that reads it.
+NIGHTLY_STALE_DAYS = 2
+
+
+REPORT_STAGE_RE = re.compile(r"^## (.+?) — (ok|exit \d+)$", re.M)
+
+
+def report_status(path: pathlib.Path) -> dict:
+    """Stage outcomes from a nightly report, read from its headings.
+
+    The headings are the only record of a stage's exit code: `mem nightly` exits
+    0 when only `doctor` fails, on purpose, so the report is where a finding
+    lives. Parsing it is how a reader — `mem brief`, `mem doctor` — notices that
+    the loop is running but failing.
+    """
+    out = {"ok": None, "stages": 0, "failed": []}
+    try:
+        text = path.read_text(errors="replace")
+    except OSError:
+        return out
+    for match in REPORT_STAGE_RE.finditer(text):
+        out["stages"] += 1
+        if match.group(2) != "ok":
+            out["failed"].append(match.group(1))
+    if out["stages"]:
+        out["ok"] = not out["failed"]
+    return out
 
 
 def _step(args: list) -> tuple:
@@ -3781,6 +3822,38 @@ def cmd_nightly(args) -> int:
     target = REPORTS / f"{stamps[:10]}.md"
     write_atomic(target, report)
     print(f"mem: nightly report {target}")
+    for name, rc, out in stages:
+        first = (out.splitlines() or [""])[0][:100]
+        print(f"  {name:28} {'ok' if rc == 0 else f'exit {rc}'}  {first}")
+    return 1 if failed else 0
+
+
+def cmd_catchup(args) -> int:
+    """The repair a session may run: ingest and index, and nothing else.
+
+    A session that finds the archive stale should not run the whole night:
+    summarizing spends money and distilling is a human decision. Ingest and the
+    index are local, incremental and idempotent, so they are safe to run at any
+    time and safe to interrupt.
+    """
+    stages = []
+    failed = False
+
+    harnesses = (args.harness,) if getattr(args, "harness", None) else NIGHTLY_HARNESSES
+    for harness in harnesses:
+        rc, out = _step(["ingest", harness])
+        failed = failed or rc != 0
+        stages.append((f"ingest {harness}", rc, out.strip()))
+
+    if not getattr(args, "no_index", False):
+        rc, out = _step(["index"])
+        failed = failed or rc != 0
+        stages.append(("index (semantic)", rc, "\n".join(out.strip().splitlines()[-3:])))
+
+    # Same rule as the night job: doctor's exit code is a finding, not a crash.
+    rc, out = _step(["doctor"])
+    stages.append(("doctor", rc, out.strip()))
+
     for name, rc, out in stages:
         first = (out.splitlines() or [""])[0][:100]
         print(f"  {name:28} {'ok' if rc == 0 else f'exit {rc}'}  {first}")
@@ -4158,7 +4231,8 @@ def brief_inbox() -> dict:
 
 def brief_freshness() -> dict:
     """Last nightly report and index build, as ages in days."""
-    out = {"last_report": None, "report_days": None, "index_built": None, "index_days": None}
+    out = {"last_report": None, "report_days": None, "report_ok": None,
+           "report_failed": [], "alarm": None, "index_built": None, "index_days": None}
     try:
         reports = sorted(p.stem for p in REPORTS.glob("*.md"))
     except OSError:
@@ -4169,6 +4243,16 @@ def brief_freshness() -> dict:
             out["report_days"] = (dt.date.today() - dt.date.fromisoformat(reports[-1])).days
         except ValueError:
             pass
+        status = report_status(REPORTS / f"{reports[-1]}.md")
+        out["report_ok"] = status["ok"]
+        out["report_failed"] = status["failed"]
+        # The short form a footer can afford, decided here so the threshold and
+        # its wording have one home rather than one per harness.
+        days = out["report_days"]
+        if status["failed"]:
+            out["alarm"] = "fail"
+        elif days is not None and days > NIGHTLY_STALE_DAYS:
+            out["alarm"] = f"{days}d"
     if INDEX_DB.exists():
         # Read-only on purpose: `open_index(create=False)` still creates its
         # tables, and drops them when the codec changed. A brief is injected
@@ -4236,7 +4320,15 @@ def brief_text(cwd: pathlib.Path, repo, learnings: list, inbox: dict, fresh: dic
 
     if fresh["last_report"]:
         age = f" ({fresh['report_days']}d ago)" if fresh["report_days"] is not None else ""
-        lines.append(f"nightly: last report {fresh['last_report']}{age}")
+        failed = fresh.get("report_failed") or []
+        days = fresh["report_days"]
+        # A stale or failing night job is the one thing a session should say out
+        # loud: everything else in this block is a snapshot of healthy state.
+        if fresh.get("alarm"):
+            why = f"FAILED {', '.join(failed[:2])}" if failed else f"{days}d stale"
+            lines.append(f"nightly: {why} ({fresh['last_report']}) — run `mem catchup`")
+        else:
+            lines.append(f"nightly: last report {fresh['last_report']}{age}")
     else:
         lines.append("nightly: no report yet")
     if fresh["index_built"]:
@@ -4360,6 +4452,11 @@ def main(argv: list[str]) -> int:
     night.add_argument("--no-distill", action="store_true", help="skip the inbox audit")
     night.add_argument("--dry-run", action="store_true", help="print the report, write nothing")
     night.set_defaults(fn=cmd_nightly)
+
+    catch = sub.add_parser("catchup", help="ingest and index now, without spending")
+    catch.add_argument("--harness", choices=NIGHTLY_HARNESSES, help="just one harness")
+    catch.add_argument("--no-index", action="store_true", help="skip the semantic index")
+    catch.set_defaults(fn=cmd_catchup)
 
     doc = sub.add_parser("doctor", help="audit the budget, skills and skill references")
     doc.add_argument("--budget", type=int, default=4000, help="always-loaded token target")

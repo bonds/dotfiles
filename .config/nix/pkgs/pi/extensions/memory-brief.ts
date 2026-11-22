@@ -38,6 +38,8 @@ interface Brief {
 	inbox: number;
 	/** Candidates that look like they contradict a rule that already exists. */
 	contradicting: number;
+	/** `fail` or `Nd` when the night job broke or stopped; null when healthy. */
+	alarm: string | null;
 	repo: string | null;
 }
 
@@ -47,6 +49,7 @@ function parse(raw: string, cwd: string): Brief | undefined {
 		repo?: unknown;
 		inbox?: { count?: unknown };
 		distill?: { contradicting?: unknown };
+		nightly?: { alarm?: unknown };
 	};
 	if (typeof data.text !== "string" || data.text.trim() === "") return undefined;
 	return {
@@ -55,6 +58,8 @@ function parse(raw: string, cwd: string): Brief | undefined {
 		inbox: typeof data.inbox?.count === "number" ? data.inbox.count : 0,
 		contradicting:
 			typeof data.distill?.contradicting === "number" ? data.distill.contradicting : 0,
+		// `mem` owns the threshold and the wording; this only decides to show it.
+		alarm: typeof data.nightly?.alarm === "string" ? data.nightly.alarm : null,
 		repo: typeof data.repo === "string" ? data.repo : null,
 	};
 }
@@ -63,11 +68,21 @@ function parse(raw: string, cwd: string): Brief | undefined {
  * The footer badge. "28" alone reads as somebody else's problem; the count that
  * makes a backlog actionable is the one the audit already computed, so show it
  * when it is not zero.
+ *
+ * A broken night job comes first, because it is the only entry here that means
+ * the rest of this block may be out of date. On a healthy day with an empty
+ * inbox the badge is absent altogether — the status row costs no space unless
+ * there is something to say.
  */
 function statusOf(brief: Brief | undefined): string | undefined {
-	if (!brief || brief.inbox === 0) return undefined;
-	const clash = brief.contradicting > 0 ? ` · ${brief.contradicting} clash` : "";
-	return `inbox ${brief.inbox}${clash}`;
+	if (!brief) return undefined;
+	const parts: string[] = [];
+	if (brief.alarm) parts.push(`nightly ${brief.alarm}`);
+	if (brief.inbox > 0) {
+		const clash = brief.contradicting > 0 ? ` · ${brief.contradicting} clash` : "";
+		parts.push(`inbox ${brief.inbox}${clash}`);
+	}
+	return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 
 export default function (pi: ExtensionAPI) {

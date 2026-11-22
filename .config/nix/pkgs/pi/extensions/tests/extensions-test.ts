@@ -16,6 +16,7 @@
  * `import type` is erased, so bun needs none of pi's types to run this.
  */
 
+import brief from "../memory-brief.ts";
 import compact from "../auto-compact.ts";
 import recall from "../memory-recall.ts";
 import nudge from "../learning-nudge.ts";
@@ -201,6 +202,46 @@ const hits = JSON.stringify([
 	});
 	ok("a failing recall injects nothing", out === undefined);
 }
+
+console.log("\n== memory-brief: the badge says what is broken, and nothing else ==");
+
+/** One `mem brief --json` payload, shaped like the real one. */
+function briefPayload(options: { inbox?: number; contradicting?: number; alarm?: string | null }) {
+	return {
+		code: 0,
+		stdout: JSON.stringify({
+			cwd: REPO,
+			repo: "dotfiles",
+			text: "memory brief",
+			inbox: { count: options.inbox ?? 0, oldest_days: null },
+			distill: { contradicting: options.contradicting ?? 0 },
+			nightly: { alarm: options.alarm ?? null },
+		}),
+		stderr: "",
+	};
+}
+
+async function badge(options: { inbox?: number; contradicting?: number; alarm?: string | null }) {
+	const h = harness(brief, () => briefPayload(options));
+	await h.fire("session_start", { reason: "startup" });
+	const last = h.statuses.at(-1);
+	return last?.[1];
+}
+
+ok("a healthy night with an empty inbox shows nothing", (await badge({})) === undefined);
+ok(
+	"a failing night job shows first",
+	(await badge({ inbox: 3, alarm: "fail" })) === "nightly fail · inbox 3",
+);
+ok("a stale night job says how stale", (await badge({ alarm: "5d" })) === "nightly 5d");
+ok(
+	"the clash count still rides along",
+	(await badge({ inbox: 28, contradicting: 5 })) === "inbox 28 · 5 clash",
+);
+ok(
+	"alarm and backlog share one line",
+	(await badge({ inbox: 2, contradicting: 1, alarm: "3d" })) === "nightly 3d · inbox 2 · 1 clash",
+);
 
 console.log("\n== auto-compact: 100k, and never mid-task ==");
 

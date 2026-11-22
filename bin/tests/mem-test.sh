@@ -52,6 +52,7 @@ run() { # run <args...> — with the fixture store
     # flaky test that also costs money.
     MEMORY_DIR="$T/mem" MEM_PI_SESSIONS="$T/pi" \
         MEM_OPENCODE_DB="$T/absent.db" MEM_HERMES_DB="$T/absent.db" \
+        MEM_OSAURUS_DB="$T/absent.db" \
         MEMORY_RAW="$T/raw" MEM_INDEX_DIR="$T/index" MEM_DOCS="$T/repo/docs/learnings" \
         MEM_EMBED_KEY_FILE="$T/absent-secret" \
         "$MEM" "$@"
@@ -525,6 +526,77 @@ grep -q '1 candidate(s)' "$T/out" && ok "and reports its counts" || bad "counts 
     && ok "and leaves the inbox alone" || bad "nightly edited the inbox"
 run nightly --dry-run --no-ingest --no-index --no-summarize --no-distill > "$T/out" 2>&1
 grep -q '^## distill' "$T/out" && bad "--no-distill still ran it" || ok "--no-distill skips the audit"
+
+printf '\n== nightly health: a report nobody reads still has to be read ==\n'
+# `mem nightly` exits 0 when only doctor fails, so the report's stage headings
+# are the only record that the loop is running but broken. Twenty nights of
+# "exit 1" sat in those files unread (2026-11-01 .. 2026-11-20).
+setup
+TODAY="$(date +%Y-%m-%d)"
+OLD_R="$(python3 -c 'import datetime;print((datetime.date.today()-datetime.timedelta(days=5)).isoformat())')"
+mkdir -p "$T/mem/reports"
+printf '# Nightly — %s\n\n## ingest pi — ok\n\n```\nfine\n```\n\n## doctor — ok\n' "$TODAY" > "$T/mem/reports/$TODAY.md"
+run brief --cwd "$T/repo" --json > "$T/out" 2>&1
+python3 - "$T/out" <<'JSON'
+import json, sys
+d = json.load(open(sys.argv[1]))["nightly"]
+assert d["report_ok"] is True, d
+assert d["report_failed"] == [], d
+assert d["alarm"] is None, d
+JSON
+[ $? -eq 0 ] && ok "a healthy report is not an alarm" || bad "healthy report flagged: $(cat "$T/out")"
+
+printf '# Nightly — %s\n\n## ingest pi — ok\n\n## summarize (budget $0.25) — exit 1\n\n```\nboom\n```\n' "$TODAY" > "$T/mem/reports/$TODAY.md"
+run brief --cwd "$T/repo" > "$T/out" 2>&1
+grep -q 'nightly: FAILED summarize (budget $0.25) .* run `mem catchup`' "$T/out" \
+    && ok "a failed stage is named, with the command that repairs it" \
+    || bad "no alarm: $(grep nightly "$T/out")"
+run brief --cwd "$T/repo" --json > "$T/out" 2>&1
+grep -q '"alarm": "fail"' "$T/out" && ok "and --json exposes the short form for a footer" \
+    || bad "alarm missing: $(cat "$T/out")"
+
+rm -f "$T/mem/reports/$TODAY.md"
+printf '# Nightly — %s\n\n## ingest pi — ok\n' "$OLD_R" > "$T/mem/reports/$OLD_R.md"
+run brief --cwd "$T/repo" > "$T/out" 2>&1
+grep -q 'nightly: 5d stale' "$T/out" && ok "a report that stopped arriving is stale" \
+    || bad "staleness not reported: $(grep nightly "$T/out")"
+run brief --cwd "$T/repo" --json > "$T/out" 2>&1
+grep -q '"alarm": "5d"' "$T/out" && ok "and the footer gets the age" || bad "no age alarm"
+
+# A dead agent is a failure, not a note: that is what turns `nr` and the
+# pre-push hook red instead of relying on someone reading a report.
+run doctor > "$T/out" 2>&1
+grep -qE '^  fail +last nightly report .*5d old' "$T/out" \
+    && ok "doctor fails on a stale report" || bad "doctor: $(grep nightly "$T/out")"
+
+rm -f "$T/mem/reports/$OLD_R.md"
+printf '# Nightly — %s\n\n## doctor — exit 1\n' "$TODAY" > "$T/mem/reports/$TODAY.md"
+run doctor > "$T/out" 2>&1
+grep -qE '^  warn +that report has failed stage' "$T/out" \
+    && ok "a failing stage inside a fresh report only warns" \
+    || bad "stage failure not surfaced: $(grep -i stage "$T/out")"
+grep -qE '^  ok +last nightly report' "$T/out" \
+    && ok "a report written today is not stale" || bad "fresh report called stale"
+
+printf '\n== catchup: the repair a session may run, without spending ==\n'
+setup
+run catchup --no-index --harness pi > "$T/out" 2>&1
+check_rc 0 $? "catchup runs"
+grep -q 'ingest pi .* ok' "$T/out" && ok "it ingests" || bad "no ingest stage: $(cat "$T/out")"
+grep -q 'doctor .* ok' "$T/out" && ok "and audits" || bad "no doctor stage"
+grep -q 'summarize' "$T/out" && bad "catchup spent money on summaries" || ok "it never summarizes"
+grep -q 'distill' "$T/out" && bad "catchup distilled" || ok "and never distills"
+[ -d "$T/mem/reports" ] && [ -n "$(ls -A "$T/mem/reports" 2>/dev/null)" ] \
+    && bad "catchup wrote a report" || ok "a repair is not a nightly report"
+run catchup --no-index --harness pi > "$T/out" 2>&1
+grep -q 'ingest pi' "$T/out" && ok "--harness runs one importer" || bad "harness ignored"
+grep -q 'ingest opencode' "$T/out" && bad "--harness ran them all" || ok "and only that one"
+
+# A stage that genuinely failed is a non-zero exit, so a caller can tell a
+# repair from a no-op: the fixture has no opencode database.
+run catchup --no-index --harness opencode > "$T/out" 2>&1
+check_rc 1 $? "a failing importer fails catchup"
+grep -q 'ingest opencode .* exit 1' "$T/out" && ok "and says which stage" || bad "stage not marked"
 
 printf '\n== brief: the session-start block a harness injects ==\n'
 setup
