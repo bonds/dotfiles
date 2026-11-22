@@ -73,6 +73,32 @@ model or the tests), `MEM_EMBED_MODEL`, `MEM_EMBED_URL`, `MEM_EMBED_KEY`,
 `MEM_EMBED_KEY_FILE`, `MEM_INDEX_DIR`. With no embedder at all, `recall` falls
 back to keyword and says so; the index is never required.
 
+## The session brief
+
+`mem brief [--cwd DIR] [--json]` prints what a session should know before its
+first token: the repo's `docs/learnings` titles (newest eight, `N older` for the
+rest), the inbox backlog with the age of its oldest candidate, and the freshness
+of the nightly report and the index. `pi`'s `memory-brief.ts` runs it at
+`session_start` and injects the text as a `<memory>` prompt section, so every
+session starts knowing what this repo already learned and what is waiting to be
+distilled.
+
+Four properties make it safe to inject unconditionally, and each is a
+constraint, not an accident:
+
+- **Local and deterministic** — it reads four files and the index's `meta`
+table. No network, no archive scan, no judgment. Measured at ~80 ms, which is
+why it can run on every session start while semantic recall (~1.4-4 s) cannot.
+- **Budgeted** — capped at 1400 characters (254 tokens for this repo) and eight
+entries. `mem doctor` prints its size in the budget section, and it is *not*
+counted in the always-loaded total because it is repo-scoped.
+- **A snapshot** — taken at session start and not refreshed mid-session, so a
+capture during the session does not rewrite the system prompt.
+- **Fail-open** — a missing `mem`, a non-zero exit, or a timeout means no
+section, never a broken run. Outside a repo it says so instead of inventing
+learnings; from `$HOME` it describes the dotfiles edit checkout, because the
+bare repo has no `.git` there.
+
 ## Two kinds of lesson, two homes
 
 | Lesson | Home | Trigger |

@@ -476,5 +476,74 @@ grep -qE '^  warn +opencode: last run' "$T/out" \
     && ok "a stale run still warns" \
     || bad "stale run not flagged: $(grep opencode "$T/out")"
 
+# The brief is injected into every session, so its size belongs in the budget
+# audit — reported, not counted, because it depends on the repo you are in.
+grep -q 'session brief' "$T/out" && ok "doctor reports the brief size" \
+    || bad "brief missing from the budget audit"
+
+printf '\n== brief: the session-start block a harness injects ==\n'
+setup
+# Three entries, deliberately added out of order: the brief sorts newest first.
+{
+    printf -- '- [2026-01-02 — the older one](2026-01-02-older.md)\n'
+    printf -- '- [2026-03-04 — the newest one](2026-03-04-newest.md)\n'
+    printf -- '- [2026-02-03 — the middle one](2026-02-03-middle.md)\n'
+} >> "$T/repo/docs/learnings/README.md"
+THREE_AGO="$(python3 -c 'import datetime;print((datetime.date.today()-datetime.timedelta(days=3)).isoformat())')"
+TODAY="$(date +%Y-%m-%d)"
+printf -- '- [%s 10:00] bash — command not found — ~/x — session abc\n' "$THREE_AGO" > "$T/mem/inbox.md"
+printf -- '- [%s 11:00] input — "no, use config push" — ~/x — session abc\n' "$TODAY" >> "$T/mem/inbox.md"
+run brief --cwd "$T/repo" > "$T/out" 2>&1
+check_rc 0 $? "brief runs"
+grep -q '^repo: repo (' "$T/out" && ok "names the repository" || bad "no repo line: $(cat "$T/out")"
+grep -q 'docs/learnings: 3 entries' "$T/out" && ok "counts the entries" || bad "wrong count: $(head -2 "$T/out")"
+python3 - "$T/out" <<'ORDER'
+import sys
+lines = [l for l in open(sys.argv[1]) if l.startswith("- 2026")]
+want = ["newest", "middle", "older"]
+assert [w for w in want if w in lines[0]] == ["newest"], lines
+assert [w for w in want if w in lines[1]] == ["middle"], lines
+assert [w for w in want if w in lines[2]] == ["older"], lines
+ORDER
+[ $? -eq 0 ] && ok "newest first, not file order" || bad "wrong order: $(grep '^- 2026' "$T/out")"
+grep -q 'inbox: 2 candidate(s), oldest 3d' "$T/out" \
+    && ok "reports the inbox backlog and its age" || bad "inbox line: $(grep inbox "$T/out")"
+
+run brief --cwd "$T/repo" --json > "$T/out" 2>&1
+python3 - "$T/out" <<'JSON'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["repo"] == "repo", d["repo"]
+assert d["learning_count"] == 3, d["learning_count"]
+assert d["inbox"] == {"count": 2, "oldest_days": 3}, d["inbox"]
+assert d["learnings"][0]["title"] == "the newest one", d["learnings"][0]
+assert d["text"].startswith("repo: repo"), d["text"][:40]
+JSON
+[ $? -eq 0 ] && ok "--json carries the same facts" || bad "json shape: $(head -5 "$T/out")"
+
+# The budget is what stops a big repo from filling the prompt: only the newest
+# eight are listed, and the rest are summarised as a count.
+setup
+i=0
+while [ "$i" -lt 12 ]; do
+    printf -- '- [2026-04-%02d — entry %d](2026-04-%02d-e%d.md)\n' \
+        "$((i + 1))" "$i" "$((i + 1))" "$i" >> "$T/repo/docs/learnings/README.md"
+    i=$((i + 1))
+done
+run brief --cwd "$T/repo" > "$T/out" 2>&1
+grep -q '12 entries, 4 older' "$T/out" && ok "summarises the overflow" || bad "count line: $(grep docs/learnings "$T/out")"
+[ "$(grep -c '^- 2026' "$T/out")" = 8 ] && ok "lists at most eight" || bad "listed $(grep -c '^- 2026' "$T/out")"
+
+# Outside a repo there is nothing to say about learnings, and inventing some
+# from the dotfiles checkout would be wrong — only $HOME maps there.
+run brief --cwd "$T" > "$T/out" 2>&1
+grep -q 'no git repository' "$T/out" && ok "no repo, no learnings" || bad "claimed a repo: $(cat "$T/out")"
+grep -q '^repo:' "$T/out" && bad "borrowed a repo it is not in" || ok "and does not borrow dotfiles"
+
+# A repo that has never recorded anything gets the nudge instead of a blank.
+setup
+run brief --cwd "$T/repo" > "$T/out" 2>&1
+grep -q 'none yet' "$T/out" && ok "an empty repo is told how to start" || bad "no nudge: $(cat "$T/out")"
+
 printf '\n== summarized: %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

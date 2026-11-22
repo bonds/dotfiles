@@ -3428,6 +3428,16 @@ def cmd_doctor(args) -> int:
     findings.append(("info", "budget", f"skill descriptions   {desc_tokens:5} tokens ({len(skills)} skills)"))
     level = "fail" if total > args.budget else ("warn" if total > args.budget * 0.95 else "ok")
     findings.append((level, "budget", f"always-loaded total  {total:5} / {args.budget} tokens"))
+    # The session brief is injected too, but it is repo-scoped, so it is
+    # reported and not counted: the total above is the same in every repo.
+    brief_repo = brief_repo_root(pathlib.Path.cwd()) or brief_dotfiles_fallback(pathlib.Path.cwd())
+    brief = brief_text(
+        pathlib.Path.cwd(), brief_repo,
+        brief_learnings(brief_repo) if brief_repo is not None else [],
+        brief_inbox(), brief_freshness(),
+    )
+    findings.append(("info", "budget",
+                     f"session brief        {_tokens(brief):5} tokens (this repo, per session)"))
 
     for label, path in ((".config/nix/AGENTS.md", HOME / ".config" / "nix" / "AGENTS.md"),
                         ("docs/plans/", HOME / "docs" / "plans"),
@@ -4000,6 +4010,177 @@ def cmd_backfill_evidence(args) -> int:
     return 0
 
 
+# ---------------------------------------------------------------- brief --
+#
+# Session-start context for a harness: what this repo already knows, and what
+# is waiting to be distilled. The harness injects it into every session's
+# system prompt, so it must be local, deterministic and fast — no network, no
+# archive scan, no judgment. Everything here is a count or a title that already
+# exists on disk; the value is that the model stops re-deriving them.
+
+BRIEF_MAX_CHARS = 1400
+BRIEF_MAX_LEARNINGS = 8
+BRIEF_TITLE_CHARS = 96
+_BRIEF_ENTRY = re.compile(r"^- \[(\d{4}-\d{2}-\d{2})\s*[—–-]\s*(.+?)\]\(([^)]+)\)")
+_INBOX_LINE = re.compile(r"^- \[(\d{4}-\d{2}-\d{2}) ")
+
+
+def brief_repo_root(start: pathlib.Path):
+    """The repo a session works in: the nearest ancestor holding `.git`."""
+    cur = start
+    for _ in range(40):
+        if (cur / ".git").exists():
+            return cur
+        if cur.parent == cur:
+            return None
+        cur = cur.parent
+    return None
+
+
+def brief_dotfiles_fallback(start: pathlib.Path):
+    """`$HOME` has no `.git` (bare repo), but its docs live in the edit checkout."""
+    worktree = pathlib.Path(
+        os.environ.get("MEM_DOTFILES_WORKTREE") or HOME / ".local/share/dotfiles/worktree"
+    )
+    if start != HOME and HOME not in start.parents:
+        return None
+    return worktree if (worktree / "docs" / "learnings").is_dir() else None
+
+
+def brief_learnings(root: pathlib.Path) -> list:
+    """Index entries from `<repo>/docs/learnings/README.md`, newest first."""
+    try:
+        text = (root / "docs" / "learnings" / "README.md").read_text(errors="replace")
+    except OSError:
+        return []
+    entries = []
+    for line in text.splitlines():
+        match = _BRIEF_ENTRY.match(line.strip())
+        if not match:
+            continue
+        date, title, path = match.groups()
+        entries.append({"date": date, "title": title.strip(), "file": path})
+    entries.sort(key=lambda e: (e["date"], e["title"]), reverse=True)
+    return entries
+
+
+def brief_inbox() -> dict:
+    try:
+        lines = INBOX.read_text(errors="replace").splitlines()
+    except OSError:
+        return {"count": 0, "oldest_days": None}
+    dates = [m.group(1) for m in (_INBOX_LINE.match(line) for line in lines) if m]
+    if not dates:
+        return {"count": 0, "oldest_days": None}
+    try:
+        oldest = dt.date.fromisoformat(min(dates))
+    except ValueError:
+        return {"count": len(dates), "oldest_days": None}
+    return {"count": len(dates), "oldest_days": (dt.date.today() - oldest).days}
+
+
+def brief_freshness() -> dict:
+    """Last nightly report and index build, as ages in days."""
+    out = {"last_report": None, "report_days": None, "index_built": None, "index_days": None}
+    try:
+        reports = sorted(p.stem for p in REPORTS.glob("*.md"))
+    except OSError:
+        reports = []
+    if reports:
+        out["last_report"] = reports[-1]
+        try:
+            out["report_days"] = (dt.date.today() - dt.date.fromisoformat(reports[-1])).days
+        except ValueError:
+            pass
+    if INDEX_DB.exists():
+        # Read-only on purpose: `open_index(create=False)` still creates its
+        # tables, and drops them when the codec changed. A brief is injected
+        # into every session and must never rebuild the index it is describing.
+        try:
+            con = sqlite3.connect(f"file:{INDEX_DB}?mode=ro", uri=True)
+            try:
+                meta = dict(con.execute("select k, v from meta"))
+            finally:
+                con.close()
+        except (sqlite3.Error, OSError):
+            meta = {}
+        built = meta.get("built")
+        if built:
+            out["index_built"] = built[:10]
+            try:
+                out["index_days"] = (dt.date.today() - dt.date.fromisoformat(built[:10])).days
+            except ValueError:
+                pass
+    return out
+
+
+def brief_repo_name(root: pathlib.Path) -> str:
+    """A name a human recognises: the edit checkout is `dotfiles`, not `worktree`."""
+    if root.name in ("worktree", "bare") and root.parent.name == "dotfiles":
+        return "dotfiles"
+    return root.name
+
+
+def brief_text(cwd: pathlib.Path, repo, learnings: list, inbox: dict, fresh: dict) -> str:
+    lines = []
+    if repo is not None:
+        lines.append(f"repo: {brief_repo_name(repo)} ({repo})")
+        if learnings:
+            shown = learnings[:BRIEF_MAX_LEARNINGS]
+            more = f", {len(learnings) - len(shown)} older" if len(learnings) > len(shown) else ""
+            lines.append(f"docs/learnings: {len(learnings)} entr"
+                         f"{'y' if len(learnings) == 1 else 'ies'}{more}, newest first")
+            for entry in shown:
+                lines.append(f"- {entry['date']} — {entry['title'][:BRIEF_TITLE_CHARS]}")
+        else:
+            lines.append("docs/learnings: none yet — `learning` writes one when you find a trap")
+    else:
+        lines.append(f"no git repository at {cwd} — no repo learnings to show")
+
+    if inbox["count"]:
+        age = f", oldest {inbox['oldest_days']}d" if inbox["oldest_days"] is not None else ""
+        lines.append(f"inbox: {inbox['count']} candidate(s){age} — `mem distill` promotes them")
+    else:
+        lines.append("inbox: empty")
+
+    if fresh["last_report"]:
+        age = f" ({fresh['report_days']}d ago)" if fresh["report_days"] is not None else ""
+        lines.append(f"nightly: last report {fresh['last_report']}{age}")
+    else:
+        lines.append("nightly: no report yet")
+    if fresh["index_built"]:
+        age = f" ({fresh['index_days']}d old)" if fresh["index_days"] is not None else ""
+        lines.append(f"semantic index: built {fresh['index_built']}{age}")
+
+    text = "\n".join(lines)
+    if len(text) > BRIEF_MAX_CHARS:
+        text = text[: BRIEF_MAX_CHARS - 1].rstrip() + "…"
+    return text
+
+
+def cmd_brief(args) -> int:
+    cwd = pathlib.Path(args.cwd or os.getcwd()).resolve()
+    repo = brief_repo_root(cwd) or brief_dotfiles_fallback(cwd)
+    learnings = brief_learnings(repo) if repo is not None else []
+    inbox = brief_inbox()
+    fresh = brief_freshness()
+    text = brief_text(cwd, repo, learnings, inbox, fresh)
+    if args.json:
+        print(json.dumps({
+            "cwd": str(cwd),
+            "repo": brief_repo_name(repo) if repo is not None else None,
+            "repo_root": str(repo) if repo is not None else None,
+            "learnings": learnings[:BRIEF_MAX_LEARNINGS],
+            "learning_count": len(learnings),
+            "inbox": inbox,
+            "nightly": fresh,
+            "text": text,
+        }, indent=2))
+        return 0
+    print(text)
+    return 0
+
+
 # --------------------------------------------------------------------- main --
 
 
@@ -4087,6 +4268,11 @@ def main(argv: list[str]) -> int:
     doc.add_argument("--budget", type=int, default=4000, help="always-loaded token target")
     doc.add_argument("--json", action="store_true")
     doc.set_defaults(fn=cmd_doctor)
+
+    brf = sub.add_parser("brief", help="print the session-start context for a harness to inject")
+    brf.add_argument("--cwd", default=None, help="directory to describe (default: the process cwd)")
+    brf.add_argument("--json", action="store_true")
+    brf.set_defaults(fn=cmd_brief)
 
     why = sub.add_parser("why", help="trace a learning to its evidence, or an anchor to its users")
     why.add_argument("target", help="a docs/learnings slug, or session://<harness>/<id>#turn-N")

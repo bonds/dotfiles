@@ -39,6 +39,7 @@ nix-store symlinks.
 | `record-learning.ts` | `learning` tool: writes + indexes `<repo>/docs/learnings/` |
 | `auto-compact.ts` | compacts at `agent_settled` once context passes max(250k, 25% of window) — silent, and never mid-task |
 | `session-recall.ts` | `recall` tool: search past session JSONL |
+| `memory-brief.ts` | injects `mem brief` as a `<memory>` prompt section at session start; footer shows the inbox backlog |
 
 Rules that keep these safe: no model calls, never throw into the run (wrap
 file I/O in `try`), guard terminal-only behavior with `ctx.hasUI` /
@@ -216,3 +217,18 @@ pi -e .config/nix/pkgs/pi/extensions/protected-paths.ts \
 
 Or set `PI_CODING_AGENT_DIR` to a scratch directory. `nh darwin build .` from
 `.config/nix` shows the `hm_*` files that a rebuild would install.
+
+`nr` never typechecks an extension — a syntax or type error only surfaces when
+pi loads it. `tsc` can, if it is pointed at pi's own bundled types, which are
+not on any default search path:
+
+```fish
+set -l pi (dirname (readlink -f (command -v pi)))/../lib/pi/node_modules
+printf '{"compilerOptions":{"noEmit":true,"strict":true,"target":"ES2022","module":"ESNext","moduleResolution":"bundler","skipLibCheck":true,"typeRoots":["%s/@types"],"baseUrl":".","paths":{"@earendil-works/*":["%s/@earendil-works/*"],"typebox":["%s/typebox"]}},"include":["%s/*.ts"]}' $pi $pi $pi (pwd) > /tmp/tsconfig.ext.json
+tsc -p /tmp/tsconfig.ext.json
+```
+
+Run it from `pkgs/pi/extensions/`. The store puts `pi` in `bin/` and its
+dependencies in `lib/pi/node_modules`, so the path needs that `../lib/pi` hop.
+`--typeRoots` alone is not enough either: the `paths` mapping is what resolves
+`@earendil-works/pi-coding-agent`, and without it every import is an error.
