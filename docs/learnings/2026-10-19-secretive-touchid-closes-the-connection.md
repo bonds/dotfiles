@@ -20,6 +20,18 @@ The second reads like a network blip, so it was retried as one. The retry succee
 — because Scott had come back to the machine and approved the TouchID prompt. He
 had been AFK for the first attempt.
 
+A third variant, 2026-11-21, names the cause outright:
+
+```
+sign_and_send_pubkey: signing failed for ECDSA "scott's-super-secure-thing@secretive…"
+from agent: communication with agent failed
+scott@home.ggr.com: Permission denied (publickey).
+```
+
+That one arrived *after* a push had already hung for the full 300 s timeout and a
+`ssh -o BatchMode=yes home.ggr.com true` probe had succeeded — so the host was
+reachable and the agent still held the key.
+
 Throughout, the agent looked healthy:
 
 ```
@@ -35,8 +47,12 @@ approval arrives, and the SSH handshake dies — *where* it dies varies, so the
 message does too: a publickey denial if it fails at authentication, or a
 peer-closed connection if the server drops the stalled handshake.
 
-**The two messages are the same condition.** Neither is evidence of a broken
+**All three messages are the same condition.** None is evidence of a broken
 remote, and `ssh-add -l` listing the key is not evidence that signing works.
+`sign_and_send_pubkey: … communication with agent failed` is the one that says
+what is happening: Secretive was asked to sign and did not answer. A successful
+`BatchMode` SSH probe only proves the *host* is reachable — it does not sign
+anything with the Secretive key, so it can pass while a push still cannot.
 
 ## Fix
 
@@ -53,8 +69,9 @@ If the remote has not moved, ask Scott to push when he is at the keyboard. Do no
 retry in a loop: a retry only "works" if the approval prompt happens to be
 answered, which is luck, not diagnosis.
 
-**Lesson:** a `Connection closed by … port 22` on a push to a Secretive-backed
-host is a TouchID timeout, not a network fault. Both signatures mean "hand off".
+**Lesson:** a `Connection closed by … port 22`, a `Permission denied (publickey)`,
+or a `communication with agent failed` on a push to a Secretive-backed host is a
+TouchID timeout, not a network fault. All three mean "hand off".
 
 ## Evidence
 
