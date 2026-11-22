@@ -228,3 +228,17 @@ from the `memory` skill.
 **Lessons are recorded where they were learned** (`docs/learnings/` per repo,
 the shared inbox for tool failures) rather than only in chat. A lesson
 that lives only in a session is lost when the session is compacted away.
+
+**The nightly loop reports; nothing repairs it silently** (2026-11-21). `mem
+nightly` writes a report and exits 0 even when `doctor` fails, so the report's
+stage headings are the record — and for twenty of its first twenty-six nights
+nothing read them. The fix was readers, not automation: `mem brief` names a
+broken night job with the command that repairs it, the footer badge carries the
+short form, and `mem doctor` fails when the newest report is over two days old,
+so a dead launchd agent goes red in `nr` and the pre-push hook. Rejected:
+re-running the night job at session start, which spends minutes, may spend money
+in `summarize`, races the 04:10 run, and turns a read-only 120 ms brief into a
+writer. `mem catchup` (ingest + index + doctor) is the deliberate repair a
+session runs by hand; a failing *stage* inside a fresh report only warns,
+because doctor reads yesterday's report and failing on it would cascade one bad
+night into a red week.

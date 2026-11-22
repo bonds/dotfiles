@@ -70,3 +70,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-21 — Verify billed cost survives a proxy by comparing effective rates per message](2026-11-21-verifying-billed-cost-through-a-proxy.md)
 - [2026-11-21 — pi's cost seam is `message_end`, and a third-party footer inherits the rewrite for free](2026-11-21-pi-cost-seam-is-message-end.md)
 - [2026-11-21 — bge-m3 embeddings are not bitwise deterministic, so compare recall scores with a tolerance](2026-11-21-embedding-scores-jitter-between-calls.md)
+- [2026-11-22 — A `~/…` token in a skill is a claim that the path exists, and `mem doctor` checks it](2026-11-22-skill-path-tokens-are-claims.md)
