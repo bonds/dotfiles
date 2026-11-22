@@ -181,7 +181,8 @@ After changing `~/AGENTS.md`, a skill description or `~/DECISIONS.md`, run
 ## Watching the loop itself
 
 `mem nightly` runs from launchd at 04:10 (`modules/darwin-agents.nix`) and writes
-`~/.local/share/agents/memory/reports/YYYY-MM-DD.md`. It exits 0 when only
+one file per night under `~/.local/share/agents/memory/reports/`, named for the
+date (`2026-11-21.md`). It exits 0 when only
 `doctor` fails, on purpose — so the report's stage headings, not the exit code,
 are the record. That is the failure mode this loop actually had: doctor failed
 **20 of 26 nights** (always-loaded over budget, a skill out of step, a learnings
