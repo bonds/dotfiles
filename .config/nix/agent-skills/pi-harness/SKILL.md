@@ -37,7 +37,7 @@ nix-store symlinks.
 | `learnings-capture.ts` | appends tool failures to the shared inbox at `~/.local/share/agents/memory/inbox.md` |
 | `corrections-capture.ts` | appends user corrections and stated rules to the same inbox, with the action being corrected |
 | `record-learning.ts` | `learning` tool: writes + indexes `<repo>/docs/learnings/` |
-| `auto-compact.ts` | compacts at `agent_settled` once context passes max(250k, 25% of window) — silent, and never mid-task |
+| `auto-compact.ts` | compacts at `agent_settled` once context passes max(100k, 10% of window), capped at 80% of it — silent, and never mid-task |
 | `session-recall.ts` | `recall` tool: search past session JSONL |
 | `memory-brief.ts` | injects `mem brief` as a `<memory>` prompt section at session start; footer badge shows `inbox N · M clash` |
 | `memory-recall.ts` | gated per-prompt recall: past-tense questions get 2 archive hits as an invisible message, capped at 1.6 s |

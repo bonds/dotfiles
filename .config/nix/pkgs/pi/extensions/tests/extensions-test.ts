@@ -16,6 +16,7 @@
  * `import type` is erased, so bun needs none of pi's types to run this.
  */
 
+import compact from "../auto-compact.ts";
 import recall from "../memory-recall.ts";
 import nudge from "../learning-nudge.ts";
 
@@ -200,6 +201,40 @@ const hits = JSON.stringify([
 	});
 	ok("a failing recall injects nothing", out === undefined);
 }
+
+console.log("\n== auto-compact: 100k, and never mid-task ==");
+
+/** Drive one `agent_settled` with a chosen context size and mode. */
+async function settled(options: {
+	tokens: number;
+	window?: number;
+	mode?: string;
+	aborted?: boolean;
+	idle?: boolean;
+}) {
+	let compacted = 0;
+	const h = harness(compact);
+	await h.fire("agent_settled", { aborted: options.aborted ?? false }, {
+		mode: options.mode ?? "tui",
+		isIdle: () => options.idle ?? true,
+		getContextUsage: () => ({ tokens: options.tokens, contextWindow: options.window ?? 1_000_000 }),
+		compact: () => {
+			compacted += 1;
+		},
+	});
+	return compacted;
+}
+
+ok("a small context is left alone", (await settled({ tokens: 60_000 })) === 0);
+ok("99k is still under the floor", (await settled({ tokens: 99_000 })) === 0);
+ok("100k compacts", (await settled({ tokens: 100_000 })) === 1);
+ok("the 1M window keeps the floor, not 10% of it", (await settled({ tokens: 120_000 })) === 1);
+ok("a 128k window still uses 100k", (await settled({ tokens: 100_000, window: 128_000 })) === 1);
+ok("a tiny window caps at 80% of itself", (await settled({ tokens: 63_000, window: 80_000 })) === 0);
+ok("...and fires just above the cap", (await settled({ tokens: 65_000, window: 80_000 })) === 1);
+ok("an aborted run is not compacted", (await settled({ tokens: 400_000, aborted: true })) === 0);
+ok("a print run is not compacted", (await settled({ tokens: 400_000, mode: "print" })) === 0);
+ok("a busy session is not compacted", (await settled({ tokens: 400_000, idle: false })) === 0);
 
 console.log(`\n== summarized: ${pass} passed, ${fail} failed ==\n`);
 process.exit(fail === 0 ? 0 : 1);
