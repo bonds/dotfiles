@@ -5,11 +5,11 @@ final: prev: {
   # `orca` is taken by nixpkgs' GNOME screen reader.
   orca-ade = final.mkDarwinPackage rec {
     pname = "orca-ade";
-    version = "1.4.272";
+    version = "1.4.273";
 
     src = prev.fetchurl {
       url = "https://github.com/stablyai/orca/releases/download/v${version}/orca-macos-arm64.dmg";
-      hash = "sha256-dMr7x9azwV1WqolgbXU6wx4uUf/kTBO2kXpqtQFMx9E=";
+      hash = "sha256-u3n6m4OH3OS3DNZOurloBeCdMb6yQwVCGWkv/jhYoJk=";
     };
 
     nativeBuildInputs = [prev.undmg prev.makeBinaryWrapper];
