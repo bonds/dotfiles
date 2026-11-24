@@ -74,3 +74,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-22 — Cloning a macOS .app for a second Dock identity: re-sign the outer bundle only](2026-11-22-cloned-app-resign-outer-bundle-only.md)
 - [2026-11-22 — Pi-Harness is a well-built Electron workbench around the pi SDK, and it will fight a nix-managed `~/.pi/agent`](2026-11-22-pi-harness-desktop-superset.md)
 - [2026-11-22 — `mem index` reads the apply checkout, so a new learnings entry is invisible until `nr` runs](2026-11-22-mem-index-reads-the-apply-checkout.md)
+- [2026-11-24 — A fish function is snapshotted at shell start, so an edited `nr` keeps running the old one](2026-11-24-fish-function-frozen-at-shell-start.md)
