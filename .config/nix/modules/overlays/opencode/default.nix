@@ -23,16 +23,16 @@
 # (The V1 pin — CLI sha256-xACi+MirfplHin9N0aRmtXvzOIjlINhcVXgKVGTEtok= — stays
 # in git history; do not delete it from history as the escape hatch.)
 nixpkgs: final: prev: let
-  cliVersion = "2.4.1";
-  cliHash = "sha256-+5rvMxjhShOK7yg8qipsmnJ4sh7HNLqj9SwAVit328U=";
+  cliVersion = "2.4.2";
+  cliHash = "sha256-PPoEu6ktsxRk1JMJp74r48kLMrSqV5KlVrX6GPI4QYo=";
 
   # No npm package exists for the desktop app, so it comes from the release zip.
   # V2 only started shipping Electron assets at v2.2.5 (298 MB zip, 756 MB
   # unpacked). update.sh bumps this pin from the same tag and cross-checks the
   # download against the release's SHA256SUMS; if a tag ships no desktop asset
   # it leaves the pin alone with a warning rather than aiming the URL at a 404.
-  desktopVersion = "2.4.1";
-  desktopHash = "sha256-oo/kSxqIxKe2uw9Zhmp+I/tHznR4q3PLmiyYpqJ6eyE=";
+  desktopVersion = "2.4.2";
+  desktopHash = "sha256-eCOhiNz4m44REsLo4Cnf2oS5eTiw41y4r1kXOeNX62o=";
 
   basePkgs = import nixpkgs {
     system = "aarch64-darwin";
