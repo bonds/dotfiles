@@ -46,7 +46,9 @@ nix-store symlinks.
 Rules that keep these safe: no model calls, never throw into the run (wrap
 file I/O in `try`), guard terminal-only behavior with `ctx.hasUI` /
 `ctx.mode === "tui"`, and keep `tool_call` handlers fail-safe (a throwing
-handler blocks the tool).
+handler blocks the tool). The footer is full: a new status segment must be
+conditional (absent when it has nothing to say) or replace an existing one —
+never add a line.
 
 ## Models and cost
 

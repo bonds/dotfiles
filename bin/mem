@@ -2873,10 +2873,19 @@ def cmd_mcp(_args) -> int:
 SUMMARIES = MEMORY_DIR / "summaries"
 KEY_FILE = pathlib.Path(os.environ.get("MEM_DEEPINFRA_KEY_FILE", "/run/agenix/hermes-deepinfra"))
 SUMMARY_MODEL = os.environ.get("MEM_SUMMARY_MODEL", "deepseek-ai/DeepSeek-V4.1-Flash-1017")
-SUMMARY_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
+SUMMARY_URL = os.environ.get("MEM_SUMMARY_URL", "https://api.deepinfra.com/v1/openai/chat/completions")
 TRANSCRIPT_CHARS = 110_000
 MESSAGE_CHARS = 1_400
 DECLINE = "NO DURABLE LESSONS"
+
+# Deep Infra answers a burst of summary requests with a transient 429 that
+# succeeds seconds later, so one rate-limited call must not end the night's
+# stage: `chat` retries those statuses with backoff before giving up. Measured
+# 2026-11-26 — a 429 on `say hi` came back OK on the next probe, while the
+# night job had already recorded `summarize — exit 1` and lost the stage.
+RETRY_STATUS = {429, 500, 502, 503, 504}
+RETRY_ATTEMPTS = max(1, int(os.environ.get("MEM_SUMMARY_ATTEMPTS", 4)))
+RETRY_BASE = float(os.environ.get("MEM_SUMMARY_BACKOFF", 3.0))
 
 SUMMARY_PROMPT = """You summarize one recorded agent session so a future session can learn \
 from it without rereading it.
@@ -2928,14 +2937,30 @@ def chat(key: str, system: str, user: str, max_tokens: int = 1500) -> tuple:
         "messages": [{"role": "system", "content": system},
                      {"role": "user", "content": user}],
     }
-    req = urllib.request.Request(
-        SUMMARY_URL, data=json.dumps(payload).encode(),
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=180) as resp:
-            data = json.loads(resp.read())
-    except Exception as exc:  # noqa: BLE001 - surfaced to the user, never retried
-        die(f"summary request failed: {exc}", 1)
+    body = json.dumps(payload).encode()
+    data = None
+    for attempt in range(1, RETRY_ATTEMPTS + 1):
+        req = urllib.request.Request(
+            SUMMARY_URL, data=body,
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                data = json.loads(resp.read())
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code not in RETRY_STATUS or attempt == RETRY_ATTEMPTS:
+                die(f"summary request failed: {exc}", 1)
+            try:  # the server's own hint wins over our backoff
+                wait = float(exc.headers.get("retry-after") or 0) or RETRY_BASE * 2 ** (attempt - 1)
+            except (TypeError, ValueError):
+                wait = RETRY_BASE * 2 ** (attempt - 1)
+            print(f"mem: summary request {exc.code}, retry {attempt}/{RETRY_ATTEMPTS - 1} "
+                  f"in {wait:.0f}s", flush=True)
+            time.sleep(wait)
+        except Exception as exc:  # noqa: BLE001 - surfaced to the user
+            die(f"summary request failed: {exc}", 1)
+    if data is None:
+        die("summary request failed: no response", 1)
     usage = data.get("usage") or {}
     tin = int(usage.get("prompt_tokens") or 0)
     tout = int(usage.get("completion_tokens") or 0)
@@ -3130,7 +3155,7 @@ def cmd_summarize(args) -> int:
     import concurrent.futures
 
     spent = 0.0
-    done = declined = 0
+    done = declined = failed = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
         for start in range(0, len(items), args.jobs):
             if spent >= args.budget:
@@ -3142,18 +3167,20 @@ def cmd_summarize(args) -> int:
             for future in futures:
                 try:
                     result = future.result()
-                except SystemExit:
-                    raise
+                except SystemExit as exc:  # `die` in a worker: count it, keep going
+                    failed += 1 if exc.code else 0
+                    continue
                 except Exception as exc:  # noqa: BLE001 - one bad session must not stop the run
                     print(f"mem: session failed: {exc}", flush=True)
+                    failed += 1
                     continue
                 spent += result["cost"]
                 declined += 1 if result["declined"] else 0
                 done += 1
 
     print(f"mem: summarized {done} session(s), {skipped} up to date, {declined} declined, "
-          f"spent ${spent:.4f}", flush=True)
-    return 0
+          f"spent ${spent:.4f}" + (f", {failed} failed" if failed else ""), flush=True)
+    return 1 if failed else 0
 
 
 # ------------------------------------------------------------- principles --

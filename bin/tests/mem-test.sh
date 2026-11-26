@@ -527,6 +527,101 @@ grep -q '1 candidate(s)' "$T/out" && ok "and reports its counts" || bad "counts 
 run nightly --dry-run --no-ingest --no-index --no-summarize --no-distill > "$T/out" 2>&1
 grep -q '^## distill' "$T/out" && bad "--no-distill still ran it" || ok "--no-distill skips the audit"
 
+printf '\n== summarize: a transient 429 is retried, not fatal ==\n'
+# Deep Infra rate-limits a burst of summary requests with a 429 that succeeds
+# seconds later. Before the retry, one of those ended the whole stage: the
+# 2026-11-26 night job recorded `summarize — exit 1` while the calls that came
+# after it in the batch never ran. The fixture serves two 429s then a summary,
+# so a run that gives up on the first is caught here.
+setup
+SRV="$T/srv.py"
+cat > "$SRV" <<'SRV'
+import http.server, json, pathlib, sys
+fails = int(sys.argv[2])
+hits = {"n": 0}
+class H(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get("content-length") or 0))
+        hits["n"] += 1
+        if hits["n"] <= fails:
+            self.send_response(429)
+            self.send_header("retry-after", "0")
+            self.send_header("content-length", "0")
+            self.end_headers()
+            return
+        body = json.dumps({"choices": [{"message": {"content": "## Goal\n[turn-0] fixture"}}],
+                           "usage": {"prompt_tokens": 10, "completion_tokens": 5}}).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+    def log_message(self, *a):
+        pass
+srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+pathlib.Path(sys.argv[1]).write_text(str(srv.server_address[1]))
+srv.serve_forever()
+SRV
+serve() { # serve <failures> — start the fake endpoint; sets $URL, stops with stop_server
+    rm -f "$T/port" "$T/srv.pid"
+    # Both redirections matter: a backgrounded server that inherits stdout keeps
+    # the caller's `$(...)` open forever, and the pid must outlive a subshell.
+    python3 "$SRV" "$T/port" "$1" > "$T/srv.log" 2>&1 &
+    echo $! > "$T/srv.pid"
+    for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$T/port" ] && break; sleep 0.2; done
+    URL="http://127.0.0.1:$(cat "$T/port")/v1/chat/completions"
+}
+stop_server() {
+    kill "$(cat "$T/srv.pid")" 2> /dev/null
+    wait "$(cat "$T/srv.pid")" 2> /dev/null
+}
+fixture_session() { # one 2-turn session, old enough that min-age-hours lets it through
+    d="$T/raw/sessions/pi/2026/11/s1"
+    mkdir -p "$d" "$T/raw/messages"
+    printf '{"harness":"pi","id":"s1","turns":2}\n' > "$d/session.json"
+    : > "$d/turns.jsonl"
+    for pair in "0:user" "1:assistant"; do
+        i="${pair%%:*}"; role="${pair##*:}"
+        digest="$(printf '%s' "$i" | python3 -c 'import sys,hashlib;print(hashlib.sha256(sys.stdin.read().encode()).hexdigest())')"
+        mkdir -p "$T/raw/messages/${digest:0:2}"
+        printf '{"content":[{"type":"text","text":"turn %s of a fixture session"}]}\n' "$i" \
+            > "$T/raw/messages/${digest:0:2}/$digest.json"
+        printf '{"i":%s,"role":"%s","msg":"%s"}\n' "$i" "$role" "$digest" >> "$d/turns.jsonl"
+    done
+    touch -t 202001010000 "$d/turns.jsonl"
+}
+printf 'DEEPINFRA_API_KEY=test-key-not-a-secret\n' > "$T/sumkey"
+summarize_against() { # summarize_against <url> [extra args]
+    url="$1"; shift
+    MEM_SUMMARY_URL="$url" MEM_SUMMARY_BACKOFF=0 MEM_DEEPINFRA_KEY_FILE="$T/sumkey" \
+        run summarize --jobs 1 "$@"
+}
+
+fixture_session
+serve 2
+summarize_against "$URL" > "$T/out" 2>&1
+check_rc 0 $? "a retried 429 still exits 0"
+grep -q 'summary request 429, retry 1/' "$T/out" && ok "it says it is retrying" \
+    || bad "no retry line: $(cat "$T/out")"
+grep -q 'summarized 1 session' "$T/out" && ok "and the session lands" \
+    || bad "not summarized: $(cat "$T/out")"
+[ -f "$T/mem/summaries/pi/s1.md" ] && ok "wrote the summary file" || bad "no summary file"
+stop_server
+
+# A failure that outlives the retries must fail the stage — and still not
+# swallow the sessions behind it in the batch. Only the fixtures are reset:
+# setup() would take the fake server's own script with it.
+rm -rf "$T/raw" "$T/mem/summaries"
+fixture_session
+serve 99
+summarize_against "$URL" > "$T/out" 2>&1
+check_rc 1 $? "a persistent 429 fails the stage"
+grep -q 'summary request failed' "$T/out" && ok "and says why" || bad "no reason: $(cat "$T/out")"
+grep -q '1 failed' "$T/out" && ok "the failure is counted in the summary line" \
+    || bad "not counted: $(cat "$T/out")"
+[ -f "$T/mem/summaries/pi/s1.md" ] && bad "wrote a summary it never got" || ok "wrote nothing"
+stop_server
+
 printf '\n== nightly health: a report nobody reads still has to be read ==\n'
 # `mem nightly` exits 0 when only doctor fails, so the report's stage headings
 # are the only record that the loop is running but broken. Twenty nights of
