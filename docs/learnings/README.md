@@ -76,3 +76,5 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-22 — `mem index` reads the apply checkout, so a new learnings entry is invisible until `nr` runs](2026-11-22-mem-index-reads-the-apply-checkout.md)
 - [2026-11-24 — A fish function is snapshotted at shell start, so an edited `nr` keeps running the old one](2026-11-24-fish-function-frozen-at-shell-start.md)
 - [2026-11-26 — Deep Infra answers a burst of summary calls with a transient 429, and one 429 used to end the stage](2026-11-26-deepinfra-429-is-transient.md)
+- [2026-11-26 — ~/bin/mem is a copy, so ~/bin/tests/mem-test.sh tests the applied code and not your edit](2026-11-26-mem-tests-must-run-from-the-worktree.md)
+- [2026-11-26 — A background server started inside $(...) keeps the substitution open forever](2026-11-26-backgrounded-server-hangs-cmdsub.md)
