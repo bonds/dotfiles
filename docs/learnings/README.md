@@ -78,3 +78,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-26 — Deep Infra answers a burst of summary calls with a transient 429, and one 429 used to end the stage](2026-11-26-deepinfra-429-is-transient.md)
 - [2026-11-26 — ~/bin/mem is a copy, so ~/bin/tests/mem-test.sh tests the applied code and not your edit](2026-11-26-mem-tests-must-run-from-the-worktree.md)
 - [2026-11-26 — A background server started inside $(...) keeps the substitution open forever](2026-11-26-backgrounded-server-hangs-cmdsub.md)
+- [2026-11-26 — A stale edit-tree index shows as staged reverts of the last nr --update commit, not as pending bumps](2026-11-26-stale-edit-index-looks-like-pending-bumps.md)
