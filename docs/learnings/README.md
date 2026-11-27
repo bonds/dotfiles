@@ -79,3 +79,4 @@ lesson that was true once is still a lesson about why it changed.
 - [2026-11-26 — ~/bin/mem is a copy, so ~/bin/tests/mem-test.sh tests the applied code and not your edit](2026-11-26-mem-tests-must-run-from-the-worktree.md)
 - [2026-11-26 — A background server started inside $(...) keeps the substitution open forever](2026-11-26-backgrounded-server-hangs-cmdsub.md)
 - [2026-11-26 — A stale edit-tree index shows as staged reverts of the last nr --update commit, not as pending bumps](2026-11-26-stale-edit-index-looks-like-pending-bumps.md)
+- [2026-11-27 — `pi: v1.7.0 -> fb0fe82` prints the new tag then its rev, so it reads as a no-op when the version actually moved](2026-11-27-pi-pin-line-is-tag-then-rev.md)
