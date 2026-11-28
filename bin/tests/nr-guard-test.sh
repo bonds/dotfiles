@@ -40,7 +40,7 @@ expect_no_out() { # <label> <pattern>
 }
 
 guard() {
-	out=$(NR_GUARD_ROOT=$T GIT_CONFIG_NOSYSTEM=1 HOME=$T bash "$GUARD" 2>&1)
+	out=$(NR_GUARD_ROOT=$T GIT_CONFIG_NOSYSTEM=1 HOME=$T bash "$GUARD" "$@" 2>&1)
 	status=$?
 }
 
@@ -303,6 +303,38 @@ expect_exit "recovery does not disturb the verdict" 0
 setup
 guard
 expect_exit "no recovery script is not an error" 0
+
+# 9. --edit-tree-only is what `nr --update` runs AFTER its commit: main has
+#    already moved, so the same stale-index shape has to be synced right there
+#    instead of lingering until the next run's guard. It must do that and
+#    nothing else -- $HOME is not applied mid-run, and an interrupted update's
+#    files are not "recovered" behind the commit that just shipped them.
+setup
+main_from a.conf 'a2
+'
+wt checkout -q --detach "$(git --git-dir="$T/.local/share/dotfiles/bare" rev-parse main)"
+wt checkout -q "$(git --git-dir="$T/.local/share/dotfiles/bare" rev-parse main~1)" -- .
+mkdir -p "$T/bin"
+printf '#!/bin/sh\ntouch %s\n' "$T/recovered" >"$T/bin/nr-update-recover"
+chmod +x "$T/bin/nr-update-recover"
+guard --edit-tree-only
+expect_exit "edit-tree-only" 0
+expect_out "edit-tree-only syncs the stale index" 'synced to'
+[ "$(cat "$WTDIR/a.conf")" = a2 ] && ok "edit-tree-only leaves main's content in the edit tree" \
+	|| bad "edit tree not synced: $(cat "$WTDIR/a.conf")"
+expect_no_out "edit-tree-only does not apply main to the apply tree" 'applying'
+expect_no_out "edit-tree-only has no build verdict" 'nothing above blocks'
+[ -f "$T/recovered" ] && bad "edit-tree-only ran nr-update-recover" || ok "edit-tree-only skips recovery"
+
+# 9b. ...and it still leaves a tree with real edits alone: the flag narrows what
+#     runs, not the safety of the reset it shares with the full guard.
+setup
+printf 'c-next\n' >"$WTDIR/sub/c.conf"
+guard --edit-tree-only
+expect_out "edit-tree-only calls a real edit uncommitted work" 'has uncommitted changes'
+expect_no_out "edit-tree-only does not reset a real edit" 'synced to'
+[ "$(cat "$WTDIR/sub/c.conf")" = c-next ] && ok "edit-tree-only preserved the edit" \
+	|| bad "edit-tree-only discarded a real edit"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

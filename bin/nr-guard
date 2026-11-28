@@ -18,12 +18,34 @@
 # Split out of the `nr` fish function so this git logic can be tested against
 # throwaway repos: see bin/tests/nr-guard-test.sh.
 #
+# `--edit-tree-only` runs the edit-tree section alone: `nr --update` calls it
+# after its commit, so the staleness that commit creates in worktree/ is cleaned
+# where it is made instead of lingering until the next run.
+#
 # Exit status: 0 = the caller may build; 1 = main could not be applied to $HOME
 # and the caller must stop.
 #
 # NR_GUARD_ROOT (default $HOME) is the apply work tree, and the only thing the
 # test suite overrides.
 set -u
+
+# ---- mode ---------------------------------------------------------------
+# `nr` runs this before it builds, and again after an `--update` that commits:
+# the commit lands in $HOME, so worktree/'s index still describes the previous
+# main and git reports the bump as staged reverts. Cleaning that at the start of
+# the NEXT run means an update that commits leaves a fresh one behind every
+# time. --edit-tree-only runs just the edit-tree section -- no recovery, no
+# $HOME apply, no verdict, since nothing is about to be built.
+edit_only=no
+for arg in "$@"; do
+	case $arg in
+	--edit-tree-only) edit_only=yes ;;
+	*)
+		printf 'nr-guard: unknown argument %s\n' "$arg" >&2
+		exit 2
+		;;
+	esac
+done
 
 root=${NR_GUARD_ROOT:-$HOME}
 root=${root%/}
@@ -145,12 +167,12 @@ index_matches_position() {
 # path on every run: it is always the applied copy, whatever age the calling
 # shell's function definitions are. On 2026-11-20 a re-run skipped it because the
 # shell held an older `nr`.
-if [ -x "$root/bin/nr-update-recover" ]; then
+if [ "$edit_only" = no ] && [ -x "$root/bin/nr-update-recover" ]; then
 	"$root/bin/nr-update-recover"
 fi
 
 # ---- apply tree: bring $HOME up to main ---------------------------------
-if [ -n "$(g status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+if [ "$edit_only" = no ] && [ -n "$(g status --porcelain --untracked-files=no 2>/dev/null)" ]; then
 	# Paths an apply would change: compare the work tree with main, ignoring the
 	# index (the two checkouts share history, not one). A path missing from $HOME
 	# has no local content to lose.
@@ -281,7 +303,9 @@ if [ -d "$edit_tree" ]; then
 fi
 
 # The verdict. Without it the last line of a warning block reads as a stop sign,
-# which is how a run gets cancelled for no reason.
-[ "$announced" = yes ] && printf '%s\n' 'nr: continuing -- nothing above blocks this build' >&2
+# which is how a run gets cancelled for no reason. --edit-tree-only runs after a
+# build, so there is nothing to keep going.
+[ "$announced" = yes ] && [ "$edit_only" = no ] &&
+	printf '%s\n' 'nr: continuing -- nothing above blocks this build' >&2
 
 exit 0

@@ -13,3 +13,18 @@
 ## Fix
 
 Before treating staged entries as work, compare them with `git show --stat <last nr --update commit>`: the same paths means a stale index, not a pending bump, and `nr` will sync it. Never `git add -A` or `git commit -a` from the worktree in that state — it reverts the bump (a0a80e4 reverted 17 files that way); commit with explicit paths. Check `git fsck --dangling` if you need proof nothing was lost.
+
+## Follow-up (2026-11-27)
+
+"The next `nr` left the tree clean" is only true of a run that commits
+nothing. nr-guard syncs at the START of a run, and `nr --update`'s commit then
+creates a fresh stale index immediately — so on 2026-11-27 a run cleaned the
+artifact, committed, and left an identical one on `flake.lock` behind, and
+`git status` read as pending work again minutes later. It reappears after
+every `--update` that commits, which is nearly all of them.
+
+Since `nr --update` now calls `nr-guard --edit-tree-only` after its commit, the
+sync happens where the staleness is made; a leftover only means an older `nr`
+(or an interrupted run) was the last writer. The flag runs just the edit-tree
+section — no recovery, no $HOME apply, no verdict — and keeps the same predicate,
+so a tree with real edits is still left alone.

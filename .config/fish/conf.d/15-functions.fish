@@ -120,6 +120,7 @@ function nr
     set -l _nr_old_system
     set -l _nr_new_system
     set -l _nr_update no
+    set -l _nr_committed no
     set -l _nr_args
     set -l _nr_inputs
     set -l _nr_switch_ok 0
@@ -372,6 +373,7 @@ function nr
         if git --git-dir=$_nr_git --work-tree=$HOME diff --cached --quiet
             echo "nr: no dependency bumps to commit"
         else
+            set _nr_committed yes
             set -l _nr_msg "nr --update: bump nightly dependency versions"
             if test "$_nr_pinned" = yes
                 set _nr_msg "nr --update: pin a nixpkgs input to its last-good rev + bump nightly dependency versions"
@@ -399,6 +401,17 @@ function nr
                 git --git-dir=$_nr_git --work-tree=$HOME push sophrosyne
                 or echo "nr: push to sophrosyne FAILED — the bump is committed but not pushed; re-run nr" >&2
             end
+        end
+        # The commit above moved main from $HOME, which leaves worktree/'s index
+        # describing the previous main: git there reports the bump as staged
+        # reverts of flake.lock & co. nr-guard already syncs that shape, but at
+        # the START of a run, so an --update that commits left a fresh one behind
+        # every time and `git status` in the edit tree read as uncommitted work.
+        # Sync it now, where it was created, through the guard's own predicate so
+        # a tree holding real edits is still left alone. Runs on a failed push
+        # too: main moved either way.
+        if test "$_nr_committed" = yes; and test -x $HOME/bin/nr-guard
+            $HOME/bin/nr-guard --edit-tree-only
         end
     else if test "$_nr_update" = yes
         if test "$_nr_verify_failed" = yes
